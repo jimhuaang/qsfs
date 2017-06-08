@@ -187,7 +187,7 @@ class Node {
  private:
   char m_link;  //TODO replace with FileType
   std::string m_fileName;
-  std::unique_ptr<Entry> m_entry;  //TODO replace with std::shared_ptr
+  std::unique_ptr<Entry> m_entry;
   std::weak_ptr<Node> m_parent;
   std::string m_symbolicLink;
   StlFileNameToNodeMap m_children;
