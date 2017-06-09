@@ -22,8 +22,6 @@
 #include <mutex>
 
 #include <glog/logging.h>
-//#include <glog/log_severity.h>
-
 #include <base/LogLevel.h>
 
 namespace {
@@ -38,12 +36,14 @@ namespace QS {
 
 namespace Logging {
 
+using std::once_flag;
 using std::string;
+using std::unique_ptr;
 
-static std::unique_ptr<Log> logInstance(nullptr);
-static std::once_flag logOnceFlag;
+static unique_ptr<Log> logInstance(nullptr);
+static once_flag logOnceFlag;
 
-void InitializeLogging(std::unique_ptr<Log> log) {
+void InitializeLogging(unique_ptr<Log> log) {
   assert(log);
   std::call_once(logOnceFlag, [&log] {
     logInstance.swap(log);
@@ -59,6 +59,10 @@ void ShutdownLogging() {
 
 Log* GetLogInstance() {
   assert(logInstance);
+  if (!logInstance) {
+    InitializeLogging(unique_ptr<Log>(new DefaultLog(
+        LogLevel::Info, "")));  // TODO : replace with default log dir
+  }
   return logInstance.get();
 }
 
