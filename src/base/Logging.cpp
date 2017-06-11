@@ -46,7 +46,7 @@ static once_flag logOnceFlag;
 void InitializeLogging(unique_ptr<Log> log) {
   assert(log);
   std::call_once(logOnceFlag, [&log] {
-    logInstance.swap(log);
+    logInstance = std::move(log);
     InitializeGLog();
   });
 }
