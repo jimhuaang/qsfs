@@ -17,7 +17,7 @@ if(CMAKE_MAJOR_VERSION LESS 3)
 endif()
 project(qsfs)
 
-#enable_testing ()
+enable_testing ()
 
 set(QSFS_MAJOR_VERSION 0)
 set(QSFS_MINOR_VERSION 1)
@@ -29,6 +29,37 @@ set(QSFS_VERSION
 #option (WITH_THREADS "Enable multithreading support" ON)
 option(BUILD_SHARED_LIBS "If enabled, all qsfs libraries will be build as shared objects;
 otherwise all qsfs will be build as static objects" ON)
+
+include(CTest)
+
+if (CMAKE_VERSION VERSION_LESS 3.2)
+    set(UPDATE_DISCONNECTED_IF_AVAILABLE "")
+else()
+    set(UPDATE_DISCONNECTED_IF_AVAILABLE "UPDATE_DISCONNECTED 1")
+endif()
+
+include(cmake/DownloadProject.cmake)
+download_project(PROJ                googletest
+                 GIT_REPOSITORY      https://github.com/google/googletest.git
+                 GIT_TAG             master
+                 ${UPDATE_DISCONNECTED_IF_AVAILABLE}
+)
+
+# Prevent GoogleTest from overriding our compiler/linker options
+# when building with Visual Studio
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+
+add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
+
+# When using CMake 2.8.11 or later, header path dependencies
+# are automatically added to the gtest and gmock targets.
+# For earlier CMake versions, we have to explicitly add the
+# required directories to the header search path ourselves.
+if (CMAKE_VERSION VERSION_LESS 2.8.11)
+    include_directories("${gtest_SOURCE_DIR}/include"
+                        "${gmock_SOURCE_DIR}/include")
+endif()
+
 
 #list (APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
@@ -61,6 +92,7 @@ otherwise all qsfs will be build as static objects" ON)
 
 file(GLOB QSFS_HEADERS "include/*.h")
 file(GLOB QSFS_BASE_HEADERS "include/base/*.h")
+MESSAGE(STATUS "QSFS_HEADERS: ${QSFS_HEADERS}")
 
 file(GLOB QSFS_SOURCES "src/*.cpp")
 file(GLOB QSFS_BASE_SOURCES "src/*.cpp")
@@ -85,6 +117,8 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 set(QSFS_INCLUDES ${PROJECT_SOURCE_DIR}/include/)
 include_directories(${QSFS_INCLUDES})
 
+add_compile_options(-g -std=c++11)
+
 add_library(${PROJECT_NAME} ${QSFS_SRC})
 
 #set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -105,6 +139,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 #    src/test/QSFSUnitTest.cpp
 #  )
 #endif (BUILD_TESTING)
+
+add_executable(sample1 test/sample1.cpp)
+target_link_libraries(sample1 gtest)
+add_test(NAME sample1_test COMMAND sample1)
 
 install (TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION lib/static
