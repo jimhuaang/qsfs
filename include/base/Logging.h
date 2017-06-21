@@ -28,39 +28,23 @@ namespace Logging {
 class Log;
 
 void InitializeLogging(std::unique_ptr<Log> log);
-void ShutdownLogging();
 Log *GetLogInstance();
 
 class Log {
  public:
-  Log(LogLevel logLevel) : m_logLevel(logLevel) {}
-
+  Log() = default;
   virtual ~Log() = default;
-
- public:
-  void LogMessage(LogLevel logLevel, const std::string &msg);
-  void LogMessageIf(LogLevel logLevel, bool condition, const std::string &msg);
-
-  /* Log message in "debug mode" (i.e., there is no NDEBUG macro defined)*/
-  void DebugLogMessage(LogLevel logLevel, const std::string &msg);
-  void DebugLogMessageIf(LogLevel logLevel, bool condition,
-                         const std::string &msg);
-
-  LogLevel GetLogLevel() const { return m_logLevel; }
-  void SetLogLevel(LogLevel logLevel) { m_logLevel.store(logLevel); }
 
  protected:
   virtual void Initialize() = 0;
 
- private:
-  std::atomic<LogLevel> m_logLevel;
 };
 
 class ConsoleLog : public Log {
  public:
   using BASE = Log;
 
-  ConsoleLog(LogLevel logLevel) : BASE(logLevel) { Initialize(); }
+  ConsoleLog() : BASE() { Initialize(); }
 
   ConsoleLog(ConsoleLog &&) = delete;
   ConsoleLog(const ConsoleLog &) = delete;
@@ -76,8 +60,8 @@ class DefaultLog : public Log {
  public:
   using BASE = Log;
 
-  DefaultLog(LogLevel logLevel, const std::string &path)
-      : BASE(logLevel), m_path(path) {
+  DefaultLog(const std::string &path = "")
+      : BASE(), m_path(path) {
     Initialize();
   }
 
@@ -94,7 +78,7 @@ class DefaultLog : public Log {
   std::string m_path;
 };
 
-} // namespace Logging
-} // namespace QS
+}  // namespace Logging
+}  // namespace QS
 
-#endif //LOGGING_H_INCLUDED
+#endif  // LOGGING_H_INCLUDED
