@@ -21,14 +21,12 @@
 #include <memory>
 #include <mutex>
 
-#include <glog/logging.h>
 #include <base/LogLevel.h>
+#include <glog/logging.h>
 
 namespace {
 
-void InitializeGLog() {
-  google::InitGoogleLogging("QSFS");
-}
+void InitializeGLog() { google::InitGoogleLogging("QSFS"); }
 
 }  // namespace
 
@@ -37,7 +35,6 @@ namespace QS {
 namespace Logging {
 
 using std::once_flag;
-using std::string;
 using std::unique_ptr;
 
 static unique_ptr<Log> logInstance(nullptr);
@@ -51,78 +48,13 @@ void InitializeLogging(unique_ptr<Log> log) {
   });
 }
 
-void ShutdownLogging() {
-  if (logInstance) {
-    logInstance.reset();
-  }
-}
-
 Log* GetLogInstance() {
-  assert(logInstance);
-  if (!logInstance) {
-    InitializeLogging(unique_ptr<Log>(new DefaultLog(
-        LogLevel::Info, "")));  // TODO : replace with default log dir
-  }
+  std::call_once(logOnceFlag, [] {
+    logInstance =
+        unique_ptr<Log>(new DefaultLog(""));  // TODO : change to default path
+    InitializeGLog();
+  });
   return logInstance.get();
-}
-
-void Log::LogMessage(LogLevel logLevel, const string& msg) {
-  if (!(GetLogLevel() <= logLevel)) return;
-
-  string msgWithLogLevelPrefix = GetLogLevelPrefix(logLevel) + msg;
-  switch (logLevel) {
-    case LogLevel::Info:
-      LOG(INFO) << msgWithLogLevelPrefix;
-      break;
-    case LogLevel::Warn:
-      LOG(WARNING) << msgWithLogLevelPrefix;
-      break;
-    case LogLevel::Error:
-      LOG(ERROR) << msgWithLogLevelPrefix;
-      break;
-    case LogLevel::Fatal:
-      LOG(FATAL) << msgWithLogLevelPrefix;
-      break;
-    default:
-      assert(0);
-      break;
-  }
-}
-
-void Log::LogMessageIf(LogLevel logLevel, bool condition, const string& msg) {
-  if (condition) {
-    LogMessage(logLevel, msg);
-  }
-}
-
-void Log::DebugLogMessage(LogLevel logLevel, const string& msg) {
-  if (!(GetLogLevel() <= logLevel)) return;
-
-  string msgWithLogLevelPrefix = GetLogLevelPrefix(logLevel) + msg;
-  switch (logLevel) {
-    case LogLevel::Info:
-      DLOG(INFO) << msgWithLogLevelPrefix;
-      break;
-    case LogLevel::Warn:
-      DLOG(WARNING) << msgWithLogLevelPrefix;
-      break;
-    case LogLevel::Error:
-      DLOG(ERROR) << msgWithLogLevelPrefix;
-      break;
-    case LogLevel::Fatal:
-      DLOG(FATAL) << msgWithLogLevelPrefix;
-      break;
-    default:
-      assert(0);
-      break;
-  }
-}
-
-void Log::DebugLogMessageIf(LogLevel logLevel, bool condition,
-                            const string& msg) {
-  if (condition) {
-    DebugLogMessage(logLevel, msg);
-  }
 }
 
 void ConsoleLog::Initialize() { FLAGS_logtostderr = 1; }
