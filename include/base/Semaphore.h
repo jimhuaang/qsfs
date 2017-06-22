@@ -14,14 +14,14 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef SEMAPHORE_H_INCLUDED
-#define SEMAPHORE_H_INCLUDED
+#ifndef _QSFS_FUSE_INCLUDE_BASE_SEMAPHORE_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDE_BASE_SEMAPHORE_H_  // NOLINT
 
 #include <stddef.h>
 
-#include <condition_variable>
+#include <condition_variable>  // NOLINT
 #include <functional>
-#include <mutex>
+#include <mutex>  // NOLINT
 
 namespace QS {
 
@@ -29,7 +29,7 @@ namespace Threading {
 
 class Semaphore {
  public:
-  Semaphore(size_t count = 0) : m_count(count) {}
+  explicit Semaphore(size_t count = 0) : m_count(count) {}
 
   Semaphore(Semaphore &&) = delete;
   Semaphore(const Semaphore &) = delete;
@@ -39,7 +39,7 @@ class Semaphore {
 
  public:
   void notify_one();
-  void notify_all() ;
+  void notify_all();
   void wait();
 
  private:
@@ -51,4 +51,5 @@ class Semaphore {
 }  // namespace Threading
 }  // namespace QS
 
-#endif  // SEMAPHORE_H_INCLUDED
+// NOLINTNEXTLINE
+#endif  // _QSFS_FUSE_INCLUDE_BASE_SEMAPHORE_H_

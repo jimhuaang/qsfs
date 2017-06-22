@@ -14,15 +14,15 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef THREAD_H_POOL
-#define THREAD_H_POOL
+#ifndef _QSFS_FUSE_INCLUDE_BASE_THREADPOOL_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDE_BASE_THREADPOOL_H_  // NOLINT
 
 #include <stddef.h>
 
-#include <condition_variable>
+#include <condition_variable>  // NOLINT
 #include <functional>
 #include <memory>
-#include <mutex>
+#include <mutex>  // NOLINT
 #include <queue>
 #include <vector>
 
@@ -36,7 +36,7 @@ using Task = std::unique_ptr<std::function<void()>>;
 
 class ThreadPool {
  public:
-  ThreadPool(size_t poolSize);
+  explicit ThreadPool(size_t poolSize);
   ~ThreadPool();
 
   ThreadPool(ThreadPool &&) = delete;
@@ -48,7 +48,6 @@ class ThreadPool {
   void SubmitTask(Task task);
 
  private:
-  //Task &&PopTask();
   Task PopTask();
   bool HasTasks();
 
@@ -67,4 +66,5 @@ class ThreadPool {
 }  // namespace Threading
 }  // namespace QS
 
-#endif  // THREAD_H_POOL
+// NOLINTNEXTLINE
+#endif  // _QSFS_FUSE_INCLUDE_BASE_THREADPOOL_H_

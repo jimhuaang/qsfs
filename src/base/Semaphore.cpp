@@ -14,7 +14,7 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include <base/Semaphore.h>
+#include "base/Semaphore.h"
 
 namespace QS {
 
