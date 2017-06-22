@@ -14,10 +14,12 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef QSERRORS_H_INCLUDED
-#define QSERRORS_H_INCLUDED
+#ifndef _QSFS_FUSE_INCLUDE_CLIENT_QSERRORS_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDE_CLIENT_QSERRORS_H_  // NOLINT
 
-#include <client/Error.h>
+#include <string>
+
+#include "client/Error.h"
 
 namespace QS {
 
@@ -27,7 +29,7 @@ enum class QSErrors {
   UNKNOWN,
   INVALID_ACCESS_KEY_ID,
   INVALID_RANGE,
-  // TODO: add others here
+  // TODO(jim): Add others here.
 };
 
 Error<QSErrors> GetQSErrorForCode(const std::string &errorCode);
@@ -50,4 +52,5 @@ struct StringHash {
 }  // namespace Client
 }  // namespace QS
 
-#endif  // QSERRORS_H_INCLUDED
+// NOLINTNEXTLINE
+#endif  // _QSFS_FUSE_INCLUDE_CLIENT_QSERRORS_H_

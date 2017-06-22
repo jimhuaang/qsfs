@@ -14,15 +14,16 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include <base/Logging.h>
+#include "base/Logging.h"
 
 #include <assert.h>
 
 #include <memory>
-#include <mutex>
+#include <mutex>  // NOLINT
 
-#include <base/LogLevel.h>
-#include <glog/logging.h>
+#include "glog/logging.h"
+
+#include "base/LogLevel.h"
 
 namespace {
 
@@ -50,8 +51,8 @@ void InitializeLogging(unique_ptr<Log> log) {
 
 Log* GetLogInstance() {
   std::call_once(logOnceFlag, [] {
-    logInstance =
-        unique_ptr<Log>(new DefaultLog(""));  // TODO : change to default path
+    // TODO(Jim): Change to default path.
+    logInstance = unique_ptr<Log>(new DefaultLog(""));
     InitializeGLog();
   });
   return logInstance.get();

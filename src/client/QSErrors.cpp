@@ -14,7 +14,7 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include <client/QSErrors.h>
+#include "client/QSErrors.h"
 
 #include <unordered_map>
 
@@ -29,7 +29,7 @@ Error<QSErrors> GetQSErrorForCode(const string &errorCode) {
   static unordered_map<string, QSErrors, StringHash> errorCodeToTypeMap = {
       {"invalid_access_key_id", QSErrors::INVALID_ACCESS_KEY_ID},
       {"invalid_range",         QSErrors::INVALID_RANGE},
-      // TODO: add other errors here
+      // TODO(Jim): Add other errors here.
   };
 
   auto it = errorCodeToTypeMap.find(errorCode);

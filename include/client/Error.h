@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef ERROR_H_INCLUDED
-#define ERROR_H_INCLUDED
+#ifndef _QSFS_FUSE_INCLUDE_CLIENT_ERROR_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDE_CLIENT_ERROR_H_  // NOLINT
 
 #include <string>
 
@@ -47,7 +47,8 @@ class Error {
   bool m_isRetryable;
 };
 
-}  // namespace Error
+}  // namespace Client
 }  // namespace QS
 
-#endif  // ERROR_H_INCLUDED
+// NOLINTNEXTLINE
+#endif  // _QSFS_FUSE_INCLUDE_CLIENT_ERROR_H_

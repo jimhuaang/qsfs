@@ -14,13 +14,13 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef LOGMACROS_H_INCLUDED
-#define LOGMACROS_H_INCLUDED
+#ifndef _QSFS_FUSE_INCLUDE_BASE_LOGMACROS_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDE_BASE_LOGMACROS_H_  // NOLINT
 
-#include <glog/logging.h>
+#include <glog/logging.h>  // TODO(Jim): Replace with "" after download glog
 
-#include <base/LogLevel.h>
-#include <base/Logging.h>
+#include "base/LogLevel.h"
+#include "base/Logging.h"
 
 #ifdef DISABLE_QS_LOGGING
 #define Info(msg)
@@ -210,4 +210,5 @@
 
 #endif  // DISABLE_QS_LOGGING
 
-#endif  // LOGMACROS_H_INCLUDED
+// NOLINTNEXTLINE
+#endif  // _QSFS_FUSE_INCLUDE_BASE_LOGMACROS_H_

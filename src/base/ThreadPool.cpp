@@ -14,11 +14,11 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include <base/ThreadPool.h>
+#include "base/ThreadPool.h"
 
 #include <utility>
 
-#include <base/TaskHandle.h>
+#include "base/TaskHandle.h"
 
 namespace QS {
 
@@ -51,11 +51,11 @@ void ThreadPool::SubmitTask(Task task) {
   m_syncConditionVar.notify_one();
 }
 
-Task ThreadPool::PopTask(){
+Task ThreadPool::PopTask() {
   lock_guard<mutex> lock(m_queueLock);
-  if(!m_tasks.empty()){
+  if (!m_tasks.empty()) {
     Task &task = m_tasks.front();
-    if(task){
+    if (task) {
       m_tasks.pop();
       return std::move(task);
     }

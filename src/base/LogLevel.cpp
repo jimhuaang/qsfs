@@ -14,11 +14,11 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include <base/LogLevel.h>
+#include "base/LogLevel.h"
 
 #include <unordered_map>
 
-#include <base/Utils.h>
+#include "base/Utils.h"
 
 namespace QS {
 

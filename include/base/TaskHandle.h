@@ -14,11 +14,11 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef THREADTASK_H_INCLUDED
-#define THREADTASK_H_INCLUDED
+#ifndef _QSFS_FUSE_INCLUDE_BASE_TASKHANDLE_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDE_BASE_TASKHANDLE_H_  // NOLINT
 
 #include <atomic>
-#include <thread>
+#include <thread>  // NOLINT
 
 namespace QS {
 
@@ -28,7 +28,7 @@ class ThreadPool;
 
 class TaskHandle {
  public:
-  TaskHandle(ThreadPool &threadPool);
+  explicit TaskHandle(ThreadPool &threadPool);  // NOLINT
   ~TaskHandle();
 
   TaskHandle(TaskHandle &&) = delete;
@@ -51,4 +51,5 @@ class TaskHandle {
 }  // namespace Threading
 }  // namespace QS
 
-#endif  // THREADTASK_H_INCLUDED
+// NOLINTNEXTLINE
+#endif  // _QSFS_FUSE_INCLUDE_BASE_TASKHANDLE_H_

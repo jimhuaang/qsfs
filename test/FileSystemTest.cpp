@@ -28,8 +28,9 @@
 
 namespace {
 
-using namespace QS::FileSystem;
-
+using QS::FileSystem::Entry;
+using QS::FileSystem::FileType;
+using QS::FileSystem::Node;
 using std::make_shared;
 using std::ostream;
 using std::string;
@@ -55,7 +56,7 @@ struct MetaData {
 
   friend ostream &operator<<(ostream &os, const MetaData &meta) {
     return os << "FileId: " << meta.fileId << " FileSize: " << meta.fileSize
-              << " FileType: " << GetFileTypeName(meta.fileType)
+              << " FileType: " << QS::FileSystem::GetFileTypeName(meta.fileType)
               << " NumLink: " << meta.numLink << " IsDir: " << meta.isDir
               << " IsOperable: " << meta.isOperable;
   }
@@ -151,7 +152,7 @@ TEST_F(NodeTest, CustomCtors) {
   EXPECT_EQ(pLinkNode->GetSymbolicLink(), path);
 }
 
-TEST_F(NodeTest, PublicFunctions){
+TEST_F(NodeTest, PublicFunctions) {
   EXPECT_FALSE(pRootNode->Find(pFileNode1->GetFileName()));
   pRootNode->Insert(pFileNode1);
   EXPECT_EQ(pRootNode->Find(pFileNode1->GetFileName()), pFileNode1);
