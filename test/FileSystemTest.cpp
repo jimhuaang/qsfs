@@ -39,7 +39,7 @@ using ::testing::Test;
 using ::testing::Values;
 using ::testing::WithParamInterface;
 
-// default non interested attributes
+// default values for non interested attributes
 time_t mtime_ = time(NULL);
 uid_t uid_ = 1000U;
 gid_t gid_ = 1000U;
