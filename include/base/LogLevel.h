@@ -25,13 +25,6 @@ namespace Logging {
 
 enum class LogLevel : int { Info = 0, Warn = 1, Error = 2, Fatal = 3 };
 
-struct LogLevelHash {
-  template <typename T>
-  int operator()(T logLevel) const {
-    return static_cast<int>(logLevel);
-  }
-};
-
 const std::string &GetLogLevelName(LogLevel logLevel);
 std::string GetLogLevelPrefix(LogLevel logLevel);
 

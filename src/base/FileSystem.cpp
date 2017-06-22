@@ -19,58 +19,63 @@
 #include <cassert>
 
 #include <string>
+#include <unordered_map>
+
+#include <base/Utils.h>
 
 namespace QS {
 
 namespace FileSystem {
 
+using QS::Utils::EnumHash;
 using std::string;
 using std::shared_ptr;
+using std::unordered_map;
 
+const string &GetFileTypeName(FileType fileType) {
+  static unordered_map<FileType, string, EnumHash> fileTypeNames = {
+      {FileType::None, "None"},
+      {FileType::File, "File"},
+      {FileType::Directory, "Directory"}};
+  return fileTypeNames[fileType];
+}
 
 /**================================================== *
  * ==========       Node Functions         ========== *
  * ================================================== */
-bool Node::IsEmpty() const { 
-  return m_children.empty(); 
-}
+bool Node::IsEmpty() const { return m_children.empty(); }
 
-shared_ptr<Node> Node::Find(const string &fileName) const{
+shared_ptr<Node> Node::Find(const string &fileName) const {
   auto child = m_children.find(fileName);
-  if (child != m_children.end()){
+  if (child != m_children.end()) {
     return child->second;
   }
   return shared_ptr<Node>(nullptr);
 }
 
-const StlFileNameToNodeMap &Node::GetChildren() const { 
-  return m_children; 
-}
+const StlFileNameToNodeMap &Node::GetChildren() const { return m_children; }
 
-shared_ptr<Node> Node::Insert(shared_ptr<Node> child){
-  assert(child);
-  if(child){
-    m_children.emplace(child->m_fileName,child);
+shared_ptr<Node> Node::Insert(shared_ptr<Node> child) {
+  if (child) {
+    m_children.emplace(child->m_fileName, child);
   }
   return child;
 }
 
 void Node::Remove(shared_ptr<Node> child) {
-  assert(child);
   if (child) {
     bool reset = m_children.size() == 1 ? true : false;
 
     auto it = m_children.find(child->m_fileName);
-    assert(it != m_children.end());
-
-    m_children.erase(it);
-    if (reset) m_children.clear();
+    if (it != m_children.end()) {
+      m_children.erase(it);
+      if (reset) m_children.clear();
+    }
   }
 }
 
 void Node::RenameChild(const string &oldFileName, const string &newFileName) {
   auto it = m_children.find(oldFileName);
-  assert(it != m_children.end());
 
   if (it != m_children.end()) {
     auto tmp = it->second;

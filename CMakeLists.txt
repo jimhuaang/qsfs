@@ -144,9 +144,16 @@ add_executable(sample1 test/sample1.cpp)
 target_link_libraries(sample1 gtest)
 add_test(NAME sample1_test COMMAND sample1)
 
-add_executable(LoggingTest test/LoggingTest.cpp src/base/Logging.cpp src/base/LogLevel.cpp)
+add_executable(LoggingTest test/LoggingTest.cpp 
+               src/base/Logging.cpp 
+               src/base/LogLevel.cpp)
 target_link_libraries(LoggingTest gtest glog)
 add_test(NAME logging_test COMMAND LoggingTest)
+
+add_executable(FileSystemTest test/FileSystemTest.cpp 
+               src/base/FileSystem.cpp)
+target_link_libraries(FileSystemTest gtest)
+add_test(NAME filesystem_test COMMAND FileSystemTest)
 
 install (TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION lib/static

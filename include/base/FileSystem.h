@@ -18,8 +18,8 @@
 #define FILESYSTEM_H_INCLUDED
 
 #include <stdint.h>
-#include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <memory>
 #include <string>
@@ -33,9 +33,21 @@ namespace FileSystem {
 class Entry;
 class Node;
 
-using StlFileNameToNodeMap = std::unordered_map<std::string, std::shared_ptr<Node>>;
+using StlFileNameToNodeMap =
+    std::unordered_map<std::string, std::shared_ptr<Node>>;
 
-enum class FileType { None, File, Directory }; // TODO add more types, remove None
+enum class FileType {
+  None,
+  File,
+  Directory,
+  SymLink,
+  Block,
+  Character,
+  FIFO,
+  Socket
+};  // TODO remove None
+
+const std::string &GetFileTypeName(FileType fileType);
 
 /**
  * QingStor object file metadata
@@ -47,13 +59,13 @@ class Entry {
     time_t m_mtime;  // time of last modification
     time_t m_ctime;  // time of last file status change
     time_t m_cachedTime;
-    uid_t  m_uid;  // user ID of owner
-    gid_t  m_gid;  // group ID of owner
-    mode_t      m_fileMode;  // file type & mode (permissions)
-    FileType    m_fileType;
+    uid_t m_uid;        // user ID of owner
+    gid_t m_gid;        // group ID of owner
+    mode_t m_fileMode;  // file type & mode (permissions)
+    FileType m_fileType;
     std::string m_mimeType;
     dev_t m_dev;  // device number (file system)
-    int  m_numLink;
+    int m_numLink;
     bool m_dirty;
     bool m_write;
     bool m_fileOpen;
@@ -78,10 +90,17 @@ class Entry {
           m_pendingGet(false),
           m_pendingCreate(false) {
       m_numLink = fileType == FileType::Directory
-                       ? 2
-                       : fileType == FileType::File ? 1 : 0;  // TODO
+                      ? 2
+                      : fileType == FileType::File ? 1 : 0;  // TODO
       m_cachedTime = time(NULL);
     }
+
+    FileMetaData() = delete;
+    FileMetaData(FileMetaData &&) = default;
+    FileMetaData(const FileMetaData &) = default;
+    FileMetaData &operator=(FileMetaData &&) = default;
+    FileMetaData &operator=(const FileMetaData &) = default;
+    ~FileMetaData() = default;
   };
 
  public:
@@ -93,6 +112,10 @@ class Entry {
         m_fileSize(fileSize),
         m_metaData(atime, mtime, uid, gid, fileMode, fileType, mimeType, dev) {}
 
+  Entry(const std::string &fileId, uint64_t fileSize, FileMetaData fileMetaData)
+      : m_fileId(fileId), m_fileSize(fileSize), m_metaData(fileMetaData) {}
+
+  Entry() = delete;
   Entry(Entry &&) = default;
   Entry(const Entry &) = default;
   Entry &operator=(Entry &&) = default;
@@ -108,16 +131,17 @@ class Entry {
   }
 
   // accessor
-  const std::string & GetFileId() const { return m_fileId; }
+  const std::string &GetFileId() const { return m_fileId; }
   uint64_t GetFileSize() const { return m_fileSize; }
   int GetNumLink() const { return m_metaData.m_numLink; }
+  FileType GetFileType() const { return m_metaData.m_fileType; }
 
  private:
   void DecreaseNumLink() { --m_metaData.m_numLink; }
   void IncreaseNumLink() { ++m_metaData.m_numLink; }
 
  private:
-  std::string m_fileId;  // file path
+  std::string m_fileId;  // file Id used to identify file in cache
   uint64_t m_fileSize;
   FileMetaData m_metaData;  // file meta data
 
@@ -129,28 +153,22 @@ class Entry {
  */
 class Node {
  public:
-  Node(char link, const std::string &fileName, std::unique_ptr<Entry> entry,
+  Node(const std::string &fileName, std::unique_ptr<Entry> entry,
        const std::shared_ptr<Node> &parent)
-      : m_link(link),
-        m_fileName(fileName),
-        m_entry(std::move(entry)),
-        m_parent(parent) {
+      : m_fileName(fileName), m_entry(std::move(entry)), m_parent(parent) {
     m_children.clear();
   }
 
   Node()
-      : Node(0, "", std::unique_ptr<Entry>(nullptr),
+      : Node("", std::unique_ptr<Entry>(nullptr),
              std::shared_ptr<Node>(nullptr)) {}
 
   Node(const std::string &fileName, std::unique_ptr<Entry> entry,
-       const std::shared_ptr<Node> &parent)
-      : Node(0, fileName, std::move(entry), parent) {}
-
-  Node(char link, const std::string &fileName, std::unique_ptr<Entry> entry,
-       const std::shared_ptr<Node> &parent, const char *symbolicLink)
-      : Node(link, fileName, std::move(entry), parent) {
-    if (entry && entry->GetFileSize() <= strlen(symbolicLink)) {
-      m_symbolicLink = std::string(symbolicLink, entry->GetFileSize());
+       const std::shared_ptr<Node> &parent, const std::string &symbolicLink)
+      : Node(fileName, std::move(entry), parent) {
+    // must use m_entry instead of entry which is moved to m_entry now
+    if (m_entry && m_entry->GetFileSize() <= symbolicLink.size()) {
+      m_symbolicLink = std::string(symbolicLink, 0, m_entry->GetFileSize());
     }
   }
 
@@ -160,33 +178,43 @@ class Node {
   Node &operator=(const Node &) = delete;
 
   ~Node() {
+    if (!m_entry) return;
+
     m_entry->DecreaseNumLink();
     if (m_entry->GetNumLink() == 0 ||
         (m_entry->GetNumLink() <= 1 && m_entry->IsDirectory())) {
-      m_entry.reset(nullptr);
+      m_entry.reset();
     }
   }
 
  public:
-  virtual operator bool() const { return m_entry->operator bool(); }
+  virtual operator bool() const {
+    return m_entry ? m_entry->operator bool() : false;
+  }
 
  public:
   bool IsEmpty() const;
   std::shared_ptr<Node> Find(const std::string &fileName) const;
-  const StlFileNameToNodeMap  &GetChildren() const;
+  const StlFileNameToNodeMap &GetChildren() const;
 
   std::shared_ptr<Node> Insert(std::shared_ptr<Node> child);
   void Remove(std::shared_ptr<Node> child);
   void RenameChild(const std::string &oldFileName,
                    const std::string &newFileName);
 
-  //accessor
-  const std::unique_ptr<Entry>& GetEntry() const {return m_entry;}
-  const std::string& GetPath() const {return m_entry->GetFileId();}
+  // accessor
+  std::string GetFileName() const { return m_fileName; }
+  const std::unique_ptr<Entry> &GetEntry() const { return m_entry; }
+  std::weak_ptr<Node> GetParent() const { return m_parent; }
+  std::string GetSymbolicLink() const { return m_symbolicLink; }
+
+  std::string GetFileId() const {
+    if (!m_entry) return std::string();
+    return m_entry->GetFileId();
+  }
 
  private:
-  char m_link;  //TODO replace with FileType
-  std::string m_fileName;
+  std::string m_fileName;  // file path
   std::unique_ptr<Entry> m_entry;
   std::weak_ptr<Node> m_parent;
   std::string m_symbolicLink;
