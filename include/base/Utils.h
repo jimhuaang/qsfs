@@ -14,32 +14,18 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include <base/LogLevel.h>
-
-#include <unordered_map>
-
-#include <base/Utils.h>
-
 namespace QS {
 
-namespace Logging {
+namespace Utils {
 
-using QS::Utils::EnumHash;
-using std::string;
-using std::unordered_map;
+struct EnumHash {
+  template <typename T>
+  int operator()(T enumValue) const {
+    return static_cast<int>(enumValue);
+  }
+};
 
-const string &GetLogLevelName(LogLevel logLevel) {
-  static unordered_map<LogLevel, string, EnumHash> logLevelNames = {
-      {LogLevel::Info, "INFO"},
-      {LogLevel::Warn, "WARN"},
-      {LogLevel::Error, "ERROR"},
-      {LogLevel::Fatal, "FATAL"}};
-  return logLevelNames[logLevel];
-}
 
-string GetLogLevelPrefix(LogLevel logLevel) {
-  return "[" + GetLogLevelName(logLevel) + "] ";
-}
+} // namespace Utils
 
-}  // namespace Logging
-}  // namespace QS
+} // namespace QS
