@@ -45,10 +45,11 @@ void MakeDefaultLogDir() {
   int status = stat(defaultLogDir, &info);
 
   if (status == 0) {
-    ASSERT_TRUE(((info.st_mode) & S_IFMT) == S_IFDIR);
+    ASSERT_TRUE(((info.st_mode) & S_IFMT) == S_IFDIR)
+        << defaultLogDir << " should be a directory.";
   } else {
     int status = mkdir(defaultLogDir, S_IRWXU | S_IRWXG | S_IROTH);
-    ASSERT_EQ(status, 0);
+    ASSERT_EQ(status, 0) << "Fail to create directory " << defaultLogDir << ".";
   }
 }
 
@@ -79,12 +80,12 @@ void VerifyAllNonFatalLogs() {
   string infoLogFile = string(defaultLogDir) + "/QSFS.INFO";
   struct stat info;
   int status = stat(infoLogFile.c_str(), &info);
-  ASSERT_EQ(status, 0);
+  ASSERT_EQ(status, 0) << infoLogFile << " is not existed.";
 
   vector<string> logMsgs;
   {
     fstream fs(infoLogFile);
-    ASSERT_TRUE(fs.is_open());
+    ASSERT_TRUE(fs.is_open()) << "Fail to open " << infoLogFile << ".";
 
     string::size_type pos = string::npos;
     for (string line; std::getline(fs, line);) {
@@ -146,12 +147,12 @@ void VerifyFatalLog(const string &expectedMsg) {
   string fatalLogFile = string(defaultLogDir) + "/QSFS.FATAL";
   struct stat info;
   int status = stat(fatalLogFile.c_str(), &info);
-  ASSERT_EQ(status, 0);
+  ASSERT_EQ(status, 0) << fatalLogFile << " is not existed.";
 
   string logMsg;
   {
     fstream fs(fatalLogFile);
-    ASSERT_TRUE(fs.is_open());
+    ASSERT_TRUE(fs.is_open()) << "Fail to open " << fatalLogFile << ".";
 
     string::size_type pos = string::npos;
     for (string line; std::getline(fs, line);) {
