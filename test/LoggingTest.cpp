@@ -28,23 +28,23 @@
 
 namespace {
 
-using namespace QS::Logging;
-
+using QS::Logging::DefaultLog;
+using QS::Logging::Log;
 using std::fstream;
 using std::string;
 using std::unique_ptr;
 using std::vector;
 
-static const string defaultLogDir = "/tmp/qsfs/logs/test";
+static const char *defaultLogDir = "/tmp/qsfs/logs/test";
 
 void MakeDefaultLogDir() {
   struct stat info;
-  int status = stat(defaultLogDir.c_str(), &info);
+  int status = stat(defaultLogDir, &info);
 
   if (status == 0) {
     ASSERT_TRUE(((info.st_mode) & S_IFMT) == S_IFDIR);
   } else {
-    int status = mkdir(defaultLogDir.c_str(), S_IRWXU | S_IRWXG | S_IROTH);
+    int status = mkdir(defaultLogDir, S_IRWXU | S_IRWXG | S_IROTH);
     ASSERT_EQ(status, 0);
   }
 }
@@ -75,7 +75,7 @@ void LogAllPossibilities() {
 // As glog will handle the order of severity level, So only need to verify the
 // lowest severity level (i.e., INFO).
 void VerifyAllLogs() {
-  string infoLogFile = defaultLogDir + "/QSFS.INFO";
+  string infoLogFile = string(defaultLogDir) + "/QSFS.INFO";
   struct stat info;
   int status = stat(infoLogFile.c_str(), &info);
   ASSERT_EQ(status, 0);
@@ -109,10 +109,11 @@ void VerifyAllLogs() {
 class LoggingTest : public ::testing::Test {
  public:
   LoggingTest() {
-    InitializeLogging(unique_ptr<Log>(new DefaultLog(defaultLogDir)));
+    QS::Logging::InitializeLogging(
+        unique_ptr<Log>(new DefaultLog(defaultLogDir)));
   }
 
-  virtual void SetUp() override { MakeDefaultLogDir(); }
+  void SetUp() override { MakeDefaultLogDir(); }
 
   ~LoggingTest() {}
 };

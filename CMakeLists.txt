@@ -140,6 +140,12 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 #  )
 #endif (BUILD_TESTING)
 
+add_library(FileSystem src/base/FileSystem.cpp)
+add_library(Logging src/base/Logging.cpp src/base/LogLevel.cpp)
+add_library(ThreadPool src/base/ThreadPool.cpp src/base/TaskHandle.cpp)
+add_library(Semaphore src/base/Semaphore.cpp)
+add_library(QSErrors src/client/QSErrors.cpp)
+
 add_executable(sample1 test/sample1.cpp)
 target_link_libraries(sample1 gtest)
 add_test(NAME sample1_test COMMAND sample1)

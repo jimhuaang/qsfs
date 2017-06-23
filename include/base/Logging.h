@@ -14,13 +14,14 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef LOGGING_H_INCLUDED
-#define LOGGING_H_INCLUDED
+#ifndef _QSFS_FUSE_INCLUDE_BASE_LOGGING_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDE_BASE_LOGGING_H_  // NOLINT
 
 #include <atomic>
 #include <memory>
+#include <string>
 
-#include <base/LogLevel.h>
+#include "base/LogLevel.h"
 
 namespace QS {
 
@@ -37,7 +38,6 @@ class Log {
 
  protected:
   virtual void Initialize() = 0;
-
 };
 
 class ConsoleLog : public Log {
@@ -53,14 +53,14 @@ class ConsoleLog : public Log {
   virtual ~ConsoleLog() = default;
 
  protected:
-  virtual void Initialize() override;
+  void Initialize() override;
 };
 
 class DefaultLog : public Log {
  public:
   using BASE = Log;
 
-  DefaultLog(const std::string &path = "")
+  explicit DefaultLog(const std::string &path = "")
       : BASE(), m_path(path) {
     Initialize();
   }
@@ -72,7 +72,7 @@ class DefaultLog : public Log {
   virtual ~DefaultLog() = default;
 
  protected:
-  virtual void Initialize() override;
+  void Initialize() override;
 
  private:
   std::string m_path;
@@ -81,4 +81,5 @@ class DefaultLog : public Log {
 }  // namespace Logging
 }  // namespace QS
 
-#endif  // LOGGING_H_INCLUDED
+// NOLINTNEXTLINE
+#endif  // _QSFS_FUSE_INCLUDE_BASE_LOGGING_H_

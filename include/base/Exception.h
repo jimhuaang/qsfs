@@ -14,22 +14,10 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
+#ifndef _QSFS_FUSE_INCLUDE_BASE_EXCEPTION_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDE_BASE_EXCEPTION_H_  // NOLINT
 
-namespace QS {
-
-namespace Utils {
-
-struct EnumHash {
-  template <typename T>
-  int operator()(T enumValue) const {
-    return static_cast<int>(enumValue);
-  }
-};
-
-}  // namespace Utils
-}  // namespace QS
+namespace QS {}  // namespace QS
 
 // NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDE_BASE_UTILS_H_
+#endif  // _QSFS_FUSE_INCLUDE_BASE_EXCEPTION_H_

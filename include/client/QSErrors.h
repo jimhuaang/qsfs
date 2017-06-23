@@ -14,22 +14,43 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
+#ifndef _QSFS_FUSE_INCLUDE_CLIENT_QSERRORS_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDE_CLIENT_QSERRORS_H_  // NOLINT
+
+#include <string>
+
+#include "client/Error.h"
 
 namespace QS {
 
-namespace Utils {
+namespace Client {
 
-struct EnumHash {
-  template <typename T>
-  int operator()(T enumValue) const {
-    return static_cast<int>(enumValue);
+enum class QSErrors {
+  UNKNOWN,
+  INVALID_ACCESS_KEY_ID,
+  INVALID_RANGE,
+  // TODO(jim): Add others here.
+};
+
+Error<QSErrors> GetQSErrorForCode(const std::string &errorCode);
+Error<QSErrors> GetQSErrorForCode(const char *errorCode);
+
+struct StringHash {
+  int operator()(const std::string &strToHash) const {
+    if (strToHash.empty()) {
+      return 0;
+    }
+
+    int hash = 0;
+    for (const auto &charValue : strToHash) {
+      hash = charValue + 31 * hash;
+    }
+    return hash;
   }
 };
 
-}  // namespace Utils
+}  // namespace Client
 }  // namespace QS
 
 // NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDE_BASE_UTILS_H_
+#endif  // _QSFS_FUSE_INCLUDE_CLIENT_QSERRORS_H_

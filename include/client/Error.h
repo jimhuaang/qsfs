@@ -14,22 +14,41 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
+#ifndef _QSFS_FUSE_INCLUDE_CLIENT_ERROR_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDE_CLIENT_ERROR_H_  // NOLINT
+
+#include <string>
 
 namespace QS {
 
-namespace Utils {
+namespace Client {
 
-struct EnumHash {
-  template <typename T>
-  int operator()(T enumValue) const {
-    return static_cast<int>(enumValue);
-  }
+template <typename ERROR_TYPE>
+class Error {
+ public:
+  Error() : m_isRetryable(false) {}
+  Error(ERROR_TYPE errorType, const std::string &errorMsg, bool isRetryable)
+      : m_errorType(errorType),
+        m_message(errorMsg),
+        m_isRetryable(isRetryable) {}
+  Error(ERROR_TYPE errorType, bool isRetryable)
+      : Error(errorType, "", isRetryable) {}
+
+ public:
+  const ERROR_TYPE GetErrorType() const { return m_errorType; }
+  const std::string &GetMessage() const { return m_message; }
+  bool ShouldRetry() const { return m_isRetryable; }
+
+  void SetMessage(const std::string &message) { m_message = message; }
+
+ private:
+  ERROR_TYPE m_errorType;
+  std::string m_message;
+  bool m_isRetryable;
 };
 
-}  // namespace Utils
+}  // namespace Client
 }  // namespace QS
 
 // NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDE_BASE_UTILS_H_
+#endif  // _QSFS_FUSE_INCLUDE_CLIENT_ERROR_H_

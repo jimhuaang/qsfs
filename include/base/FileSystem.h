@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef FILESYSTEM_H_INCLUDED
-#define FILESYSTEM_H_INCLUDED
+#ifndef _QSFS_FUSE_INCLUDE_BASE_FILESYSTEM_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDE_BASE_FILESYSTEM_H_  // NOLINT
 
 #include <stdint.h>
 #include <time.h>
@@ -45,7 +45,7 @@ enum class FileType {
   Character,
   FIFO,
   Socket
-};  // TODO remove None
+};  // TODO(jim): remove None.
 
 const std::string &GetFileTypeName(FileType fileType);
 
@@ -89,9 +89,10 @@ class Entry {
           m_fileOpen(false),
           m_pendingGet(false),
           m_pendingCreate(false) {
+      // TODO(jim): Consider other types.
       m_numLink = fileType == FileType::Directory
                       ? 2
-                      : fileType == FileType::File ? 1 : 0;  // TODO
+                      : fileType == FileType::File ? 1 : 0;
       m_cachedTime = time(NULL);
     }
 
@@ -224,4 +225,5 @@ class Node {
 }  // namespace FileSystem
 }  // namespace QS
 
-#endif  // FILESYSTEM_H_INCLUDED
+// NOLINTNEXTLINE
+#endif  // _QSFS_FUSE_INCLUDE_BASE_FILESYSTEM_H_

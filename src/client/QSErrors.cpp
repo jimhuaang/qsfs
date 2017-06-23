@@ -14,22 +14,34 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
+#include "client/QSErrors.h"
+
+#include <unordered_map>
 
 namespace QS {
 
-namespace Utils {
+namespace Client {
 
-struct EnumHash {
-  template <typename T>
-  int operator()(T enumValue) const {
-    return static_cast<int>(enumValue);
-  }
-};
+using std::string;
+using std::unordered_map;
 
-}  // namespace Utils
+Error<QSErrors> GetQSErrorForCode(const string &errorCode) {
+  static unordered_map<string, QSErrors, StringHash> errorCodeToTypeMap = {
+      {"invalid_access_key_id", QSErrors::INVALID_ACCESS_KEY_ID},
+      {"invalid_range",         QSErrors::INVALID_RANGE},
+      // TODO(Jim): Add other errors here.
+  };
+
+  auto it = errorCodeToTypeMap.find(errorCode);
+  return it != errorCodeToTypeMap.end()
+             ? Error<QSErrors>(it->second, false)
+             : Error<QSErrors>(QSErrors::UNKNOWN, false);
+}
+
+Error<QSErrors> GetQSErrorForCode(const char *errorCode) {
+  string str = errorCode ? string(errorCode) : string();
+  return GetQSErrorForCode(str);
+}
+
+}  // namespace Client
 }  // namespace QS
-
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDE_BASE_UTILS_H_
