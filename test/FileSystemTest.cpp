@@ -28,8 +28,9 @@
 
 namespace {
 
-using namespace QS::FileSystem;
-
+using QS::FileSystem::Entry;
+using QS::FileSystem::FileType;
+using QS::FileSystem::Node;
 using std::make_shared;
 using std::ostream;
 using std::string;
@@ -39,7 +40,7 @@ using ::testing::Test;
 using ::testing::Values;
 using ::testing::WithParamInterface;
 
-// default non interested attributes
+// default values for non interested attributes
 time_t mtime_ = time(NULL);
 uid_t uid_ = 1000U;
 gid_t gid_ = 1000U;
@@ -55,7 +56,7 @@ struct MetaData {
 
   friend ostream &operator<<(ostream &os, const MetaData &meta) {
     return os << "FileId: " << meta.fileId << " FileSize: " << meta.fileSize
-              << " FileType: " << GetFileTypeName(meta.fileType)
+              << " FileType: " << QS::FileSystem::GetFileTypeName(meta.fileType)
               << " NumLink: " << meta.numLink << " IsDir: " << meta.isDir
               << " IsOperable: " << meta.isOperable;
   }
@@ -77,34 +78,49 @@ class EntryTest : public Test, public WithParamInterface<MetaData> {
 };
 
 class NodeTest : public Test {
- public:
-  NodeTest()
-      : pEmptyNode(unique_ptr<Node>(new Node)),
-        rootEntry("root", 0, mtime_, mtime_, uid_, gid_, fileMode_,
-                  FileType::Directory),
-        pRootNode(make_shared<Node>(
-            "/", unique_ptr<Entry>(new Entry(rootEntry)), nullptr)),
-        pFileNode1(make_shared<Node>(
-            "/myfile1",
-            unique_ptr<Entry>(new Entry("file1", 1024, mtime_, mtime_, uid_,
-                                        gid_, fileMode_, FileType::File)),
-            pRootNode)),
-        path("pathLinkToFile1"),
-        pLinkNode(make_shared<Node>(
-            "/mylink1", unique_ptr<Entry>(new Entry(
-                            "linkToFile1", path.size(), mtime_, mtime_, uid_,
-                            gid_, fileMode_, FileType::SymLink)),
-            pRootNode, path)) {}
+ protected:
+  static void SetUpTestCase() {
+    path = "pathLinkToFile1";
+    pRootEntry = unique_ptr<Entry>(new Entry(
+        "root", 0, mtime_, mtime_, uid_, gid_, fileMode_, FileType::Directory));
+    pRootNode = make_shared<Node>(
+        "/", unique_ptr<Entry>(new Entry(*pRootEntry)), nullptr);
+    pFileNode1 = make_shared<Node>(
+        "/myfile1",
+        unique_ptr<Entry>(new Entry("file1", 1024, mtime_, mtime_, uid_, gid_,
+                                    fileMode_, FileType::File)),
+        pRootNode);
+    pLinkNode = make_shared<Node>(
+        "/mylink1",
+        unique_ptr<Entry>(new Entry("linkToFile1", path.size(), mtime_, mtime_,
+                                    uid_, gid_, fileMode_, FileType::SymLink)),
+        pRootNode, path);
+    pEmptyNode = unique_ptr<Node>(new Node);
+  }
 
- public:
-  unique_ptr<Node> pEmptyNode;
-  Entry rootEntry;
-  shared_ptr<Node> pRootNode;
-  shared_ptr<Node> pFileNode1;
-  string path;
-  shared_ptr<Node> pLinkNode;
+  static void TearDownTestCase() {
+    pRootEntry = nullptr;
+    pRootNode = nullptr;
+    pFileNode1 = nullptr;
+    pLinkNode = nullptr;
+    pEmptyNode = nullptr;
+  }
+
+ protected:
+  static string path;
+  static unique_ptr<Entry> pRootEntry;
+  static shared_ptr<Node> pRootNode;
+  static shared_ptr<Node> pFileNode1;
+  static shared_ptr<Node> pLinkNode;
+  static unique_ptr<Node> pEmptyNode;
 };
 
+string NodeTest::path("");
+unique_ptr<Entry> NodeTest::pRootEntry(nullptr);
+shared_ptr<Node> NodeTest::pRootNode(nullptr);
+shared_ptr<Node> NodeTest::pFileNode1(nullptr);
+shared_ptr<Node> NodeTest::pLinkNode(nullptr);
+unique_ptr<Node> NodeTest::pEmptyNode(nullptr);
 }  // namespace
 
 TEST_P(EntryTest, CopyControl) {
@@ -143,15 +159,18 @@ TEST_F(NodeTest, CustomCtors) {
   EXPECT_TRUE(pRootNode->operator bool());
   EXPECT_TRUE(pRootNode->IsEmpty());
   EXPECT_EQ(pRootNode->GetFileName(), "/");
-  EXPECT_EQ(*(pRootNode->GetEntry()), rootEntry);
-  EXPECT_EQ(pRootNode->GetFileId(), rootEntry.GetFileId());
+  EXPECT_EQ(*(pRootNode->GetEntry()), *pRootEntry);
+  EXPECT_EQ(pRootNode->GetFileId(), pRootEntry->GetFileId());
 
   EXPECT_EQ(*(pFileNode1->GetParent().lock()), *pRootNode);
 
   EXPECT_EQ(pLinkNode->GetSymbolicLink(), path);
 }
 
-TEST_F(NodeTest, PublicFunctions){
+TEST_F(NodeTest, PublicFunctions) {
+  // When sharing resources between tests in test case of NodeTest,
+  // as the test oreder is undefined, so we must restore the state
+  // to its original value before passing control to the next test.
   EXPECT_FALSE(pRootNode->Find(pFileNode1->GetFileName()));
   pRootNode->Insert(pFileNode1);
   EXPECT_EQ(pRootNode->Find(pFileNode1->GetFileName()), pFileNode1);
@@ -168,6 +187,7 @@ TEST_F(NodeTest, PublicFunctions){
   EXPECT_FALSE(pRootNode->Find(oldFileName));
   EXPECT_TRUE(pRootNode->Find(newFileName));
   EXPECT_EQ(pFileNode1->GetFileName(), newFileName);
+  pRootNode->RenameChild(newFileName, oldFileName);
 
   pRootNode->Remove(pFileNode1);
   EXPECT_FALSE(pRootNode->Find(pFileNode1->GetFileName()));
