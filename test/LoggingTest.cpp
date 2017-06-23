@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 
 #include <fstream>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -34,6 +35,8 @@ using std::fstream;
 using std::string;
 using std::unique_ptr;
 using std::vector;
+using ::testing::Values;
+using ::testing::WithParamInterface;
 
 static const char *defaultLogDir = "/tmp/qsfs/logs/test";
 
@@ -49,9 +52,7 @@ void MakeDefaultLogDir() {
   }
 }
 
-// Not include the FATAL severity level as logging a FATAL message will
-// terminate the program.
-void LogAllPossibilities() {
+void LogNonFatalPossibilities() {
   Info("test Info");
   Warning("test Warning");
   Error("test Error");
@@ -74,7 +75,7 @@ void LogAllPossibilities() {
 
 // As glog will handle the order of severity level, So only need to verify the
 // lowest severity level (i.e., INFO).
-void VerifyAllLogs() {
+void VerifyAllNonFatalLogs() {
   string infoLogFile = string(defaultLogDir) + "/QSFS.INFO";
   struct stat info;
   int status = stat(infoLogFile.c_str(), &info);
@@ -118,12 +119,70 @@ class LoggingTest : public ::testing::Test {
   ~LoggingTest() {}
 };
 
+// As glog logging a FATAL message will terminate the program,
+// so add death tests for FATAL log.
+using LogFatalFun = std::function<void()>;
+
+struct LogFatalState {
+  LogFatalFun logFatalFunc;
+  string fatalMsg;
+};
+
+class LoggingDeathTest : public LoggingTest,
+                         public WithParamInterface<LogFatalState> {
+ public:
+  void SetUp() override { m_fatalMsg = GetParam().fatalMsg; }
+
+ protected:
+  string m_fatalMsg;
+};
+
+void LogFatal() { Fatal("test Fatal"); }
+void LogFatalIf() { FatalIf(true, "test FatalIf"); }
+void LogDebugFatal() { DebugFatal("test DebugFatal"); }
+void LogDebugFatalIf() { DebugFatalIf(true, "test DebugFatalIf"); }
+
+void VerifyFatalLog(const string &expectedMsg) {
+  string fatalLogFile = string(defaultLogDir) + "/QSFS.FATAL";
+  struct stat info;
+  int status = stat(fatalLogFile.c_str(), &info);
+  ASSERT_EQ(status, 0);
+
+  string logMsg;
+  {
+    fstream fs(fatalLogFile);
+    ASSERT_TRUE(fs.is_open());
+
+    string::size_type pos = string::npos;
+    for (string line; std::getline(fs, line);) {
+      if ((pos = line.find("[FATAL]")) != string::npos) {
+        logMsg = string(line, pos);
+        break;
+      }
+    }
+  }
+  EXPECT_EQ(logMsg, expectedMsg);
+}
+
 }  // namespace
 
-TEST_F(LoggingTest, DefaultLogTest) {
-  LogAllPossibilities();
-  VerifyAllLogs();
+TEST_F(LoggingTest, TestAllNonFatalLogs) {
+  LogNonFatalPossibilities();
+  VerifyAllNonFatalLogs();
 }
+
+TEST_P(LoggingDeathTest, TestLogFatal) {
+  auto func = GetParam().logFatalFunc;
+  ASSERT_DEATH({ func(); }, "");
+  VerifyFatalLog(m_fatalMsg);
+}
+
+INSTANTIATE_TEST_CASE_P(
+    LogFatal, LoggingDeathTest,
+    Values(LogFatalState{LogFatal, "[FATAL] test Fatal"},
+           LogFatalState{LogFatalIf, "[FATAL] test FatalIf"},
+           LogFatalState{LogDebugFatal, "[FATAL] test DebugFatal"},
+           LogFatalState{LogDebugFatalIf, "[FATAL] test DebugFatalIf"}));
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
