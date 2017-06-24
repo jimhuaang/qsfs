@@ -36,16 +36,16 @@ class TaskHandle {
   TaskHandle &operator=(TaskHandle &&) = delete;
   TaskHandle &operator=(const TaskHandle &) = delete;
 
- public:
-  void Stop();
-
  private:
+  void Stop();
   void operator()();
 
  private:
   std::atomic<bool> m_continue;
   ThreadPool &m_threadPool;
   std::thread m_thread;
+
+  friend class ThreadPool;
 };
 
 }  // namespace Threading

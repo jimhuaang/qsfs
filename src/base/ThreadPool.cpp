@@ -34,39 +34,41 @@ ThreadPool::ThreadPool(size_t poolSize) : m_poolSize(poolSize) {
   }
 }
 
-ThreadPool::~ThreadPool() {
-  for (auto &taskHandle : m_taskHandles) {
-    taskHandle->Stop();
-  }
+ThreadPool::~ThreadPool() { StopProcessing(); }
 
-  m_syncConditionVar.notify_all();
-}
-
-void ThreadPool::SubmitTask(Task task) {
+void ThreadPool::SubmitAsync(Task &&task) {
   {
     lock_guard<mutex> lock(m_queueLock);
     m_tasks.push(std::move(task));
   }
-
   m_syncConditionVar.notify_one();
 }
 
 Task ThreadPool::PopTask() {
   lock_guard<mutex> lock(m_queueLock);
   if (!m_tasks.empty()) {
-    Task &task = m_tasks.front();
+    // Must invoke move ctor to store task before call m_tasks.pop()
+    // which will remove the task element, especiall if Task is type
+    // of unique_ptr this will delete the previously managed object.
+    Task task = std::move(m_tasks.front());
     if (task) {
       m_tasks.pop();
-      return std::move(task);
+      return task;
     }
   }
-
   return nullptr;
 }
 
 bool ThreadPool::HasTasks() {
   lock_guard<mutex> lock(m_queueLock);
   return !m_tasks.empty();
+}
+
+void ThreadPool::StopProcessing() {
+  for (auto &taskHandle : m_taskHandles) {
+    taskHandle->Stop();
+  }
+  m_syncConditionVar.notify_all();
 }
 
 }  // namespace Threading

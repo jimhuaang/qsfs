@@ -39,37 +39,21 @@ TaskHandle::~TaskHandle() {
   }
 }
 
-void TaskHandle::Stop() { m_continue = false; }
+void TaskHandle::Stop() { m_continue.store(false); }
 
 void TaskHandle::operator()() {
   while (m_continue) {
-    /*    while (m_continue && m_threadPool.HasTasks()) {
-          auto task = m_threadPool.PopTask();
-          if (task) {
-            (*task)();
-            task.reset();
-          }
-        }
-
-        unique_lock<mutex> lock(m_threadPool.m_syncLock);
-        m_threadPool.m_syncConditionVar.wait(
-            lock, [this]() { return !m_continue || m_threadPool.HasTasks(); });
-    */
-    Task task(nullptr);
-    {
-      unique_lock<mutex> lock(m_threadPool.m_syncLock);
-      m_threadPool.m_syncConditionVar.wait(
-          lock, [this]() { return !m_continue || m_threadPool.HasTasks(); });
-      if (!m_continue) break;
-      if (m_threadPool.HasTasks()) {
-        // task = std::move(m_threadPool.PopTask());
-        task = m_threadPool.PopTask();
+    while (m_continue && m_threadPool.HasTasks()) {
+      auto task = m_threadPool.PopTask();
+      if (task) {
+        task();
       }
     }
-    if (task) {
-      (*task)();
-      task.reset();
-    }
+
+    unique_lock<mutex> lock(m_threadPool.m_syncLock);
+    m_threadPool.m_syncConditionVar.wait(lock, [this]() {
+      return !m_continue.load() || m_threadPool.HasTasks();
+    });
   }
 }
 

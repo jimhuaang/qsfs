@@ -21,10 +21,15 @@
 
 #include <condition_variable>  // NOLINT
 #include <functional>
+#include <future>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <queue>
+#include <type_traits>
+#include <utility>
 #include <vector>
+
+#include "gtest/gtest_prod.h"  // FRIEND_TEST
 
 namespace QS {
 
@@ -32,7 +37,7 @@ namespace Threading {
 
 class TaskHandle;
 
-using Task = std::unique_ptr<std::function<void()>>;
+using Task = std::function<void()>;
 
 class ThreadPool {
  public:
@@ -45,23 +50,52 @@ class ThreadPool {
   ThreadPool &operator=(const ThreadPool &) = delete;
 
  public:
-  void SubmitTask(Task task);
+  void SubmitAsync(Task &&task);
+
+  template <typename F, typename... Args>
+  auto SubmitCallable(F &&f, Args &&... args)
+      -> std::future<typename std::result_of<F(Args...)>::type>;
 
  private:
   Task PopTask();
   bool HasTasks();
+
+  // This method should never be called except in destructor,
+  // actually this method should be moved to desctuctor. As if
+  // it get called, submitted task will never get chance to
+  // execute, try to invoke the returned future of the task
+  // will hang the program.
+  // But this method is add only for testing a interrupt case.
+  void StopProcessing();
+  FRIEND_TEST(ThreadPoolTest, TestInterrupt);
 
  private:
   size_t m_poolSize;
   std::queue<Task> m_tasks;
   std::mutex m_queueLock;
   std::vector<std::unique_ptr<TaskHandle>> m_taskHandles;
-
   std::mutex m_syncLock;
   std::condition_variable m_syncConditionVar;
 
   friend class TaskHandle;
 };
+
+template <typename F, typename... Args>
+auto ThreadPool::SubmitCallable(F &&f, Args &&... args)
+    -> std::future<typename std::result_of<F(Args...)>::type> {
+  using ReturnType = typename std::result_of<F(Args...)>::type;
+
+  auto task = std::make_shared<std::packaged_task<ReturnType()>>(
+      std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+
+  std::future<ReturnType> res = task->get_future();
+  {
+    std::lock_guard<std::mutex> lock(m_queueLock);
+    m_tasks.emplace([task]() { (*task)(); });
+  }
+  m_syncConditionVar.notify_one();
+  return res;
+}
 
 }  // namespace Threading
 }  // namespace QS

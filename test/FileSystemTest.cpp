@@ -80,7 +80,6 @@ class EntryTest : public Test, public WithParamInterface<MetaData> {
 class NodeTest : public Test {
  protected:
   static void SetUpTestCase() {
-    path = "pathLinkToFile1";
     pRootEntry = unique_ptr<Entry>(new Entry(
         "root", 0, mtime_, mtime_, uid_, gid_, fileMode_, FileType::Directory));
     pRootNode = make_shared<Node>(
@@ -107,7 +106,7 @@ class NodeTest : public Test {
   }
 
  protected:
-  static string path;
+  static const string path;
   static unique_ptr<Entry> pRootEntry;
   static shared_ptr<Node> pRootNode;
   static shared_ptr<Node> pFileNode1;
@@ -115,7 +114,7 @@ class NodeTest : public Test {
   static unique_ptr<Node> pEmptyNode;
 };
 
-string NodeTest::path("");
+const string NodeTest::path = "pathLinkToFile1";
 unique_ptr<Entry> NodeTest::pRootEntry(nullptr);
 shared_ptr<Node> NodeTest::pRootNode(nullptr);
 shared_ptr<Node> NodeTest::pFileNode1(nullptr);
