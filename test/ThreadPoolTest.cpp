@@ -19,8 +19,6 @@
 #include <future>
 #include <memory>
 
-#include <iostream>
-
 #include "gtest/gtest.h"
 
 #include "base/TaskHandle.h"
