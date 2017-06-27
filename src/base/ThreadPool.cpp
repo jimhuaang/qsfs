@@ -36,7 +36,7 @@ ThreadPool::ThreadPool(size_t poolSize) : m_poolSize(poolSize) {
 
 ThreadPool::~ThreadPool() { StopProcessing(); }
 
-void ThreadPool::SubmitAsync(Task &&task) {
+void ThreadPool::Submit(Task &&task) {
   {
     lock_guard<mutex> lock(m_queueLock);
     m_tasks.push(std::move(task));

@@ -14,9 +14,9 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include <chrono>
+#include <chrono>  // NOLINT
 #include <functional>
-#include <future>
+#include <future>  // NOLINT
 #include <memory>
 
 #include "gtest/gtest.h"
@@ -48,7 +48,7 @@ int Factorial(int n) {
   return result;
 }
 
-void TestStdout() { std::cout << "test threadpool"; }
+int Add(int a, int b) { return a + b; }
 
 static const int poolSize_ = 4;
 
@@ -57,7 +57,7 @@ class ThreadPoolTest : public Test {
   future<int> FactorialCallable(int n) {
     auto pTask =
         make_shared<packaged_task<int()>>([n] { return Factorial(n); });
-    m_pThreadPool->SubmitAsync(Task([pTask]() { (*pTask)(); }));
+    m_pThreadPool->Submit(Task([pTask]() { (*pTask)(); }));
     return pTask->get_future();
   }
 
@@ -84,7 +84,7 @@ TEST_F(ThreadPoolTest, TestInterrupt) {
   EXPECT_FALSE(m_pThreadPool->HasTasks());
 
   // Should never invoke f.get(), as after stoping thredpool, task will never
-  // get a chance to excute, so this will hang the program there.
+  // get a chance to execute, so this will hang the program there.
   // f.get();
 }
 
@@ -94,11 +94,39 @@ TEST_F(ThreadPoolTest, TestSubmit) {
   auto fStatus = f.wait_for(std::chrono::milliseconds(100));
   ASSERT_EQ(fStatus, std::future_status::ready);
   EXPECT_EQ(f.get(), 120);
+}
 
+TEST_F(ThreadPoolTest, TestSubmitCallable) {
+  int num = 5;
   auto f1 = m_pThreadPool->SubmitCallable(Factorial, num);
   auto fStatus1 = f1.wait_for(std::chrono::milliseconds(100));
   ASSERT_EQ(fStatus1, std::future_status::ready);
   EXPECT_EQ(f1.get(), 120);
+
+  int a = 1;
+  int b = 11;
+  auto f2 = m_pThreadPool->SubmitCallable(Add, a, b);
+  auto fStatus2 = f2.wait_for(std::chrono::milliseconds(100));
+  ASSERT_EQ(fStatus2, std::future_status::ready);
+  EXPECT_EQ(f2.get(), 12);
+}
+
+struct AsyncContext {};
+
+TEST_F(ThreadPoolTest, TestSubmitAsync) {
+  AsyncContext asyncContext;
+  auto callback = [](AsyncContext context, int resultOfFactorial, int num) {
+    EXPECT_EQ(num, 5);
+    EXPECT_EQ(resultOfFactorial, 120);
+  };
+  m_pThreadPool->SubmitAsync(callback, asyncContext, Factorial, 5);
+
+  auto callback1 = [](AsyncContext context, int resultOfAdd, int a, int b) {
+    EXPECT_EQ(a, 1);
+    EXPECT_EQ(b, 11);
+    EXPECT_EQ(resultOfAdd, 12);
+  };
+  m_pThreadPool->SubmitAsync(callback1, asyncContext, Add, 1, 11);
 }
 
 }  // namespace Threading

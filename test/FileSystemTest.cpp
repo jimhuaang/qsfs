@@ -14,6 +14,7 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
+#include <string.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -91,7 +92,7 @@ class NodeTest : public Test {
         pRootNode);
     pLinkNode = make_shared<Node>(
         "/mylink1",
-        unique_ptr<Entry>(new Entry("linkToFile1", path.size(), mtime_, mtime_,
+        unique_ptr<Entry>(new Entry("linkToFile1", strlen(path), mtime_, mtime_,
                                     uid_, gid_, fileMode_, FileType::SymLink)),
         pRootNode, path);
     pEmptyNode = unique_ptr<Node>(new Node);
@@ -106,7 +107,7 @@ class NodeTest : public Test {
   }
 
  protected:
-  static const string path;
+  static const char path[];
   static unique_ptr<Entry> pRootEntry;
   static shared_ptr<Node> pRootNode;
   static shared_ptr<Node> pFileNode1;
@@ -114,7 +115,7 @@ class NodeTest : public Test {
   static unique_ptr<Node> pEmptyNode;
 };
 
-const string NodeTest::path = "pathLinkToFile1";
+const char NodeTest::path[] = "pathLinkToFile1";
 unique_ptr<Entry> NodeTest::pRootEntry(nullptr);
 shared_ptr<Node> NodeTest::pRootNode(nullptr);
 shared_ptr<Node> NodeTest::pFileNode1(nullptr);
@@ -163,7 +164,7 @@ TEST_F(NodeTest, CustomCtors) {
 
   EXPECT_EQ(*(pFileNode1->GetParent().lock()), *pRootNode);
 
-  EXPECT_EQ(pLinkNode->GetSymbolicLink(), path);
+  EXPECT_EQ(pLinkNode->GetSymbolicLink(), string(path));
 }
 
 TEST_F(NodeTest, PublicFunctions) {

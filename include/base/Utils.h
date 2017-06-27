@@ -17,6 +17,8 @@
 #ifndef _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
 
+#include <string>
+
 namespace QS {
 
 namespace Utils {
