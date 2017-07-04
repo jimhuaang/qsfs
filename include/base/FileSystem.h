@@ -28,6 +28,11 @@
 
 namespace QS {
 
+namespace Data {
+class Cache;
+class File;
+}
+
 namespace FileSystem {
 
 class Entry;
@@ -55,6 +60,7 @@ const std::string &GetFileTypeName(FileType fileType);
 class Entry {
  public:
   struct FileMetaData {
+   private:
     time_t m_atime;  // time of last access
     time_t m_mtime;  // time of last modification
     time_t m_ctime;  // time of last file status change
@@ -72,6 +78,7 @@ class Entry {
     bool m_pendingGet;
     bool m_pendingCreate;
 
+   public:
     FileMetaData(time_t atime, time_t mtime, uid_t uid, gid_t gid,
                  mode_t fileMode, FileType fileType = FileType::None,
                  std::string mimeType = "", dev_t dev = 0)
@@ -102,6 +109,8 @@ class Entry {
     FileMetaData &operator=(FileMetaData &&) = default;
     FileMetaData &operator=(const FileMetaData &) = default;
     ~FileMetaData() = default;
+
+    friend class Entry;
   };
 
  public:
@@ -136,10 +145,12 @@ class Entry {
   uint64_t GetFileSize() const { return m_fileSize; }
   int GetNumLink() const { return m_metaData.m_numLink; }
   FileType GetFileType() const { return m_metaData.m_fileType; }
+  time_t GetMTime() const { return m_metaData.m_mtime; }
 
  private:
   void DecreaseNumLink() { --m_metaData.m_numLink; }
   void IncreaseNumLink() { ++m_metaData.m_numLink; }
+  void SetFileSize(uint64_t size) { m_fileSize = size; }
 
  private:
   std::string m_fileId;  // file Id used to identify file in cache
@@ -147,6 +158,7 @@ class Entry {
   FileMetaData m_metaData;  // file meta data
 
   friend class Node;
+  friend class QS::Data::File;
 };
 
 /**
@@ -215,11 +227,16 @@ class Node {
   }
 
  private:
+  std::unique_ptr<Entry> &GetEntry() { return m_entry; }
+
+ private:
   std::string m_fileName;  // file path
   std::unique_ptr<Entry> m_entry;
   std::weak_ptr<Node> m_parent;
   std::string m_symbolicLink;
   StlFileNameToNodeMap m_children;
+
+  friend class QS::Data::Cache;
 };
 
 }  // namespace FileSystem

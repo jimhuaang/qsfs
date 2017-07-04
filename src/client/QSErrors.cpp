@@ -18,6 +18,8 @@
 
 #include <unordered_map>
 
+#include "base/Utils.h"
+
 namespace QS {
 
 namespace Client {
@@ -25,12 +27,14 @@ namespace Client {
 using std::string;
 using std::unordered_map;
 
+// --------------------------------------------------------------------------
 Error<QSErrors> GetQSErrorForCode(const string &errorCode) {
-  static unordered_map<string, QSErrors, StringHash> errorCodeToTypeMap = {
-      {"invalid_access_key_id", QSErrors::INVALID_ACCESS_KEY_ID},
-      {"invalid_range",         QSErrors::INVALID_RANGE},
-      // TODO(Jim): Add other errors here.
-  };
+  static unordered_map<string, QSErrors, QS::Utils::StringHash>
+      errorCodeToTypeMap = {
+          {"invalid_access_key_id", QSErrors::INVALID_ACCESS_KEY_ID},
+          {"invalid_range", QSErrors::INVALID_RANGE},
+          // TODO(Jim): Add other errors here.
+      };
 
   auto it = errorCodeToTypeMap.find(errorCode);
   return it != errorCodeToTypeMap.end()
@@ -38,9 +42,10 @@ Error<QSErrors> GetQSErrorForCode(const string &errorCode) {
              : Error<QSErrors>(QSErrors::UNKNOWN, false);
 }
 
+// --------------------------------------------------------------------------
 Error<QSErrors> GetQSErrorForCode(const char *errorCode) {
-  string str = errorCode ? string(errorCode) : string();
-  return GetQSErrorForCode(str);
+  if (!errorCode) return Error<QSErrors>(QSErrors::UNKNOWN, false);
+  return GetQSErrorForCode(string(errorCode));
 }
 
 }  // namespace Client

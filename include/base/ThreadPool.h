@@ -59,18 +59,15 @@ class ThreadPool {
   template <typename ReceivedHandler, typename CallerContext, typename F,
             typename... Args>
   void SubmitAsync(ReceivedHandler &&handler, CallerContext &&context, F &&f,
-                  Args &&... args);
+                   Args &&... args);
 
  private:
   Task PopTask();
   bool HasTasks();
 
-  // This method should never be called except in destructor,
-  // actually this method should be moved to desctuctor. As if
-  // it get called, submitted task will never get chance to
-  // execute, try to invoke the returned future of the task
-  // will hang the program.
-  // But this method is add only for testing a interrupt case.
+  // This is intended for a interrupt test only, do not use this
+  // except in destructor. After this has been called once, all tasks
+  // will never been handled since then.
   void StopProcessing();
   FRIEND_TEST(ThreadPoolTest, TestInterrupt);
 
@@ -105,7 +102,7 @@ auto ThreadPool::SubmitCallable(F &&f, Args &&... args)
 template <typename ReceivedHandler, typename CallerContext, typename F,
           typename... Args>
 void ThreadPool::SubmitAsync(ReceivedHandler &&handler, CallerContext &&context,
-                            F &&f, Args &&... args) {
+                             F &&f, Args &&... args) {
   auto task =
       std::bind(std::forward<ReceivedHandler>(handler),
                 std::forward<CallerContext>(context),

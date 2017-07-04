@@ -21,6 +21,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "base/LogMacros.h"
 #include "base/Utils.h"
 
 namespace QS {
@@ -32,19 +33,23 @@ using std::string;
 using std::shared_ptr;
 using std::unordered_map;
 
+// --------------------------------------------------------------------------
 const string &GetFileTypeName(FileType fileType) {
   static unordered_map<FileType, string, EnumHash> fileTypeNames = {
-      {FileType::None, "None"},
-      {FileType::File, "File"},
-      {FileType::Directory, "Directory"}};
+      {FileType::None, "None"},           {FileType::File, "File"},
+      {FileType::Directory, "Directory"}, {FileType::SymLink, "Symbolic Link"},
+      {FileType::Block, "Block"},         {FileType::Character, "Character"},
+      {FileType::FIFO, "FIFO"},           {FileType::Socket, "Socket"}};
   return fileTypeNames[fileType];
 }
 
-/**================================================== *
- * ==========       Node Functions         ========== *
- * ================================================== */
+
+// +------------------------------------------------------------------------+
+// |                  Node Member Functions                                 |
+// +------------------------------------------------------------------------+
 bool Node::IsEmpty() const { return m_children.empty(); }
 
+// --------------------------------------------------------------------------
 shared_ptr<Node> Node::Find(const string &fileName) const {
   auto child = m_children.find(fileName);
   if (child != m_children.end()) {
@@ -53,15 +58,20 @@ shared_ptr<Node> Node::Find(const string &fileName) const {
   return shared_ptr<Node>(nullptr);
 }
 
+// --------------------------------------------------------------------------
 const StlFileNameToNodeMap &Node::GetChildren() const { return m_children; }
 
+// --------------------------------------------------------------------------
 shared_ptr<Node> Node::Insert(shared_ptr<Node> child) {
   if (child) {
     m_children.emplace(child->m_fileName, child);
+  } else {
+    DebugWarning("Try to insert null Node. Go on.");
   }
   return child;
 }
 
+// --------------------------------------------------------------------------
 void Node::Remove(shared_ptr<Node> child) {
   if (child) {
     bool reset = m_children.size() == 1 ? true : false;
@@ -70,18 +80,37 @@ void Node::Remove(shared_ptr<Node> child) {
     if (it != m_children.end()) {
       m_children.erase(it);
       if (reset) m_children.clear();
+    } else {
+      DebugWarning("Try to remove Node " + child->GetFileName() +
+                   " which is not found. Go on");
     }
+  } else {
+    DebugWarning("Try to remove null Node. Go on.")
   }
 }
 
+// --------------------------------------------------------------------------
 void Node::RenameChild(const string &oldFileName, const string &newFileName) {
-  auto it = m_children.find(oldFileName);
+  if (oldFileName == newFileName) {
+    DebugInfo("New file name is the same as the old one. Go on.");
+    return;
+  }
 
+  if (m_children.find(newFileName) != m_children.end()) {
+    Error("Cannot rename " + oldFileName + " to " + newFileName +
+          " which is already existed. But continue...");
+    return;
+  }
+
+  auto it = m_children.find(oldFileName);
   if (it != m_children.end()) {
     auto tmp = it->second;
     tmp->m_fileName = newFileName;
     auto hint = m_children.erase(it);
     m_children.emplace_hint(hint, newFileName, tmp);
+  } else {
+    DebugWarning("Try to rename Node " + oldFileName +
+                 " which is not found. Go on.");
   }
 }
 

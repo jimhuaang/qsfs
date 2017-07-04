@@ -17,7 +17,11 @@
 #ifndef _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
 
+#include <stddef.h>
+#include <sys/types.h>
+
 #include <string>
+#include <sstream>
 
 namespace QS {
 
@@ -29,6 +33,27 @@ struct EnumHash {
     return static_cast<int>(enumValue);
   }
 };
+
+struct StringHash {
+  int operator()(const std::string &strToHash) const {
+    if (strToHash.empty()) {
+      return 0;
+    }
+
+    int hash = 0;
+    for (const auto &charValue : strToHash) {
+      hash = charValue + 31 * hash;
+    }
+    return hash;
+  }
+};
+
+template <typename P>
+std::string PointerAddress(const P &p){
+  std::stringstream ss;
+  ss << static_cast<void*>(p);
+  return ss.str();
+}
 
 }  // namespace Utils
 }  // namespace QS

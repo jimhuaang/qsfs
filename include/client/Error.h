@@ -27,22 +27,29 @@ template <typename ERROR_TYPE>
 class Error {
  public:
   Error() : m_isRetryable(false) {}
-  Error(ERROR_TYPE errorType, const std::string &errorMsg, bool isRetryable)
+  Error(ERROR_TYPE errorType, const std::string &exceptionName,
+        const std::string &errorMsg, bool isRetryable)
       : m_errorType(errorType),
+        m_exceptionName(exceptionName),
         m_message(errorMsg),
         m_isRetryable(isRetryable) {}
   Error(ERROR_TYPE errorType, bool isRetryable)
-      : Error(errorType, "", isRetryable) {}
+      : Error(errorType, "", "", isRetryable) {}
 
  public:
   const ERROR_TYPE GetErrorType() const { return m_errorType; }
+  const std::string &GetExceptionName() const { return m_exceptionName; }
   const std::string &GetMessage() const { return m_message; }
   bool ShouldRetry() const { return m_isRetryable; }
 
+  void SetExceptionName(const std::string &exceptionName) {
+    m_exceptionName = exceptionName;
+  }
   void SetMessage(const std::string &message) { m_message = message; }
 
  private:
   ERROR_TYPE m_errorType;
+  std::string m_exceptionName;
   std::string m_message;
   bool m_isRetryable;
 };

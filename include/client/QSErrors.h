@@ -35,20 +35,6 @@ enum class QSErrors {
 Error<QSErrors> GetQSErrorForCode(const std::string &errorCode);
 Error<QSErrors> GetQSErrorForCode(const char *errorCode);
 
-struct StringHash {
-  int operator()(const std::string &strToHash) const {
-    if (strToHash.empty()) {
-      return 0;
-    }
-
-    int hash = 0;
-    for (const auto &charValue : strToHash) {
-      hash = charValue + 31 * hash;
-    }
-    return hash;
-  }
-};
-
 }  // namespace Client
 }  // namespace QS
 

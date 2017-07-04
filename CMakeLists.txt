@@ -117,7 +117,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 set(QSFS_INCLUDES ${PROJECT_SOURCE_DIR}/include/)
 include_directories(${QSFS_INCLUDES})
 
-add_compile_options(-g -std=c++11)
+add_compile_options(-g -std=c++11 -Wall)
 
 add_library(${PROJECT_NAME} ${QSFS_SRC})
 
@@ -140,9 +140,15 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 #  )
 #endif (BUILD_TESTING)
 
+add_library(Cache src/data/Cache.cpp)
+add_library(Utils src/base/Utils.cpp)
+
 add_library(FileSystem src/base/FileSystem.cpp)
+#add_library(FileSystem src/base/FileSystem.cpp src/base/Logging.cpp src/base/LogLevel.cpp)
+#target_link_libraries(FileSystem glog)
 add_library(Logging src/base/Logging.cpp src/base/LogLevel.cpp)
 add_library(ThreadPool src/base/ThreadPool.cpp src/base/TaskHandle.cpp)
+target_link_libraries(ThreadPool gtest)
 add_library(Semaphore src/base/Semaphore.cpp)
 add_library(QSErrors src/client/QSErrors.cpp)
 
@@ -156,10 +162,18 @@ add_executable(LoggingTest test/LoggingTest.cpp
 target_link_libraries(LoggingTest gtest glog)
 add_test(NAME logging_test COMMAND LoggingTest)
 
-add_executable(FileSystemTest test/FileSystemTest.cpp 
-               src/base/FileSystem.cpp)
-target_link_libraries(FileSystemTest gtest)
+add_executable(FileSystemTest test/FileSystemTest.cpp
+               src/base/FileSystem.cpp
+               src/base/Logging.cpp 
+               src/base/LogLevel.cpp)
+target_link_libraries(FileSystemTest gtest glog)
 add_test(NAME filesystem_test COMMAND FileSystemTest)
+
+add_executable(ThreadPoolTest test/ThreadPoolTest.cpp
+               src/base/ThreadPool.cpp
+               src/base/TaskHandle.cpp)
+target_link_libraries(ThreadPoolTest gtest)
+add_test(NAME threadpool_test COMMAND ThreadPoolTest)
 
 install (TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION lib/static

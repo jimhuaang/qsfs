@@ -151,7 +151,7 @@ INSTANTIATE_TEST_CASE_P(
 TEST_F(NodeTest, DefaultCtor) {
   EXPECT_FALSE(pEmptyNode->operator bool());
   EXPECT_TRUE(pEmptyNode->IsEmpty());
-  EXPECT_FALSE(pEmptyNode->GetEntry());
+  EXPECT_FALSE(const_cast<const Node*> (pEmptyNode.get())->GetEntry());
   EXPECT_TRUE(pEmptyNode->GetFileId().empty());
 }
 
@@ -159,7 +159,8 @@ TEST_F(NodeTest, CustomCtors) {
   EXPECT_TRUE(pRootNode->operator bool());
   EXPECT_TRUE(pRootNode->IsEmpty());
   EXPECT_EQ(pRootNode->GetFileName(), "/");
-  EXPECT_EQ(*(pRootNode->GetEntry()), *pRootEntry);
+  EXPECT_EQ(*(const_cast<const Node*>(pRootNode.get())->GetEntry()),
+            *pRootEntry);
   EXPECT_EQ(pRootNode->GetFileId(), pRootEntry->GetFileId());
 
   EXPECT_EQ(*(pFileNode1->GetParent().lock()), *pRootNode);
