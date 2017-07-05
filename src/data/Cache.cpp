@@ -35,36 +35,38 @@ using QS::Client::GetMaxCacheSize;
 using QS::FileSystem::Node;
 using QS::FileSystem::Entry;
 using QS::Utils::PointerAddress;
+using std::iostream;
+using std::list;
 using std::lock_guard;
 using std::make_shared;
 using std::min;
 using std::pair;
 using std::recursive_mutex;
 using std::reverse_iterator;
-using std::list;
-using std::string;
-using std::to_string;
 using std::shared_ptr;
+using std::string;
+using std::stringstream;
+using std::to_string;
 using std::unique_ptr;
 
 namespace {
-bool IsValidInput(const string &fileId, off_t offset, char *buffer,
+bool IsValidInput(const string &fileId, off_t offset, const char *buffer,
                   size_t len) {
   return !fileId.empty() && offset >= 0 && buffer != NULL && len > 0;
 }
 
-bool IsValidInput(off_t offset, char *buffer, size_t len) {
+bool IsValidInput(off_t offset, const char *buffer, size_t len) {
   return offset >= 0 && buffer != NULL && len > 0;
 }
 
 // TODO(jim): convert fileId to file name
-string ToStringLine(const string &fileId, off_t offset, char *buffer,
+string ToStringLine(const string &fileId, off_t offset, const char *buffer,
                     size_t len) {
   return "[fileId:offset:buffer:size] = [" + fileId + ":" + to_string(offset) +
          ":" + PointerAddress(buffer) + ":" + to_string(len) + "]";
 }
 
-string ToStringLine(off_t offset, char *buffer, size_t len) {
+string ToStringLine(off_t offset, const char *buffer, size_t len) {
   return "[offset:buffer:size] = [" + to_string(offset) + ":" +
          PointerAddress(buffer) + ":" + to_string(len) + "]";
 }
@@ -72,14 +74,14 @@ string ToStringLine(off_t offset, char *buffer, size_t len) {
 string ToStringLine(off_t offset, size_t size) {
   return "[offset:size] = [" + to_string(offset) + ":" + to_string(size) + "]";
 }
-}
+}  // namespace
 
 // +------------------------------------------------------------------------+
 // |                  Page Member Functions                                 |
 // +------------------------------------------------------------------------+
-File::Page::Page(off_t offset, char *buffer, size_t len)
-    : m_offset(offset), m_size(len), m_memory(std::stringstream()) {
-  // TODO(jim): consider without checking
+File::Page::Page(off_t offset, const char *buffer, size_t len,
+                 shared_ptr<iostream> body = make_shared<stringstream>())
+    : m_offset(offset), m_size(len), m_body(std::move(body)) {
   bool isValidInput = IsValidInput(offset, buffer, len);
   assert(isValidInput);
   if (!isValidInput) {
@@ -88,16 +90,33 @@ File::Page::Page(off_t offset, char *buffer, size_t len)
     return;
   }
 
-  // TODO(jim) : catch exceptions, no throw excepitons
-  m_memory.write(buffer, len);
+  m_body->write(buffer, len);
+  DebugErrorIf(m_body->fail(),
+               "Fail to new a page from buffer " +
+                   ToStringLine(offset, buffer, len) + ".");
+}
+
+// --------------------------------------------------------------------------
+File::Page::Page(off_t offset, const shared_ptr<iostream> &stream, size_t len,
+                 shared_ptr<iostream> body = make_shared<stringstream>())
+    : m_offset(offset), m_size(len), m_body(std::move(body)) {
+  bool isValidInput = offset >= 0 && len > 0;
+  assert(isValidInput);
+  if (!isValidInput) {
+    DebugError("Try to new a page with invalid input " +
+               ToStringLine(offset, len) + ".");
+    return;
+  }
+  stringstream ss;
+  ss << stream->rdbuf();
+  m_body->write(ss.str().c_str(), len);
   DebugErrorIf(
-      m_memory.fail(),
-      "Fail to new a page from " + ToStringLine(offset, buffer, len) + ".");
+      m_body->fail(),
+      "Fail to new a page from stream " + ToStringLine(offset, len) + ".");
 }
 
 // --------------------------------------------------------------------------
 bool File::Page::Refresh(off_t offset, char *buffer, size_t len) {
-  // TODO(jim): consider without checking
   bool isValidInput = offset >= m_offset && buffer != NULL && len > 0;
   assert(isValidInput);
   if (!isValidInput) {
@@ -106,10 +125,19 @@ bool File::Page::Refresh(off_t offset, char *buffer, size_t len) {
                ".");
     return false;
   }
-  m_memory.seekp(offset - m_offset, std::ios_base::cur);
-  m_memory.write(buffer, len);
+  return UnguardedRefresh(offset, buffer, len);
+}
 
-  auto success = m_memory.good();
+// --------------------------------------------------------------------------
+bool File::Page::UnguardedRefresh(off_t offset, char *buffer, size_t len) {
+  m_body->seekp(offset - m_offset, std::ios_base::cur);
+  m_body->write(buffer, len);
+  auto moreLen = offset + len - Next();
+  if (moreLen > 0) {
+    m_size += moreLen;
+  }
+
+  auto success = m_body->good();
   DebugErrorIf(!success,
                "Fail to refresh page(" + ToStringLine(m_offset, m_size) +
                    ") with input " + ToStringLine(offset, buffer, len) + ".");
@@ -123,7 +151,7 @@ void File::Page::Resize(size_t smallerSize) {
   // 2. Set output position indicator to 'samllerSize'.
   assert(0 <= smallerSize && smallerSize <= m_size);
   m_size = smallerSize;
-  m_memory.seekp(smallerSize);
+  m_body->seekp(smallerSize);
 }
 
 // --------------------------------------------------------------------------
@@ -140,9 +168,9 @@ size_t File::Page::Read(off_t offset, char *buffer, size_t len) {
 
 // --------------------------------------------------------------------------
 size_t File::Page::UnguardedRead(off_t offset, char *buffer, size_t len) {
-  m_memory.seekg(offset - m_offset, std::ios_base::beg);
-  m_memory.read(buffer, len);
-  DebugErrorIf(!m_memory.good(),
+  m_body->seekg(offset - m_offset, std::ios_base::beg);
+  m_body->read(buffer, len);
+  DebugErrorIf(!m_body->good(),
                "Fail to read page(" + ToStringLine(m_offset, m_size) +
                    ") with input " + ToStringLine(offset, buffer, len) + ".");
   return len;
@@ -155,23 +183,41 @@ size_t File::Page::UnguardedRead(off_t offset, char *buffer, size_t len) {
 // +------------------------------------------------------------------------+
 File::ReadOutcome File::Read(off_t offset, size_t len,
                              unique_ptr<Entry> &entry) {
-  assert(offset >= 0 && len > 0);
+  bool isValidInput = offset >= 0 && len > 0;
+  assert(isValidInput);
+  if (!isValidInput) {
+    DebugError("Fail to read file with invalid input " +
+               ToStringLine(offset, len) + ".");
+    return {0, list<shared_ptr<Page>>()};
+  }
+
   size_t outcomeSize = 0;
   list<shared_ptr<Page>> outcomePages;
+  auto LoadFileAndAddPage = [this, &entry, &outcomeSize, &outcomePages](
+      off_t offset, size_t len) {
+    auto outcome = LoadFile(entry->GetFileId(), offset, len);
+    if (outcome.first > 0 && outcome.second) {
+      auto res = UnguardedAddPage(offset, outcome.second, outcome.first);
+      if (res.second) {
+        SetTime(entry->GetMTime());
+        outcomePages.emplace_back(*(res.first));
+        outcomeSize += (*(res.first))->m_size;
+      }
+    }
+  };
 
-  auto mtime = entry->GetMTime();
-  if (mtime > 0) {
+  if (entry->GetMTime() > 0) {
     // File is just created, update mtime.
     if (m_mtime == 0) {
-      SetTime(mtime);
-    }
-    // Detected modification in the file, clear file.
-    else if (mtime > m_mtime) {
+      SetTime(entry->GetMTime());
+    } else if (entry->GetMTime() > m_mtime) {
+      // Detected modification in the file, clear file.
       Clear();
       entry->SetFileSize(0);
     }
   }
 
+  // Adjust the length.
   if (entry->GetFileSize() > 0) {
     auto len_ = static_cast<size_t>(entry->GetFileSize() - offset);
     if (len_ < len) {
@@ -182,13 +228,73 @@ File::ReadOutcome File::Read(off_t offset, size_t len,
     }
   }
 
-  { lock_guard<recursive_mutex> lock(m_mutex); }
+  {
+    lock_guard<recursive_mutex> lock(m_mutex);
+
+    // If pages is empty.
+    if (m_pages.empty()) {
+      LoadFileAndAddPage(offset, len);
+      return {outcomeSize, outcomePages};
+    }
+
+    auto range = IntesectingRange(offset, offset + len);
+    auto it1 = range.first;
+    auto it2 = range.second;
+    auto offset_ = offset;
+    size_t len_ = len;
+    // For pages which are not ahead of 'offset' but ahead of 'offset + len'.
+    while (it1 != it2) {
+      if (len_ <= 0) break;
+      auto &page = *it1;
+      if (offset_ < page->m_offset) {  // Load new page for bytes not present.
+        auto lenNewPage = page->m_offset - offset_;
+        LoadFileAndAddPage(offset_, lenNewPage);
+        offset_ = page->m_offset;
+        len_ -= lenNewPage;
+      } else {  // Collect existing pages.
+        if (len_ <= static_cast<size_t>(page->Next() - offset_)) {
+          outcomePages.emplace_back(page);
+          outcomeSize += page->m_size;
+          return {outcomeSize, outcomePages};
+        } else {
+          outcomePages.emplace_back(page);
+          outcomeSize += page->m_size;
+
+          offset_ = page->Next();
+          len_ -= page->m_size;
+          ++it1;
+        }
+      }
+    }  // end of while
+    // Load new page for bytes not present
+    if (len_ > 0) {
+      LoadFileAndAddPage(offset_, len_);
+    }
+  }  // end of lock_guard
 
   return {outcomeSize, outcomePages};
 }
 
 // --------------------------------------------------------------------------
+File::LoadOutcome File::LoadFile(const std::string &fileId, off_t offset,
+                                 size_t len) {
+  size_t size = 0;
+  auto stream = make_shared<stringstream>();
+  // TODO(jim): wrapper sdk request
+  // And move this to transfer
+  return {size, stream};
+}
+
+// --------------------------------------------------------------------------
 bool File::Write(off_t offset, char *buffer, size_t len, time_t mtime) {
+  bool isValidInput = IsValidInput(offset, buffer, len);
+  assert(isValidInput);
+  if (!isValidInput) {
+    DebugError("Fail to write file with invalid input " +
+               ToStringLine(offset, buffer, len) + ".");
+    return false;
+  }
+
   auto AddPageAndUpdateTime = [this, mtime](off_t offset, char *buffer,
                                             size_t len) -> bool {
     auto res = this->UnguardedAddPage(offset, buffer, len);
@@ -198,30 +304,15 @@ bool File::Write(off_t offset, char *buffer, size_t len, time_t mtime) {
 
   {
     lock_guard<recursive_mutex> lock(m_mutex);
-    bool isValidInput = IsValidInput(offset, buffer, len);
-    assert(isValidInput);
-    if (!isValidInput) {
-      DebugError("Fail to write file with invalid input " +
-                 ToStringLine(offset, buffer, len) + ".");
-      return false;
-    }
 
-    // If pages is empty or given input is ahead of or behind of
-    // all current pages.
-    if (m_pages.empty() ||
-        offset + static_cast<off_t>(len) <= Front()->m_offset ||
-        offset >= Back()->Next()) {
+    // If pages is empty.
+    if (m_pages.empty()) {
       return AddPageAndUpdateTime(offset, buffer, len);
     }
 
-    auto it1 = LowerBoundPage(offset);
-    auto it2 = LowerBoundPage(offset + len);
-    // Move backward it1 to pointing to the page which is not ahead of 'offset'.
-    reverse_iterator<PageSetConstIterator> reverseIt(it1);
-    it1 = (reverseIt == m_pages.crend() || (*reverseIt)->Next() <= offset)
-              ? it1
-              : (++reverseIt).base();
-
+    auto range = IntesectingRange(offset, offset + len);
+    auto it1 = range.first;
+    auto it2 = range.second;
     auto offset_ = offset;
     size_t start_ = 0;
     size_t len_ = len;
@@ -229,8 +320,7 @@ bool File::Write(off_t offset, char *buffer, size_t len, time_t mtime) {
     while (it1 != it2) {
       if (len_ <= 0) break;
       auto &page = *it1;
-      // Insert new page for bytes not present
-      if (offset_ < page->m_offset) {
+      if (offset_ < page->m_offset) {  // Insert new page for bytes not present
         auto lenNewPage = page->m_offset - offset_;
         auto res = UnguardedAddPage(offset_, buffer + start_, lenNewPage);
         if (!res.second) return false;
@@ -238,14 +328,12 @@ bool File::Write(off_t offset, char *buffer, size_t len, time_t mtime) {
         offset_ = page->m_offset;
         start_ += lenNewPage;
         len_ -= lenNewPage;
-      }
-      // Refresh the overlapped page's content
-      else {
+      } else {  // Refresh the overlapped page's content
         if (len_ <= static_cast<size_t>(page->Next() - offset_)) {
           SetTime(mtime);
-          return page->Refresh(offset_, buffer + start_, len_);
+          return page->UnguardedRefresh(offset_, buffer + start_, len_);
         } else {
-          auto refresh = page->Refresh(buffer + start_);
+          auto refresh = page->UnguardedRefresh(buffer + start_);
           if (!refresh) return false;
 
           offset_ = page->Next();
@@ -255,13 +343,11 @@ bool File::Write(off_t offset, char *buffer, size_t len, time_t mtime) {
         }
       }
     }  // end of while
-
     // Insert new page for bytes not present
     if (len_ > 0) {
       auto res = UnguardedAddPage(offset_, buffer + start_, len_);
       if (!res.second) return false;
     }
-
     SetTime(mtime);
   }  // end of lock_guard
   return true;
@@ -336,6 +422,21 @@ File::PageSetConstIterator File::UpperBoundPage(off_t offset) const {
 }
 
 // --------------------------------------------------------------------------
+pair<File::PageSetConstIterator, File::PageSetConstIterator>
+File::IntesectingRange(off_t off1, off_t off2) const {
+  auto it1 = LowerBoundPage(off1);
+  auto it2 = LowerBoundPage(off2);
+  // Move backward it1 to pointing to the page which maybe intersect with
+  // 'offset'.
+  reverse_iterator<PageSetConstIterator> reverseIt(it1);
+  it1 = (reverseIt == m_pages.crend() || (*reverseIt)->Next() <= off1)
+            ? it1
+            : (++reverseIt).base();
+
+  return {it1, it2};
+}
+
+// --------------------------------------------------------------------------
 pair<File::PageSetConstIterator, bool> File::UnguardedAddPage(off_t offset,
                                                               char *buffer,
                                                               size_t len) {
@@ -343,8 +444,21 @@ pair<File::PageSetConstIterator, bool> File::UnguardedAddPage(off_t offset,
   if (res.second) {
     m_size += len;
   } else {
-    DebugError("Fail to new a page from a block of character with " +
+    DebugError("Fail to new a page from a buffer " +
                ToStringLine(offset, buffer, len) + ".");
+  }
+  return res;
+}
+
+// --------------------------------------------------------------------------
+std::pair<File::PageSetConstIterator, bool> File::UnguardedAddPage(
+    off_t offset, const std::shared_ptr<std::iostream> &stream, size_t len) {
+  auto res = m_pages.emplace(new Page(offset, stream, len));
+  if (res.second) {
+    m_size += len;
+  } else {
+    DebugError("Fail to new a page from a stream " + ToStringLine(offset, len) +
+               ".");
   }
   return res;
 }
@@ -353,9 +467,7 @@ pair<File::PageSetConstIterator, bool> File::UnguardedAddPage(off_t offset,
 // |                  Cache Member Functions                                |
 // +------------------------------------------------------------------------+
 size_t Cache::Read(const string &fileId, off_t offset, char *buffer, size_t len,
-                   shared_ptr<Node> node)
-
-{
+                   shared_ptr<Node> node) {
   bool validInput = IsValidInput(fileId, offset, buffer, len);
   assert(validInput);
   if (!validInput) {
@@ -393,12 +505,9 @@ size_t Cache::Read(const string &fileId, off_t offset, char *buffer, size_t len,
   auto &pagelist = outcome.second;
   auto &page = pagelist.front();
   pagelist.pop_front();
-  // Only a single page.
-  if (pagelist.empty()) {
+  if (pagelist.empty()) {  // Only a single page.
     page->UnguardedRead(offset, buffer, outcome.first);
-  }
-  // Have Multipule pages.
-  else {
+  } else {  // Have Multipule pages.
     // read first page
     auto readSize = page->UnguardedRead(offset, buffer);
     page = pagelist.front();

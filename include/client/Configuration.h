@@ -33,4 +33,4 @@ size_t GetMaxCacheSize() {
 }  // namespace QS
 
 // NOLINTNEXTLIN
-#endif  //_QSFS_FUSE_INCLUDE_CLIENT_CONFIGURATION_H_
+#endif  // _QSFS_FUSE_INCLUDE_CLIENT_CONFIGURATION_H_

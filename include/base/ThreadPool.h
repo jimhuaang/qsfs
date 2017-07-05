@@ -21,7 +21,7 @@
 
 #include <condition_variable>  // NOLINT
 #include <functional>
-#include <future>
+#include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
 #include <queue>

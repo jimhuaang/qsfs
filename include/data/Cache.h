@@ -23,6 +23,7 @@
 #include <time.h>
 
 #include <atomic>
+#include <iostream>
 #include <list>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -74,24 +75,32 @@ class File {
     // 1st Page: offset = 0, size = 4, stop = 3, next = 4
     // 2nd Page: offset = 4, size = 3, stop = 6, next = 7
 
-    off_t m_offset = 0;          // offset from the begin of owning File
-    size_t m_size = 0;           // size of bytes this page contains
-    std::stringstream m_memory;  // stream storing the bytes
+    off_t m_offset = 0;  // offset from the begin of owning File
+    size_t m_size = 0;   // size of bytes this page contains
+    std::shared_ptr<std::iostream> m_body;  // stream storing the bytes
 
     // Construct Page from a block of bytes.
     // From pointer of buffer, number of len bytes will be writen.
     // The owning file's offset is 'offset'.
-    Page(off_t offset, char *buffer, size_t len);
+    Page(off_t offset, const char *buffer, size_t len,
+         std::shared_ptr<std::iostream> body);
+
+    // Construct Page from a stream.
+    // From stream, number of len bytes will be writen.
+    // The owning file's offset is 'offset'.
+    Page(off_t offset, const std::shared_ptr<std::iostream> &stream, size_t len,
+         std::shared_ptr<std::iostream> body);
 
    public:
     // Default Constructor and Constructors from stream
-    Page(off_t offset = 0, size_t size = 0,
-         std::stringstream &&mem = std::stringstream())
-        : m_offset(offset), m_size(size), m_memory(std::move(mem)) {}
+    explicit Page(off_t offset = 0, size_t size = 0,
+                  std::shared_ptr<std::iostream> body =
+                      std::make_shared<std::stringstream>())
+        : m_offset(offset), m_size(size), m_body(std::move(body)) {}
 
-    Page(Page &&) = default;
+    Page(Page &&) = delete;
     Page(const Page &) = delete;
-    Page &operator=(Page &&) = default;
+    Page &operator=(Page &&) = delete;
     Page &operator=(const Page &) = delete;
     ~Page() = default;
 
@@ -101,27 +110,52 @@ class File {
     // Return the offset of the next successive page.
     off_t Next() const { return m_offset + m_size; }
 
-   private:
-    // TODO(jim): add exception signature, as seekp may throw exception
-    // and handle exception
-    // Refresh the page's content.
+    // Refresh the page's partial content starting from 'offset - m_offset'
+    // with size of 'len'.
+    // May enlarge the page's size depended on 'len'.
     bool Refresh(off_t offset, char *buffer, size_t len);
-    bool Refresh(off_t offset, char *buffer) {
-      return Refresh(offset, buffer, Next() - offset);
+
+    // Read the page's partial content starting from 'offset - m_offset'
+    // with size of 'len', with checking.
+    size_t Read(off_t offset, char *buffer, size_t len);
+
+   private:
+    // Refreseh the page's partial content starting from 'offset - m_offset'
+    // with size of 'len', without checking.
+    bool UnguardedRefresh(off_t offset, char *buffer, size_t len);
+
+    // Refresh the page's partial content staring from 'offset - m_offset'
+    // with page's remaining size, without checking.
+    bool UnguardedRefresh(off_t offset, char *buffer) {
+      return UnguardedRefresh(offset, buffer, Next() - offset);
     }
-    bool Refresh(char *buffer) { return Refresh(m_offset, buffer, m_size); }
+
+    // Refresh the page's entire content with bytes from buffer,
+    // without checking.
+    bool UnguardedRefresh(char *buffer) {
+      return UnguardedRefresh(m_offset, buffer, m_size);
+    }
 
     // Do a lazy resize for page.
     void Resize(size_t smallerSize);
 
-    size_t Read(off_t offset, char *buffer, size_t len);
+    // Read the page's partial content starting from 'offset - m_offset'
+    // with size of 'len', without checking.
     size_t UnguardedRead(off_t offset, char *buffer, size_t len);
+
+    // Read the page's partial content starting from 'offset - m_offset'
+    // with page's remaining size, without checking.
     size_t UnguardedRead(off_t offset, char *buffer) {
       return UnguardedRead(offset, buffer, Next() - offset);
     }
+
+    // Read the page's partial content starting from 'm_offset'
+    // with size of 'len', without checking.
     size_t UnguardedRead(char *buffer, size_t len) {
       return UnguardedRead(m_offset, buffer, len);
     }
+
+    // Read the page's entire content to buffer.
     size_t UnguardedRead(char *buffer) {
       return UnguardedRead(m_offset, buffer, m_size);
     }
@@ -143,8 +177,15 @@ class File {
   // second member pointing to the pages containing the bytes.
   using ReadOutcome = std::pair<size_t, std::list<std::shared_ptr<Page>>>;
 
+  // TODO(jim): move to transfer
+  // LoadOutcome paie with first member denotes the size of bytes and the
+  // second member pointing to the response stream.
+  // This maybe need to change to handle multipule upload
+  using LoadOutcome = std::pair<size_t, std::shared_ptr<std::iostream>>;
+
  public:
-  File(time_t mtime = 0, size_t size = 0) : m_mtime(mtime), m_size(size) {}
+  explicit File(time_t mtime = 0, size_t size = 0)
+      : m_mtime(mtime), m_size(size) {}
 
   File(File &&) = delete;
   File(const File &) = delete;
@@ -163,9 +204,13 @@ class File {
   // input asking for, for example, the 1st page of outcome could has a
   // offset which is ahead of input 'offset'.
   ReadOutcome Read(off_t offset, size_t len,
-                   std::unique_ptr<FileSystem::Entry> &entry);
+                   std::unique_ptr<FileSystem::Entry> &entry);  // NOLINT
 
-  // int ReadFile();
+  // Load from local file cache or send request to sdk
+  // TODO(jim) : move to transfer, and fileId probably should be replaced
+  // to what has stored on qingstor
+  // This probobaly should be moved to transfer
+  LoadOutcome LoadFile(const std::string &fileId, off_t offset, size_t len);
 
   // Write a block of bytes into pages.
   // From pointer of buffer, number of len bytes will be writen.
@@ -190,6 +235,14 @@ class File {
   // Not-Synchronized
   PageSetConstIterator UpperBoundPage(off_t offset) const;
 
+  // Returns a pair iterators pointing the pages which intesecting with
+  // the range (from off1 to off2).
+  // The first member pointing to first page not ahead of (could be
+  // intersecting with) off1; the second member pointing to the first
+  // page not ahead of off2, same as LowerBoundPage(off2).
+  std::pair<PageSetConstIterator, PageSetConstIterator> IntesectingRange(
+      off_t off1, off_t off2) const;
+
   // Return the first key in the page set.
   // Not-Synchronized
   const std::shared_ptr<Page> &Front() { return *(m_pages.begin()); }
@@ -203,6 +256,8 @@ class File {
   std::pair<PageSetConstIterator, bool> UnguardedAddPage(off_t offset,
                                                          char *buffer,
                                                          size_t len);
+  std::pair<PageSetConstIterator, bool> UnguardedAddPage(
+      off_t offset, const std::shared_ptr<std::iostream> &stream, size_t len);
 
  private:
   std::atomic<time_t> m_mtime;   // time of last modification
@@ -278,4 +333,4 @@ class Cache {
 }  // namespace Data
 }  // namespace QS
 
-#endif  //_QSFS_FUSE_INCLUDE_DATA_CACHE_H_
+#endif  // _QSFS_FUSE_INCLUDE_DATA_CACHE_H_

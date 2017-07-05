@@ -17,11 +17,10 @@
 #ifndef _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
 
-#include <stddef.h>
-#include <sys/types.h>
+#include <stdio.h>
 
 #include <string>
-#include <sstream>
+#include <type_traits>
 
 namespace QS {
 
@@ -49,10 +48,16 @@ struct StringHash {
 };
 
 template <typename P>
-std::string PointerAddress(const P &p){
-  std::stringstream ss;
-  ss << static_cast<void*>(p);
-  return ss.str();
+std::string PointerAddress(P p) {
+  if (std::is_pointer<P>::value) {
+    int sz = snprintf(NULL, 0, "%p", p);
+    char *buf = new char[sz + 1];
+    snprintf(buf, sz + 1, "%p", p);
+    std::string ss(buf);
+    delete[] buf;
+    return ss;
+  }
+  return std::string();
 }
 
 }  // namespace Utils
