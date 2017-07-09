@@ -18,12 +18,15 @@
 
 #include <assert.h>
 
+#include <exception>
 #include <memory>
 #include <mutex>  // NOLINT
 
 #include "glog/logging.h"
 
+#include "base/Exception.h"
 #include "base/LogLevel.h"
+#include "base/Utils.h"
 
 namespace {
 
@@ -35,6 +38,7 @@ namespace QS {
 
 namespace Logging {
 
+using QS::Exception::QSException;
 using std::once_flag;
 using std::unique_ptr;
 
@@ -60,8 +64,13 @@ Log* GetLogInstance() {
 
 void ConsoleLog::Initialize() { FLAGS_logtostderr = 1; }
 
-void DefaultLog::Initialize() { FLAGS_log_dir = m_path.c_str(); }
+void DefaultLog::Initialize() {
+  FLAGS_log_dir = m_path.c_str();
+
+  if (!QS::Utils::CreateDirectoryIfNotExistsNoLog(m_path)) {
+    throw QSException("Unable to create log directory " + m_path + ".");
+  }
+}
 
 }  // namespace Logging
-
 }  // namespace QS

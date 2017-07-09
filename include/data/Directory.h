@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_BASE_FILESYSTEM_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_BASE_FILESYSTEM_H_  // NOLINT
+#ifndef _QSFS_FUSE_INCLUDE_DATA_DIRECTORY_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDE_DATA_DIRECTORY_H_  // NOLINT
 
 #include <stdint.h>
 #include <time.h>
@@ -29,16 +29,14 @@
 namespace QS {
 
 namespace Data {
+
 class Cache;
 class File;
-}
-
-namespace FileSystem {
 
 class Entry;
 class Node;
 
-using StlFileNameToNodeMap =
+using FileNameToNodeMap =
     std::unordered_map<std::string, std::shared_ptr<Node>>;
 
 enum class FileType {
@@ -206,9 +204,9 @@ class Node {
   }
 
  public:
-  bool IsEmpty() const;
+  bool IsEmpty() const { return m_children.empty(); }
   std::shared_ptr<Node> Find(const std::string &fileName) const;
-  const StlFileNameToNodeMap &GetChildren() const;
+  const FileNameToNodeMap &GetChildren() const;
 
   std::shared_ptr<Node> Insert(std::shared_ptr<Node> child);
   void Remove(std::shared_ptr<Node> child);
@@ -234,13 +232,13 @@ class Node {
   std::unique_ptr<Entry> m_entry;
   std::weak_ptr<Node> m_parent;
   std::string m_symbolicLink;
-  StlFileNameToNodeMap m_children;
+  FileNameToNodeMap m_children;
 
   friend class QS::Data::Cache;
 };
 
-}  // namespace FileSystem
+}  // namespace Data
 }  // namespace QS
 
 // NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDE_BASE_FILESYSTEM_H_
+#endif  // _QSFS_FUSE_INCLUDE_DATA_DIRECTORY_H_

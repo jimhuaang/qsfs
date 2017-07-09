@@ -48,7 +48,7 @@ Task ThreadPool::PopTask() {
   lock_guard<mutex> lock(m_queueLock);
   if (!m_tasks.empty()) {
     // Must invoke move ctor to store task before call m_tasks.pop()
-    // which will remove the task element, especiall if Task is type
+    // which will remove the task element, especially if Task is type
     // of unique_ptr this will delete the previously managed object.
     Task task = std::move(m_tasks.front());
     if (task) {

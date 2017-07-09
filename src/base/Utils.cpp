@@ -17,14 +17,69 @@
 #include "base/Utils.h"
 
 #include <sstream>
+#include <string>
+
+#include <errno.h>
+#include <sys/stat.h>
+
+#include "base/LogMacros.h"
 
 namespace QS {
 
 namespace Utils {
 
 using std::string;
-using std::stringstream;
+using std::to_string;
 
+bool CreateDirectoryIfNotExistsNoLog(const string &path) {
+  int errorCode = mkdir(path.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
+  return (errorCode == 0 || errno == EEXIST);
+}
+
+bool CreateDirectoryIfNotExists(const string &path) {
+  Info("Creating directory " + path + ".");
+  bool success = CreateDirectoryIfNotExistsNoLog(path);
+
+  DebugErrorIf(!success,
+               "Fail to creating directory " + path +
+                   " returned code: " + to_string(errno) + ".");
+  return success;
+}
+
+bool RemoveDirectoryIfExists(const string &path) {
+  Info("Deleting directory " + path + ".");
+  int errorCode = rmdir(path.c_str());
+  if (errorCode == 0 || errno == ENOENT || errno == ENOTDIR) {
+    return true;
+  } else {
+    DebugError("Fail to deleting directory " + path +
+               " returned code: " + to_string(errno) + ".");
+    return false;
+  }
+}
+
+bool RemoveFileIfExists(const string &path) {
+  Info("Creating file " + path + ".");
+  int errorCode = unlink(path.c_str());
+  if (errorCode == 0 || errno == ENOENT) {
+    return true;
+  } else {
+    DebugError("Fail to deleting file " + path +
+               " returned code: " + to_string(errno) + ".");
+    return false;
+  }
+}
+
+bool FileExists(const string &path) {
+  int errorCode = access(path.c_str(), F_OK);
+  if (errorCode == 0) {
+    return true;
+  } else {
+    DebugInfo("File " + path +
+              " not exists, returned code: " + to_string(errno) + ".");
+    return false;
+  }
+}
 
 }  // namespace Utils
 }  // namespace QS

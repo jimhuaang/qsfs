@@ -25,13 +25,13 @@
 
 #include "gtest/gtest.h"
 
-#include "base/FileSystem.h"
+#include "data/Directory.h"
 
 namespace {
 
-using QS::FileSystem::Entry;
-using QS::FileSystem::FileType;
-using QS::FileSystem::Node;
+using QS::Data::Entry;
+using QS::Data::FileType;
+using QS::Data::Node;
 using std::make_shared;
 using std::ostream;
 using std::string;
@@ -57,7 +57,7 @@ struct MetaData {
 
   friend ostream &operator<<(ostream &os, const MetaData &meta) {
     return os << "FileId: " << meta.fileId << " FileSize: " << meta.fileSize
-              << " FileType: " << QS::FileSystem::GetFileTypeName(meta.fileType)
+              << " FileType: " << QS::Data::GetFileTypeName(meta.fileType)
               << " NumLink: " << meta.numLink << " IsDir: " << meta.isDir
               << " IsOperable: " << meta.isOperable;
   }

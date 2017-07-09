@@ -43,7 +43,7 @@
 #define DebugErrorIf(condition, msg)
 #define DebugFatalIf(condition, msg)
 
-#else  //! DISABLE_QS_LOGGING
+#else  // !DISABLE_QS_LOGGING
 // It seems the google INFO stream needs to be flushed.
 #define Info(msg)                                                              \
   {                                                                            \

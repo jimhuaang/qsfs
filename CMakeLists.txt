@@ -140,34 +140,46 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 #  )
 #endif (BUILD_TESTING)
 
-add_library(Cache src/data/Cache.cpp)
-add_library(Utils src/base/Utils.cpp)
-
-add_library(FileSystem src/base/FileSystem.cpp)
-#add_library(FileSystem src/base/FileSystem.cpp src/base/Logging.cpp src/base/LogLevel.cpp)
-#target_link_libraries(FileSystem glog)
-add_library(Logging src/base/Logging.cpp src/base/LogLevel.cpp)
+add_library(Directory src/data/Directory.cpp)
+#add_library(Directory src/base/Directory.cpp src/base/Logging.cpp src/base/LogLevel.cpp)
+#target_link_libraries(Directory glog)
+add_library(Logging src/base/Logging.cpp src/base/LogLevel.cpp src/base/Utils.cpp)
 add_library(ThreadPool src/base/ThreadPool.cpp src/base/TaskHandle.cpp)
 target_link_libraries(ThreadPool gtest)
 add_library(Semaphore src/base/Semaphore.cpp)
+add_library(Utils src/base/Utils.cpp)
+add_library(QSClient src/client/QSClient.cpp)
+add_library(Credentials src/client/QSCredentials.cpp)
 add_library(QSErrors src/client/QSErrors.cpp)
+add_library(RetryStrategy src/client/RetryStrategy.cpp)
+add_library(SDKConfiguration src/client/SDKConfiguration.cpp)
+add_library(Zone src/client/Zone.cpp)
+add_library(Cache src/data/Cache.cpp)
+add_library(Configure src/qingstor/Configure.cpp)
+add_library(Mount src/qingstor/Mounter.cpp)
 
 add_executable(sample1 test/sample1.cpp)
 target_link_libraries(sample1 gtest)
 add_test(NAME sample1_test COMMAND sample1)
 
+add_executable(ExceptionTest test/ExceptionTest.cpp)
+target_link_libraries(ExceptionTest gtest)
+add_test(NAME exception_test COMMAND ExceptionTest)
+
 add_executable(LoggingTest test/LoggingTest.cpp 
                src/base/Logging.cpp 
-               src/base/LogLevel.cpp)
+               src/base/LogLevel.cpp
+               src/base/Utils.cpp)
 target_link_libraries(LoggingTest gtest glog)
 add_test(NAME logging_test COMMAND LoggingTest)
 
-add_executable(FileSystemTest test/FileSystemTest.cpp
-               src/base/FileSystem.cpp
+add_executable(DirectoryTest test/DirectoryTest.cpp
+               src/data/Directory.cpp
                src/base/Logging.cpp 
-               src/base/LogLevel.cpp)
-target_link_libraries(FileSystemTest gtest glog)
-add_test(NAME filesystem_test COMMAND FileSystemTest)
+               src/base/LogLevel.cpp
+               src/base/Utils.cpp)
+target_link_libraries(DirectoryTest gtest glog)
+add_test(NAME directory_test COMMAND DirectoryTest)
 
 add_executable(ThreadPoolTest test/ThreadPoolTest.cpp
                src/base/ThreadPool.cpp

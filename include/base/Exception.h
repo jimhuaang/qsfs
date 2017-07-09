@@ -17,7 +17,22 @@
 #ifndef _QSFS_FUSE_INCLUDE_BASE_EXCEPTION_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDE_BASE_EXCEPTION_H_  // NOLINT
 
-namespace QS {}  // namespace QS
+#include <stdexcept>
+#include <string>
+
+namespace QS {
+
+namespace Exception {
+
+struct QSException : public std::runtime_error {
+  QSException(const std::string& msg) : std::runtime_error(msg) {}
+  QSException(const char* msg) : std::runtime_error(msg) {}
+
+  std::string get() const { return this->what(); }
+};
+
+}  // namespace Exception
+}  // namespace QS
 
 // NOLINTNEXTLINE
 #endif  // _QSFS_FUSE_INCLUDE_BASE_EXCEPTION_H_

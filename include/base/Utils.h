@@ -59,6 +59,11 @@ std::string PointerAddress(P p) {
   }
   return std::string();
 }
+bool CreateDirectoryIfNotExistsNoLog(const std::string &path);
+bool CreateDirectoryIfNotExists(const std::string &path);
+bool RemoveDirectoryIfExists(const std::string &path);
+bool RemoveFileIfExists(const std::string &path);
+bool FileExists(const std::string &path);
 
 }  // namespace Utils
 }  // namespace QS

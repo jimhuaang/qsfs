@@ -26,6 +26,7 @@
 
 #include "base/LogMacros.h"
 #include "base/Logging.h"
+#include "base/Utils.h"
 
 namespace {
 
@@ -38,19 +39,11 @@ using std::vector;
 using ::testing::Values;
 using ::testing::WithParamInterface;
 
-static const char *defaultLogDir = "/tmp/qsfs/logs/test";
+static const char *defaultLogDir = "/tmp/qsfs.logs";
 
 void MakeDefaultLogDir() {
-  struct stat info;
-  int status = stat(defaultLogDir, &info);
-
-  if (status == 0) {
-    ASSERT_TRUE(((info.st_mode) & S_IFMT) == S_IFDIR)
-        << defaultLogDir << " should be a directory.";
-  } else {
-    int status = mkdir(defaultLogDir, S_IRWXU | S_IRWXG | S_IROTH);
-    ASSERT_EQ(status, 0) << "Fail to create directory " << defaultLogDir << ".";
-  }
+  auto success = QS::Utils::CreateDirectoryIfNotExistsNoLog(defaultLogDir);
+  ASSERT_TRUE(success) << "Fail to create directory " << defaultLogDir << ".";
 }
 
 void LogNonFatalPossibilities() {
@@ -132,7 +125,10 @@ struct LogFatalState {
 class LoggingDeathTest : public LoggingTest,
                          public WithParamInterface<LogFatalState> {
  public:
-  void SetUp() override { m_fatalMsg = GetParam().fatalMsg; }
+  void SetUp() override {
+    MakeDefaultLogDir();
+    m_fatalMsg = GetParam().fatalMsg;
+  }
 
  protected:
   string m_fatalMsg;

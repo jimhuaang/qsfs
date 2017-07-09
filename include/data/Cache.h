@@ -33,16 +33,12 @@
 #include <unordered_map>
 #include <utility>
 
-#include "client/Configuration.h"
-
 namespace QS {
 
-namespace FileSystem {
+namespace Data {
+
 class Entry;
 class Node;
-}
-
-namespace Data {
 
 class File;
 
@@ -204,7 +200,7 @@ class File {
   // input asking for, for example, the 1st page of outcome could has a
   // offset which is ahead of input 'offset'.
   ReadOutcome Read(off_t offset, size_t len,
-                   std::unique_ptr<FileSystem::Entry> &entry);  // NOLINT
+                   std::unique_ptr<Entry> &entry);  // NOLINT
 
   // Load from local file cache or send request to sdk
   // TODO(jim) : move to transfer, and fileId probably should be replaced
@@ -283,7 +279,7 @@ class Cache {
   // If not found fileId in cache, create it in cache and load its pages.
   // Number of len bytes will be writen to buffer.
   size_t Read(const std::string &fileId, off_t offset, char *buffer, size_t len,
-              std::shared_ptr<FileSystem::Node> node);
+              std::shared_ptr<Node> node);
 
   // Write a block of bytes into cache File with offset of 'offset'.
   // If File of fileId doesn't exist, create one.

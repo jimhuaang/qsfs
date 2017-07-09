@@ -22,18 +22,17 @@
 #include <algorithm>
 #include <iterator>
 
-#include "base/FileSystem.h"
 #include "base/LogMacros.h"
 #include "base/Utils.h"
-#include "client/Configuration.h"
+#include "data/Directory.h"
+#include "qingstor/Configure.h"
 
 namespace QS {
 
 namespace Data {
 
-using QS::Client::GetMaxCacheSize;
-using QS::FileSystem::Node;
-using QS::FileSystem::Entry;
+using QS::Data::Node;
+using QS::Data::Entry;
 using QS::Utils::PointerAddress;
 using std::iostream;
 using std::list;
@@ -76,9 +75,7 @@ string ToStringLine(off_t offset, size_t size) {
 }
 }  // namespace
 
-// +------------------------------------------------------------------------+
-// |                  Page Member Functions                                 |
-// +------------------------------------------------------------------------+
+// --------------------------------------------------------------------------
 File::Page::Page(off_t offset, const char *buffer, size_t len,
                  shared_ptr<iostream> body = make_shared<stringstream>())
     : m_offset(offset), m_size(len), m_body(std::move(body)) {
@@ -89,7 +86,7 @@ File::Page::Page(off_t offset, const char *buffer, size_t len,
                ToStringLine(offset, buffer, len) + ".");
     return;
   }
-
+  m_body->seekp(0, std::ios_base::beg);
   m_body->write(buffer, len);
   DebugErrorIf(m_body->fail(),
                "Fail to new a page from buffer " +
@@ -97,10 +94,10 @@ File::Page::Page(off_t offset, const char *buffer, size_t len,
 }
 
 // --------------------------------------------------------------------------
-File::Page::Page(off_t offset, const shared_ptr<iostream> &stream, size_t len,
+File::Page::Page(off_t offset, const shared_ptr<iostream> &instream, size_t len,
                  shared_ptr<iostream> body = make_shared<stringstream>())
     : m_offset(offset), m_size(len), m_body(std::move(body)) {
-  bool isValidInput = offset >= 0 && len > 0;
+  bool isValidInput = offset >= 0 && len > 0 && instream;
   assert(isValidInput);
   if (!isValidInput) {
     DebugError("Try to new a page with invalid input " +
@@ -108,7 +105,9 @@ File::Page::Page(off_t offset, const shared_ptr<iostream> &stream, size_t len,
     return;
   }
   stringstream ss;
-  ss << stream->rdbuf();
+  instream->seekg(0, std::ios_base::beg);
+  ss << instream->rdbuf();
+  m_body->seekp(0, std::ios_base::beg);
   m_body->write(ss.str().c_str(), len);
   DebugErrorIf(
       m_body->fail(),
@@ -130,7 +129,7 @@ bool File::Page::Refresh(off_t offset, char *buffer, size_t len) {
 
 // --------------------------------------------------------------------------
 bool File::Page::UnguardedRefresh(off_t offset, char *buffer, size_t len) {
-  m_body->seekp(offset - m_offset, std::ios_base::cur);
+  m_body->seekp(offset - m_offset, std::ios_base::beg);
   m_body->write(buffer, len);
   auto moreLen = offset + len - Next();
   if (moreLen > 0) {
@@ -146,12 +145,12 @@ bool File::Page::UnguardedRefresh(off_t offset, char *buffer, size_t len) {
 
 // --------------------------------------------------------------------------
 void File::Page::Resize(size_t smallerSize) {
-  // Do a lazy resize
+  // Do a lazy resize:
   // 1. Change size to 'samllerSize'.
   // 2. Set output position indicator to 'samllerSize'.
   assert(0 <= smallerSize && smallerSize <= m_size);
   m_size = smallerSize;
-  m_body->seekp(smallerSize);
+  m_body->seekp(smallerSize, std::ios_base::beg);
 }
 
 // --------------------------------------------------------------------------
@@ -177,10 +176,6 @@ size_t File::Page::UnguardedRead(off_t offset, char *buffer, size_t len) {
 }
 
 // --------------------------------------------------------------------------
-
-// +------------------------------------------------------------------------+
-// |                  File Member Functions                                 |
-// +------------------------------------------------------------------------+
 File::ReadOutcome File::Read(off_t offset, size_t len,
                              unique_ptr<Entry> &entry) {
   bool isValidInput = offset >= 0 && len > 0;
@@ -242,7 +237,8 @@ File::ReadOutcome File::Read(off_t offset, size_t len,
     auto it2 = range.second;
     auto offset_ = offset;
     size_t len_ = len;
-    // For pages which are not ahead of 'offset' but ahead of 'offset + len'.
+    // For pages which are not completely ahead of 'offset'
+    // but ahead of 'offset + len'.
     while (it1 != it2) {
       if (len_ <= 0) break;
       auto &page = *it1;
@@ -266,7 +262,7 @@ File::ReadOutcome File::Read(off_t offset, size_t len,
         }
       }
     }  // end of while
-    // Load new page for bytes not present
+    // Load new page for bytes not present.
     if (len_ > 0) {
       LoadFileAndAddPage(offset_, len_);
     }
@@ -316,11 +312,12 @@ bool File::Write(off_t offset, char *buffer, size_t len, time_t mtime) {
     auto offset_ = offset;
     size_t start_ = 0;
     size_t len_ = len;
-    // For pages which are not ahead of 'offset' but ahead of 'offset + len'.
+    // For pages which are not completely ahead of 'offset'
+    // but ahead of 'offset + len'.
     while (it1 != it2) {
       if (len_ <= 0) break;
       auto &page = *it1;
-      if (offset_ < page->m_offset) {  // Insert new page for bytes not present
+      if (offset_ < page->m_offset) {  // Insert new page for bytes not present.
         auto lenNewPage = page->m_offset - offset_;
         auto res = UnguardedAddPage(offset_, buffer + start_, lenNewPage);
         if (!res.second) return false;
@@ -328,7 +325,7 @@ bool File::Write(off_t offset, char *buffer, size_t len, time_t mtime) {
         offset_ = page->m_offset;
         start_ += lenNewPage;
         len_ -= lenNewPage;
-      } else {  // Refresh the overlapped page's content
+      } else {  // Refresh the overlapped page's content.
         if (len_ <= static_cast<size_t>(page->Next() - offset_)) {
           SetTime(mtime);
           return page->UnguardedRefresh(offset_, buffer + start_, len_);
@@ -343,7 +340,7 @@ bool File::Write(off_t offset, char *buffer, size_t len, time_t mtime) {
         }
       }
     }  // end of while
-    // Insert new page for bytes not present
+    // Insert new page for bytes not present.
     if (len_ > 0) {
       auto res = UnguardedAddPage(offset_, buffer + start_, len_);
       if (!res.second) return false;
@@ -379,7 +376,7 @@ void File::Resize(size_t smallerSize) {
     if (!m_pages.empty()) {
       auto &lastPage = Back();
       if (offset == lastPage->Stop()) {
-        // Go on
+        // Do nothing.
         return;
       } else if (lastPage->m_offset <= offset && offset < lastPage->Stop()) {
         auto newSize = smallerSize - lastPage->m_offset;
@@ -463,9 +460,7 @@ std::pair<File::PageSetConstIterator, bool> File::UnguardedAddPage(
   return res;
 }
 
-// +------------------------------------------------------------------------+
-// |                  Cache Member Functions                                |
-// +------------------------------------------------------------------------+
+// --------------------------------------------------------------------------
 size_t Cache::Read(const string &fileId, off_t offset, char *buffer, size_t len,
                    shared_ptr<Node> node) {
   bool validInput = IsValidInput(fileId, offset, buffer, len);
@@ -475,7 +470,7 @@ size_t Cache::Read(const string &fileId, off_t offset, char *buffer, size_t len,
                ToStringLine(fileId, offset, buffer, len) + ".");
     return 0;
   }
-  memset(buffer, 0, len);  // clear input buffer
+  memset(buffer, 0, len);  // Clear input buffer.
 
   bool fileIsJustCreated = false;
   auto pos = m_cache.begin();
@@ -497,7 +492,7 @@ size_t Cache::Read(const string &fileId, off_t offset, char *buffer, size_t len,
     return 0;
   }
   if (fileIsJustCreated) {
-    // Update cache status
+    // Update cache status.
     Free(file->GetSize());
     m_size += file->GetSize();
   }
@@ -562,10 +557,10 @@ bool Cache::Write(const string &fileId, off_t offset, char *buffer, size_t len,
 
 // --------------------------------------------------------------------------
 bool Cache::Free(size_t size) {
-  if (size > GetMaxCacheSize()) {
+  if (size > QS::QingStor::Configure::GetMaxCacheSize()) {
     DebugError("Try to free cache of " + to_string(size) +
                " bytes which surpass the maximum cache size(" +
-               to_string(GetMaxCacheSize()) + ").");
+               to_string(QS::QingStor::Configure::GetMaxCacheSize()) + ").");
     return false;
   }
   if (HasFreeSpace(size)) {
@@ -660,7 +655,7 @@ void Cache::Resize(const string &fileId, size_t newSize) {
 
 // --------------------------------------------------------------------------
 bool Cache::HasFreeSpace(size_t size) const {
-  return GetSize() + size < QS::Client::GetMaxCacheSize();
+  return GetSize() + size < QS::QingStor::Configure::GetMaxCacheSize();
 }
 
 // --------------------------------------------------------------------------

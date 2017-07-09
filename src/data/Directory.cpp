@@ -14,7 +14,7 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "base/FileSystem.h"
+#include "data/Directory.h"
 
 #include <cassert>
 
@@ -26,7 +26,7 @@
 
 namespace QS {
 
-namespace FileSystem {
+namespace Data {
 
 using QS::Utils::EnumHash;
 using std::string;
@@ -43,12 +43,6 @@ const string &GetFileTypeName(FileType fileType) {
   return fileTypeNames[fileType];
 }
 
-
-// +------------------------------------------------------------------------+
-// |                  Node Member Functions                                 |
-// +------------------------------------------------------------------------+
-bool Node::IsEmpty() const { return m_children.empty(); }
-
 // --------------------------------------------------------------------------
 shared_ptr<Node> Node::Find(const string &fileName) const {
   auto child = m_children.find(fileName);
@@ -59,7 +53,7 @@ shared_ptr<Node> Node::Find(const string &fileName) const {
 }
 
 // --------------------------------------------------------------------------
-const StlFileNameToNodeMap &Node::GetChildren() const { return m_children; }
+const FileNameToNodeMap &Node::GetChildren() const { return m_children; }
 
 // --------------------------------------------------------------------------
 shared_ptr<Node> Node::Insert(shared_ptr<Node> child) {
@@ -114,5 +108,5 @@ void Node::RenameChild(const string &oldFileName, const string &newFileName) {
   }
 }
 
-}  // namespace FileSystem
+}  // namespace Data
 }  // namespace QS

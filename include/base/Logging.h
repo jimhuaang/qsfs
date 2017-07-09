@@ -60,8 +60,7 @@ class DefaultLog : public Log {
  public:
   using BASE = Log;
 
-  explicit DefaultLog(const std::string &path = "")
-      : BASE(), m_path(path) {
+  explicit DefaultLog(const std::string &path = "") : BASE(), m_path(path) {
     Initialize();
   }
 
@@ -76,6 +75,7 @@ class DefaultLog : public Log {
 
  private:
   std::string m_path;
+  // TODO(jim): add code to clean up log dir
 };
 
 }  // namespace Logging

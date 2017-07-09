@@ -14,23 +14,38 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_CLIENT_CONFIGURATION_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_CLIENT_CONFIGURATION_H_  // NOLINT
+#include <string>
 
-#include <stddef.h>
+#include "gtest/gtest.h"
 
-namespace QS {
+#include "base/Exception.h"
 
-namespace Client {
+namespace {
 
-size_t GetMaxCacheSize() {
-  // TODO(Jim) : read form config file
-  const int maxCacheSize = 104857600;  // 100 * 1024 *1024 (100M)
-  return maxCacheSize;
+using QS::Exception::QSException;
+using std::string;
+
+static const char *const testMsg = "test QSException";
+
+void ThrowException() { throw QSException(testMsg); }
+
+string GetExceptionMsg() {
+  try {
+    ThrowException();
+  } catch (QSException &err) {
+    return err.get();
+  }
+  return string();
 }
 
-}  // namespace Client
-}  // namespace QS
+}  // namespace
 
-// NOLINTNEXTLIN
-#endif  // _QSFS_FUSE_INCLUDE_CLIENT_CONFIGURATION_H_
+TEST(QSExceptionTest, DefaultTest) {
+  EXPECT_EQ(GetExceptionMsg(), string(testMsg));
+}
+
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  int code = RUN_ALL_TESTS();
+  return code;
+}
