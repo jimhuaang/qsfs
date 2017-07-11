@@ -38,7 +38,6 @@ std::string GetQSVersion();
 
 std::string GetConfigureDirectory();
 std::string GetCredentialsFile();
-std::string GetConfigureFile();
 std::string GetDefaultLogDirectory();
 std::string GetLogDirectory();
 
@@ -55,13 +54,6 @@ uint16_t GetFragmentSize();
 size_t GetMaxCacheSize();
 
 bool IsSafeDiskSpace();
-
-struct Account {
-  std::string m_mountPoint;
-  std::string m_logPath;
-  std::string m_logLevel;
-  std::string m_useCache;
-};
 
 }  // namespace Configure
 }  // namespace QingStor

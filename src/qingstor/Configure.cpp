@@ -31,7 +31,6 @@ using std::string;
 
 const char* const QSFS_DEST_DIR = "/opt/qsfs/";
 const char* const QSFS_AUTH_FILE = "qsfs.auth";
-const char* const QSFS_CONF_FILE = "qsfs.conf";
 const char* const QSFS_DEFAULT_LOG_DIR = "/opt/qsfs/qsfs.log/";  // log dir
 
 string GetQSVersion() { return "1.0.0"; }
@@ -39,8 +38,6 @@ string GetQSVersion() { return "1.0.0"; }
 string GetConfigureDirectory() { return QSFS_DEST_DIR; }
 
 string GetCredentialsFile() { return string(QSFS_DEST_DIR) + QSFS_AUTH_FILE; }
-
-string GetConfigureFile() { return string(QSFS_DEST_DIR) + QSFS_CONF_FILE; }
 
 string GetDefaultLogDirectory(){
   return QSFS_DEFAULT_LOG_DIR;
@@ -63,11 +60,14 @@ uint16_t GetBlockSize() { return 4096; }
 uint16_t GetFragmentSize() { return 4096; }
 
 size_t GetMaxCacheSize() {
-  // TODO(Jim) : read form config file
+  // TODO(Jim) : 
   return MB100;
 }
 
-bool IsSafeDiskSpace();
+bool IsSafeDiskSpace(){
+  // TODO (jim) :
+  return true;
+}
 
 }  // namespace Configure
 }  // namespace QingStor

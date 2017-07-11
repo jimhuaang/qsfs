@@ -39,6 +39,7 @@ class Options {
 
  public:
   static Options &Instance();
+  bool IsNoMount() const { return m_showHelp || m_showVersion; }
 
   // accessor
   const std::string &GetBucket() const { return m_bucket; }
@@ -51,6 +52,7 @@ class Options {
   const std::string GetAdditionalAgent() const { return m_additionalAgent; }
   const std::string &GetLogDirectory() const { return m_logDirectory; }
   bool IsForeground() const { return m_foreground; }
+  bool IsSingleThread() const { return m_singleThread;}
   bool IsDebug() const { return m_debug; }
   bool IsShowHelp() const { return m_showHelp; }
   bool IsShowVersion() const { return m_showVersion; }
@@ -73,6 +75,7 @@ class Options {
   void SetAdditionalAgent(const char *agent) { m_additionalAgent = agent; }
   void SetLogDirectory(const std::string &path) { m_logDirectory = path; }
   void SetForeground(bool foreground) { m_foreground = foreground; }
+  void SetSingleThread(bool singleThread) {m_singleThread = singleThread;}
   void SetDebug(bool debug) { m_debug = debug; }
   void SetShowHelp(bool showHelp) { m_showHelp = showHelp; }
   void setShowVerion(bool showVersion) { m_showVersion = showVersion; }
@@ -90,6 +93,7 @@ class Options {
   std::string m_additionalAgent;
   std::string m_logDirectory;
   bool m_foreground;
+  bool m_singleThread;
   bool m_debug;
   bool m_showHelp;
   bool m_showVersion;

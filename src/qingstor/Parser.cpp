@@ -49,7 +49,8 @@ static struct options {
   unsigned retries = QS::Client::Retry::DefaultMaxRetries;
   const char *addtionalAgent;
   const char *logDirectory;
-  int foreground = 0;
+  int foreground = 0;    //TODO(jim): turn on FUSE foregound
+  int singleThread = 1;  //TODO(jim) : turn on FUSE multiThread
   int debug = 0;
   int showHelp = 0;
   int showVersion = 0;
@@ -58,20 +59,23 @@ static struct options {
 #define OPTION(t, p) \
   { t, offsetof(struct options, p), 1 }
 
+#define OPTION1(t, p) \
+  { t, offsetof(struct options, p), 0 }
+
 static const struct fuse_opt optionSpec[] = {
-    OPTION("--b=%s", bucket),         OPTION("bucket=%s", bucket),
-    OPTION("--m=%s", mountPoint),     OPTION("mount=%s", mountPoint),
-    OPTION("--z=%s", zone),           OPTION("zone=%s", zone),
-    OPTION("--h=%s", host),           OPTION("host=%s", host),
-    OPTION("--p=%s", protocol),       OPTION("protocol=%s", protocol),
-    OPTION("--t=%u", port),           OPTION("port=%u", port),
-    OPTION("--r=%u", retries),        OPTION("retries=%u", retries),
-    OPTION("--a=%s", addtionalAgent), OPTION("agent=%s", addtionalAgent),
-    OPTION("--l=%s", logDirectory),   OPTION("logdir=%s", logDirectory),
-    OPTION("-f", foreground),         OPTION("--foreground", foreground),
-    OPTION("-d", debug),              OPTION("--debug", debug),
-    OPTION("-h", showHelp),           OPTION("--help", showHelp),
-    OPTION("-v", showVersion),        OPTION("--version", showVersion),
+    OPTION("-b=%s",  bucket),         OPTION("--bucket=%s", bucket),
+    OPTION("-m=%s",  mountPoint),     OPTION("--mount=%s", mountPoint),
+    OPTION("-z=%s",  zone),           OPTION("--zone=%s", zone),
+    OPTION("-h=%s",  host),           OPTION("--host=%s", host),
+    OPTION("-p=%s",  protocol),       OPTION("--protocol=%s", protocol),
+    OPTION("-t=%u",  port),           OPTION("--port=%u", port),
+    OPTION("-r=%u",  retries),        OPTION("--retries=%u", retries),
+    OPTION("-a=%s",  addtionalAgent), OPTION("--agent=%s", addtionalAgent),
+    OPTION("-l=%s",  logDirectory),   OPTION("--logdir=%s", logDirectory),
+    OPTION("-f",     foreground),     OPTION("--foreground", foreground),
+    OPTION1("-s",    singleThread),   OPTION1("--single", singleThread),
+    OPTION("-d",     debug),          OPTION("--debug", debug),
+    OPTION("--help", showHelp),       OPTION("--version", showVersion),
     FUSE_OPT_END
 };
 
@@ -107,6 +111,7 @@ void Parse(int argc, char **argv) {
   qsOptions.SetAdditionalAgent(options.addtionalAgent);
   qsOptions.SetLogDirectory(options.logDirectory);
   qsOptions.SetForeground(options.foreground != 0);
+  qsOptions.SetSingleThread(options.singleThread != 0);
   qsOptions.SetDebug(options.debug != 0);
   qsOptions.SetShowHelp(options.showHelp != 0);
   qsOptions.setShowVerion(options.showVersion !=0);
