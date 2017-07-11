@@ -117,7 +117,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 set(QSFS_INCLUDES ${PROJECT_SOURCE_DIR}/include/)
 include_directories(${QSFS_INCLUDES})
 
-add_compile_options(-g -std=c++11 -Wall)
+add_compile_options(-g -std=c++11 -Wall -D_FILE_OFFSET_BITS=64)
 
 add_library(${PROJECT_NAME} ${QSFS_SRC})
 
@@ -140,7 +140,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 #  )
 #endif (BUILD_TESTING)
 
-add_library(Directory src/data/Directory.cpp)
 #add_library(Directory src/base/Directory.cpp src/base/Logging.cpp src/base/LogLevel.cpp)
 #target_link_libraries(Directory glog)
 add_library(Logging src/base/Logging.cpp src/base/LogLevel.cpp src/base/Utils.cpp)
@@ -155,8 +154,10 @@ add_library(RetryStrategy src/client/RetryStrategy.cpp)
 add_library(SDKConfiguration src/client/SDKConfiguration.cpp)
 add_library(Zone src/client/Zone.cpp)
 add_library(Cache src/data/Cache.cpp)
+add_library(Directory src/data/Directory.cpp)
 add_library(Configure src/qingstor/Configure.cpp)
 add_library(Mount src/qingstor/Mounter.cpp)
+add_library(Operations src/qingstor/Operations.cpp)
 
 add_executable(sample1 test/sample1.cpp)
 target_link_libraries(sample1 gtest)
@@ -169,7 +170,9 @@ add_test(NAME exception_test COMMAND ExceptionTest)
 add_executable(LoggingTest test/LoggingTest.cpp 
                src/base/Logging.cpp 
                src/base/LogLevel.cpp
-               src/base/Utils.cpp)
+               src/base/Utils.cpp
+               src/qingstor/Configure.cpp
+               src/qingstor/Options.cpp)
 target_link_libraries(LoggingTest gtest glog)
 add_test(NAME logging_test COMMAND LoggingTest)
 
@@ -177,7 +180,9 @@ add_executable(DirectoryTest test/DirectoryTest.cpp
                src/data/Directory.cpp
                src/base/Logging.cpp 
                src/base/LogLevel.cpp
-               src/base/Utils.cpp)
+               src/base/Utils.cpp
+               src/qingstor/Configure.cpp
+               src/qingstor/Options.cpp)
 target_link_libraries(DirectoryTest gtest glog)
 add_test(NAME directory_test COMMAND DirectoryTest)
 

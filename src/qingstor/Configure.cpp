@@ -16,8 +16,10 @@
 
 #include "qingstor/Configure.h"
 
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+
+#include "qingstor/Options.h"
 
 namespace QS {
 
@@ -27,23 +29,23 @@ namespace Configure {
 
 using std::string;
 
-const char* const DEFAULT_DEST_DIR = "/opt/qsfs/";
+const char* const QSFS_DEST_DIR = "/opt/qsfs/";
 const char* const QSFS_AUTH_FILE = "qsfs.auth";
 const char* const QSFS_CONF_FILE = "qsfs.conf";
-const char* const QSFS_LOG_DIR = "qsfs.log/";  // log dir
+const char* const QSFS_DEFAULT_LOG_DIR = "/opt/qsfs/qsfs.log/";  // log dir
 
 string GetQSVersion() { return "1.0.0"; }
 
-string GetDestDirectory() { return DEFAULT_DEST_DIR; }
+string GetConfigureDirectory() { return QSFS_DEST_DIR; }
 
-string GetCredentialsFile() {
-  // TODO(Jim) : check and return credentials file
-  return "";
+string GetCredentialsFile() { return string(QSFS_DEST_DIR) + QSFS_AUTH_FILE; }
+
+string GetConfigureFile() { return string(QSFS_DEST_DIR) + QSFS_CONF_FILE; }
+
+string GetLogDirectory() {
+  auto customLogDir = QS::QingStor::Options::Instance().GetLogDirectory();
+  return customLogDir.empty() ? QSFS_DEFAULT_LOG_DIR : customLogDir;
 }
-
-string GetConfigureFile() { return ""; }
-
-string GetLogDirectory() { return ""; }
 
 uint16_t GetPathMaxLen() { return 4096; }
 uint16_t GetNameMaxLen() { return 255; }
@@ -61,6 +63,8 @@ size_t GetMaxCacheSize() {
   // TODO(Jim) : read form config file
   return MB100;
 }
+
+bool IsSafeDiskSpace();
 
 }  // namespace Configure
 }  // namespace QingStor

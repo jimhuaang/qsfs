@@ -36,7 +36,7 @@ const uint64_t MB100 = 100 * 1024 * 1024;
 
 std::string GetQSVersion();
 
-std::string GetDestDirectory();
+std::string GetConfigureDirectory();
 std::string GetCredentialsFile();
 std::string GetConfigureFile();
 std::string GetLogDirectory();
@@ -52,6 +52,8 @@ uint16_t GetBlockSize();
 uint16_t GetFragmentSize();
 
 size_t GetMaxCacheSize();
+
+bool IsSafeDiskSpace();
 
 struct Account {
   std::string m_mountPoint;
