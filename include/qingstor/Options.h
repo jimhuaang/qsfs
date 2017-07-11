@@ -17,61 +17,83 @@
 #ifndef _QSFS_FUSE_INCLUDED_QINGSTOR_OPTIONS_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_QINGSTOR_OPTIONS_H_  // NOLINT
 
-#include <memory>
-#include <unordered_map>
+#include <stdint.h>  // for uint16_t
 
-#include "qingstor/Parser.h"
+#include <string>
+
+#include <fuse.h>  // for fuse_args
+
+#include "qingstor/Parser.h"  // for friend function Parse
 
 namespace QS {
 
 namespace QingStor {
 
-using OptionToValueMap = std::unordered_map<std::string, std::string>;
-
 class Options {
  public:
-  /*  Options(int count, char **values, const std::string &mountPoint,
-            const std::string &confDir)
-        : m_count(count),
-          m_values(values),
-          m_mountPoint(mountPoint),
-          m_logDirectory(confDir) {}
-  */
   Options(Options &&) = delete;
   Options(const Options &) = delete;
   Options &operator=(Options &&) = delete;
   Options &operator=(const Options &) = delete;
-  ~Options() = default;
+  ~Options() { fuse_opt_free_args(&m_fuseArgs); }
 
  public:
   static Options &Instance();
 
   // accessor
-  int GetCount() const { return m_count; }
-  char **GetValues() const { return m_values; }
+  const std::string &GetBucket() const { return m_bucket; }
   const std::string &GetMountPoint() const { return m_mountPoint; }
+  const std::string &GetZone() const { return m_zone; }
+  const std::string &GetHost() const { return m_host; }
+  const std::string &GetProtocol() const { return m_protocol; }
+  uint16_t GetPort() const { return m_port; }
+  uint16_t GetRetries() const { return m_retries; }
+  const std::string GetAdditionalAgent() const { return m_additionalAgent; }
   const std::string &GetLogDirectory() const { return m_logDirectory; }
-  const OptionToValueMap &GetMap() const { return m_map; }
+  bool IsForeground() const { return m_foreground; }
+  bool IsDebug() const { return m_debug; }
+  bool IsShowHelp() const { return m_showHelp; }
+  bool IsShowVersion() const { return m_showVersion; }
 
  private:
   Options() = default;
 
-  OptionToValueMap &GetMap() { return m_map; }
+  struct fuse_args &GetFuseArgs() {
+    return m_fuseArgs;
+  }
 
   // mutator
-  void SetCount(int count) { m_count = count; }
-  void SetValues(char **values) { m_values = values; }
-  void SetMountPoint(const std::string &path) { m_mountPoint = path; }
+  void SetBucket(const char *bucket) { m_bucket = bucket; }
+  void SetMountPoint(const char *path) { m_mountPoint = path; }
+  void SetZone(const char *zone) { m_zone = zone; }
+  void SetHost(const char *host) { m_host = host; }
+  void SetProtocol(const char *protocol) { m_protocol = protocol; }
+  void SetPort(unsigned port) { m_port = port; }
+  void SetRetries(unsigned retries) { m_retries = retries; }
+  void SetAdditionalAgent(const char *agent) { m_additionalAgent = agent; }
   void SetLogDirectory(const std::string &path) { m_logDirectory = path; }
+  void SetForeground(bool foreground) { m_foreground = foreground; }
+  void SetDebug(bool debug) { m_debug = debug; }
+  void SetShowHelp(bool showHelp) { m_showHelp = showHelp; }
+  void setShowVerion(bool showVersion) { m_showVersion = showVersion; }
+  void SetFuseArgs(int argc, char **argv) {
+    m_fuseArgs = FUSE_ARGS_INIT(argc, argv);
+  }
 
-  int m_count;
-  char **m_values;
   std::string m_bucket;
   std::string m_mountPoint;
-  std::string m_host;
   std::string m_zone;
+  std::string m_host;
+  std::string m_protocol;
+  uint16_t m_port;
+  uint16_t m_retries;
+  std::string m_additionalAgent;
   std::string m_logDirectory;
-  OptionToValueMap m_map;
+  bool m_foreground;
+  bool m_debug;
+  bool m_showHelp;
+  bool m_showVersion;
+  struct fuse_args m_fuseArgs;
 
   friend void QS::QingStor::Parser::Parse(int argc, char **argv);
 };

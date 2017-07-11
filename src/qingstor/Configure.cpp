@@ -42,6 +42,9 @@ string GetCredentialsFile() { return string(QSFS_DEST_DIR) + QSFS_AUTH_FILE; }
 
 string GetConfigureFile() { return string(QSFS_DEST_DIR) + QSFS_CONF_FILE; }
 
+string GetDefaultLogDirectory(){
+  return QSFS_DEFAULT_LOG_DIR;
+}
 string GetLogDirectory() {
   auto customLogDir = QS::QingStor::Options::Instance().GetLogDirectory();
   return customLogDir.empty() ? QSFS_DEFAULT_LOG_DIR : customLogDir;

@@ -39,6 +39,7 @@ std::string GetQSVersion();
 std::string GetConfigureDirectory();
 std::string GetCredentialsFile();
 std::string GetConfigureFile();
+std::string GetDefaultLogDirectory();
 std::string GetLogDirectory();
 
 uint16_t GetPathMaxLen();
