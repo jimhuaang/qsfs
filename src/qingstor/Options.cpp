@@ -16,12 +16,19 @@
 
 #include "qingstor/Options.h"
 
+#include <iomanip>
+#include <iostream>
 #include <memory>
-#include <mutex>
+#include <mutex>  // NOLINT
+#include <string>
 
 namespace QS {
 
 namespace QingStor {
+
+using std::ostream;
+using std::string;
+using std::to_string;
 
 static std::unique_ptr<Options> instance(nullptr);
 static std::once_flag flag;
@@ -29,6 +36,40 @@ static std::once_flag flag;
 Options &Options::Instance() {
   std::call_once(flag, [] { instance.reset(new Options); });
   return *instance.get();
+}
+
+ostream &operator<<(ostream &os, const Options &opts) {
+  auto CatArgv = [](int argc, char **argv) -> string {
+    string str;
+    int i = 0;
+    while (i != argc) {
+      if (i != 0) { str.append(" "); }
+      str.append(argv[i]);
+      ++i;
+    }
+    return str;
+  };
+  auto &fuseArg = opts.m_fuseArgs;
+
+  return os
+         << "[bucket: " << opts.m_bucket << "] "
+         << "[mount point: " << opts.m_mountPoint << "] "
+         << "[zone: " << opts.m_zone << "] "
+         << "[host: " << opts.m_host << "] "
+         << "[protocol: " << opts.m_protocol << "] "
+         << "[port: " << to_string(opts.m_port) << "] "
+         << "[retries: " << to_string(opts.m_retries) << "] "
+         << "[additional agent: " << opts.m_additionalAgent << "] "
+         << "[log directory: " << opts.m_logDirectory << "] "
+         << "[foreground: " << std::boolalpha << opts.m_foreground << "] "
+         << "[single thread: " << opts.m_singleThread << "] "
+         << "[debug: " << opts.m_debug << "] "
+         << "[show help: " << opts.m_showHelp << "] "
+         << "[show version: " << opts.m_showVersion << "] "
+         << "[fuse_args.argc: " << to_string(fuseArg.argc) << "] "
+         << "[fuse_args.argv: " << CatArgv(fuseArg.argc, fuseArg.argv) << "] "
+         << "[fuse_args.allocated: " << static_cast<bool>(fuseArg.allocated)
+         << "] " << std::noboolalpha;
 }
 
 }  // namespace QingStor

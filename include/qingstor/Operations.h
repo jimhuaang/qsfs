@@ -17,10 +17,9 @@
 #ifndef _QSFS_FUSE_INCLUDED_QINGSTOR_OPERATIONS_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_QINGSTOR_OPERATIONS_H_  // NOLINT
 
-#define FUSE_USE_VERSION 26
-
 #include <sys/stat.h>
-#include <fuse.h>
+
+#include "qingstor/IncludeFuse.h"  // for fuse.h
 
 namespace QS {
 

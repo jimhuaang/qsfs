@@ -16,16 +16,16 @@
 
 #include "qingstor/Options.h"
 
+#include <assert.h>
 #include <stddef.h>  // for offsetof
 #include <string.h>  // for strdup
-
-#include <fuse.h>
 
 #include "base/Exception.h"
 #include "client/Protocol.h"
 #include "client/RetryStrategy.h"
 #include "client/Zone.h"
 #include "qingstor/Configure.h"
+#include "qingstor/IncludeFuse.h"  // for fuse.h
 
 namespace QS {
 
@@ -49,8 +49,8 @@ static struct options {
   unsigned retries = QS::Client::Retry::DefaultMaxRetries;
   const char *addtionalAgent;
   const char *logDirectory;
-  int foreground = 0;    //TODO(jim): turn on FUSE foregound
-  int singleThread = 1;  //TODO(jim) : turn on FUSE multiThread
+  int foreground = 0;
+  int singleThread = 0;
   int debug = 0;
   int showHelp = 0;
   int showVersion = 0;
@@ -58,9 +58,6 @@ static struct options {
 
 #define OPTION(t, p) \
   { t, offsetof(struct options, p), 1 }
-
-#define OPTION1(t, p) \
-  { t, offsetof(struct options, p), 0 }
 
 static const struct fuse_opt optionSpec[] = {
     OPTION("-b=%s",  bucket),         OPTION("--bucket=%s", bucket),
@@ -73,7 +70,7 @@ static const struct fuse_opt optionSpec[] = {
     OPTION("-a=%s",  addtionalAgent), OPTION("--agent=%s", addtionalAgent),
     OPTION("-l=%s",  logDirectory),   OPTION("--logdir=%s", logDirectory),
     OPTION("-f",     foreground),     OPTION("--foreground", foreground),
-    OPTION1("-s",    singleThread),   OPTION1("--single", singleThread),
+    OPTION("-s",    singleThread),    OPTION("--single", singleThread),
     OPTION("-d",     debug),          OPTION("--debug", debug),
     OPTION("--help", showHelp),       OPTION("--version", showVersion),
     FUSE_OPT_END
@@ -96,9 +93,9 @@ void Parse(int argc, char **argv) {
   options.logDirectory   = strdup(
       QS::QingStor::Configure::GetDefaultLogDirectory().c_str());
 
-  if (0 != fuse_opt_parse(&(qsOptions.GetFuseArgs()), 
-                          &options, optionSpec, NULL)) {
-    throw QSException("Error while parsing command line optons.");
+  auto & args = qsOptions.GetFuseArgs();
+  if (0 != fuse_opt_parse(&args, &options, optionSpec, NULL)) {
+    throw QSException("Error while parsing command line options.");
   }
 
   qsOptions.SetBucket(options.bucket);
@@ -115,6 +112,23 @@ void Parse(int argc, char **argv) {
   qsOptions.SetDebug(options.debug != 0);
   qsOptions.SetShowHelp(options.showHelp != 0);
   qsOptions.setShowVerion(options.showVersion !=0);
+
+  // Put signals for fuse_main.
+  // TODO(jim): should we put program name
+  // and put bucket name
+  //fuse_opt_free_args(&args);
+  if(qsOptions.IsShowHelp()){
+    assert(fuse_opt_add_arg(&args, "--help") == 0);
+  }
+  if(qsOptions.IsShowVersion()){
+    assert(fuse_opt_add_arg(&args, "--verion") == 0);
+  }
+  if(qsOptions.IsForeground()){
+    assert(fuse_opt_add_arg(&args, "-f") == 0);
+  }
+  if(qsOptions.IsSingleThread()){
+    assert(fuse_opt_add_arg(&args, "-s") == 0);
+  }
 }
 
 }  // namespace Parser

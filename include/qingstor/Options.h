@@ -19,10 +19,11 @@
 
 #include <stdint.h>  // for uint16_t
 
+#include <iostream>
 #include <string>
 
-#include <fuse.h>  // for fuse_args
-
+#include "qingstor/IncludeFuse.h"  // for fuse.h
+#include "qingstor/Mounter.h"  // for friend function Mounter::Mount
 #include "qingstor/Parser.h"  // for friend function Parse
 
 namespace QS {
@@ -92,16 +93,19 @@ class Options {
   uint16_t m_retries;
   std::string m_additionalAgent;
   std::string m_logDirectory;
-  bool m_foreground;
-  bool m_singleThread;
+  bool m_foreground;  // FUSE foreground option
+  bool m_singleThread;  // FUSE single threaded opton
   bool m_debug;
   bool m_showHelp;
   bool m_showVersion;
   struct fuse_args m_fuseArgs;
 
   friend void QS::QingStor::Parser::Parse(int argc, char **argv);
+  friend bool Mounter::Mount(const Options &options) const;
+  friend std::ostream & operator << (std::ostream & os, const Options & opts);
 };
 
+std::ostream & operator << (std::ostream &os, const Options &opts);
 }  // namespace QingStor
 }  // namespace QS
 

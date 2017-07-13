@@ -14,8 +14,11 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_QINGSTOR_MOUNTER_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_QINGSTOR_MOUNTER_H_  // NOLINT
+#ifndef _QSFS_FUSE_INCLUDED_QINGSTOR_UTILS_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_QINGSTOR_UTILS_H_  // NOLINT
+
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <string>
 
@@ -23,31 +26,21 @@ namespace QS {
 
 namespace QingStor {
 
-class Options;
+namespace Utils {
 
-// TODO(jim): design it as singleton
-class Mounter {
-  using MountOutcome = std::pair<bool, std::string>;
- public:
-  Mounter(Mounter &&) = delete;
-  Mounter(const Mounter &) = delete;
-  Mounter &operator=(Mounter &&) = delete;
-  Mounter &operator=(const Mounter &) = delete;
-  ~Mounter() = default;
+// Is given uid included in group of gid
+std::string GetUserName(uid_t uid);
+bool IsIncludedInGroup(uid_t uid, gid_t gid);
 
- public:
-  static Mounter &Instance();
-  MountOutcome IsMountable(const std::string &mountPoint) const;
-  bool IsMounted(const std::string &mountPoint) const;
-  bool Mount(const Options &options) const;
-  void UnMount(const std::string &mountPoint) const;
+bool GetProcessEffectiveUserID(uid_t *uid);
+bool GetProcessEffectiveGroupID(gid_t *gid);
 
- private:
-  Mounter() = default;
-};
+bool HavePermission(struct stat &st);
+bool HavePermission(const std::string &path);
 
+}  // namespace Utils
 }  // namespace QingStor
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_QINGSTOR_MOUNTER_H_
+// NOLINTNEXTLINT
+#endif  // _QSFS_FUSE_INCLUDED_QINGSTOR_UTILS_H_

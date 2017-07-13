@@ -21,6 +21,8 @@
 
 #include <string>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 namespace QS {
 
@@ -51,19 +53,36 @@ template <typename P>
 std::string PointerAddress(P p) {
   if (std::is_pointer<P>::value) {
     int sz = snprintf(NULL, 0, "%p", p);
-    char *buf = new char[sz + 1];
-    snprintf(buf, sz + 1, "%p", p);
-    std::string ss(buf);
-    delete[] buf;
+    std::vector<char> buf(sz + 1);
+    snprintf(&buf[0], sz + 1, "%p", p);
+    std::string ss(buf.begin(), buf.end());
     return ss;
   }
   return std::string();
 }
+
 bool CreateDirectoryIfNotExistsNoLog(const std::string &path);
 bool CreateDirectoryIfNotExists(const std::string &path);
+
+bool RemoveDirectoryIfExistsNoLog(const std::string &path);
 bool RemoveDirectoryIfExists(const std::string &path);
+
+bool RemoveFileIfExistsNoLog(const std::string &path);
 bool RemoveFileIfExists(const std::string &path);
+
+std::pair<bool, std::string> DeleteFilesInDirectoryNoLog(
+    const std::string &path);
+bool DeleteFilesInDirectory(const std::string &path);
+
 bool FileExists(const std::string &path);
+bool IsDirectory(const std::string &path);
+bool IsRootDirectory(const std::string &path);
+
+void AddDirectorySeperator(std::string &path);
+
+// Return true and parent directory if success,
+// return false and message if fail.
+std::pair<bool, std::string> GetParentDirectory(const std::string & path);
 
 }  // namespace Utils
 }  // namespace QS

@@ -14,25 +14,13 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_BASE_EXCEPTION_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_BASE_EXCEPTION_H_  // NOLINT
+#ifndef _QSFS_FUSE_INCLUDED_QINGSTOR_INCLUDEFUSE_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_QINGSTOR_INCLUDEFUSE_H_  // NOLINT
 
-#include <stdexcept>
-#include <string>
+// To prevent redefining "FUSE_USE_VERSION",
+// include this file instead of fuse.h.
 
-namespace QS {
+#define FUSE_USE_VERSION 26
+#include <fuse.h>
 
-namespace Exception {
-
-struct QSException : public std::runtime_error {
-  explicit QSException(const std::string& msg) : std::runtime_error(msg) {}
-  explicit QSException(const char* msg) : std::runtime_error(msg) {}
-
-  std::string get() const { return this->what(); }
-};
-
-}  // namespace Exception
-}  // namespace QS
-
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDE_BASE_EXCEPTION_H_
+#endif  // _QSFS_FUSE_INCLUDED_QINGSTOR_INCLUDEFUSE_H_

@@ -19,6 +19,7 @@
 #include <assert.h>
 
 #include <exception>
+#include <iostream>
 #include <memory>
 #include <mutex>  // NOLINT
 
@@ -27,6 +28,7 @@
 #include "base/Exception.h"
 #include "base/LogLevel.h"
 #include "base/Utils.h"
+#include "qingstor/Configure.h"
 
 namespace {
 
@@ -55,8 +57,8 @@ void InitializeLogging(unique_ptr<Log> log) {
 
 Log* GetLogInstance() {
   std::call_once(logOnceFlag, [] {
-    // TODO(Jim): Change to default path.
-    logInstance = unique_ptr<Log>(new DefaultLog(""));
+    logInstance = unique_ptr<Log>(
+        new DefaultLog(QS::QingStor::Configure::GetLogDirectory()));
     InitializeGLog();
   });
   return logInstance.get();
@@ -69,6 +71,11 @@ void DefaultLog::Initialize() {
 
   if (!QS::Utils::CreateDirectoryIfNotExistsNoLog(m_path)) {
     throw QSException("Unable to create log directory " + m_path + ".");
+  }
+
+  auto outcome = QS::Utils::DeleteFilesInDirectoryNoLog(m_path);
+  if (!outcome.first) {
+    std::cerr << outcome.second << "But Continue..." << std::endl;
   }
 }
 
