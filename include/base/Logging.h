@@ -21,7 +21,13 @@
 #include <memory>
 #include <string>
 
+#include "gtest/gtest_prod.h"  // FRIEND_TEST
+
 #include "base/LogLevel.h"
+
+// Declare main in global namespace before class Log, since friend declarations
+// can only introduce names in the surrounding namespace.
+extern int main(int argc, char** argv);
 
 namespace QS {
 
@@ -36,8 +42,26 @@ class Log {
   Log() = default;
   virtual ~Log() = default;
 
+ public:
+  LogLevel GetLogLevel() const { return m_logLevel; }
+  bool IsDebug() const { return m_isDebug; }
+
  protected:
   virtual void Initialize() = 0;
+
+private:
+  void SetLogLevel(LogLevel level);
+  void SetDebug(bool debug) { m_isDebug = debug; }
+  FRIEND_TEST(LoggingTest, TestNonFatalLogsLevelInfo);
+  FRIEND_TEST(LoggingTest, TestNonFatalLogsLevelWarn);
+  FRIEND_TEST(LoggingTest, TestNonFatalLogsLevelError);
+  FRIEND_TEST(FatalLoggingDeathTest, TestWithDebugAndIf);
+
+ private:
+  LogLevel m_logLevel = LogLevel::Info;
+  bool m_isDebug = false;
+
+  friend int ::main(int argc, char** argv);
 };
 
 class ConsoleLog : public Log {

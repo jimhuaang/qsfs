@@ -32,7 +32,7 @@ void ThrowException() { throw QSException(testMsg); }
 string GetExceptionMsg() {
   try {
     ThrowException();
-  } catch (QSException &err) {
+  } catch (const QSException &err) {
     return err.get();
   }
   return string();

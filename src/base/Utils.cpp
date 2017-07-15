@@ -17,9 +17,11 @@
 #include "base/Utils.h"
 
 #include <assert.h>
+#include <dirent.h>  // for opendir readdir
 #include <errno.h>
 #include <string.h>  // for strerror
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>  // for access
 
 #include <sstream>
@@ -80,13 +82,63 @@ bool RemoveFileIfExists(const string &path) {
   return success;
 }
 
-std::pair<bool, string> DeleteFilesInDirectoryNoLog(const std::string &path) {
-  // TODO(jim) :: refer to s3fs_utils::...
-  return {true, ""};
+std::pair<bool, string> DeleteFilesInDirectoryNoLog(const std::string &path,
+                                                    bool deleteSelf) {
+  bool success = true;
+  string msg;
+  auto ErrorOut = [&success, &msg](string &&str) {
+    success = false;
+    msg.assign(str);
+  };
+  auto PostErrMsg = [](const string &path) -> string {
+    return path + " : " + strerror(errno) + ".";
+  };
+
+  DIR *dir = opendir(path.c_str());
+  if (dir == nullptr) {
+    ErrorOut("Could not open directory " + PostErrMsg(path));
+  } else {
+    struct dirent *nextEntry = nullptr;
+    while ((nextEntry = readdir(dir)) != nullptr) {
+      if (strcmp(nextEntry->d_name, ".") == 0 ||
+          strcmp(nextEntry->d_name, "..") == 0) {
+        continue;
+      }
+
+      string fullPath(path);
+      fullPath.append(1, PATH_DELIM);
+      fullPath.append(nextEntry->d_name);
+
+      struct stat st;
+      if (lstat(fullPath.c_str(), &st) != 0) {
+        ErrorOut("Could not get stats of file " + PostErrMsg(fullPath));
+        break;
+      }
+
+      if (S_ISDIR(st.st_mode)) {
+        if (!DeleteFilesInDirectoryNoLog(fullPath, true).first) {
+          ErrorOut("Could not remove subdirectory " + PostErrMsg(fullPath));
+          break;
+        }
+      } else {
+        if (unlink(fullPath.c_str()) != 0) {
+          ErrorOut("Could not remove file " + PostErrMsg(fullPath));
+          break;
+        }
+      }  // end of S_ISDIR
+    }    // end of while
+  }
+  closedir(dir);
+
+  if (deleteSelf && rmdir(path.c_str()) != 0) {
+    ErrorOut("Could not remove dir " + PostErrMsg(path));
+  }
+
+  return {success, msg};
 }
 
-bool DeleteFilesInDirectory(const std::string &path) {
-  auto outcome = DeleteFilesInDirectoryNoLog(path);
+bool DeleteFilesInDirectory(const std::string &path, bool deleteSelf) {
+  auto outcome = DeleteFilesInDirectoryNoLog(path,deleteSelf);
   DebugErrorIf(!outcome.first, outcome.second);
   return outcome.first;
 }

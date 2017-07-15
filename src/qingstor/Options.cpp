@@ -22,10 +22,13 @@
 #include <mutex>  // NOLINT
 #include <string>
 
+#include "base/LogLevel.h"
+
 namespace QS {
 
 namespace QingStor {
 
+using QS::Logging::GetLogLevelName;
 using std::ostream;
 using std::string;
 using std::to_string;
@@ -61,7 +64,9 @@ ostream &operator<<(ostream &os, const Options &opts) {
          << "[retries: " << to_string(opts.m_retries) << "] "
          << "[additional agent: " << opts.m_additionalAgent << "] "
          << "[log directory: " << opts.m_logDirectory << "] "
-         << "[foreground: " << std::boolalpha << opts.m_foreground << "] "
+         << "[log level: " << GetLogLevelName(opts.m_logLevel) << "] "
+         << "[non empty: " << std::boolalpha << opts.m_mountPointNonEmpty << "] "
+         << "[foreground: " << opts.m_foreground << "] "
          << "[single thread: " << opts.m_singleThread << "] "
          << "[debug: " << opts.m_debug << "] "
          << "[show help: " << opts.m_showHelp << "] "

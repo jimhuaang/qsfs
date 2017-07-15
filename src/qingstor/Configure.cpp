@@ -29,19 +29,20 @@ namespace Configure {
 
 using std::string;
 
+const char* const PROGRAM_NAME = "qsfs";
+const char* const VERSION = "1.0.0";
 const char* const QSFS_DEST_DIR = "/opt/qsfs/";
 const char* const QSFS_AUTH_FILE = "qsfs.auth";
 const char* const QSFS_DEFAULT_LOG_DIR = "/opt/qsfs/qsfs.log/";  // log dir
 
-string GetQSVersion() { return "1.0.0"; }
+const char* GetProgramName() { return PROGRAM_NAME; }
+const char* GetQSVersion() { return VERSION; }
 
 string GetConfigureDirectory() { return QSFS_DEST_DIR; }
 
 string GetCredentialsFile() { return string(QSFS_DEST_DIR) + QSFS_AUTH_FILE; }
 
-string GetDefaultLogDirectory(){
-  return QSFS_DEFAULT_LOG_DIR;
-}
+string GetDefaultLogDirectory() { return QSFS_DEFAULT_LOG_DIR; }
 string GetLogDirectory() {
   auto customLogDir = QS::QingStor::Options::Instance().GetLogDirectory();
   return customLogDir.empty() ? QSFS_DEFAULT_LOG_DIR : customLogDir;
@@ -60,11 +61,11 @@ uint16_t GetBlockSize() { return 4096; }
 uint16_t GetFragmentSize() { return 4096; }
 
 size_t GetMaxCacheSize() {
-  // TODO(Jim) : 
+  // TODO(Jim) :
   return MB100;
 }
 
-bool IsSafeDiskSpace(){
+bool IsSafeDiskSpace() {
   // TODO (jim) :
   return true;
 }

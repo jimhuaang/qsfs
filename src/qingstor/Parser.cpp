@@ -21,6 +21,7 @@
 #include <string.h>  // for strdup
 
 #include "base/Exception.h"
+#include "base/LogLevel.h"
 #include "client/Protocol.h"
 #include "client/RetryStrategy.h"
 #include "client/Zone.h"
@@ -49,9 +50,11 @@ static struct options {
   unsigned retries = QS::Client::Retry::DefaultMaxRetries;
   const char *addtionalAgent;
   const char *logDirectory;
-  int foreground = 0;
-  int singleThread = 0;
-  int debug = 0;
+  const char *logLevel;        // INFO, WARN, ERROR, FATAL
+  int nonEmpty = 0;            // default mount point is empty
+  int foreground = 0;          // default not foreground
+  int singleThread = 0;        // default multi-thread
+  int debug = 0;               // default no debug
   int showHelp = 0;
   int showVersion = 0;
 } options;
@@ -60,19 +63,21 @@ static struct options {
   { t, offsetof(struct options, p), 1 }
 
 static const struct fuse_opt optionSpec[] = {
-    OPTION("-b=%s",  bucket),         OPTION("--bucket=%s", bucket),
-    OPTION("-m=%s",  mountPoint),     OPTION("--mount=%s", mountPoint),
-    OPTION("-z=%s",  zone),           OPTION("--zone=%s", zone),
-    OPTION("-h=%s",  host),           OPTION("--host=%s", host),
-    OPTION("-p=%s",  protocol),       OPTION("--protocol=%s", protocol),
-    OPTION("-t=%u",  port),           OPTION("--port=%u", port),
-    OPTION("-r=%u",  retries),        OPTION("--retries=%u", retries),
-    OPTION("-a=%s",  addtionalAgent), OPTION("--agent=%s", addtionalAgent),
-    OPTION("-l=%s",  logDirectory),   OPTION("--logdir=%s", logDirectory),
-    OPTION("-f",     foreground),     OPTION("--foreground", foreground),
-    OPTION("-s",    singleThread),    OPTION("--single", singleThread),
-    OPTION("-d",     debug),          OPTION("--debug", debug),
-    OPTION("--help", showHelp),       OPTION("--version", showVersion),
+    OPTION("-b=%s", bucket),         OPTION("--bucket=%s",   bucket),
+    OPTION("-m=%s", mountPoint),     OPTION("--mount=%s",    mountPoint),
+    OPTION("-z=%s", zone),           OPTION("--zone=%s",     zone),
+    OPTION("-h=%s", host),           OPTION("--host=%s",     host),
+    OPTION("-p=%s", protocol),       OPTION("--protocol=%s", protocol),
+    OPTION("-t=%u", port),           OPTION("--port=%u",     port),
+    OPTION("-r=%u", retries),        OPTION("--retries=%u",  retries),
+    OPTION("-a=%s", addtionalAgent), OPTION("--agent=%s",    addtionalAgent),
+    OPTION("-l=%s", logDirectory),   OPTION("--logdir=%s",   logDirectory),
+    OPTION("-e=%s", logLevel),       OPTION("--loglevel=%s", logLevel),
+    OPTION("-n",    nonEmpty),       OPTION("--nonempty",    nonEmpty),
+    OPTION("-f",    foreground),     OPTION("--foreground",  foreground),
+    OPTION("-s",    singleThread),   OPTION("--single",      singleThread),
+    OPTION("-d",    debug),          OPTION("--debug",       debug),
+    OPTION("--help",showHelp),       OPTION("--version",     showVersion),
     FUSE_OPT_END
 };
 
@@ -82,7 +87,8 @@ void Parse(int argc, char **argv) {
   auto &qsOptions =QS::QingStor::Options::Instance();
   qsOptions.SetFuseArgs(argc, argv);
 
-  // Set defaults. we have to use strdup so that fuse_opt_parse
+  // Set defaults for const char*. 
+  // we have to use strdup so that fuse_opt_parse
   // can free the defaults if other values are specified.
   options.bucket         = strdup("");
   options.mountPoint     = strdup("");
@@ -92,6 +98,8 @@ void Parse(int argc, char **argv) {
   options.addtionalAgent = strdup("");
   options.logDirectory   = strdup(
       QS::QingStor::Configure::GetDefaultLogDirectory().c_str());
+  options.logLevel       = strdup(
+      QS::Logging::GetLogLevelName(QS::Logging::LogLevel::Info).c_str());
 
   auto & args = qsOptions.GetFuseArgs();
   if (0 != fuse_opt_parse(&args, &options, optionSpec, NULL)) {
@@ -107,6 +115,8 @@ void Parse(int argc, char **argv) {
   qsOptions.SetRetries(options.retries);
   qsOptions.SetAdditionalAgent(options.addtionalAgent);
   qsOptions.SetLogDirectory(options.logDirectory);
+  qsOptions.SetLogLevel(QS::Logging::GetLogLevelByName(options.logLevel));
+  qsOptions.SetMountPointNonEmpty(options.nonEmpty != 0);
   qsOptions.SetForeground(options.foreground != 0);
   qsOptions.SetSingleThread(options.singleThread != 0);
   qsOptions.SetDebug(options.debug != 0);
@@ -117,17 +127,20 @@ void Parse(int argc, char **argv) {
   // TODO(jim): should we put program name
   // and put bucket name
   //fuse_opt_free_args(&args);
-  if(qsOptions.IsShowHelp()){
+  if (qsOptions.IsShowHelp()) {
     assert(fuse_opt_add_arg(&args, "--help") == 0);
   }
-  if(qsOptions.IsShowVersion()){
+  if (qsOptions.IsShowVersion()) {
     assert(fuse_opt_add_arg(&args, "--verion") == 0);
   }
-  if(qsOptions.IsForeground()){
+  if (qsOptions.IsForeground()) {
     assert(fuse_opt_add_arg(&args, "-f") == 0);
   }
-  if(qsOptions.IsSingleThread()){
+  if (qsOptions.IsSingleThread()) {
     assert(fuse_opt_add_arg(&args, "-s") == 0);
+  }
+  if (qsOptions.IsDebug()) {
+    assert(fuse_opt_add_arg(&args, "-d") == 0);
   }
 }
 

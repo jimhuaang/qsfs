@@ -21,10 +21,11 @@
 #include <utility>
 #include <vector>
 
+#include <dirent.h>
 #include <errno.h>
 #include <stdio.h>   // for popen
 #include <stdlib.h>  // for system
-#include <string.h>  // for strerror
+#include <string.h>  // for strerror, strcmp
 #include <sys/stat.h>
 
 #include "base/Exception.h"
@@ -60,8 +61,7 @@ Mounter &Mounter::Instance() {
 }
 
 // --------------------------------------------------------------------------
-Mounter::MountOutcome Mounter::IsMountable(
-    const std::string &mountPoint) const {
+Mounter::Outcome Mounter::IsMountable(const std::string &mountPoint) const {
   bool success = true;
   string msg;
   auto ErrorOut = [&success, &msg](string &&str) {
@@ -82,6 +82,38 @@ Mounter::MountOutcome Mounter::IsMountable(
     ErrorOut("MOUNTPOINT " + mountPoint + " is not a directory.");
   } else if (!Utils::HavePermission(stBuf)) {
     ErrorOut("MOUNTPOINT " + mountPoint + " permisson denied.");
+  }
+
+  return {success, msg};
+}
+
+// --------------------------------------------------------------------------
+Mounter::Outcome Mounter::CheckEmpty(const string &mountPoint) const {
+  bool success = true;
+  string msg;
+  auto ErrorOut = [&success, &msg](string &&str) {
+    success = false;
+    msg.assign(str);
+  };
+
+  {
+    DIR *dir = opendir(mountPoint.c_str());
+    if (dir == nullptr) {
+      ErrorOut("Failed to open MOUNTPOINT " + mountPoint + " : " +
+               strerror(errno) + ".");
+    } else {
+      struct dirent *nextEntry = nullptr;
+      while ((nextEntry = readdir(dir)) != nullptr) {
+        if (strcmp(nextEntry->d_name, ".") != 0 &&
+            strcmp(nextEntry->d_name, "..") != 0) {
+          ErrorOut("MOUNTPOINT dirctory " + mountPoint +
+                   " is not empty. If you are sure this is safe, you can use "
+                   "'-n' or '--nonempty' option.");
+          break;
+        }
+      }
+    }
+    closedir(dir);
   }
 
   return {success, msg};

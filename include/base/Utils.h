@@ -71,8 +71,8 @@ bool RemoveFileIfExistsNoLog(const std::string &path);
 bool RemoveFileIfExists(const std::string &path);
 
 std::pair<bool, std::string> DeleteFilesInDirectoryNoLog(
-    const std::string &path);
-bool DeleteFilesInDirectory(const std::string &path);
+    const std::string &path, bool deleteDirectorySelf);
+bool DeleteFilesInDirectory(const std::string &path, bool deleteDirectorySelf);
 
 bool FileExists(const std::string &path);
 bool IsDirectory(const std::string &path);
@@ -82,7 +82,7 @@ void AddDirectorySeperator(std::string &path);
 
 // Return true and parent directory if success,
 // return false and message if fail.
-std::pair<bool, std::string> GetParentDirectory(const std::string & path);
+std::pair<bool, std::string> GetParentDirectory(const std::string &path);
 
 }  // namespace Utils
 }  // namespace QS

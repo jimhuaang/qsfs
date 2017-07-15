@@ -27,7 +27,7 @@ class Options;
 
 // TODO(jim): design it as singleton
 class Mounter {
-  using MountOutcome = std::pair<bool, std::string>;
+  using Outcome = std::pair<bool, std::string>;
  public:
   Mounter(Mounter &&) = delete;
   Mounter(const Mounter &) = delete;
@@ -37,9 +37,10 @@ class Mounter {
 
  public:
   static Mounter &Instance();
-  MountOutcome IsMountable(const std::string &mountPoint) const;
+  Outcome IsMountable(const std::string &mountPoint) const;
+  Outcome CheckEmpty(const std::string &mountPoint) const;
   bool IsMounted(const std::string &mountPoint) const;
-  bool Mount(const Options &options) const;
+  bool Mount(const Options &options) const ;
   void UnMount(const std::string &mountPoint) const;
 
  private:

@@ -22,13 +22,16 @@
 #include <iostream>
 #include <string>
 
+#include "base/LogLevel.h"
 #include "qingstor/IncludeFuse.h"  // for fuse.h
-#include "qingstor/Mounter.h"  // for friend function Mounter::Mount
-#include "qingstor/Parser.h"  // for friend function Parse
+#include "qingstor/Mounter.h"      // for friend function Mounter::Mount
+#include "qingstor/Parser.h"       // for friend function Parser::Parse
 
 namespace QS {
 
 namespace QingStor {
+
+using QS::Logging::LogLevel;
 
 class Options {
  public:
@@ -52,8 +55,10 @@ class Options {
   uint16_t GetRetries() const { return m_retries; }
   const std::string GetAdditionalAgent() const { return m_additionalAgent; }
   const std::string &GetLogDirectory() const { return m_logDirectory; }
+  LogLevel GetLogLevel() const { return m_logLevel; }
+  bool IsMountPointNonEmpty() const { return m_mountPointNonEmpty; }
   bool IsForeground() const { return m_foreground; }
-  bool IsSingleThread() const { return m_singleThread;}
+  bool IsSingleThread() const { return m_singleThread; }
   bool IsDebug() const { return m_debug; }
   bool IsShowHelp() const { return m_showHelp; }
   bool IsShowVersion() const { return m_showVersion; }
@@ -75,8 +80,10 @@ class Options {
   void SetRetries(unsigned retries) { m_retries = retries; }
   void SetAdditionalAgent(const char *agent) { m_additionalAgent = agent; }
   void SetLogDirectory(const std::string &path) { m_logDirectory = path; }
+  void SetLogLevel(LogLevel level) { m_logLevel = level; }
+  void SetMountPointNonEmpty(bool nonEmpty) { m_mountPointNonEmpty = nonEmpty; }
   void SetForeground(bool foreground) { m_foreground = foreground; }
-  void SetSingleThread(bool singleThread) {m_singleThread = singleThread;}
+  void SetSingleThread(bool singleThread) { m_singleThread = singleThread; }
   void SetDebug(bool debug) { m_debug = debug; }
   void SetShowHelp(bool showHelp) { m_showHelp = showHelp; }
   void setShowVerion(bool showVersion) { m_showVersion = showVersion; }
@@ -93,7 +100,9 @@ class Options {
   uint16_t m_retries;
   std::string m_additionalAgent;
   std::string m_logDirectory;
-  bool m_foreground;  // FUSE foreground option
+  LogLevel m_logLevel;
+  bool m_mountPointNonEmpty;
+  bool m_foreground;    // FUSE foreground option
   bool m_singleThread;  // FUSE single threaded opton
   bool m_debug;
   bool m_showHelp;
@@ -102,10 +111,10 @@ class Options {
 
   friend void QS::QingStor::Parser::Parse(int argc, char **argv);
   friend bool Mounter::Mount(const Options &options) const;
-  friend std::ostream & operator << (std::ostream & os, const Options & opts);
+  friend std::ostream &operator<<(std::ostream &os, const Options &opts);
 };
 
-std::ostream & operator << (std::ostream &os, const Options &opts);
+std::ostream &operator<<(std::ostream &os, const Options &opts);
 }  // namespace QingStor
 }  // namespace QS
 

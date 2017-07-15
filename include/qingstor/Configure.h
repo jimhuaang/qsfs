@@ -34,7 +34,8 @@ const uint64_t MB10 = 10 * 1024 * 1024;
 const uint64_t MB20 = 20 * 1024 * 1024;
 const uint64_t MB100 = 100 * 1024 * 1024;
 
-std::string GetQSVersion();
+const char* GetProgramName();
+const char* GetQSVersion();
 
 std::string GetConfigureDirectory();
 std::string GetCredentialsFile();

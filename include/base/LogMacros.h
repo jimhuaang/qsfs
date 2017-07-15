@@ -44,7 +44,9 @@
 #define DebugFatalIf(condition, msg)
 
 #else  // !DISABLE_QS_LOGGING
-// It seems the google INFO stream needs to be flushed.
+// Google INFO stream needs to be flushed. So in oreder to get latest log,
+// we always flush INFO stream for all non-fatal level stream. This will help
+// to prevent failures for unit test due to the uncompleted log.
 #define Info(msg)                                                              \
   {                                                                            \
     QS::Logging::Log *log = QS::Logging::GetLogInstance();                     \
@@ -62,6 +64,7 @@
       LOG(WARNING) << QS::Logging::GetLogLevelPrefix(      \
                           QS::Logging::LogLevel::Warn)     \
                    << msg;                                 \
+      google::FlushLogFiles(google::INFO);                 \
     }                                                      \
   }
 
@@ -72,6 +75,7 @@
       LOG(ERROR) << QS::Logging::GetLogLevelPrefix(        \
                         QS::Logging::LogLevel::Error)      \
                  << msg;                                   \
+      google::FlushLogFiles(google::INFO);                 \
     }                                                      \
   }
 #define Fatal(msg)                                         \
@@ -102,6 +106,7 @@
       LOG_IF(WARNING, condition)                                         \
           << QS::Logging::GetLogLevelPrefix(QS::Logging::LogLevel::Warn) \
           << msg;                                                        \
+      google::FlushLogFiles(google::INFO);                               \
     }                                                                    \
   }
 
@@ -112,6 +117,7 @@
       LOG_IF(ERROR, condition)                                            \
           << QS::Logging::GetLogLevelPrefix(QS::Logging::LogLevel::Error) \
           << msg;                                                         \
+      google::FlushLogFiles(google::INFO);                                \
     }                                                                     \
   }
 
@@ -125,53 +131,53 @@
     }                                                                     \
   }
 
-// Log message in "debug mode" (i.e., there is no NDEBUG macro defined)
-#define DebugInfo(msg)                                     \
-  {                                                        \
-    QS::Logging::Log *log = QS::Logging::GetLogInstance(); \
-    if (log) {                                             \
-      DLOG(INFO) << QS::Logging::GetLogLevelPrefix(        \
-                        QS::Logging::LogLevel::Info)       \
-                 << msg;                                   \
-      google::FlushLogFiles(google::INFO);                 \
-    }                                                      \
+#define DebugInfo(msg)                                                         \
+  {                                                                            \
+    QS::Logging::Log *log = QS::Logging::GetLogInstance();                     \
+    if (log && log->IsDebug()) {                                               \
+      LOG(INFO) << QS::Logging::GetLogLevelPrefix(QS::Logging::LogLevel::Info) \
+                << msg;                                                        \
+      google::FlushLogFiles(google::INFO);                                     \
+    }                                                                          \
   }
 
 #define DebugWarning(msg)                                  \
   {                                                        \
     QS::Logging::Log *log = QS::Logging::GetLogInstance(); \
-    if (log) {                                             \
-      DLOG(WARNING) << QS::Logging::GetLogLevelPrefix(     \
-                           QS::Logging::LogLevel::Warn)    \
-                    << msg;                                \
+    if (log && log->IsDebug()) {                           \
+      LOG(WARNING) << QS::Logging::GetLogLevelPrefix(      \
+                          QS::Logging::LogLevel::Warn)     \
+                   << msg;                                 \
+      google::FlushLogFiles(google::INFO);                 \
     }                                                      \
   }
 
 #define DebugError(msg)                                    \
   {                                                        \
     QS::Logging::Log *log = QS::Logging::GetLogInstance(); \
-    if (log) {                                             \
-      DLOG(ERROR) << QS::Logging::GetLogLevelPrefix(       \
-                         QS::Logging::LogLevel::Error)     \
-                  << msg;                                  \
+    if (log && log->IsDebug()) {                           \
+      LOG(ERROR) << QS::Logging::GetLogLevelPrefix(        \
+                        QS::Logging::LogLevel::Error)      \
+                 << msg;                                   \
+      google::FlushLogFiles(google::INFO);                 \
     }                                                      \
   }
 
 #define DebugFatal(msg)                                    \
   {                                                        \
     QS::Logging::Log *log = QS::Logging::GetLogInstance(); \
-    if (log) {                                             \
-      DLOG(FATAL) << QS::Logging::GetLogLevelPrefix(       \
-                         QS::Logging::LogLevel::Fatal)     \
-                  << msg;                                  \
+    if (log && log->IsDebug()) {                           \
+      LOG(FATAL) << QS::Logging::GetLogLevelPrefix(        \
+                        QS::Logging::LogLevel::Fatal)      \
+                 << msg;                                   \
     }                                                      \
   }
 
 #define DebugInfoIf(condition, msg)                                      \
   {                                                                      \
     QS::Logging::Log *log = QS::Logging::GetLogInstance();               \
-    if (log) {                                                           \
-      DLOG_IF(INFO, condition)                                           \
+    if (log && log->IsDebug()) {                                         \
+      LOG_IF(INFO, condition)                                            \
           << QS::Logging::GetLogLevelPrefix(QS::Logging::LogLevel::Info) \
           << msg;                                                        \
       google::FlushLogFiles(google::INFO);                               \
@@ -181,28 +187,30 @@
 #define DebugWarningIf(condition, msg)                                   \
   {                                                                      \
     QS::Logging::Log *log = QS::Logging::GetLogInstance();               \
-    if (log) {                                                           \
-      DLOG_IF(WARNING, condition)                                        \
+    if (log && log->IsDebug()) {                                         \
+      LOG_IF(WARNING, condition)                                         \
           << QS::Logging::GetLogLevelPrefix(QS::Logging::LogLevel::Warn) \
           << msg;                                                        \
+      google::FlushLogFiles(google::INFO);                               \
     }                                                                    \
   }
 
 #define DebugErrorIf(condition, msg)                                      \
   {                                                                       \
     QS::Logging::Log *log = QS::Logging::GetLogInstance();                \
-    if (log) {                                                            \
-      DLOG_IF(ERROR, condition)                                           \
+    if (log && log->IsDebug()) {                                          \
+      LOG_IF(ERROR, condition)                                            \
           << QS::Logging::GetLogLevelPrefix(QS::Logging::LogLevel::Error) \
           << msg;                                                         \
+      google::FlushLogFiles(google::INFO);                                \
     }                                                                     \
   }
 
 #define DebugFatalIf(condition, msg)                                      \
   {                                                                       \
     QS::Logging::Log *log = QS::Logging::GetLogInstance();                \
-    if (log) {                                                            \
-      DLOG_IF(FATAL, condition)                                           \
+    if (log && log->IsDebug()) {                                          \
+      LOG_IF(FATAL, condition)                                            \
           << QS::Logging::GetLogLevelPrefix(QS::Logging::LogLevel::Fatal) \
           << msg;                                                         \
     }                                                                     \

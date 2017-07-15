@@ -32,7 +32,9 @@
 
 namespace {
 
-void InitializeGLog() { google::InitGoogleLogging("QSFS"); }
+void InitializeGLog() {
+  google::InitGoogleLogging(QS::QingStor::Configure::GetProgramName());
+}
 
 }  // namespace
 
@@ -64,16 +66,24 @@ Log* GetLogInstance() {
   return logInstance.get();
 }
 
+void Log::SetLogLevel(LogLevel level) {
+  m_logLevel = level;
+  FLAGS_minloglevel = static_cast<int>(level);
+}
+
 void ConsoleLog::Initialize() { FLAGS_logtostderr = 1; }
 
 void DefaultLog::Initialize() {
+  // Notes for glog, most settings start working immediately after you upate
+  // FLAGS_*. The exceptions are the flags related to desination files.
+  // So need tt set FLAGS_log_dir before calling google::InitGoogleLogging.
   FLAGS_log_dir = m_path.c_str();
 
   if (!QS::Utils::CreateDirectoryIfNotExistsNoLog(m_path)) {
     throw QSException("Unable to create log directory " + m_path + ".");
   }
 
-  auto outcome = QS::Utils::DeleteFilesInDirectoryNoLog(m_path);
+  auto outcome = QS::Utils::DeleteFilesInDirectoryNoLog(m_path, false);
   if (!outcome.first) {
     std::cerr << outcome.second << "But Continue..." << std::endl;
   }

@@ -25,6 +25,7 @@ namespace QS {
 namespace Logging {
 
 using QS::Utils::EnumHash;
+using QS::Utils::StringHash;
 using std::string;
 using std::unordered_map;
 
@@ -35,6 +36,17 @@ const string &GetLogLevelName(LogLevel logLevel) {
       {LogLevel::Error, "ERROR"},
       {LogLevel::Fatal, "FATAL"}};
   return logLevelNames[logLevel];
+}
+
+LogLevel GetLogLevelByName(const std::string &name) {
+  static unordered_map<string, LogLevel, StringHash> nameLogLevels = {
+      {"INFO", LogLevel::Info},
+      {"WARN", LogLevel::Warn},
+      {"ERROR", LogLevel::Error},
+      {"FATAL", LogLevel::Fatal}};
+
+  auto it = nameLogLevels.find(name);
+  return it != nameLogLevels.end() ? it->second : LogLevel::Info;
 }
 
 string GetLogLevelPrefix(LogLevel logLevel) {
