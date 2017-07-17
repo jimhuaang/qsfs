@@ -16,17 +16,18 @@
 
 #include "qingstor/Mounter.h"
 
+#include <errno.h>
+#include <string.h>  // for strerror, strcmp
+
+#include <dirent.h>
+#include <stdio.h>   // for popen
+#include <stdlib.h>  // for system
+#include <sys/stat.h>
+
 #include <memory>
 #include <mutex>  // NOLINT
 #include <utility>
 #include <vector>
-
-#include <dirent.h>
-#include <errno.h>
-#include <stdio.h>   // for popen
-#include <stdlib.h>  // for system
-#include <string.h>  // for strerror, strcmp
-#include <sys/stat.h>
 
 #include "base/Exception.h"
 #include "base/LogMacros.h"
@@ -80,7 +81,7 @@ Mounter::Outcome Mounter::IsMountable(const std::string &mountPoint) const {
              strerror(errno) + ".");
   } else if (!S_ISDIR(stBuf.st_mode)) {
     ErrorOut("MOUNTPOINT " + mountPoint + " is not a directory.");
-  } else if (!Utils::HavePermission(stBuf)) {
+  } else if (!Utils::HavePermission(&stBuf)) {
     ErrorOut("MOUNTPOINT " + mountPoint + " permisson denied.");
   }
 
@@ -181,7 +182,7 @@ bool Mounter::Mount(const Options &options) const {
   auto qsDrive = make_shared<Drive>();
 
   static fuse_operations qsfsOperations;
-  InitializeFUSECallbacks(qsfsOperations);
+  InitializeFUSECallbacks(&qsfsOperations);
 
   auto &fuseArgs = const_cast<Options &>(options).GetFuseArgs();
   auto &mountPoint = options.GetMountPoint();

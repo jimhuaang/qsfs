@@ -28,14 +28,14 @@ namespace QingStor {
 
 namespace Utils {
 
-// Is given uid included in group of gid
 std::string GetUserName(uid_t uid);
+// Is given uid included in group of gid.
 bool IsIncludedInGroup(uid_t uid, gid_t gid);
 
 bool GetProcessEffectiveUserID(uid_t *uid);
 bool GetProcessEffectiveGroupID(gid_t *gid);
 
-bool HavePermission(struct stat &st);
+bool HavePermission(struct stat *st);
 bool HavePermission(const std::string &path);
 
 }  // namespace Utils

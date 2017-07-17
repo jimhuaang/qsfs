@@ -19,6 +19,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+
 #include <sys/types.h>
 
 #include <string>
@@ -35,9 +36,10 @@ const uint64_t MB20 = 20 * 1024 * 1024;
 const uint64_t MB100 = 100 * 1024 * 1024;
 
 const char* GetProgramName();
-const char* GetQSVersion();
+const char* GetQSFSVersion();
 
 std::string GetConfigureDirectory();
+std::string GetDefaultCredentialsFile();
 std::string GetCredentialsFile();
 std::string GetDefaultLogDirectory();
 std::string GetLogDirectory();

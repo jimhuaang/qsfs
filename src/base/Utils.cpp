@@ -17,9 +17,10 @@
 #include "base/Utils.h"
 
 #include <assert.h>
-#include <dirent.h>  // for opendir readdir
 #include <errno.h>
 #include <string.h>  // for strerror
+
+#include <dirent.h>  // for opendir readdir
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>  // for access
@@ -138,7 +139,7 @@ std::pair<bool, string> DeleteFilesInDirectoryNoLog(const std::string &path,
 }
 
 bool DeleteFilesInDirectory(const std::string &path, bool deleteSelf) {
-  auto outcome = DeleteFilesInDirectoryNoLog(path,deleteSelf);
+  auto outcome = DeleteFilesInDirectoryNoLog(path, deleteSelf);
   DebugErrorIf(!outcome.first, outcome.second);
   return outcome.first;
 }
@@ -166,12 +167,12 @@ bool IsDirectory(const string &path) {
 
 bool IsRootDirectory(const std::string &path) { return path == "/"; }
 
-void AddDirectorySeperator(string &path) {
-  assert(!path.empty());
-  DebugWarningIf(path.empty(),
+void AddDirectorySeperator(string *path) {
+  assert(!path->empty());
+  DebugWarningIf(path->empty(),
                  "Try to add directory seperator with a empty input.");
-  if (path.back() != PATH_DELIM) {
-    path.append(1, PATH_DELIM);
+  if (path->back() != PATH_DELIM) {
+    path->append(1, PATH_DELIM);
   }
 }
 
@@ -184,7 +185,7 @@ std::pair<bool, string> GetParentDirectory(const string &path) {
     } else {
       str = path;
       if (str.back() == PATH_DELIM) {
-        str.erase(--str.end());
+        str.pop_back();
       } else {
         success = true;
         auto pos = str.find_last_of(PATH_DELIM);

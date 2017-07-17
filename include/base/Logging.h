@@ -49,7 +49,7 @@ class Log {
  protected:
   virtual void Initialize() = 0;
 
-private:
+ private:
   void SetLogLevel(LogLevel level);
   void SetDebug(bool debug) { m_isDebug = debug; }
   FRIEND_TEST(LoggingTest, TestNonFatalLogsLevelInfo);

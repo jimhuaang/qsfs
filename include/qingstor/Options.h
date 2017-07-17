@@ -48,6 +48,7 @@ class Options {
   // accessor
   const std::string &GetBucket() const { return m_bucket; }
   const std::string &GetMountPoint() const { return m_mountPoint; }
+  const std::string &GetCredentialsFile() const { return m_credentialsFile; }
   const std::string &GetZone() const { return m_zone; }
   const std::string &GetHost() const { return m_host; }
   const std::string &GetProtocol() const { return m_protocol; }
@@ -73,6 +74,7 @@ class Options {
   // mutator
   void SetBucket(const char *bucket) { m_bucket = bucket; }
   void SetMountPoint(const char *path) { m_mountPoint = path; }
+  void SetCredentialsFile(const char *file) { m_credentialsFile = file; }
   void SetZone(const char *zone) { m_zone = zone; }
   void SetHost(const char *host) { m_host = host; }
   void SetProtocol(const char *protocol) { m_protocol = protocol; }
@@ -93,6 +95,7 @@ class Options {
 
   std::string m_bucket;
   std::string m_mountPoint;
+  std::string m_credentialsFile;
   std::string m_zone;
   std::string m_host;
   std::string m_protocol;

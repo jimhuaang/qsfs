@@ -19,8 +19,9 @@
 
 #include <assert.h>
 #include <stddef.h>
-#include <sys/types.h>
 #include <time.h>
+
+#include <sys/types.h>
 
 #include <atomic>
 #include <iostream>

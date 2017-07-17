@@ -76,7 +76,7 @@ void ConsoleLog::Initialize() { FLAGS_logtostderr = 1; }
 void DefaultLog::Initialize() {
   // Notes for glog, most settings start working immediately after you upate
   // FLAGS_*. The exceptions are the flags related to desination files.
-  // So need tt set FLAGS_log_dir before calling google::InitGoogleLogging.
+  // So need to set FLAGS_log_dir before calling google::InitGoogleLogging.
   FLAGS_log_dir = m_path.c_str();
 
   if (!QS::Utils::CreateDirectoryIfNotExistsNoLog(m_path)) {

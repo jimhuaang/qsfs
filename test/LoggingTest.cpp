@@ -140,8 +140,6 @@ class LoggingTest : public ::testing::Test {
     EXPECT_TRUE(GetLogInstance() != nullptr) << "log instance is null.";
   }
 
-  static void TearDownTestCase() {}
-
   ~LoggingTest() {}
 };
 

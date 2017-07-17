@@ -14,7 +14,7 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "qingstor/Options.h"
+#include "qingstor/Parser.h"
 
 #include <assert.h>
 #include <stddef.h>  // for offsetof
@@ -27,6 +27,7 @@
 #include "client/Zone.h"
 #include "qingstor/Configure.h"
 #include "qingstor/IncludeFuse.h"  // for fuse.h
+#include "qingstor/Options.h"
 
 namespace QS {
 
@@ -43,6 +44,7 @@ static struct options {
   // when user specifies different values on command line.
   const char *bucket;
   const char *mountPoint;
+  const char *credentials;
   const char *zone;
   const char *host;
   const char *protocol;
@@ -63,35 +65,38 @@ static struct options {
   { t, offsetof(struct options, p), 1 }
 
 static const struct fuse_opt optionSpec[] = {
-    OPTION("-b=%s", bucket),         OPTION("--bucket=%s",   bucket),
-    OPTION("-m=%s", mountPoint),     OPTION("--mount=%s",    mountPoint),
-    OPTION("-z=%s", zone),           OPTION("--zone=%s",     zone),
-    OPTION("-h=%s", host),           OPTION("--host=%s",     host),
-    OPTION("-p=%s", protocol),       OPTION("--protocol=%s", protocol),
-    OPTION("-t=%u", port),           OPTION("--port=%u",     port),
-    OPTION("-r=%u", retries),        OPTION("--retries=%u",  retries),
-    OPTION("-a=%s", addtionalAgent), OPTION("--agent=%s",    addtionalAgent),
-    OPTION("-l=%s", logDirectory),   OPTION("--logdir=%s",   logDirectory),
-    OPTION("-e=%s", logLevel),       OPTION("--loglevel=%s", logLevel),
-    OPTION("-n",    nonEmpty),       OPTION("--nonempty",    nonEmpty),
-    OPTION("-f",    foreground),     OPTION("--foreground",  foreground),
-    OPTION("-s",    singleThread),   OPTION("--single",      singleThread),
-    OPTION("-d",    debug),          OPTION("--debug",       debug),
-    OPTION("--help",showHelp),       OPTION("--version",     showVersion),
+    OPTION("-b=%s",  bucket),         OPTION("--bucket=%s",      bucket),
+    OPTION("-m=%s",  mountPoint),     OPTION("--mount=%s",       mountPoint),
+    OPTION("-c=%s",  credentials),    OPTION("--credentials=%s", credentials),
+    OPTION("-z=%s",  zone),           OPTION("--zone=%s",        zone),
+    OPTION("-h=%s",  host),           OPTION("--host=%s",        host),
+    OPTION("-p=%s",  protocol),       OPTION("--protocol=%s",    protocol),
+    OPTION("-t=%u",  port),           OPTION("--port=%u",        port),
+    OPTION("-r=%u",  retries),        OPTION("--retries=%u",     retries),
+    OPTION("-a=%s",  addtionalAgent), OPTION("--agent=%s",       addtionalAgent),
+    OPTION("-l=%s",  logDirectory),   OPTION("--logdir=%s",      logDirectory),
+    OPTION("-e=%s",  logLevel),       OPTION("--loglevel=%s",    logLevel),
+    OPTION("-n",     nonEmpty),       OPTION("--nonempty",       nonEmpty),
+    OPTION("-f",     foreground),     OPTION("--foreground",     foreground),
+    OPTION("-s",     singleThread),   OPTION("--single",         singleThread),
+    OPTION("-d",     debug),          OPTION("--debug",          debug),
+    OPTION("--help", showHelp),       OPTION("--version",        showVersion),
     FUSE_OPT_END
 };
 
 }  // namespace
 
 void Parse(int argc, char **argv) {
-  auto &qsOptions =QS::QingStor::Options::Instance();
+  auto &qsOptions = QS::QingStor::Options::Instance();
   qsOptions.SetFuseArgs(argc, argv);
 
-  // Set defaults for const char*. 
+  // Set defaults for const char*.
   // we have to use strdup so that fuse_opt_parse
   // can free the defaults if other values are specified.
   options.bucket         = strdup("");
   options.mountPoint     = strdup("");
+  options.credentials    = strdup(
+      QS::QingStor::Configure::GetDefaultCredentialsFile().c_str());
   options.zone           = strdup(QS::Client::Zone::PEK_3A);
   options.host           = strdup(QS::Client::Host::BASE);
   options.protocol       = strdup(QS::Client::Protocol::HTTPS);
@@ -108,6 +113,7 @@ void Parse(int argc, char **argv) {
 
   qsOptions.SetBucket(options.bucket);
   qsOptions.SetMountPoint(options.mountPoint);
+  qsOptions.SetCredentialsFile(options.credentials);
   qsOptions.SetZone(options.zone);
   qsOptions.SetHost(options.host);
   qsOptions.SetProtocol(options.protocol);
@@ -126,7 +132,6 @@ void Parse(int argc, char **argv) {
   // Put signals for fuse_main.
   // TODO(jim): should we put program name
   // and put bucket name
-  //fuse_opt_free_args(&args);
   if (qsOptions.IsShowHelp()) {
     assert(fuse_opt_add_arg(&args, "--help") == 0);
   }

@@ -22,77 +22,77 @@ namespace QS {
 
 namespace QingStor {
 
-void InitializeFUSECallbacks(struct fuse_operations & fuseOps){
-  memset(&fuseOps, 0, sizeof(fuseOps));  // clear input
+void InitializeFUSECallbacks(struct fuse_operations *fuseOps) {
+  memset(fuseOps, 0, sizeof(*fuseOps));  // clear input
 
-  fuseOps.getattr     = qsfs_getattr;
-  fuseOps.readlink    = qsfs_readlink;
-  fuseOps.mknod       = qsfs_mknod;
-  fuseOps.mkdir       = qsfs_mkdir;
-  fuseOps.unlink      = qsfs_unlink;
-  fuseOps.rmdir       = qsfs_rmdir;
-  fuseOps.symlink     = qsfs_symlink;
-  fuseOps.rename      = qsfs_rename;
-  fuseOps.link        = qsfs_link;
-  fuseOps.chmod       = qsfs_chmod;
-  fuseOps.chown       = qsfs_chown;
-  fuseOps.truncate    = qsfs_truncate;
-  fuseOps.open        = qsfs_open;
-  fuseOps.read        = qsfs_read;
-  fuseOps.write       = qsfs_write;
-  fuseOps.statfs      = qsfs_statfs;
-  fuseOps.flush       = NULL;  //s3fs
-  fuseOps.release     = qsfs_release;
-  fuseOps.fsync       = NULL;  //s3fs
-  fuseOps.setxattr    = NULL;  //s3fs
-  fuseOps.getxattr    = NULL;  //s3fs
-  fuseOps.listxattr   = NULL;  //s3fs
-  fuseOps.removexattr = NULL;  //s3fs
-  fuseOps.opendir     = NULL;  //s3fs
-  fuseOps.readdir     = qsfs_readdir;
-  fuseOps.releasedir  = NULL;
-  fuseOps.fsyncdir    = NULL;
-  fuseOps.init        = qsfs_init;
-  fuseOps.destroy     = qsfs_destroy;
-  fuseOps.access      = qsfs_access;
-  fuseOps.create      = qsfs_create;
-  fuseOps.ftruncate   = NULL;
-  fuseOps.fgetattr    = NULL;
-  fuseOps.lock        = NULL;
-  fuseOps.utimens     = qsfs_utimens;
-  fuseOps.write_buf   = NULL;
-  fuseOps.read_buf    = NULL;
-  fuseOps.fallocate   = NULL;
+  fuseOps->getattr     = qsfs_getattr;
+  fuseOps->readlink    = qsfs_readlink;
+  fuseOps->mknod       = qsfs_mknod;
+  fuseOps->mkdir       = qsfs_mkdir;
+  fuseOps->unlink      = qsfs_unlink;
+  fuseOps->rmdir       = qsfs_rmdir;
+  fuseOps->symlink     = qsfs_symlink;
+  fuseOps->rename      = qsfs_rename;
+  fuseOps->link        = qsfs_link;
+  fuseOps->chmod       = qsfs_chmod;
+  fuseOps->chown       = qsfs_chown;
+  fuseOps->truncate    = qsfs_truncate;
+  fuseOps->open        = qsfs_open;
+  fuseOps->read        = qsfs_read;
+  fuseOps->write       = qsfs_write;
+  fuseOps->statfs      = qsfs_statfs;
+  fuseOps->flush       = NULL;  // s3fs
+  fuseOps->release     = qsfs_release;
+  fuseOps->fsync       = NULL;  // s3fs
+  fuseOps->setxattr    = NULL;  // s3fs
+  fuseOps->getxattr    = NULL;  // s3fs
+  fuseOps->listxattr   = NULL;  // s3fs
+  fuseOps->removexattr = NULL;  // s3fs
+  fuseOps->opendir     = NULL;  // s3fs
+  fuseOps->readdir     = qsfs_readdir;
+  fuseOps->releasedir  = NULL;
+  fuseOps->fsyncdir    = NULL;
+  fuseOps->init        = qsfs_init;
+  fuseOps->destroy     = qsfs_destroy;
+  fuseOps->access      = qsfs_access;
+  fuseOps->create      = qsfs_create;
+  fuseOps->ftruncate   = NULL;
+  fuseOps->fgetattr    = NULL;
+  fuseOps->lock        = NULL;
+  fuseOps->utimens     = qsfs_utimens;
+  fuseOps->write_buf   = NULL;
+  fuseOps->read_buf    = NULL;
+  fuseOps->fallocate   = NULL;
 }
 
-int qsfs_getattr(const char * path, struct stat * statbuf){
+int qsfs_getattr(const char * path, struct stat * statbuf) {
   return 0;
 }
-int qsfs_readlink(const char * path, char * link, size_t size){
+int qsfs_readlink(const char * path, char * link, size_t size) {
   return 0;
 }
-int qsfs_mknod(const char* path, mode_t mode, dev_t dev){
+int qsfs_mknod(const char* path, mode_t mode, dev_t dev) {
   return 0;
 }
-int qsfs_mkdir(const char* path, mode_t mode){
+int qsfs_mkdir(const char* path, mode_t mode) {
   return 0;
 }
-int qsfs_unlink(const char* path){
+int qsfs_unlink(const char* path) {
   return 0;
 }
-int qsfs_rmdir(const char* path){
+int qsfs_rmdir(const char* path) {
   return 0;
 }
-int qsfs_symlink(const char* path, const char* link){
+int qsfs_symlink(const char* path, const char* link) {
   return 0;
 }
-int qsfs_rename(const char* path, const char* newpath){
+int qsfs_rename(const char* path, const char* newpath) {
   return 0; 
 }
-int qsfs_link(const char* path, const char* newpath){
+int qsfs_link(const char* path, const char* newpath) {
   return 0;
 }
-int qsfs_chmod(const char* path, mode_t mode){
+int qsfs_chmod(const char* path, mode_t mode) {
   return 0;
 }
 int qsfs_chown(const char* path, uid_t uid, gid_t gid){   return 0; }

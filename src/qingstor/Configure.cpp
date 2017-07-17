@@ -32,15 +32,21 @@ using std::string;
 const char* const PROGRAM_NAME = "qsfs";
 const char* const VERSION = "1.0.0";
 const char* const QSFS_DEST_DIR = "/opt/qsfs/";
-const char* const QSFS_AUTH_FILE = "qsfs.auth";
+const char* const QSFS_DEFAULT_CREDENTIALS = "/opt/qsfs/qsfs.cred";
 const char* const QSFS_DEFAULT_LOG_DIR = "/opt/qsfs/qsfs.log/";  // log dir
 
 const char* GetProgramName() { return PROGRAM_NAME; }
-const char* GetQSVersion() { return VERSION; }
+const char* GetQSFSVersion() { return VERSION; }
 
 string GetConfigureDirectory() { return QSFS_DEST_DIR; }
 
-string GetCredentialsFile() { return string(QSFS_DEST_DIR) + QSFS_AUTH_FILE; }
+string GetDefaultCredentialsFile() { return QSFS_DEFAULT_CREDENTIALS; }
+string GetCredentialsFile() {
+  auto customCredentials =
+      QS::QingStor::Options::Instance().GetCredentialsFile();
+  return customCredentials.empty() ? QSFS_DEFAULT_CREDENTIALS
+                                   : customCredentials;
+}
 
 string GetDefaultLogDirectory() { return QSFS_DEFAULT_LOG_DIR; }
 string GetLogDirectory() {

@@ -25,7 +25,7 @@ namespace QS {
 
 namespace QingStor {
 
-void InitializeFUSECallbacks(struct fuse_operations & fuseOps);
+void InitializeFUSECallbacks(struct fuse_operations *fuseOps);
 
 int qsfs_getattr(const char * path, struct stat * statbuf);
 int qsfs_readlink(const char * path, char * link, size_t size);

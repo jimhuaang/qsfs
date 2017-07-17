@@ -18,9 +18,10 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <string.h>
+
 #include <grp.h>
 #include <pwd.h>
-#include <string.h>
 #include <unistd.h>
 
 #include <exception>
@@ -41,7 +42,7 @@ using std::vector;
 
 // --------------------------------------------------------------------------
 string GetUserName(uid_t uid) {
-  long maxBufSize = sysconf(_SC_GETPW_R_SIZE_MAX);
+  int32_t maxBufSize = sysconf(_SC_GETPW_R_SIZE_MAX);
   assert(maxBufSize > 0);
   if (!(maxBufSize > 0)) {
     DebugError("Fail to get maximum size of getpwuid_r() data buffer.");
@@ -70,7 +71,7 @@ string GetUserName(uid_t uid) {
 
 // --------------------------------------------------------------------------
 bool IsIncludedInGroup(uid_t uid, gid_t gid) {
-  long maxBufSize = sysconf(_SC_GETGR_R_SIZE_MAX);
+  int32_t maxBufSize = sysconf(_SC_GETGR_R_SIZE_MAX);
   assert(maxBufSize > 0);
   if (!(maxBufSize > 0)) {
     DebugError("Fail to get maximum size of getgrgid_r() data buffer.");
@@ -137,7 +138,7 @@ bool GetProcessEffectiveGroupID(gid_t *gid) {
 }
 
 // --------------------------------------------------------------------------
-bool HavePermission(struct stat &st) {
+bool HavePermission(struct stat *st) {
   uid_t uidProcess = -1;
   if (!GetProcessEffectiveUserID(&uidProcess)) {
     return false;
@@ -148,23 +149,23 @@ bool HavePermission(struct stat &st) {
   }
 
   DebugInfo("[Process: uid=" + to_string(uidProcess) + ", gid=" +
-            to_string(gidProcess) + "] - [File uid=" + to_string(st.st_uid) +
-            ", gid=" + to_string(st.st_gid) + "]");
+            to_string(gidProcess) + "] - [File uid=" + to_string(st->st_uid) +
+            ", gid=" + to_string(st->st_gid) + "]");
 
   // Check owner
-  if (0 == uidProcess || st.st_uid == uidProcess) {
+  if (0 == uidProcess || st->st_uid == uidProcess) {
     return true;
   }
 
   // Check group
-  if (st.st_gid == gidProcess || IsIncludedInGroup(uidProcess, st.st_gid)) {
-    if (S_IRWXG == (st.st_mode & S_IRWXG)) {
+  if (st->st_gid == gidProcess || IsIncludedInGroup(uidProcess, st->st_gid)) {
+    if (S_IRWXG == (st->st_mode & S_IRWXG)) {
       return true;
     }
   }
 
   // Check others
-  if (S_IRWXO == (st.st_mode & S_IRWXO)) {
+  if (S_IRWXO == (st->st_mode & S_IRWXO)) {
     return true;
   }
 
@@ -180,7 +181,7 @@ bool HavePermission(const std::string &path) {
                " when trying to check its permission.");
     return false;
   } else {
-    return HavePermission(st);
+    return HavePermission(&st);
   }
 }
 

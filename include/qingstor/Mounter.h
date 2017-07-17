@@ -18,6 +18,7 @@
 #define _QSFS_FUSE_INCLUDED_QINGSTOR_MOUNTER_H_  // NOLINT
 
 #include <string>
+#include <utility>
 
 namespace QS {
 
@@ -25,9 +26,9 @@ namespace QingStor {
 
 class Options;
 
-// TODO(jim): design it as singleton
 class Mounter {
   using Outcome = std::pair<bool, std::string>;
+
  public:
   Mounter(Mounter &&) = delete;
   Mounter(const Mounter &) = delete;
@@ -40,7 +41,7 @@ class Mounter {
   Outcome IsMountable(const std::string &mountPoint) const;
   Outcome CheckEmpty(const std::string &mountPoint) const;
   bool IsMounted(const std::string &mountPoint) const;
-  bool Mount(const Options &options) const ;
+  bool Mount(const Options &options) const;
   void UnMount(const std::string &mountPoint) const;
 
  private:

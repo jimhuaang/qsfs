@@ -15,6 +15,7 @@
 // +-------------------------------------------------------------------------
 
 #include <assert.h>
+
 #include <unistd.h>
 
 #include <iostream>
@@ -47,7 +48,7 @@ using std::string;
 using std::to_string;
 
 namespace {
-static const char *illegalChars = "/:\\;!@#$%^&*?|+=";
+static const char* illegalChars = "/:\\;!@#$%^&*?|+=";
 void ShowQSFSVersion();
 void ShowQSFSHelp();
 void ShowQSFSUsage();
@@ -56,7 +57,7 @@ void ShowQSFSUsage();
 int main(int argc, char **argv) {
   int ret = 0;
   auto errorHandle = [&ret](const char *err) {
-    std::cerr << "[" << GetProgramName() << " ERROR] " << err << "\n";
+    std::cerr << "["<< GetProgramName() << " ERROR] " << err << "\n";
     ret = 1;
   };
 
@@ -69,7 +70,7 @@ int main(int argc, char **argv) {
   }
 
   const auto &options = QS::QingStor::Options::Instance();
-  // TODO (jim) : remove this line which is for test
+  // TODO(jim) : remove this line which is for test
   cout << options << endl << endl;
 
   try {
@@ -87,9 +88,8 @@ int main(int argc, char **argv) {
         throw "Missing BUCKET parameter.";
       } else {
         if (options.GetBucket().find_first_of(illegalChars) != string::npos) {
-          throw "BUCKET " + options.GetBucket() +
-              " -- bucket name cotains"
-              " an illegal character.";
+          throw "BUCKET " + options.GetBucket() + " -- bucket name cotains"
+            " an illegal character.";
         }
       }
 
@@ -156,67 +156,58 @@ int main(int argc, char **argv) {
 }
 
 namespace {
-static const char *mountingStr = "qsfs -b=<BUCKET> -m=<MOUNTPOINT> [options]";
+static const char * mountingStr = "qsfs -b=<BUCKET> -m=<MOUNTPOINT> [options]";
 
 void ShowQSFSVersion() {
-  cout << "qsfs version: " << QS::QingStor::Configure::GetQSVersion() << endl;
+  cout << "qsfs version: " << QS::QingStor::Configure::GetQSFSVersion() << endl;
 }
 
 void ShowQSFSHelp() {
   using namespace QS::Client;    // NOLINT
   using namespace QS::QingStor;  // NOLINT
-  cout << "Mount a QingStor bucket as a file system.\n"
-          "Usage: qsfs -b|--bucket=<name> -m|--mount=<mount point>\n"
-          "       [-z|--zone=[value]] [-h|--host=[value]] "
-          "[-p|--protocol=[value]]\n"
-          "       [-t|--port=[value]] [-r|--retries=[value]] "
-          "[-a|--agent=[value]]\n"
-          "       [-l|--logdir=[dir]] [-e|--loglevel=[INFO|WARN|ERROR|FATAL]]\n"
-          "       [-n|--nonempty][-f|--foreground] [-s|--single] [-d|--debug]\n"
-          "       [--help] [--version]\n"
-          "\n"
-          "  mounting\n"
-          "    "
-       << mountingStr << "\n"
-       << "  unmounting\n"
-          "    umount <MOUNTPOINT>\n"
-          "\n"
-          "qsfs Options:\n"
-          "Mandatory argements to long options are mandatory for short options "
-          "too.\n"
-          "  -b, --bucket     Specify bucket name\n"
-          "  -m, --mount      Specify mount point (path)\n"
-          "  -z, --zone       Zone or region, default is "
-       << Zone::PEK_3A << "\n"
-       << "  -h, --host       Host name, default is " << Host::BASE << "\n"
-       << "  -p, --protocol   Protocol could be https or http, default is "
-       << Protocol::HTTPS << "\n"
-       << "  -t, --port       Specify port, default is 443 for https, 80 for "
-          "http\n"
-          "  -r, --retries    Number of times to retry a failed QingStor "
-          "transaction\n"
-          "  -a, --agent      Additional user agent\n"
-          "  -l, --logdir     Spcecify log directory, default is "
-       << Configure::GetDefaultLogDirectory() << "\n"
-       << "  -e, --loglevel   Min log level, message lower than this level "
-          "don't logged;\n"
-          "                   Specify one of following log level: "
-          "INFO,WARN,ERROR,FATAL;\n"
-          "                   INFO is set by default\n"
-          "  -n, --nonempty   Denote it's safe when mount point directory is "
-          "not empty\n"
-          "\n"
-          "Miscellaneous Options:\n"
-          "  -f, --forground    FUSE foreground option - do not run as daemon\n"
-          "  -s, --single       FUSE single threaded option - disable "
-          "multi-threaded\n"
-          "  -d, --debug        Turn on debug messages to log. Specifying -f "
-          "turns on\n"
-          "                     debug messages to STDERR\n"
-          "      --help         Display this help and exit\n"
-          "      --version      Output version information and exit\n";
+  cout <<
+  "Mount a QingStor bucket as a file system.\n"
+  "Usage: qsfs -b|--bucket=<name> -m|--mount=<mount point>\n"
+  "       [-z|--zone=[value]] [-h|--host=[value]] [-p|--protocol=[value]]\n"
+  "       [-t|--port=[value]] [-r|--retries=[value]] [-a|--agent=[value]]\n"
+  "       [-l|--logdir=[dir]] [-e|--loglevel=[INFO|WARN|ERROR|FATAL]]\n"
+  "       [-n|--nonempty][-f|--foreground] [-s|--single] [-d|--debug]\n"
+  "       [--help] [--version]\n"
+  "\n"
+  "  mounting\n"
+  "    " << mountingStr << "\n" <<
+  "  unmounting\n"
+  "    umount <MOUNTPOINT>\n"
+  "\n"
+  "qsfs Options:\n"
+  "Mandatory argements to long options are mandatory for short options too.\n"
+  "  -b, --bucket     Specify bucket name\n"
+  "  -m, --mount      Specify mount point (path)\n"
+  "  -z, --zone       Zone or region, default is " << Zone::PEK_3A << "\n" <<
+  "  -h, --host       Host name, default is " << Host::BASE << "\n" <<
+  "  -p, --protocol   Protocol could be https or http, default is " <<
+                                            Protocol::HTTPS << "\n" <<
+  "  -t, --port       Specify port, default is 443 for https, 80 for http\n"
+  "  -r, --retries    Number of times to retry a failed QingStor transaction\n"
+  "  -a, --agent      Additional user agent\n"
+  "  -l, --logdir     Spcecify log directory, default is " <<
+                                Configure::GetDefaultLogDirectory() << "\n" <<
+  "  -e, --loglevel   Min log level, message lower than this level don't logged;\n"
+  "                   Specify one of following log level: INFO,WARN,ERROR,FATAL;\n"
+  "                   INFO is set by default\n"
+  "  -n, --nonempty   Denote it's safe when mount point directory is not empty\n"
+  "\n"
+  "Miscellaneous Options:\n"
+  "  -f, --forground    FUSE foreground option - do not run as daemon\n"
+  "  -s, --single       FUSE single threaded option - disable multi-threaded\n"
+  "  -d, --debug        Turn on debug messages to log. Specifying -f turns on\n"
+  "                     debug messages to STDERR\n"
+  "      --help         Display this help and exit\n"
+  "      --version      Output version information and exit\n";
 }
 
-void ShowQSFSUsage() { cout << "Usage: " << mountingStr << endl; }
+void ShowQSFSUsage() {
+  cout << "Usage: " << mountingStr << endl;
+}
 
 }  // namespace

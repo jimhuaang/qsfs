@@ -57,6 +57,7 @@ ostream &operator<<(ostream &os, const Options &opts) {
   return os
          << "[bucket: " << opts.m_bucket << "] "
          << "[mount point: " << opts.m_mountPoint << "] "
+         << "[credentials: " << opts.m_credentialsFile << "] "
          << "[zone: " << opts.m_zone << "] "
          << "[host: " << opts.m_host << "] "
          << "[protocol: " << opts.m_protocol << "] "
