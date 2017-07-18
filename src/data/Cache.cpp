@@ -83,14 +83,14 @@ File::Page::Page(off_t offset, const char *buffer, size_t len,
   assert(isValidInput);
   if (!isValidInput) {
     DebugError("Try to new a page with invalid input " +
-               ToStringLine(offset, buffer, len) + ".");
+               ToStringLine(offset, buffer, len));
     return;
   }
   m_body->seekp(0, std::ios_base::beg);
   m_body->write(buffer, len);
   DebugErrorIf(m_body->fail(),
                "Fail to new a page from buffer " +
-                   ToStringLine(offset, buffer, len) + ".");
+                   ToStringLine(offset, buffer, len));
 }
 
 // --------------------------------------------------------------------------
@@ -101,7 +101,7 @@ File::Page::Page(off_t offset, const shared_ptr<iostream> &instream, size_t len,
   assert(isValidInput);
   if (!isValidInput) {
     DebugError("Try to new a page with invalid input " +
-               ToStringLine(offset, len) + ".");
+               ToStringLine(offset, len));
     return;
   }
   stringstream ss;
@@ -111,7 +111,7 @@ File::Page::Page(off_t offset, const shared_ptr<iostream> &instream, size_t len,
   m_body->write(ss.str().c_str(), len);
   DebugErrorIf(
       m_body->fail(),
-      "Fail to new a page from stream " + ToStringLine(offset, len) + ".");
+      "Fail to new a page from stream " + ToStringLine(offset, len));
 }
 
 // --------------------------------------------------------------------------
@@ -120,8 +120,7 @@ bool File::Page::Refresh(off_t offset, char *buffer, size_t len) {
   assert(isValidInput);
   if (!isValidInput) {
     DebugError("Try to refresh page(" + ToStringLine(m_offset, m_size) +
-               ") with invalid input " + ToStringLine(offset, buffer, len) +
-               ".");
+               ") with invalid input " + ToStringLine(offset, buffer, len));
     return false;
   }
   return UnguardedRefresh(offset, buffer, len);
@@ -139,7 +138,7 @@ bool File::Page::UnguardedRefresh(off_t offset, char *buffer, size_t len) {
   auto success = m_body->good();
   DebugErrorIf(!success,
                "Fail to refresh page(" + ToStringLine(m_offset, m_size) +
-                   ") with input " + ToStringLine(offset, buffer, len) + ".");
+                   ") with input " + ToStringLine(offset, buffer, len));
   return success;
 }
 
@@ -160,8 +159,7 @@ size_t File::Page::Read(off_t offset, char *buffer, size_t len) {
   assert(isValidInput);
   DebugErrorIf(!isValidInput,
                "Try to read page (" + ToStringLine(m_offset, m_size) +
-                   ") with invalid input " + ToStringLine(offset, buffer, len) +
-                   ".");
+                   ") with invalid input " + ToStringLine(offset, buffer, len));
   return UnguardedRead(offset, buffer, len);
 }
 
@@ -171,7 +169,7 @@ size_t File::Page::UnguardedRead(off_t offset, char *buffer, size_t len) {
   m_body->read(buffer, len);
   DebugErrorIf(!m_body->good(),
                "Fail to read page(" + ToStringLine(m_offset, m_size) +
-                   ") with input " + ToStringLine(offset, buffer, len) + ".");
+                   ") with input " + ToStringLine(offset, buffer, len));
   return len;
 }
 
@@ -182,7 +180,7 @@ File::ReadOutcome File::Read(off_t offset, size_t len,
   assert(isValidInput);
   if (!isValidInput) {
     DebugError("Fail to read file with invalid input " +
-               ToStringLine(offset, len) + ".");
+               ToStringLine(offset, len));
     return {0, list<shared_ptr<Page>>()};
   }
 
@@ -219,7 +217,7 @@ File::ReadOutcome File::Read(off_t offset, size_t len,
       len = len_;
       DebugWarning("Try to read file([fileId:size] = [" + entry->GetFileId() +
                    ":" + to_string(entry->GetFileSize()) + "]) with input " +
-                   ToStringLine(offset, len) + " which surpass the file size.");
+                   ToStringLine(offset, len) + " which surpass the file size");
     }
   }
 
@@ -287,7 +285,7 @@ bool File::Write(off_t offset, char *buffer, size_t len, time_t mtime) {
   assert(isValidInput);
   if (!isValidInput) {
     DebugError("Fail to write file with invalid input " +
-               ToStringLine(offset, buffer, len) + ".");
+               ToStringLine(offset, buffer, len));
     return false;
   }
 
@@ -356,7 +354,7 @@ void File::Resize(size_t smallerSize) {
   if (smallerSize >= curSize) {
     DebugWarning("File size: " + to_string(curSize) +
                  ", target size: " + to_string(smallerSize) +
-                 ". Try to resize File to a larger or same size. Go on.");
+                 ". Try to resize File to a larger or same size. Go on");
     return;
   }
 
@@ -387,11 +385,11 @@ void File::Resize(size_t smallerSize) {
         DebugError("After erased pages behind offset " + to_string(offset) +
                    " , last page now with " +
                    ToStringLine(lastPage->m_offset, lastPage->m_size) +
-                   ". Should not happen, but go on.");
+                   ". Should not happen, but go on");
       }
     } else {
       DebugError("File becomes empty after erase pages behind offset of " +
-                 to_string(offset) + ". Should not happen, but go on.");
+                 to_string(offset) + ". Should not happen, but go on");
     }
   }
 }
@@ -442,7 +440,7 @@ pair<File::PageSetConstIterator, bool> File::UnguardedAddPage(off_t offset,
     m_size += len;
   } else {
     DebugError("Fail to new a page from a buffer " +
-               ToStringLine(offset, buffer, len) + ".");
+               ToStringLine(offset, buffer, len));
   }
   return res;
 }
@@ -454,8 +452,7 @@ std::pair<File::PageSetConstIterator, bool> File::UnguardedAddPage(
   if (res.second) {
     m_size += len;
   } else {
-    DebugError("Fail to new a page from a stream " + ToStringLine(offset, len) +
-               ".");
+    DebugError("Fail to new a page from a stream " + ToStringLine(offset, len));
   }
   return res;
 }
@@ -467,7 +464,7 @@ size_t Cache::Read(const string &fileId, off_t offset, char *buffer, size_t len,
   assert(validInput);
   if (!validInput) {
     DebugError("Try to read cache with invalid input " +
-               ToStringLine(fileId, offset, buffer, len) + ".");
+               ToStringLine(fileId, offset, buffer, len));
     return 0;
   }
   memset(buffer, 0, len);  // Clear input buffer.
@@ -479,7 +476,7 @@ size_t Cache::Read(const string &fileId, off_t offset, char *buffer, size_t len,
     pos = UnguardedMakeFileMostRecentlyUsed(it->second);
   } else {
     DebugInfo("File(" + node->GetFileName() +
-              ") is not found in cache. Creating new one.");
+              ") is not found in cache. Creating new one");
     fileIsJustCreated = true;
     pos = UnguardedNewEmptyFile(fileId);
     assert(pos != m_cache.end());
@@ -488,7 +485,7 @@ size_t Cache::Read(const string &fileId, off_t offset, char *buffer, size_t len,
   auto &file = pos->second;
   auto outcome = file->Read(offset, len, node->GetEntry());
   if (outcome.first == 0 || outcome.second.empty()) {
-    DebugInfo("Read no bytes from file(" + node->GetFileName() + ").");
+    DebugInfo("Read no bytes from file(" + node->GetFileName() + ")");
     return 0;
   }
   if (fileIsJustCreated) {
@@ -527,7 +524,7 @@ bool Cache::Write(const string &fileId, off_t offset, char *buffer, size_t len,
   assert(validInput);
   if (!validInput) {
     DebugError("Try to write cache with invalid input " +
-               ToStringLine(fileId, offset, buffer, len) + ".");
+               ToStringLine(fileId, offset, buffer, len));
     return false;
   }
 
@@ -560,12 +557,12 @@ bool Cache::Free(size_t size) {
   if (size > QS::QingStor::Configure::GetMaxCacheSize()) {
     DebugError("Try to free cache of " + to_string(size) +
                " bytes which surpass the maximum cache size(" +
-               to_string(QS::QingStor::Configure::GetMaxCacheSize()) + ").");
+               to_string(QS::QingStor::Configure::GetMaxCacheSize()) + ")");
     return false;
   }
   if (HasFreeSpace(size)) {
     DebugInfo("Try to free cache of " + to_string(size) +
-              " bytes while free space is still available. Go on.");
+              " bytes while free space is still available. Go on");
     return true;
   }
 
@@ -578,7 +575,7 @@ bool Cache::Free(size_t size) {
     m_size -= file->GetSize();
     file->Clear();
   }
-  DebugInfo("Has freed cache of " + to_string(freedSpace) + " bytes.");
+  DebugInfo("Has freed cache of " + to_string(freedSpace) + " bytes");
   return true;
 }
 
@@ -589,14 +586,14 @@ void Cache::Erase(const string &fileId) {
     UnguardedErase(it);
   } else {
     DebugWarning("Try to remove file " + fileId +
-                 " which is not found. Go on.");
+                 " which is not found. Go on");
   }
 }
 
 // --------------------------------------------------------------------------
 void Cache::Rename(const string &oldFileId, const string &newFileId) {
   if (oldFileId == newFileId) {
-    DebugInfo("The new file id is the same as the old one. Go on.");
+    DebugInfo("The new file id is the same as the old one. Go on");
     return;
   }
 
@@ -604,7 +601,7 @@ void Cache::Rename(const string &oldFileId, const string &newFileId) {
   if (iter != m_map.end()) {
     DebugWarning(
         "New file id: + " + newFileId +
-        " is already existed in the cache. Just remove it from cache.");
+        " is already existed in the cache. Just remove it from cache");
     UnguardedErase(iter);
   }
 
@@ -617,7 +614,7 @@ void Cache::Rename(const string &oldFileId, const string &newFileId) {
     m_map.erase(it);
   } else {
     DebugWarning("Try to rename file id " + oldFileId +
-                 " which is not found. Go on.")
+                 " which is not found. Go on")
   }
 }
 
@@ -629,7 +626,7 @@ void Cache::SetTime(const string &fileId, time_t mtime) {
     file->SetTime(mtime);
   } else {
     DebugWarning("Try to set time for file " + fileId +
-                 " which is not found. Go on.");
+                 " which is not found. Go on");
   }
 }
 
@@ -645,11 +642,10 @@ void Cache::Resize(const string &fileId, size_t newSize) {
     DebugInfoIf(file->GetSize() != newSize,
                 "Try to resize file " + fileId + " from size " +
                     to_string(oldSize) + " to " + to_string(newSize) +
-                    ". But now file size is " + to_string(file->GetSize()) +
-                    ".");
+                    ". But now file size is " + to_string(file->GetSize()));
   } else {
     DebugWarning("Try to resize file " + fileId +
-                 " which is not found. Go on.");
+                 " which is not found. Go on");
   }
 }
 
@@ -665,7 +661,7 @@ CacheListIterator Cache::UnguardedNewEmptyFile(const string &fileId) {
     m_map.emplace(fileId, m_cache.begin());
     return m_cache.begin();
   } else {
-    DebugError("Fail to new an empty file with fileId : " + fileId + ".");
+    DebugError("Fail to new an empty file with fileId : " + fileId);
     return m_cache.end();
   }
 }

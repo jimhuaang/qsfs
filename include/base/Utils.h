@@ -19,6 +19,9 @@
 
 #include <stdio.h>
 
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -83,6 +86,18 @@ void AddDirectorySeperator(std::string &path);
 // Return true and parent directory if success,
 // return false and message if fail.
 std::pair<bool, std::string> GetParentDirectory(const std::string &path);
+
+bool IsDirectoryEmpty(const std::string &dir);
+
+std::string GetUserName(uid_t uid, bool logOn);
+// Is given uid included in group of gid.
+bool IsIncludedInGroup(uid_t uid, gid_t gid, bool logOn);
+
+bool GetProcessEffectiveUserID(uid_t *uid, bool logOn);
+bool GetProcessEffectiveGroupID(gid_t *gid, bool logOn);
+
+bool HavePermission(struct stat *st, bool logOn);
+bool HavePermission(const std::string &path, bool logOn);
 
 }  // namespace Utils
 }  // namespace QS

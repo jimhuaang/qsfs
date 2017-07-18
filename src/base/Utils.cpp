@@ -21,12 +21,19 @@
 #include <string.h>  // for strerror
 
 #include <dirent.h>  // for opendir readdir
+#include <grp.h>
+#include <pwd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>  // for access
 
+#include <exception>
+#include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "base/LogMacros.h"
 #include "qingstor/Configure.h"
@@ -35,72 +42,84 @@ namespace QS {
 
 namespace Utils {
 
+using std::cerr;
+using std::pair;
 using std::string;
+using std::to_string;
+using std::unique_ptr;
+using std::vector;
 static const char PATH_DELIM = '/';
-// TODO(jim): refer s3fs_util.cpp
 
+namespace {
+string PostErrMsg(const string &path) { return path + " : " + strerror(errno); }
+}  // namespace
+
+// --------------------------------------------------------------------------
 bool CreateDirectoryIfNotExistsNoLog(const string &path) {
   int errorCode =
       mkdir(path.c_str(), QS::QingStor::Configure::GetDefineDirMode());
-  return (errorCode == 0 || errno == EEXIST);
+  bool success = (errorCode == 0 || errno == EEXIST);
+  if (!success) cerr << "Fail to creating directory " + PostErrMsg(path) + "\n";
+  return success;
 }
 
+// --------------------------------------------------------------------------
 bool CreateDirectoryIfNotExists(const string &path) {
-  Info("Creating directory " + path + ".");
+  Info("Creating directory " + path);
   bool success = CreateDirectoryIfNotExistsNoLog(path);
 
-  DebugErrorIf(
-      !success,
-      "Fail to creating directory " + path + " : " + strerror(errno) + ".");
+  DebugErrorIf(!success, "Fail to creating directory " + PostErrMsg(path));
   return success;
 }
 
+// --------------------------------------------------------------------------
 bool RemoveDirectoryIfExistsNoLog(const string &path) {
   int errorCode = rmdir(path.c_str());
-  return (errorCode == 0 || errno == ENOENT || errno == ENOTDIR);
+  bool success = (errorCode == 0 || errno == ENOENT || errno == ENOTDIR);
+  if (!success)
+    cerr << "Fail to deleteing directory " + PostErrMsg(path) + "\n";
+  return success;
 }
 
+// --------------------------------------------------------------------------
 bool RemoveDirectoryIfExists(const string &path) {
-  Info("Deleting directory " + path + ".");
+  Info("Deleting directory " + path);
   bool success = RemoveDirectoryIfExistsNoLog(path);
 
-  DebugErrorIf(
-      !success,
-      "Fail to deleting directory " + path + " : " + strerror(errno) + ".");
+  DebugErrorIf(!success, "Fail to deleting directory " + PostErrMsg(path));
   return success;
 }
 
+// --------------------------------------------------------------------------
 bool RemoveFileIfExistsNoLog(const string &path) {
   int errorCode = unlink(path.c_str());
-  return (errorCode == 0 || errno == ENOENT);
-}
-
-bool RemoveFileIfExists(const string &path) {
-  Info("Creating file " + path + ".");
-  bool success = RemoveFileIfExistsNoLog(path);
-  DebugErrorIf(!success,
-               "Fail to deleting file " + path + " : " + strerror(errno) + ".");
+  bool success = (errorCode == 0 || errno == ENOENT);
+  if (!success) cerr << "Fail to deleting file " + PostErrMsg(path) + "\n";
   return success;
 }
 
-std::pair<bool, string> DeleteFilesInDirectoryNoLog(const std::string &path,
-                                                    bool deleteSelf) {
+// --------------------------------------------------------------------------
+bool RemoveFileIfExists(const string &path) {
+  Info("Creating file " + path);
+  bool success = RemoveFileIfExistsNoLog(path);
+  DebugErrorIf(!success, "Fail to deleting file " + PostErrMsg(path));
+  return success;
+}
+
+// --------------------------------------------------------------------------
+pair<bool, string> DeleteFilesInDirectoryNoLog(const std::string &path,
+                                               bool deleteSelf) {
   bool success = true;
   string msg;
   auto ErrorOut = [&success, &msg](string &&str) {
     success = false;
     msg.assign(str);
   };
-  auto PostErrMsg = [](const string &path) -> string {
-    return path + " : " + strerror(errno) + ".";
-  };
 
-  DIR *dir = opendir(path.c_str());
+  unique_ptr<DIR, decltype(closedir) *> dir(opendir(path.c_str()), closedir);
   if (dir == nullptr) {
-    ErrorOut("Could not open directory " + PostErrMsg(path));
-  } else {
     struct dirent *nextEntry = nullptr;
-    while ((nextEntry = readdir(dir)) != nullptr) {
+    while ((nextEntry = readdir(dir.get())) != nullptr) {
       if (strcmp(nextEntry->d_name, ".") == 0 ||
           strcmp(nextEntry->d_name, "..") == 0) {
         continue;
@@ -128,60 +147,68 @@ std::pair<bool, string> DeleteFilesInDirectoryNoLog(const std::string &path,
         }
       }  // end of S_ISDIR
     }    // end of while
+  } else {
+    ErrorOut("Could not open directory " + PostErrMsg(path));
   }
-  closedir(dir);
 
   if (deleteSelf && rmdir(path.c_str()) != 0) {
     ErrorOut("Could not remove dir " + PostErrMsg(path));
   }
 
+  if (!success) cerr << msg << "\n";
+
   return {success, msg};
 }
 
+// --------------------------------------------------------------------------
 bool DeleteFilesInDirectory(const std::string &path, bool deleteSelf) {
   auto outcome = DeleteFilesInDirectoryNoLog(path, deleteSelf);
   DebugErrorIf(!outcome.first, outcome.second);
   return outcome.first;
 }
 
+// --------------------------------------------------------------------------
 bool FileExists(const string &path) {
   int errorCode = access(path.c_str(), F_OK);
   if (errorCode == 0) {
     return true;
   } else {
-    DebugInfo("File " + path + " not exists : " + strerror(errno) + ".");
+    DebugInfo("File " + path + " not exists : " + strerror(errno));
     return false;
   }
 }
 
+// --------------------------------------------------------------------------
 bool IsDirectory(const string &path) {
   struct stat stBuf;
   if (stat(path.c_str(), &stBuf) != 0) {
-    DebugWarning("Unable to access path " + path + " : " + strerror(errno) +
-                 ".");
+    DebugWarning("Unable to access path " + PostErrMsg(path));
     return false;
   } else {
     return S_ISDIR(stBuf.st_mode);
   }
 }
 
+// --------------------------------------------------------------------------
 bool IsRootDirectory(const std::string &path) { return path == "/"; }
 
+// --------------------------------------------------------------------------
 void AddDirectorySeperator(string *path) {
   assert(!path->empty());
   DebugWarningIf(path->empty(),
-                 "Try to add directory seperator with a empty input.");
+                 "Try to add directory seperator with a empty input");
   if (path->back() != PATH_DELIM) {
     path->append(1, PATH_DELIM);
   }
 }
 
-std::pair<bool, string> GetParentDirectory(const string &path) {
+// --------------------------------------------------------------------------
+pair<bool, string> GetParentDirectory(const string &path) {
   bool success = false;
   string str;
   if (FileExists(path)) {
     if (IsRootDirectory(path)) {
-      str.assign("Unable to get parent dir for root directory.");
+      str.assign("Unable to get parent dir for root directory");
     } else {
       str = path;
       if (str.back() == PATH_DELIM) {
@@ -197,6 +224,193 @@ std::pair<bool, string> GetParentDirectory(const string &path) {
   }
 
   return {success, str};
+}
+
+// --------------------------------------------------------------------------
+bool IsDirectoryEmpty(const std::string &path) {
+  unique_ptr<DIR, decltype(closedir) *> dir(opendir(path.c_str()), closedir);
+  if (dir) {
+    struct dirent *nextEntry = nullptr;
+    while ((nextEntry = readdir(dir.get())) != nullptr) {
+      if (strcmp(nextEntry->d_name, ".") != 0 &&
+          strcmp(nextEntry->d_name, "..") != 0) {
+        return false;
+      }
+    }
+  } else {
+    Error("Failed to open path " + path + " : " + strerror(errno));
+    return false;
+  }
+
+  return true;
+}
+
+// --------------------------------------------------------------------------
+string GetUserName(uid_t uid, bool logOn) {
+  int32_t maxBufSize = sysconf(_SC_GETPW_R_SIZE_MAX);
+  assert(maxBufSize > 0);
+  if (!(maxBufSize > 0)) {
+    if (logOn) {
+      DebugError("Fail to get maximum size of getpwuid_r() data buffer");
+    }
+    return string();
+  }
+
+  vector<char> buffer(maxBufSize);
+  struct passwd pwdInfo;
+  struct passwd *result = NULL;
+  if (getpwuid_r(uid, &pwdInfo, &buffer[0], maxBufSize, &result) != 0) {
+    if (logOn) {
+      DebugError(string("Fail to get passwd information : ") + strerror(errno));
+    }
+    return string();
+  }
+
+  if (result == NULL) {
+    if (logOn) {
+      DebugInfo("No data in passwd of " + to_string(uid));
+    }
+    return string();
+  }
+
+  string userName(result->pw_name);
+  if (logOn) {
+    DebugInfoIf(userName.empty(), "Empty username of uid " + to_string(uid));
+  }
+  return userName;
+}
+
+// --------------------------------------------------------------------------
+bool IsIncludedInGroup(uid_t uid, gid_t gid, bool logOn) {
+  int32_t maxBufSize = sysconf(_SC_GETGR_R_SIZE_MAX);
+  assert(maxBufSize > 0);
+  if (!(maxBufSize > 0)) {
+    if (logOn) {
+      DebugError("Fail to get maximum size of getgrgid_r() data buffer");
+    }
+    return false;
+  }
+
+  vector<char> buffer(maxBufSize);
+  struct group grpInfo;
+  struct group *result = NULL;
+  if (getgrgid_r(gid, &grpInfo, &buffer[0], maxBufSize, &result) != 0) {
+    if (logOn) {
+      DebugError(string("Fail to get group information : ") + strerror(errno));
+    }
+    return false;
+  }
+  if (result == NULL) {
+    if (logOn) {
+      DebugInfo("No gid in group of " + to_string(gid));
+    }
+    return false;
+  }
+
+  string userName = GetUserName(uid, logOn);
+  if (userName.empty()) {
+    return false;
+  }
+
+  char **groupMember = result->gr_mem;
+  while (groupMember && *groupMember) {
+    if (userName == *groupMember) {
+      return true;
+    }
+    ++groupMember;
+  }
+
+  return false;
+}
+
+// --------------------------------------------------------------------------
+bool GetProcessEffectiveUserID(uid_t *uid, bool logOn) {
+  try {
+    *uid = geteuid();
+  } catch (const std::exception &err) {
+    DebugError(err.what());
+    return false;
+  } catch (...) {
+    if (logOn) {
+      DebugError(
+          "Error while getting the effective user ID of the calling process");
+    }
+    return false;
+  }
+  return true;
+}
+
+// --------------------------------------------------------------------------
+bool GetProcessEffectiveGroupID(gid_t *gid, bool logOn) {
+  try {
+    *gid = getegid();
+  } catch (const std::exception &err) {
+    DebugError(err.what());
+    return false;
+  } catch (...) {
+    if (logOn) {
+      DebugError(
+          "Error while getting the effective group ID of the calling process");
+    }
+    return false;
+  }
+  return true;
+}
+
+// --------------------------------------------------------------------------
+bool HavePermission(struct stat *st, bool logOn) {
+  uid_t uidProcess = -1;
+  if (!GetProcessEffectiveUserID(&uidProcess, logOn)) {
+    return false;
+  }
+  gid_t gidProcess = -1;
+  if (!GetProcessEffectiveGroupID(&gidProcess, logOn)) {
+    return false;
+  }
+
+  if (logOn) {
+    DebugInfo("[Process: uid=" + to_string(uidProcess) + ", gid=" +
+              to_string(gidProcess) + "] - [File uid=" + to_string(st->st_uid) +
+              ", gid=" + to_string(st->st_gid) + "]");
+  }
+
+  // Check owner
+  if (0 == uidProcess || st->st_uid == uidProcess) {
+    return true;
+  }
+
+  // Check group
+  if (st->st_gid == gidProcess ||
+      IsIncludedInGroup(uidProcess, st->st_gid, logOn)) {
+    if (S_IRWXG == (st->st_mode & S_IRWXG)) {
+      return true;
+    }
+  }
+
+  // Check others
+  if (S_IRWXO == (st->st_mode & S_IRWXO)) {
+    return true;
+  }
+
+  return false;
+}
+
+// --------------------------------------------------------------------------
+bool HavePermission(const std::string &path, bool logOn) {
+  struct stat st;
+  int errorCode = stat(path.c_str(), &st);
+  if (errorCode != 0) {
+    if (logOn) {
+      DebugError("Unable to access " + path +
+                 " when trying to check its permission");
+    }
+    return false;
+  } else {
+    if (logOn) {
+      DebugInfo("Check file permission of " + path);
+    }
+    return HavePermission(&st, logOn);
+  }
 }
 
 }  // namespace Utils

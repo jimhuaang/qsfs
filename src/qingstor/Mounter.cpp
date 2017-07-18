@@ -36,7 +36,6 @@
 #include "qingstor/IncludeFuse.h"  // for fuse.h
 #include "qingstor/Operations.h"
 #include "qingstor/Options.h"
-#include "qingstor/Utils.h"
 
 namespace QS {
 
@@ -62,7 +61,8 @@ Mounter &Mounter::Instance() {
 }
 
 // --------------------------------------------------------------------------
-Mounter::Outcome Mounter::IsMountable(const std::string &mountPoint) const {
+Mounter::Outcome Mounter::IsMountable(const std::string &mountPoint,
+                                      bool logOn) const {
   bool success = true;
   string msg;
   auto ErrorOut = [&success, &msg](string &&str) {
@@ -71,66 +71,38 @@ Mounter::Outcome Mounter::IsMountable(const std::string &mountPoint) const {
   };
 
   if (QS::Utils::IsRootDirectory(mountPoint)) {
-    ErrorOut("Unable to mount to root directory.");
+    ErrorOut("Unable to mount to root directory");
     return {success, msg};
   }
 
   struct stat stBuf;
   if (stat(mountPoint.c_str(), &stBuf) != 0) {
     ErrorOut("Unable to access MOUNTPOINT " + mountPoint + " : " +
-             strerror(errno) + ".");
+             strerror(errno));
   } else if (!S_ISDIR(stBuf.st_mode)) {
-    ErrorOut("MOUNTPOINT " + mountPoint + " is not a directory.");
-  } else if (!Utils::HavePermission(&stBuf)) {
-    ErrorOut("MOUNTPOINT " + mountPoint + " permisson denied.");
+    ErrorOut("MOUNTPOINT " + mountPoint + " is not a directory");
+  } else if (!QS::Utils::HavePermission(mountPoint, logOn)) {
+    ErrorOut("MOUNTPOINT " + mountPoint + " permisson denied");
   }
 
   return {success, msg};
 }
 
 // --------------------------------------------------------------------------
-Mounter::Outcome Mounter::CheckEmpty(const string &mountPoint) const {
-  bool success = true;
-  string msg;
-  auto ErrorOut = [&success, &msg](string &&str) {
-    success = false;
-    msg.assign(str);
-  };
-
-  {
-    DIR *dir = opendir(mountPoint.c_str());
-    if (dir == nullptr) {
-      ErrorOut("Failed to open MOUNTPOINT " + mountPoint + " : " +
-               strerror(errno) + ".");
-    } else {
-      struct dirent *nextEntry = nullptr;
-      while ((nextEntry = readdir(dir)) != nullptr) {
-        if (strcmp(nextEntry->d_name, ".") != 0 &&
-            strcmp(nextEntry->d_name, "..") != 0) {
-          ErrorOut("MOUNTPOINT dirctory " + mountPoint +
-                   " is not empty. If you are sure this is safe, you can use "
-                   "'-n' or '--nonempty' option.");
-          break;
-        }
-      }
-    }
-    closedir(dir);
-  }
-
-  return {success, msg};
-}
-
-// --------------------------------------------------------------------------
-bool Mounter::IsMounted(const string &mountPoint) const {
-  auto mountableOutcome = IsMountable(mountPoint);
+bool Mounter::IsMounted(const string &mountPoint, bool logOn) const {
+  auto mountableOutcome = IsMountable(mountPoint, logOn);
   if (!mountableOutcome.first) {
-    DebugWarning(mountableOutcome.second);
+    if (logOn) {
+      DebugWarning(mountableOutcome.second);
+    }
     return false;
   }
 
   auto outcome = QS::Utils::GetParentDirectory(mountPoint);
   if (!outcome.first) {
-    DebugWarning(outcome.second);
+    if (logOn) {
+      DebugWarning(outcome.second);
+    }
     return false;
   }
 
@@ -150,12 +122,11 @@ bool Mounter::IsMounted(const string &mountPoint) const {
 
       if (str.empty()) {
         success = false;
-        str.assign("No data from pipe stream of command " + command + ".");
+        str.assign("No data from pipe stream of command " + command);
       }
     } else {
       success = false;
-      str.assign("Fail to invoke command " + command + " : " + strerror(errno) +
-                 ".");
+      str.assign("Fail to invoke command " + command + " : " + strerror(errno));
     }
     pclose(pFile);
 
@@ -165,8 +136,10 @@ bool Mounter::IsMounted(const string &mountPoint) const {
   auto resMountPath = GetMajorMinorDeviceType(mountPoint);
   auto resMountParentPath = GetMajorMinorDeviceType(outcome.second);
   if (!resMountPath.first || !resMountParentPath.first) {
-    DebugWarningIf(!resMountPath.first, resMountPath.second);
-    DebugWarningIf(!resMountParentPath.first, resMountParentPath.second);
+    if (logOn) {
+      DebugWarningIf(!resMountPath.first, resMountPath.second);
+      DebugWarningIf(!resMountParentPath.first, resMountParentPath.second);
+    }
     return false;
   } else {
     // when directory is a mount point, it has a different device number
@@ -176,23 +149,68 @@ bool Mounter::IsMounted(const string &mountPoint) const {
 }
 
 // --------------------------------------------------------------------------
-bool Mounter::Mount(const Options &options) const {
+bool Mounter::Mount(const Options &options, bool logOn) const {
   // TODO(jim)
   // Initialize Drive
   auto qsDrive = make_shared<Drive>();
 
+  return DoMount(options, logOn, &qsDrive);
+}
+
+// --------------------------------------------------------------------------
+bool Mounter::MountLite(const Options &options, bool logOn) const {
+  return DoMount(options, logOn, NULL);
+}
+
+// --------------------------------------------------------------------------
+void Mounter::UnMount(const string &mountPoint, bool logOn) const {
+  if (IsMounted(mountPoint, logOn)) {
+    string command("fusermount -u " + mountPoint + " | wc -c");
+    FILE *pFile = popen(command.c_str(), "r");
+    if (pFile != NULL && fgetc(pFile) != '0') {
+      if (logOn) {
+        Error("Unable to unmout filesystem at " + mountPoint +
+              ". Trying lazy unmount");
+      }
+      command.assign("fusermount -uqz " + mountPoint);
+      system(command.c_str());
+    }
+    pclose(pFile);
+    if (logOn) {
+      Info("Unmount qsfs sucessfully");
+    }
+  } else {
+    if (logOn) {
+      Warning("Trying to unmount filesystem at " + mountPoint +
+              " which is not mounted");
+    }
+  }
+}
+
+// --------------------------------------------------------------------------
+bool Mounter::DoMount(const Options &options, bool logOn,
+                      void *user_data) const {
   static fuse_operations qsfsOperations;
   InitializeFUSECallbacks(&qsfsOperations);
 
   auto &fuseArgs = const_cast<Options &>(options).GetFuseArgs();
+
+  if(user_data == NULL){
+    //Mount Lite
+    fuse_main(fuseArgs.argc, fuseArgs.argv, &qsfsOperations, NULL);
+    return true;
+  }
+
+  // Do really mount
   auto &mountPoint = options.GetMountPoint();
   static int maxTries = 3;
   int count = 0;
   do {
-    if (!IsMounted(mountPoint)) {
-      if (0 !=
-          fuse_main(fuseArgs.argc, fuseArgs.argv, &qsfsOperations, &qsDrive)) {
-        throw QSException("Unable to mount qsfs.");
+    if (!IsMounted(mountPoint, logOn)) {
+      int ret =
+          fuse_main(fuseArgs.argc, fuseArgs.argv, &qsfsOperations, user_data);
+      if (0 != ret) {
+        throw QSException("Unable to mount qsfs");
       } else {
         return true;
       }
@@ -200,33 +218,16 @@ bool Mounter::Mount(const Options &options) const {
       if (++count > maxTries) {
         return false;
       }
-      Warning(mountPoint +
-              "is already mounted. Tring to unmount, and mount again.");
+      if (logOn) {
+        Warning(mountPoint +
+                "is already mounted. Tring to unmount, and mount again");
+      }
       string command("umount -l " + mountPoint);  // lazy detach filesystem
       system(command.c_str());
     }
   } while (true);
 
   return false;
-}
-
-// --------------------------------------------------------------------------
-void Mounter::UnMount(const string &mountPoint) const {
-  if (IsMounted(mountPoint)) {
-    string command("fusermount -u " + mountPoint + " | wc -c");
-    FILE *pFile = popen(command.c_str(), "r");
-    if (pFile != NULL && fgetc(pFile) != '0') {
-      Error("Unable to unmout filesystem at " + mountPoint +
-            ". Trying lazy unmount.");
-      command.assign("fusermount -uqz " + mountPoint);
-      system(command.c_str());
-    }
-    pclose(pFile);
-    Info("Unmount qsfs sucessfully.");
-  } else {
-    Warning("Trying to unmount filesystem at " + mountPoint +
-            " which is not mounted.");
-  }
 }
 
 }  // namespace QingStor

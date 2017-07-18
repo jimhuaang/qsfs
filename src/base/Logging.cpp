@@ -66,12 +66,16 @@ Log* GetLogInstance() {
   return logInstance.get();
 }
 
-void Log::SetLogLevel(LogLevel level) {
+void Log::SetLogLevel(LogLevel level) noexcept {
   m_logLevel = level;
   FLAGS_minloglevel = static_cast<int>(level);
 }
 
-void ConsoleLog::Initialize() { FLAGS_logtostderr = 1; }
+void ConsoleLog::Initialize() noexcept { FLAGS_logtostderr = 1; }
+
+void ConsoleLog::ClearLogDirectory() const noexcept {
+  std::cerr << "Log to STDERR with 'forground' option, do nothing for option clearlogdir"<< std::endl;
+}
 
 void DefaultLog::Initialize() {
   // Notes for glog, most settings start working immediately after you upate
@@ -80,12 +84,22 @@ void DefaultLog::Initialize() {
   FLAGS_log_dir = m_path.c_str();
 
   if (!QS::Utils::CreateDirectoryIfNotExistsNoLog(m_path)) {
-    throw QSException("Unable to create log directory " + m_path + ".");
+    throw QSException("Unable to create log directory " + m_path);
   }
 
+  // Check log directory with logOn=false.
+  // NOTES: set logOn=true will cause infinite loop.
+  if (!QS::Utils::HavePermission(m_path, false)) {
+    throw QSException("Could not creating logging file at " + m_path +
+                      ": Permission denied");
+  }
+}
+
+void DefaultLog::ClearLogDirectory() const{
   auto outcome = QS::Utils::DeleteFilesInDirectoryNoLog(m_path, false);
   if (!outcome.first) {
-    std::cerr << outcome.second << "But Continue..." << std::endl;
+    std::cerr << "Unable to clear log directory : ";
+    std::cerr << outcome.second << ". But Continue..." << std::endl;
   }
 }
 

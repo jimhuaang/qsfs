@@ -61,7 +61,7 @@ const string fatalLogFile = defaultLogDir + string(GetProgramName()) + ".FATAL";
 
 void MakeDefaultLogDir() {
   auto success = QS::Utils::CreateDirectoryIfNotExistsNoLog(defaultLogDir);
-  ASSERT_TRUE(success) << "Fail to create directory " << defaultLogDir << ".";
+  ASSERT_TRUE(success) << "Fail to create directory " << defaultLogDir;
 }
 
 void ClearFileContent(const std::string &path) {
@@ -89,12 +89,12 @@ void LogNonFatalPossibilities() {
 void VerifyAllNonFatalLogs(LogLevel level) {
   struct stat info;
   int status = stat(infoLogFile.c_str(), &info);
-  ASSERT_EQ(status, 0) << infoLogFile << " is not existed.";
+  ASSERT_EQ(status, 0) << infoLogFile << " is not existed";
 
   vector<string> logMsgs;
   {
     fstream fs(infoLogFile);
-    ASSERT_TRUE(fs.is_open()) << "Fail to open " << infoLogFile << ".";
+    ASSERT_TRUE(fs.is_open()) << "Fail to open " << infoLogFile;
 
     string::size_type pos = string::npos;
     for (string line; std::getline(fs, line);) {
@@ -137,7 +137,7 @@ class LoggingTest : public ::testing::Test {
     MakeDefaultLogDir();
     QS::Logging::InitializeLogging(
         unique_ptr<Log>(new DefaultLog(defaultLogDir)));
-    EXPECT_TRUE(GetLogInstance() != nullptr) << "log instance is null.";
+    EXPECT_TRUE(GetLogInstance() != nullptr) << "log instance is null";
   }
 
   ~LoggingTest() {}
@@ -183,12 +183,12 @@ void LogDebugFatalIf(bool condition) {
 void VerifyFatalLog(const string &expectedMsg) {
   struct stat info;
   int status = stat(fatalLogFile.c_str(), &info);
-  ASSERT_EQ(status, 0) << fatalLogFile << " is not existed.";
+  ASSERT_EQ(status, 0) << fatalLogFile << " is not existed";
 
   string logMsg;
   {
     fstream fs(fatalLogFile);
-    ASSERT_TRUE(fs.is_open()) << "Fail to open " << fatalLogFile << ".";
+    ASSERT_TRUE(fs.is_open()) << "Fail to open " << fatalLogFile;
 
     string::size_type pos = string::npos;
     for (string line; std::getline(fs, line);) {

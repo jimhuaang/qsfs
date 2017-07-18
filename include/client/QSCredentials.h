@@ -17,6 +17,7 @@
 #ifndef _QSFS_FUSE_INCLUDED_CLIENT_QSCREDENTIALS_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_CLIENT_QSCREDENTIALS_H_  // NOLINT
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -27,6 +28,11 @@
 namespace QS {
 
 namespace Client {
+
+class QSCredentialsProvider;
+void InitializeCredentialsProvider(
+    std::unique_ptr<QSCredentialsProvider> provider);
+QSCredentialsProvider &GetCredentialsProviderInstance();
 
 class QSCredentials {
  public:
@@ -86,7 +92,7 @@ class DefaultQSCredentialsProvider : public QSCredentialsProvider {
   QSCredentials GetCredentials() const override {
     if (!HasDefaultKey()) {
       throw QS::Exception::QSException(
-          "Fail to fetch default credentials which is not existing.");
+          "Fail to fetch default credentials which is not existing");
     }
 
     return QSCredentials(m_defaultAccessKeyId, m_defaultSecretKey);
@@ -97,7 +103,7 @@ class DefaultQSCredentialsProvider : public QSCredentialsProvider {
     if (it == m_bucketMap.end()) {
       throw QS::Exception::QSException(
           "Fail to fetch access key for bucket " + bucket +
-          "which is not found in credentials file " + m_credentialsFile + ".");
+          "which is not found in credentials file " + m_credentialsFile );
     }
     return QSCredentials(it->second.first, it->second.second);
   }
@@ -120,7 +126,10 @@ class DefaultQSCredentialsProvider : public QSCredentialsProvider {
   // so are lines with space or tabs and lines starting with bracket "[".
   std::pair<bool, std::string> ReadCredentialsFile(const std::string &file);
 
-  void SetDefaultKey(const std::string &keyId, const std::string &key);
+  void SetDefaultKey(const std::string &keyId, const std::string &key) {
+    m_defaultAccessKeyId = keyId;
+    m_defaultSecretKey = key;
+  }
 
  private:
   using KeyIdToKeyPair = std::pair<std::string, std::string>;

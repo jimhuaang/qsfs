@@ -38,11 +38,12 @@ class Mounter {
 
  public:
   static Mounter &Instance();
-  Outcome IsMountable(const std::string &mountPoint) const;
-  Outcome CheckEmpty(const std::string &mountPoint) const;
-  bool IsMounted(const std::string &mountPoint) const;
-  bool Mount(const Options &options) const;
-  void UnMount(const std::string &mountPoint) const;
+  Outcome IsMountable(const std::string &mountPoint, bool logOn) const;
+  bool IsMounted(const std::string &mountPoint, bool logOn) const;
+  bool Mount(const Options &options, bool logOn) const;
+  bool MountLite(const Options &options, bool LogOn) const;
+  void UnMount(const std::string &mountPoint, bool logOn) const;
+  bool DoMount(const Options &options, bool logOn, void *user_data) const;
 
  private:
   Mounter() = default;

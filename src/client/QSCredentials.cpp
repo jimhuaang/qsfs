@@ -16,28 +16,35 @@
 
 #include "client/QSCredentials.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
 
 #include <sys/stat.h>
 
 #include <fstream>
+#include <memory>
+#include <mutex>  // NOLINT
 #include <string>
 #include <utility>
 
 #include "base/Exception.h"
 #include "base/LogMacros.h"
 #include "base/Utils.h"
+#include "qingstor/Configure.h"
 
 namespace QS {
 
 namespace Client {
 
 using QS::Exception::QSException;
+using std::call_once;
 using std::ifstream;
 using std::make_pair;
+using std::once_flag;
 using std::pair;
 using std::string;
+using std::unique_ptr;
 
 namespace {
 
@@ -46,12 +53,30 @@ pair<bool, string> CheckCredentialsFilePermission(const string& file);
 
 }  // namespace
 
+static unique_ptr<QSCredentialsProvider> credentialsProvider(nullptr);
+static once_flag credentialsProviderOnceFlag;
+
+void InitializeCredentialsProvider(unique_ptr<QSCredentialsProvider> provider) {
+  assert(provider);
+  call_once(credentialsProviderOnceFlag,
+            [&provider] { credentialsProvider = std::move(provider); });
+}
+
+QSCredentialsProvider& GetCredentialsProviderInstance() {
+  call_once(credentialsProviderOnceFlag, [] {
+    credentialsProvider =
+        unique_ptr<QSCredentialsProvider>(new DefaultQSCredentialsProvider(
+            QS::QingStor::Configure::GetCredentialsFile()));
+  });
+  return *credentialsProvider.get();
+}
+
 DefaultQSCredentialsProvider::DefaultQSCredentialsProvider(
     const string& credentialFile)
     : m_credentialsFile(credentialFile) {
   auto outcome = ReadCredentialsFile(credentialFile);
   if (!outcome.first) {
-    throw outcome.second;
+    throw QSException(outcome.second);
   }
 }
 
@@ -60,13 +85,18 @@ pair<bool, string> DefaultQSCredentialsProvider::ReadCredentialsFile(
   bool success = true;
   string errMsg;
   auto Postfix = [&file]() -> string {
-    return "credentials file " + file + ".";
+    return "credentials file " + file;
   };
 
   if (QS::Utils::FileExists(file)) {
     // Check credentials file permission
     auto outcome = CheckCredentialsFilePermission(file);
     if (!outcome.first) return outcome;
+
+    // Check if have permission to read credetials file
+    if (!QS::Utils::HavePermission(file, true)) {
+      return ErrorOut("Credentials file " + file + " : Permisson denied");
+    }
 
     // Read credentials
     static const char* invalidChars = " \t";  // Not allow space and tab
@@ -103,7 +133,7 @@ pair<bool, string> DefaultQSCredentialsProvider::ReadCredentialsFile(
         if (firstPos == lastPos) {  // Found default key
           if (HasDefaultKey()) {
             DebugWarning("More than one default key pairs are provided in " +
-                         Postfix() + "Only set with the first one.");
+                         Postfix() + ". Only set with the first one");
             continue;
           } else {
             SetDefaultKey(line.substr(0, firstPos), line.substr(firstPos + 1));
@@ -115,10 +145,11 @@ pair<bool, string> DefaultQSCredentialsProvider::ReadCredentialsFile(
         }
       }
     } else {
-      return ErrorOut("Fail to read" + Postfix());
-    }  // end of if(credentials)
+      return ErrorOut("Fail to read credentilas file " + file + " : " +
+                      strerror(errno));
+    }
   } else {
-    return ErrorOut("Credentials file " + file + " is not existing.");
+    return ErrorOut("Credentials file " + file + " is not existing");
   }
 
   return {success, errMsg};
@@ -130,21 +161,21 @@ pair<bool, string> CheckCredentialsFilePermission(const string& file) {
   struct stat st;
   if (stat(file.c_str(), &st) != 0) {
     return ErrorOut("Unable to read credentials file " + file + " : " +
-                    strerror(errno) + ".");
+                    strerror(errno));
   }
   if ((st.st_mode & S_IROTH) || (st.st_mode & S_IWOTH) ||
       (st.st_mode & S_IXOTH)) {
     return ErrorOut("Credentials file " + file +
-                    "should not have others permissions.");
+                    " should not have others permissions");
   }
   if ((st.st_mode & S_IRGRP) || (st.st_mode & S_IWGRP) ||
       (st.st_mode & S_IXGRP)) {
     return ErrorOut("Credentials file " + file +
-                    "should not have group permissions.");
+                    " should not have group permissions");
   }
   if ((st.st_mode & S_IXUSR)) {
     return ErrorOut("Credentials file " + file +
-                    "should not have executable permissions.");
+                    " should not have executable permissions");
   }
 
   return {true, ""};

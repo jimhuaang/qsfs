@@ -60,7 +60,7 @@ shared_ptr<Node> Node::Insert(shared_ptr<Node> child) {
   if (child) {
     m_children.emplace(child->m_fileName, child);
   } else {
-    DebugWarning("Try to insert null Node. Go on.");
+    DebugWarning("Try to insert null Node. Go on");
   }
   return child;
 }
@@ -79,14 +79,14 @@ void Node::Remove(shared_ptr<Node> child) {
                    " which is not found. Go on");
     }
   } else {
-    DebugWarning("Try to remove null Node. Go on.")
+    DebugWarning("Try to remove null Node. Go on")
   }
 }
 
 // --------------------------------------------------------------------------
 void Node::RenameChild(const string &oldFileName, const string &newFileName) {
   if (oldFileName == newFileName) {
-    DebugInfo("New file name is the same as the old one. Go on.");
+    DebugInfo("New file name is the same as the old one. Go on");
     return;
   }
 
@@ -104,7 +104,7 @@ void Node::RenameChild(const string &oldFileName, const string &newFileName) {
     m_children.emplace_hint(hint, newFileName, tmp);
   } else {
     DebugWarning("Try to rename Node " + oldFileName +
-                 " which is not found. Go on.");
+                 " which is not found. Go on");
   }
 }
 

@@ -44,16 +44,16 @@ static struct options {
   // when user specifies different values on command line.
   const char *bucket;
   const char *mountPoint;
-  const char *credentials;
   const char *zone;
-  const char *host;
-  const char *protocol;
-  unsigned port = QS::Client::DefaultPort::HTTPS;
-  unsigned retries = QS::Client::Retry::DefaultMaxRetries;
-  const char *addtionalAgent;
+  const char *credentials;
   const char *logDirectory;
   const char *logLevel;        // INFO, WARN, ERROR, FATAL
-  int nonEmpty = 0;            // default mount point is empty
+  unsigned    retries = QS::Client::Retry::DefaultMaxRetries;
+  const char *host;
+  const char *protocol;
+  unsigned    port = QS::Client::DefaultPort::HTTPS;
+  const char *addtionalAgent;
+  int clearLogDir = 0;         // default not clear log dir
   int foreground = 0;          // default not foreground
   int singleThread = 0;        // default multi-thread
   int debug = 0;               // default no debug
@@ -67,20 +67,21 @@ static struct options {
 static const struct fuse_opt optionSpec[] = {
     OPTION("-b=%s",  bucket),         OPTION("--bucket=%s",      bucket),
     OPTION("-m=%s",  mountPoint),     OPTION("--mount=%s",       mountPoint),
-    OPTION("-c=%s",  credentials),    OPTION("--credentials=%s", credentials),
     OPTION("-z=%s",  zone),           OPTION("--zone=%s",        zone),
-    OPTION("-h=%s",  host),           OPTION("--host=%s",        host),
-    OPTION("-p=%s",  protocol),       OPTION("--protocol=%s",    protocol),
-    OPTION("-t=%u",  port),           OPTION("--port=%u",        port),
-    OPTION("-r=%u",  retries),        OPTION("--retries=%u",     retries),
-    OPTION("-a=%s",  addtionalAgent), OPTION("--agent=%s",       addtionalAgent),
+    OPTION("-c=%s",  credentials),    OPTION("--credentials=%s", credentials),
     OPTION("-l=%s",  logDirectory),   OPTION("--logdir=%s",      logDirectory),
-    OPTION("-e=%s",  logLevel),       OPTION("--loglevel=%s",    logLevel),
-    OPTION("-n",     nonEmpty),       OPTION("--nonempty",       nonEmpty),
+    OPTION("-L=%s",  logLevel),       OPTION("--loglevel=%s",    logLevel),
+    OPTION("-r=%u",  retries),        OPTION("--retries=%u",     retries),
+    OPTION("-H=%s",  host),           OPTION("--host=%s",        host),
+    OPTION("-p=%s",  protocol),       OPTION("--protocol=%s",    protocol),
+    OPTION("-P=%u",  port),           OPTION("--port=%u",        port),
+    OPTION("-a=%s",  addtionalAgent), OPTION("--agent=%s",       addtionalAgent),
+    OPTION("-C",     clearLogDir),    OPTION("--clearlogdir",    clearLogDir),
     OPTION("-f",     foreground),     OPTION("--foreground",     foreground),
     OPTION("-s",     singleThread),   OPTION("--single",         singleThread),
     OPTION("-d",     debug),          OPTION("--debug",          debug),
-    OPTION("--help", showHelp),       OPTION("--version",        showVersion),
+    OPTION("-h",     showHelp),       OPTION("--help",           showHelp),
+    OPTION("-V",     showVersion),    OPTION("--version",        showVersion),
     FUSE_OPT_END
 };
 
@@ -95,16 +96,16 @@ void Parse(int argc, char **argv) {
   // can free the defaults if other values are specified.
   options.bucket         = strdup("");
   options.mountPoint     = strdup("");
+  options.zone           = strdup(QS::Client::Zone::PEK_3A);
   options.credentials    = strdup(
       QS::QingStor::Configure::GetDefaultCredentialsFile().c_str());
-  options.zone           = strdup(QS::Client::Zone::PEK_3A);
-  options.host           = strdup(QS::Client::Host::BASE);
-  options.protocol       = strdup(QS::Client::Protocol::HTTPS);
-  options.addtionalAgent = strdup("");
   options.logDirectory   = strdup(
       QS::QingStor::Configure::GetDefaultLogDirectory().c_str());
   options.logLevel       = strdup(
       QS::Logging::GetLogLevelName(QS::Logging::LogLevel::Info).c_str());
+  options.host           = strdup(QS::Client::Host::BASE);
+  options.protocol       = strdup(QS::Client::Protocol::HTTPS);
+  options.addtionalAgent = strdup("");
 
   auto & args = qsOptions.GetFuseArgs();
   if (0 != fuse_opt_parse(&args, &options, optionSpec, NULL)) {
@@ -113,16 +114,16 @@ void Parse(int argc, char **argv) {
 
   qsOptions.SetBucket(options.bucket);
   qsOptions.SetMountPoint(options.mountPoint);
-  qsOptions.SetCredentialsFile(options.credentials);
   qsOptions.SetZone(options.zone);
+  qsOptions.SetCredentialsFile(options.credentials);
+  qsOptions.SetLogDirectory(options.logDirectory);
+  qsOptions.SetLogLevel(QS::Logging::GetLogLevelByName(options.logLevel));
+  qsOptions.SetRetries(options.retries);
   qsOptions.SetHost(options.host);
   qsOptions.SetProtocol(options.protocol);
   qsOptions.SetPort(options.port);
-  qsOptions.SetRetries(options.retries);
   qsOptions.SetAdditionalAgent(options.addtionalAgent);
-  qsOptions.SetLogDirectory(options.logDirectory);
-  qsOptions.SetLogLevel(QS::Logging::GetLogLevelByName(options.logLevel));
-  qsOptions.SetMountPointNonEmpty(options.nonEmpty != 0);
+  qsOptions.SetClearLogDir(options.clearLogDir != 0);
   qsOptions.SetForeground(options.foreground != 0);
   qsOptions.SetSingleThread(options.singleThread != 0);
   qsOptions.SetDebug(options.debug != 0);
@@ -130,13 +131,14 @@ void Parse(int argc, char **argv) {
   qsOptions.setShowVerion(options.showVersion !=0);
 
   // Put signals for fuse_main.
-  // TODO(jim): should we put program name
-  // and put bucket name
+  if(!qsOptions.GetMountPoint().empty()){
+    assert(fuse_opt_add_arg(&args, qsOptions.GetMountPoint().c_str()) == 0);
+  }
   if (qsOptions.IsShowHelp()) {
-    assert(fuse_opt_add_arg(&args, "--help") == 0);
+    assert(fuse_opt_add_arg(&args, "-ho") == 0); // without FUSE usage line
   }
   if (qsOptions.IsShowVersion()) {
-    assert(fuse_opt_add_arg(&args, "--verion") == 0);
+    assert(fuse_opt_add_arg(&args, "--version") == 0);
   }
   if (qsOptions.IsForeground()) {
     assert(fuse_opt_add_arg(&args, "-f") == 0);
@@ -147,6 +149,7 @@ void Parse(int argc, char **argv) {
   if (qsOptions.IsDebug()) {
     assert(fuse_opt_add_arg(&args, "-d") == 0);
   }
+  
 }
 
 }  // namespace Parser

@@ -92,7 +92,7 @@
   {                                                                      \
     QS::Logging::Log *log = QS::Logging::GetLogInstance();               \
     if (log) {                                                           \
-      LOG_IF(INFO, condition)                                            \
+      LOG_IF(INFO, (condition))                                          \
           << QS::Logging::GetLogLevelPrefix(QS::Logging::LogLevel::Info) \
           << msg;                                                        \
       google::FlushLogFiles(google::INFO);                               \
@@ -103,7 +103,7 @@
   {                                                                      \
     QS::Logging::Log *log = QS::Logging::GetLogInstance();               \
     if (log) {                                                           \
-      LOG_IF(WARNING, condition)                                         \
+      LOG_IF(WARNING, (condition))                                       \
           << QS::Logging::GetLogLevelPrefix(QS::Logging::LogLevel::Warn) \
           << msg;                                                        \
       google::FlushLogFiles(google::INFO);                               \
@@ -114,7 +114,7 @@
   {                                                                       \
     QS::Logging::Log *log = QS::Logging::GetLogInstance();                \
     if (log) {                                                            \
-      LOG_IF(ERROR, condition)                                            \
+      LOG_IF(ERROR, (condition))                                          \
           << QS::Logging::GetLogLevelPrefix(QS::Logging::LogLevel::Error) \
           << msg;                                                         \
       google::FlushLogFiles(google::INFO);                                \
@@ -125,7 +125,7 @@
   {                                                                       \
     QS::Logging::Log *log = QS::Logging::GetLogInstance();                \
     if (log) {                                                            \
-      LOG_IF(FATAL, condition)                                            \
+      LOG_IF(FATAL, (condition))                                          \
           << QS::Logging::GetLogLevelPrefix(QS::Logging::LogLevel::Fatal) \
           << msg;                                                         \
     }                                                                     \
@@ -177,7 +177,7 @@
   {                                                                      \
     QS::Logging::Log *log = QS::Logging::GetLogInstance();               \
     if (log && log->IsDebug()) {                                         \
-      LOG_IF(INFO, condition)                                            \
+      LOG_IF(INFO, (condition))                                          \
           << QS::Logging::GetLogLevelPrefix(QS::Logging::LogLevel::Info) \
           << msg;                                                        \
       google::FlushLogFiles(google::INFO);                               \
@@ -188,7 +188,7 @@
   {                                                                      \
     QS::Logging::Log *log = QS::Logging::GetLogInstance();               \
     if (log && log->IsDebug()) {                                         \
-      LOG_IF(WARNING, condition)                                         \
+      LOG_IF(WARNING, (condition))                                       \
           << QS::Logging::GetLogLevelPrefix(QS::Logging::LogLevel::Warn) \
           << msg;                                                        \
       google::FlushLogFiles(google::INFO);                               \
@@ -199,7 +199,7 @@
   {                                                                       \
     QS::Logging::Log *log = QS::Logging::GetLogInstance();                \
     if (log && log->IsDebug()) {                                          \
-      LOG_IF(ERROR, condition)                                            \
+      LOG_IF(ERROR, (condition))                                          \
           << QS::Logging::GetLogLevelPrefix(QS::Logging::LogLevel::Error) \
           << msg;                                                         \
       google::FlushLogFiles(google::INFO);                                \
@@ -210,7 +210,7 @@
   {                                                                       \
     QS::Logging::Log *log = QS::Logging::GetLogInstance();                \
     if (log && log->IsDebug()) {                                          \
-      LOG_IF(FATAL, condition)                                            \
+      LOG_IF(FATAL, (condition))                                          \
           << QS::Logging::GetLogLevelPrefix(QS::Logging::LogLevel::Fatal) \
           << msg;                                                         \
     }                                                                     \

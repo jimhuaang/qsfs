@@ -27,7 +27,7 @@
 
 // Declare main in global namespace before class Log, since friend declarations
 // can only introduce names in the surrounding namespace.
-extern int main(int argc, char** argv);
+extern int main(int argc, char **argv);
 
 namespace QS {
 
@@ -39,19 +39,20 @@ Log *GetLogInstance();
 
 class Log {
  public:
-  Log() = default;
+  Log() noexcept = default;
   virtual ~Log() = default;
 
  public:
-  LogLevel GetLogLevel() const { return m_logLevel; }
-  bool IsDebug() const { return m_isDebug; }
+  LogLevel GetLogLevel() const noexcept { return m_logLevel; }
+  bool IsDebug() const noexcept { return m_isDebug; }
 
  protected:
   virtual void Initialize() = 0;
+  virtual void ClearLogDirectory() const = 0;
 
  private:
-  void SetLogLevel(LogLevel level);
-  void SetDebug(bool debug) { m_isDebug = debug; }
+  void SetLogLevel(LogLevel level) noexcept;
+  void SetDebug(bool debug) noexcept { m_isDebug = debug; }
   FRIEND_TEST(LoggingTest, TestNonFatalLogsLevelInfo);
   FRIEND_TEST(LoggingTest, TestNonFatalLogsLevelWarn);
   FRIEND_TEST(LoggingTest, TestNonFatalLogsLevelError);
@@ -61,14 +62,14 @@ class Log {
   LogLevel m_logLevel = LogLevel::Info;
   bool m_isDebug = false;
 
-  friend int ::main(int argc, char** argv);
+  friend int ::main(int argc, char **argv);
 };
 
 class ConsoleLog : public Log {
  public:
   using BASE = Log;
 
-  ConsoleLog() : BASE() { Initialize(); }
+  ConsoleLog() noexcept : BASE() { Initialize(); }
 
   ConsoleLog(ConsoleLog &&) = delete;
   ConsoleLog(const ConsoleLog &) = delete;
@@ -77,7 +78,8 @@ class ConsoleLog : public Log {
   virtual ~ConsoleLog() = default;
 
  protected:
-  void Initialize() override;
+  void Initialize() noexcept override;
+  void ClearLogDirectory() const noexcept override;
 };
 
 class DefaultLog : public Log {
@@ -96,10 +98,10 @@ class DefaultLog : public Log {
 
  protected:
   void Initialize() override;
+  void ClearLogDirectory() const override;
 
  private:
   std::string m_path;
-  // TODO(jim): add code to clean up log dir
 };
 
 }  // namespace Logging
