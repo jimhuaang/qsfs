@@ -14,19 +14,22 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_QINGSTOR_PARSER_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_QINGSTOR_PARSER_H_  // NOLINT
+#include "client/RetryStrategy.h"
 
 namespace QS {
 
-namespace QingStor {
+namespace Client {
 
-namespace Parser {
-void Parse(int argc, char **argv);
+bool RetryStrategy::ShouldRetry(const Error<QSErrors> &error,
+                                unsigned attemptedRetryTimes) const {
+  return attemptedRetryTimes >= m_maxRetryTimes ? false : error.ShouldRetry();
+}
 
-}  // namespace Parser
-}  // namespace QingStor
+int32_t RetryStrategy::CalculateDelayBeforeNextRetry(
+    const Error<QSErrors> &error, unsigned attemptedRetryTimes) const {
+  return attemptedRetryTimes == 0 ? 0
+                                  : (1 << attemptedRetryTimes) * m_scaleFactor;
+}
+
+}  // namespace Client
 }  // namespace QS
-
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_QINGSTOR_PARSER_H_

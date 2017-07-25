@@ -18,8 +18,10 @@
 
 #include <cassert>
 
+#include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include "base/LogMacros.h"
 #include "base/Utils.h"
@@ -29,9 +31,13 @@ namespace QS {
 namespace Data {
 
 using QS::Utils::EnumHash;
+using std::make_shared;
 using std::string;
 using std::shared_ptr;
+using std::unique_ptr;
 using std::unordered_map;
+
+static const char * const ROOT_PATH = "/";
 
 // --------------------------------------------------------------------------
 const string &GetFileTypeName(FileType fileType) {
@@ -106,6 +112,17 @@ void Node::RenameChild(const string &oldFileName, const string &newFileName) {
     DebugWarning("Try to rename Node " + oldFileName +
                  " which is not found. Go on");
   }
+}
+
+// --------------------------------------------------------------------------
+DirectoryTree::DirectoryTree(time_t mtime, uid_t uid, gid_t gid, mode_t mode) {
+  auto nullNode = make_shared<Node>();
+  m_root = make_shared<Node>(
+      ROOT_PATH, unique_ptr<Entry>(new Entry(ROOT_PATH, 0, mtime, mtime, uid,
+                                             gid, mode, FileType::Directory)),
+      nullNode);
+  m_currentNode = m_root;
+  m_map.emplace(ROOT_PATH, m_root);
 }
 
 }  // namespace Data

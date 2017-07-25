@@ -14,13 +14,13 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "qingstor/Operations.h"
+#include "filesystem/Operations.h"
 
 #include <string.h>
 
 namespace QS {
 
-namespace QingStor {
+namespace FileSystem {
 
 void InitializeFUSECallbacks(struct fuse_operations *fuseOps) {
   memset(fuseOps, 0, sizeof(*fuseOps));  // clear input
@@ -125,5 +125,5 @@ int qsfs_read_buf(const char* path, struct fuse_bufvec **bufp, size_t size, off_
 int qsfs_fallocate(const char* path, int, off_t offseta, off_t offsetb, struct fuse_file_info* fi){   return 0; }
 
 
-}  // namespace QingStor
+}  // namespace FileSystem
 }  // namespace QS

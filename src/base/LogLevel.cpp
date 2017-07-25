@@ -40,10 +40,23 @@ const string &GetLogLevelName(LogLevel logLevel) {
 
 LogLevel GetLogLevelByName(const std::string &name) {
   static unordered_map<string, LogLevel, StringHash> nameLogLevels = {
+      {"info", LogLevel::Info},
+      {"Info", LogLevel::Info},
       {"INFO", LogLevel::Info},
+      {"warn", LogLevel::Warn},
+      {"Warn", LogLevel::Warn},
       {"WARN", LogLevel::Warn},
+      {"warning", LogLevel::Warn},
+      {"Warning", LogLevel::Warn},
+      {"WARNING", LogLevel::Warn},
+      {"error", LogLevel::Error},
+      {"Error", LogLevel::Error},
       {"ERROR", LogLevel::Error},
-      {"FATAL", LogLevel::Fatal}};
+      {"fatal", LogLevel::Fatal},
+      {"Fatal", LogLevel::Fatal},
+      {"FATAL", LogLevel::Fatal}
+      // Add other entries here
+  };
 
   auto it = nameLogLevels.find(name);
   return it != nameLogLevels.end() ? it->second : LogLevel::Info;

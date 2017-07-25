@@ -14,16 +14,16 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "qingstor/Configure.h"
+#include "filesystem/Configure.h"
 
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "qingstor/Options.h"
+#include "filesystem/Options.h"
 
 namespace QS {
 
-namespace QingStor {
+namespace FileSystem {
 
 namespace Configure {
 
@@ -41,14 +41,14 @@ const char* GetQSFSVersion() { return VERSION; }
 string GetDefaultCredentialsFile() { return QSFS_DEFAULT_CREDENTIALS; }
 string GetCredentialsFile() {
   auto customCredentials =
-      QS::QingStor::Options::Instance().GetCredentialsFile();
+      QS::FileSystem::Options::Instance().GetCredentialsFile();
   return customCredentials.empty() ? QSFS_DEFAULT_CREDENTIALS
                                    : customCredentials;
 }
 
 string GetDefaultLogDirectory() { return QSFS_DEFAULT_LOG_DIR; }
 string GetLogDirectory() {
-  auto customLogDir = QS::QingStor::Options::Instance().GetLogDirectory();
+  auto customLogDir = QS::FileSystem::Options::Instance().GetLogDirectory();
   return customLogDir.empty() ? QSFS_DEFAULT_LOG_DIR : customLogDir;
 }
 
@@ -75,5 +75,5 @@ bool IsSafeDiskSpace() {
 }
 
 }  // namespace Configure
-}  // namespace QingStor
+}  // namespace FileSystem
 }  // namespace QS

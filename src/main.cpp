@@ -20,44 +20,40 @@
 
 #include <exception>
 #include <iostream>
-#include <memory>
 
 #include "base/Exception.h"
-#include "base/Logging.h"
-#include "base/Utils.h"
 #include "client/Protocol.h"
-#include "client/QSCredentials.h"
+#include "client/URI.h"
 #include "client/Zone.h"
-#include "qingstor/Configure.h"
-#include "qingstor/Mounter.h"
-#include "qingstor/Options.h"
-#include "qingstor/Parser.h"
+#include "filesystem/Configure.h"
+#include "filesystem/Mounter.h"
+#include "filesystem/Initializer.h"
+#include "filesystem/Options.h"
+#include "filesystem/Parser.h"
 
-using QS::Client::DefaultQSCredentialsProvider;
-using QS::Client::InitializeCredentialsProvider;
-using QS::Client::QSCredentialsProvider;
+#include "qingstor-sdk-cpp/Bucket.h"
+#include "qingstor-sdk-cpp/QingStor.h"
+#include "qingstor-sdk-cpp/QsConfig.h"
+#include "qingstor-sdk-cpp/QsErrors.h"
+
 using QS::Exception::QSException;
-using QS::Logging::ConsoleLog;
-using QS::Logging::DefaultLog;
-using QS::Logging::Log;
-using QS::Logging::InitializeLogging;
-using QS::QingStor::Configure::GetCredentialsFile;
-using QS::QingStor::Configure::GetLogDirectory;
-using QS::QingStor::Configure::GetProgramName;
-using QS::Utils::CreateDirectoryIfNotExistsNoLog;
-using QS::Utils::FileExists;
+using QS::FileSystem::Configure::GetProgramName;
+using QS::FileSystem::Initializer;
 using std::cout;
 using std::endl;
 using std::string;
 using std::to_string;
-using std::unique_ptr;
 
 namespace {
-static const char* illegalChars = "/:\\;!@#$%^&*?|+=";
+
+static const char *illegalChars = "/:\\;!@#$%^&*?|+=";
+
 void ShowQSFSVersion();
 void ShowQSFSHelp();
 void ShowQSFSUsage();
+
 }  // namespace
+
 
 int main(int argc, char **argv) {
   int ret = 0;
@@ -70,16 +66,34 @@ int main(int argc, char **argv) {
   //
   // Parse command line arguments.
   try {
-    QS::QingStor::Parser::Parse(argc, argv);
+    QS::FileSystem::Parser::Parse(argc, argv);
   } catch (const QSException &err) {
     errorHandle(err.what());
     return ret;
   }
 
-  const auto &options = QS::QingStor::Options::Instance();
+  const auto &options = QS::FileSystem::Options::Instance();
   // TODO(jim) : remove this line which is for test
   cout << options << endl << endl;
-  auto &mounter = QS::QingStor::Mounter::Instance();
+
+  // test sdk-cpp
+  QingStor::QingStorService::initService("/home/jim/qsfs.test/qsfs.log/sdk.log");
+
+  QingStor::QsConfig sdkQsConfig;
+  sdkQsConfig.m_LogLevel = "info";
+  sdkQsConfig.m_AccessKeyId = "DIRMZUZDFDCUEGWBMEUX";
+  sdkQsConfig.m_SecretAccessKey = "wpYpihVOy5AWo9SjPZNMvFAuVPhycoRKu252rGjt";
+  QingStor::QingStorService qsService(sdkQsConfig);
+
+  QingStor::ListBucketsInput input;
+  input.SetLocation("pek3a");
+  QingStor::ListBucketsOutput output; 
+
+  auto err = qsService.listBuckets(input, output);
+
+  QingStor::Bucket bucket = qsService.GetBucket("jimbucket1", "pek3a");
+
+  auto &mounter = QS::FileSystem::Mounter::Instance();
   try {
     if (options.IsNoMount()) {
       if (options.IsShowVersion()) {
@@ -114,30 +128,8 @@ int main(int argc, char **argv) {
           throw outcome.second;
         }
 
-        // Initialize logging.
-        if (options.IsForeground()) {
-          InitializeLogging(unique_ptr<Log>(new ConsoleLog));
-        } else {
-          InitializeLogging(unique_ptr<Log>(new DefaultLog(GetLogDirectory())));
-        }
-        auto log = QS::Logging::GetLogInstance();
-        if (log == nullptr) throw "Fail to initialize logging";
-        if (options.IsDebug()) {
-          log->SetDebug(true);
-        }
-        log->SetLogLevel(options.GetLogLevel());
-        if (options.IsClearLogDir()) {
-          log->ClearLogDirectory();
-        }
-
-        // Check if credentials file exists.
-        if (!FileExists(GetCredentialsFile())) {
-          throw "qsfs credentials file " + GetCredentialsFile() +
-              " does not exist";
-        } else {
-          InitializeCredentialsProvider(unique_ptr<QSCredentialsProvider>(
-              new DefaultQSCredentialsProvider(GetCredentialsFile())));
-        }
+        // Do initialization.
+        Initializer::RunInitializers();
 
         // Mount the file system.
         try {
@@ -163,15 +155,16 @@ int main(int argc, char **argv) {
 }
 
 namespace {
-static const char * mountingStr = "qsfs -b=<BUCKET> -m=<MOUNTPOINT> [options]";
+static const char *mountingStr = "qsfs -b=<BUCKET> -m=<MOUNTPOINT> [options]";
 
 void ShowQSFSVersion() {
-  cout << "qsfs version: " << QS::QingStor::Configure::GetQSFSVersion() << endl;
+  cout << "qsfs version: " << QS::FileSystem::Configure::GetQSFSVersion() << endl;
 }
 
 void ShowQSFSHelp() {
   using namespace QS::Client;    // NOLINT
-  using namespace QS::QingStor;  // NOLINT
+  using namespace QS::Client::Http;  // NOLINT
+  using namespace QS::FileSystem;  // NOLINT
   cout <<
   "\n"
   "Mount a QingStor bucket as a file system.\n"
@@ -182,7 +175,7 @@ void ShowQSFSHelp() {
   "       [-P|--port=[value]] [-a|--agent=[value]]\n"
   "       [-C|--clearlogdir] [-f|--foreground] [-s|--single] [-d|--debug]\n"
   "       [-h|--help] [-V|--version]\n"
-  "       [FUSE options] [Module options]\n"
+  "       [FUSE options]\n"
   "\n"
   "  mounting\n"
   "    " << mountingStr << "\n" <<
@@ -193,7 +186,7 @@ void ShowQSFSHelp() {
   "Mandatory argements to long options are mandatory for short options too.\n"
   "  -b, --bucket       Specify bucket name\n"
   "  -m, --mount        Specify mount point (path)\n"
-  "  -z, --zone         Zone or region, default is " << Zone::PEK_3A << "\n" <<
+  "  -z, --zone         Zone or region, default is " << QS::Client::GetDefaultZone() << "\n"
   "  -c, --credentials  Specify credentials file, default is " << 
                                   Configure::GetDefaultCredentialsFile() << "\n" <<
   "  -l, --logdir       Specify log directory, default is " <<
@@ -201,10 +194,10 @@ void ShowQSFSHelp() {
   "  -L, --loglevel     Min log level, message lower than this level don't logged;\n"
   "                     Specify one of following log level: INFO,WARN,ERROR,FATAL;\n"
   "                     INFO is set by default\n"
-  "  -r, --retries      Number of times to retry a failed QingStor transaction\n"
-  "  -H, --host         Host name, default is " << Host::BASE << "\n" <<
+  "  -r, --retries      Number of times to retry a failed transaction\n"
+  "  -H, --host         Host name, default is " << Http::GetDefaultHostName() << "\n" <<
   "  -p, --protocol     Protocol could be https or http, default is " <<
-                                              Protocol::HTTPS << "\n" <<
+                                              GetDefaultProtocolName() << "\n" <<
   "  -P, --port         Specify port, default is 443 for https, 80 for http\n"
   "  -a, --agent        Additional user agent\n"
   "\n"
@@ -223,8 +216,6 @@ void ShowQSFSHelp() {
   "  e.g. nonempty, allow_other, etc. See the FUSE's README for the full set.\n";
 }
 
-void ShowQSFSUsage() {
-  cout << "Usage: " << mountingStr << endl;
-}
+void ShowQSFSUsage() { cout << "Usage: " << mountingStr << endl; }
 
 }  // namespace

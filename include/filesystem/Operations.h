@@ -14,16 +14,16 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_QINGSTOR_OPERATIONS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_QINGSTOR_OPERATIONS_H_  // NOLINT
+#ifndef _QSFS_FUSE_INCLUDED_FILESYSTEM_OPERATIONS_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_FILESYSTEM_OPERATIONS_H_  // NOLINT
 
 #include <sys/stat.h>
 
-#include "qingstor/IncludeFuse.h"  // for fuse.h
+#include "filesystem/IncludeFuse.h"  // for fuse.h
 
 namespace QS {
 
-namespace QingStor {
+namespace FileSystem {
 
 void InitializeFUSECallbacks(struct fuse_operations *fuseOps);
 
@@ -66,8 +66,8 @@ int qsfs_write_buf(const char * path, struct fuse_bufvec *buf, off_t off, struct
 int qsfs_read_buf(const char* path, struct fuse_bufvec **bufp, size_t size, off_t off, struct fuse_file_info* fi);
 int qsfs_fallocate(const char* path, int, off_t offseta, off_t offsetb, struct fuse_file_info* fi);
 
-}  // namespace QingStor
+}  // namespace FileSystem
 }  // namespace QS
 
 // NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_QINGSTOR_OPERATIONS_H_
+#endif  // _QSFS_FUSE_INCLUDED_FILESYSTEM_OPERATIONS_H_

@@ -14,43 +14,44 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_QINGSTOR_MOUNTER_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_QINGSTOR_MOUNTER_H_  // NOLINT
+#ifndef _QSFS_FUSE_INCLUDED_CLIENT_QSCLIENT_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_CLIENT_QSCLIENT_H_  // NOLINT
 
+#include <memory>
 #include <string>
-#include <utility>
+
+#include "base/ThreadPool.h"
+#include "client/Client.h"
+#include "client/RetryStrategy.h"
 
 namespace QS {
 
-namespace QingStor {
+namespace Client {
 
-class Options;
-
-class Mounter {
-  using Outcome = std::pair<bool, std::string>;
+class QSClient : public Client {
+ public:
+  explicit QSClient(const ClientConfiguration &config) : Client(config){}
+  QSClient() = delete;
+  QSClient(QSClient &&) = default;
+  QSClient(const QSClient &) = default;
+  QSClient &operator=(QSClient &&) = default;
+  QSClient &operator=(const QSClient &) = default;
+  ~QSClient();
 
  public:
-  Mounter(Mounter &&) = delete;
-  Mounter(const Mounter &) = delete;
-  Mounter &operator=(Mounter &&) = delete;
-  Mounter &operator=(const Mounter &) = delete;
-  ~Mounter() = default;
-
- public:
-  static Mounter &Instance();
-  Outcome IsMountable(const std::string &mountPoint, bool logOn) const;
-  bool IsMounted(const std::string &mountPoint, bool logOn) const;
-  bool Mount(const Options &options, bool logOn) const;
-  bool MountLite(const Options &options, bool LogOn) const;
-  void UnMount(const std::string &mountPoint, bool logOn) const;
-  bool DoMount(const Options &options, bool logOn, void *user_data) const;
+  // TODO(jim):
+  void Initialize() override;
+  bool Connect() override;
+  bool DisConnect() override;
 
  private:
-  Mounter() = default;
+  std::string m_baseUrl;
+  std::shared_ptr<RetryStrategy> m_retryStrategy;
+  std::shared_ptr<QS::Threading::ThreadPool> m_executor;
 };
 
-}  // namespace QingStor
+}  // namespace Client
 }  // namespace QS
 
 // NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_QINGSTOR_MOUNTER_H_
+#endif  // _QSFS_FUSE_INCLUDED_CLIENT_QSCLIENT_H_

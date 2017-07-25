@@ -1,0 +1,92 @@
+// +-------------------------------------------------------------------------
+// | Copyright (C) 2017 Yunify, Inc.
+// +-------------------------------------------------------------------------
+// | Licensed under the Apache License, Version 2.0 (the "License");
+// | You may not use this work except in compliance with the License.
+// | You may obtain a copy of the License in the LICENSE file, or at:
+// |
+// | http://www.apache.org/licenses/LICENSE-2.0
+// |
+// | Unless required by applicable law or agreed to in writing, software
+// | distributed under the License is distributed on an "AS IS" BASIS,
+// | WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// | See the License for the specific language governing permissions and
+// | limitations under the License.
+// +-------------------------------------------------------------------------
+
+#ifndef _QSFS_FUSE_INCLUDED_CLIENT_CLIENTCONFIGURATION_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_CLIENT_CLIENTCONFIGURATION_H_  // NOLINT
+
+#include <stdint.h>
+
+#include <memory>
+#include <string>
+
+#include "client/Credentials.h"
+#include "client/Protocol.h"
+#include "client/URI.h"
+
+namespace QS {
+
+namespace Client {
+
+enum class ClientLogLevel : int {
+  Debug = -1,
+  Info = 0,
+  Warn = 1,
+  Error = 2,
+  Fatal = 3
+};
+
+const std::string& GetClientLogLevelName(ClientLogLevel level);
+ClientLogLevel GetClientLogLevelByName(const std::string& name);
+
+class ClientConfiguration;
+void InitializeClientConfiguration(std::unique_ptr<ClientConfiguration> config);
+
+class ClientConfiguration {
+ public:
+  static ClientConfiguration& Instance();
+ 
+ public:
+  explicit ClientConfiguration(const Credentials& credentials);
+  explicit ClientConfiguration(const CredentialsProvider& provider);
+
+  ClientConfiguration(const ClientConfiguration&) = default;
+  ClientConfiguration(ClientConfiguration&&) = default;
+  ClientConfiguration& operator=(const ClientConfiguration&) = default;
+  ClientConfiguration& operator=(ClientConfiguration&&) = default;
+
+ public:
+  // accessor
+  const std::string& GetLocation() { return m_location; }
+  Http::Host GetHost() { return m_host; }
+  Http::Protocol GetProtocol() { return m_protocol; }
+  uint16_t GetPort() { return m_port; }
+  int GetConnectionRetried() { return m_connectionRetries; }
+  const std::string& GetAdditionalAgent() { return m_additionalUserAgent; }
+  ClientLogLevel GetClientLogLevel() { return m_logLevel; }
+
+ private:
+  const std::string& GetAccessKeyId() { return m_accessKeyId; }
+  const std::string& GetSecretKey() { return m_secretKey; }
+
+ private:
+  ClientConfiguration() = default;
+
+  std::string m_accessKeyId;
+  std::string m_secretKey;
+  std::string m_location;  // zone or region
+  Http::Host m_host;
+  Http::Protocol m_protocol;
+  uint16_t m_port;
+  int m_connectionRetries;
+  std::string m_additionalUserAgent;
+  ClientLogLevel m_logLevel;
+};
+
+}  // namespace Client
+}  // namespace QS
+
+// NOLINTNEXTLINE
+#endif  // _QSFS_FUSE_INCLUDED_CLIENT_CLIENTCONFIGURATION_H_

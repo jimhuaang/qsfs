@@ -26,7 +26,7 @@
 
 namespace QS {
 
-namespace QingStor {
+namespace FileSystem {
 
 namespace Configure {
 
@@ -59,7 +59,7 @@ size_t GetMaxCacheSize();
 bool IsSafeDiskSpace();
 
 }  // namespace Configure
-}  // namespace QingStor
+}  // namespace FileSystem
 }  // namespace QS
 
 // NOLINTNEXTLIN

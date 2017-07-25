@@ -23,6 +23,7 @@
 #include <unistd.h>
 
 #include <memory>
+#include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -54,7 +55,7 @@ enum class FileType {
 const std::string &GetFileTypeName(FileType fileType);
 
 /**
- * QingStor object file metadata
+ * Object file metadata
  */
 class Entry {
  public:
@@ -108,6 +109,9 @@ class Entry {
     FileMetaData &operator=(FileMetaData &&) = default;
     FileMetaData &operator=(const FileMetaData &) = default;
     ~FileMetaData() = default;
+
+    // TODO(jim) :
+    // struct stat ToStat();
 
     friend class Entry;
   };
@@ -236,6 +240,26 @@ class Node {
   FileNameToNodeMap m_children;
 
   friend class QS::Data::Cache;
+};
+
+/**
+ * Representation of the filesystem's directory tree.
+ */
+class DirectoryTree {
+ public:
+  DirectoryTree(time_t mtime, uid_t uid, gid_t gid, mode_t mode);
+  DirectoryTree(DirectoryTree &&) = delete;
+  DirectoryTree(const DirectoryTree &) = delete;
+  DirectoryTree &operator=(DirectoryTree &&) = delete;
+  DirectoryTree &operator=(const DirectoryTree &) = delete;
+  ~DirectoryTree() { m_map.clear(); }
+
+ public:
+ private:
+  std::shared_ptr<Node> m_root;
+  std::shared_ptr<Node> m_currentNode;
+  FileNameToNodeMap m_map;  // record all nodes
+  std::recursive_mutex m_mutex;
 };
 
 }  // namespace Data

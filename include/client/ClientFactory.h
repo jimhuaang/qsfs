@@ -14,13 +14,38 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_QINGSTOR_INCLUDEFUSE_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_QINGSTOR_INCLUDEFUSE_H_  // NOLINT
+#ifndef _QSFS_FUSE_INCLUDED_CLIENT_CLIENTFACTORY_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_CLIENT_CLIENTFACTORY_H_  // NOLINT
 
-// To prevent redefining "FUSE_USE_VERSION",
-// include this file instead of fuse.h.
+#include <memory>
 
-#define FUSE_USE_VERSION 26
-#include <fuse.h>
+namespace QS {
 
-#endif  // _QSFS_FUSE_INCLUDED_QINGSTOR_INCLUDEFUSE_H_
+namespace Client {
+
+class Client;
+class ClientImpl;
+
+class ClientFactory {
+ public:
+  ClientFactory(ClientFactory &&) = delete;
+  ClientFactory(const ClientFactory &) = delete;
+  ClientFactory &operator=(ClientFactory &&) = delete;
+  ClientFactory &operator=(const ClientFactory &) = delete;
+  ~ClientFactory() = default;
+
+ public:
+  static ClientFactory &Instance();
+
+ private:
+  ClientFactory() = default;
+
+  std::shared_ptr<ClientImpl> MakeClientImpl();
+  friend class Client;
+};
+
+}  // namespace Client
+}  // namespace QS
+
+// NOLINTNEXTLINE
+#endif  // _QSFS_FUSE_INCLUDED_CLIENT_CLIENTFACTORY_H_

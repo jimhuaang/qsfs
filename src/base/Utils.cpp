@@ -36,7 +36,7 @@
 #include <vector>
 
 #include "base/LogMacros.h"
-#include "qingstor/Configure.h"
+#include "filesystem/Configure.h"
 
 namespace QS {
 
@@ -57,7 +57,7 @@ string PostErrMsg(const string &path) { return path + " : " + strerror(errno); }
 // --------------------------------------------------------------------------
 bool CreateDirectoryIfNotExistsNoLog(const string &path) {
   int errorCode =
-      mkdir(path.c_str(), QS::QingStor::Configure::GetDefineDirMode());
+      mkdir(path.c_str(), QS::FileSystem::Configure::GetDefineDirMode());
   bool success = (errorCode == 0 || errno == EEXIST);
   if (!success) cerr << "Fail to creating directory " + PostErrMsg(path) + "\n";
   return success;
@@ -328,11 +328,11 @@ bool GetProcessEffectiveUserID(uid_t *uid, bool logOn) {
   try {
     *uid = geteuid();
   } catch (const std::exception &err) {
-    DebugError(err.what());
+    Error(err.what());
     return false;
   } catch (...) {
     if (logOn) {
-      DebugError(
+      Error(
           "Error while getting the effective user ID of the calling process");
     }
     return false;
@@ -345,11 +345,11 @@ bool GetProcessEffectiveGroupID(gid_t *gid, bool logOn) {
   try {
     *gid = getegid();
   } catch (const std::exception &err) {
-    DebugError(err.what());
+    Error(err.what());
     return false;
   } catch (...) {
     if (logOn) {
-      DebugError(
+      Error(
           "Error while getting the effective group ID of the calling process");
     }
     return false;

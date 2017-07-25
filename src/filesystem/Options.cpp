@@ -14,7 +14,7 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "qingstor/Options.h"
+#include "filesystem/Options.h"
 
 #include <iomanip>
 #include <iostream>
@@ -26,7 +26,7 @@
 
 namespace QS {
 
-namespace QingStor {
+namespace FileSystem {
 
 using QS::Logging::GetLogLevelName;
 using std::ostream;
@@ -78,5 +78,5 @@ ostream &operator<<(ostream &os, const Options &opts) {
          << "] " << std::noboolalpha;
 }
 
-}  // namespace QingStor
+}  // namespace FileSystem
 }  // namespace QS

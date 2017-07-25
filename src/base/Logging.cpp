@@ -28,12 +28,12 @@
 #include "base/Exception.h"
 #include "base/LogLevel.h"
 #include "base/Utils.h"
-#include "qingstor/Configure.h"
+#include "filesystem/Configure.h"
 
 namespace {
 
 void InitializeGLog() {
-  google::InitGoogleLogging(QS::QingStor::Configure::GetProgramName());
+  google::InitGoogleLogging(QS::FileSystem::Configure::GetProgramName());
 }
 
 }  // namespace
@@ -60,7 +60,7 @@ void InitializeLogging(unique_ptr<Log> log) {
 Log* GetLogInstance() {
   std::call_once(logOnceFlag, [] {
     logInstance = unique_ptr<Log>(
-        new DefaultLog(QS::QingStor::Configure::GetLogDirectory()));
+        new DefaultLog(QS::FileSystem::Configure::GetLogDirectory()));
     InitializeGLog();
   });
   return logInstance.get();
@@ -74,7 +74,9 @@ void Log::SetLogLevel(LogLevel level) noexcept {
 void ConsoleLog::Initialize() noexcept { FLAGS_logtostderr = 1; }
 
 void ConsoleLog::ClearLogDirectory() const noexcept {
-  std::cerr << "Log to STDERR with 'forground' option, do nothing for option clearlogdir"<< std::endl;
+  std::cerr << "Log to STDERR with 'forground' option, do nothing for option "
+               "clearlogdir"
+            << std::endl;
 }
 
 void DefaultLog::Initialize() {
@@ -95,7 +97,7 @@ void DefaultLog::Initialize() {
   }
 }
 
-void DefaultLog::ClearLogDirectory() const{
+void DefaultLog::ClearLogDirectory() const {
   auto outcome = QS::Utils::DeleteFilesInDirectoryNoLog(m_path, false);
   if (!outcome.first) {
     std::cerr << "Unable to clear log directory : ";

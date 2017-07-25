@@ -25,7 +25,7 @@
 #include "base/LogMacros.h"
 #include "base/Utils.h"
 #include "data/Directory.h"
-#include "qingstor/Configure.h"
+#include "filesystem/Configure.h"
 
 namespace QS {
 
@@ -554,10 +554,10 @@ bool Cache::Write(const string &fileId, off_t offset, char *buffer, size_t len,
 
 // --------------------------------------------------------------------------
 bool Cache::Free(size_t size) {
-  if (size > QS::QingStor::Configure::GetMaxCacheSize()) {
+  if (size > QS::FileSystem::Configure::GetMaxCacheSize()) {
     DebugError("Try to free cache of " + to_string(size) +
                " bytes which surpass the maximum cache size(" +
-               to_string(QS::QingStor::Configure::GetMaxCacheSize()) + ")");
+               to_string(QS::FileSystem::Configure::GetMaxCacheSize()) + ")");
     return false;
   }
   if (HasFreeSpace(size)) {
@@ -651,7 +651,7 @@ void Cache::Resize(const string &fileId, size_t newSize) {
 
 // --------------------------------------------------------------------------
 bool Cache::HasFreeSpace(size_t size) const {
-  return GetSize() + size < QS::QingStor::Configure::GetMaxCacheSize();
+  return GetSize() + size < QS::FileSystem::Configure::GetMaxCacheSize();
 }
 
 // --------------------------------------------------------------------------

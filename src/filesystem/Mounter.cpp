@@ -14,11 +14,12 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "qingstor/Mounter.h"
+#include "filesystem/Mounter.h"
 
 #include <errno.h>
 #include <string.h>  // for strerror, strcmp
 
+#include <assert.h>
 #include <dirent.h>
 #include <stdio.h>   // for popen
 #include <stdlib.h>  // for system
@@ -32,14 +33,14 @@
 #include "base/Exception.h"
 #include "base/LogMacros.h"
 #include "base/Utils.h"
-#include "qingstor/Drive.h"
-#include "qingstor/IncludeFuse.h"  // for fuse.h
-#include "qingstor/Operations.h"
-#include "qingstor/Options.h"
+#include "filesystem/Drive.h"
+#include "filesystem/IncludeFuse.h"  // for fuse.h
+#include "filesystem/Operations.h"
+#include "filesystem/Options.h"
 
 namespace QS {
 
-namespace QingStor {
+namespace FileSystem {
 
 using QS::Exception::QSException;
 using std::call_once;
@@ -201,6 +202,13 @@ bool Mounter::DoMount(const Options &options, bool logOn,
     return true;
   }
 
+  auto pDrive = static_cast<shared_ptr<Drive> *>(user_data);
+  assert(pDrive != nullptr);
+  if (!(*pDrive)->IsMountable()) {
+    // TODO(jim): add more detailed info from Drive
+    throw QSException("Unable to mount ...");
+  }
+
   // Do really mount
   auto &mountPoint = options.GetMountPoint();
   static int maxTries = 3;
@@ -230,5 +238,5 @@ bool Mounter::DoMount(const Options &options, bool logOn,
   return false;
 }
 
-}  // namespace QingStor
+}  // namespace FileSystem
 }  // namespace QS

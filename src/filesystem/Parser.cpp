@@ -14,7 +14,7 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "qingstor/Parser.h"
+#include "filesystem/Parser.h"
 
 #include <assert.h>
 #include <stddef.h>  // for offsetof
@@ -24,20 +24,24 @@
 #include "base/LogLevel.h"
 #include "client/Protocol.h"
 #include "client/RetryStrategy.h"
+#include "client/URI.h"
 #include "client/Zone.h"
-#include "qingstor/Configure.h"
-#include "qingstor/IncludeFuse.h"  // for fuse.h
-#include "qingstor/Options.h"
+#include "filesystem/Configure.h"
+#include "filesystem/IncludeFuse.h"  // for fuse.h
+#include "filesystem/Options.h"
 
 namespace QS {
 
-namespace QingStor {
+namespace FileSystem {
 
 using QS::Exception::QSException;
 
 namespace Parser {
 
 namespace {
+
+using namespace QS::Client;  // NOLINT
+
 static struct options {
   // We can't set default values for the char* fields here
   // because fuse_opt_parse would attempt to free() them
@@ -48,10 +52,10 @@ static struct options {
   const char *credentials;
   const char *logDirectory;
   const char *logLevel;        // INFO, WARN, ERROR, FATAL
-  unsigned    retries = QS::Client::Retry::DefaultMaxRetries;
+  unsigned    retries = Retry::DefaultMaxRetries;
   const char *host;
   const char *protocol;
-  unsigned    port = QS::Client::DefaultPort::HTTPS;
+  unsigned    port = Http::GetDefaultPort(Http::GetDefaultProtocol());
   const char *addtionalAgent;
   int clearLogDir = 0;         // default not clear log dir
   int foreground = 0;          // default not foreground
@@ -88,7 +92,7 @@ static const struct fuse_opt optionSpec[] = {
 }  // namespace
 
 void Parse(int argc, char **argv) {
-  auto &qsOptions = QS::QingStor::Options::Instance();
+  auto &qsOptions = QS::FileSystem::Options::Instance();
   qsOptions.SetFuseArgs(argc, argv);
 
   // Set defaults for const char*.
@@ -96,15 +100,17 @@ void Parse(int argc, char **argv) {
   // can free the defaults if other values are specified.
   options.bucket         = strdup("");
   options.mountPoint     = strdup("");
-  options.zone           = strdup(QS::Client::Zone::PEK_3A);
+  options.zone           = strdup(QS::Client::GetDefaultZone());
   options.credentials    = strdup(
-      QS::QingStor::Configure::GetDefaultCredentialsFile().c_str());
+      QS::FileSystem::Configure::GetDefaultCredentialsFile().c_str());
   options.logDirectory   = strdup(
-      QS::QingStor::Configure::GetDefaultLogDirectory().c_str());
+      QS::FileSystem::Configure::GetDefaultLogDirectory().c_str());
   options.logLevel       = strdup(
       QS::Logging::GetLogLevelName(QS::Logging::LogLevel::Info).c_str());
-  options.host           = strdup(QS::Client::Host::BASE);
-  options.protocol       = strdup(QS::Client::Protocol::HTTPS);
+  options.host           = strdup(
+      QS::Client::Http::GetDefaultHostName().c_str());
+  options.protocol       = strdup(
+      QS::Client::Http::GetDefaultProtocolName().c_str());
   options.addtionalAgent = strdup("");
 
   auto & args = qsOptions.GetFuseArgs();
@@ -153,5 +159,5 @@ void Parse(int argc, char **argv) {
 }
 
 }  // namespace Parser
-}  // namespace QingStor
+}  // namespace FileSystem
 }  // namespace QS
