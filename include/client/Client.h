@@ -26,10 +26,11 @@ namespace QS {
 namespace Client {
 
 class ClientImpl;
+class TransferHandle;
 
 class Client {
  public:
-  explicit Client(const ClientConfiguration &config);
+  Client();
   Client(Client &&) = default;
   Client(const Client &) = default;
   Client &operator=(Client &&) = default;
@@ -42,16 +43,22 @@ class Client {
   virtual bool Connect() = 0;
   virtual bool DisConnect() = 0;
 
+/*   virtual std::shared_ptr<TransferHandle> UploadFile() = 0;
+  virtual std::shared_ptr<TransferHandle> RetryUpload() = 0;
+  virtual void UploadDirectory(const std::string &directory) = 0;
+
+  virtual std::shared_ptr<TransferHandle> DownloadFile() = 0;
+  virtual std::shared_ptr<TransferHandle> RetryDownload() = 0;
+  virtual void DownloadDirectory(const std::string &directory) = 0;
+
+  virtual void AbortMultipartUpload(
+      const std::shared_ptr<TransferHandle> &handle) = 0; */
+
  protected:
   std::shared_ptr<ClientImpl> GetClientImpl();
 
-  const ClientConfiguration &GetClientConfiguration() {
-    return m_configuration;
-  }
-
  private:
   std::shared_ptr<ClientImpl> m_impl;
-  ClientConfiguration m_configuration;
 };
 
 }  // namespace Client

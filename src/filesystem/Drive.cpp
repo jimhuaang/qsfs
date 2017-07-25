@@ -21,8 +21,12 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <mutex>  // NOLINT
 
+#include "base/LogMacros.h"
 #include "base/Utils.h"
+#include "client/ClientFactory.h"
+#include "data/Cache.h"
 #include "data/Directory.h"
 #include "filesystem/Configure.h"
 
@@ -30,28 +34,43 @@ namespace QS {
 
 namespace FileSystem {
 
+using QS::Data::Cache;
 using QS::Data::DirectoryTree;
 using QS::Utils::GetProcessEffectiveUserID;
 using QS::Utils::GetProcessEffectiveGroupID;
 using std::make_shared;
 
-Drive::Drive() : m_mountable(true) {
+static std::unique_ptr<Drive> instance(nullptr);
+static std::once_flag flag;
+
+Drive &Drive::Instance() {
+  std::call_once(flag, [] { instance.reset(new Drive); });
+  return *instance.get();
+}
+
+Drive::Drive()
+    : m_mountable(true),
+      m_client(QS::Client::ClientFactory::Instance().MakeClient()),
+      m_cache(make_shared<Cache>()),
+      m_directoryTree(make_shared<DirectoryTree>()) {
   uid_t uid = -1;
   if (!GetProcessEffectiveUserID(&uid, true)) {
     m_mountable.store(false);
+    Error("Fail to get process user id when constructing Drive");
+    return;
   }
   gid_t gid = -1;
   if (!GetProcessEffectiveGroupID(&gid, true)) {
     m_mountable.store(false);
+    Error("Fail to get process group id when constructing Drive");
+    return;
   }
 
   m_directoryTree = make_shared<DirectoryTree>(time(NULL), uid, gid,
                                                Configure::GetRootMode());
-
-  // TODO(jim): init cache and client
 }
 
-bool Drive::IsMountable() { return m_mountable.load(); }
+bool Drive::IsMountable() const { return m_mountable.load(); }
 
 }  // namespace FileSystem
 }  // namespace QS

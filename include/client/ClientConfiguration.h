@@ -26,6 +26,10 @@
 #include "client/Protocol.h"
 #include "client/URI.h"
 
+// Declare in global namespace before class ClientConfiguration, since friend
+// declarations can only introduce names in the surrounding namespace.
+extern void ClientConfigurationInitializer();
+
 namespace QS {
 
 namespace Client {
@@ -70,6 +74,8 @@ class ClientConfiguration {
  private:
   const std::string& GetAccessKeyId() { return m_accessKeyId; }
   const std::string& GetSecretKey() { return m_secretKey; }
+  void InitializeByOptions();
+  friend void ::ClientConfigurationInitializer();
 
  private:
   ClientConfiguration() = default;

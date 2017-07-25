@@ -19,9 +19,12 @@
 #include <memory>
 #include <mutex>  // NOLINT
 
-#include "client/ClientImpl.h"
+#include "client/Client.h"
 #include "client/ClientConfiguration.h"
+#include "client/ClientImpl.h"
+#include "client/NullClient.h"
 #include "client/NullClientImpl.h"
+#include "client/QSClient.h"
 #include "client/QSClientImpl.h"
 #include "client/URI.h"
 
@@ -41,20 +44,35 @@ ClientFactory &ClientFactory::Instance() {
   return *instance.get();
 }
 
+shared_ptr<Client> ClientFactory::MakeClient() {
+  auto client = shared_ptr<Client>(nullptr);
+  auto host = ClientConfiguration::Instance().GetHost();
+  switch (host) {
+    case Http::Host::QingStor:
+      client = make_shared<QSClient>();
+      break;
+    // Add other cases here
+    case Http::Host::Null:  // Bypass
+    default:
+      client = make_shared<NullClient>();
+      break;
+  }
+  return client;
+}
+
 shared_ptr<ClientImpl> ClientFactory::MakeClientImpl() {
   auto clientImpl = shared_ptr<ClientImpl>(nullptr);
-
   auto host = ClientConfiguration::Instance().GetHost();
   switch (host) {
     case Http::Host::QingStor:
       clientImpl = make_shared<QSClientImpl>();
       break;
-    // Add other host cases here
+    // Add other cases here
+    case Http::Host::Null:  // Bypass
     default:
       clientImpl = make_shared<NullClientImpl>();
       break;
   }
-
   return clientImpl;
 }
 

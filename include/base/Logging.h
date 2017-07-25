@@ -27,7 +27,6 @@
 
 // Declare in global namespace before class Log, since friend declarations
 // can only introduce names in the surrounding namespace.
-//extern int main(int argc, char **argv);
 extern void LoggingInitializer();
 
 namespace QS {
@@ -63,7 +62,6 @@ class Log {
   LogLevel m_logLevel = LogLevel::Info;
   bool m_isDebug = false;
 
-  //friend int ::main(int argc, char **argv);
   friend void ::LoggingInitializer();
 };
 

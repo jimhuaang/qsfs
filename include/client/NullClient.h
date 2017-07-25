@@ -14,42 +14,32 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "client/Zone.h"
+#ifndef _QSFS_FUSE_INCLUDED_CLIENT_NULLCLIENT_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_CLIENT_NULLCLIENT_H_  // NOLINT
 
-#include <unordered_map>
-
-#include "base/LogMacros.h"
-#include "base/Utils.h"
+#include "client/Client.h"
 
 namespace QS {
 
 namespace Client {
 
-using std::string;
-using std::unordered_map;
+class NullClient : public Client {
+ public:
+  NullClient() = default;
+  NullClient(NullClient &&) = default;
+  NullClient(const NullClient &) = default;
+  NullClient &operator=(NullClient &&) = default;
+  NullClient &operator=(const NullClient &) = default;
+  ~NullClient() = default;
 
-string FromEndPoint(const string &zoneName) {
-  if (zoneName.empty()) {
-    DebugError("Try to get end point with empty zone name");
-    return string();
-  }
-
-  unordered_map<string, string, QS::Utils::StringHash> zoneNameToEndPointMap = {
-      {QSZone::AP_1, "ap1.qingstor.com"},     {QSZone::PEK_2, "pek2.qingstor.com"},
-      {QSZone::PEK_3A, "pek3a.qingstor.com"}, {QSZone::GD_1, "gd1.qingstor.com"},
-      {QSZone::GD_2A, "gd2a.qingstor.com"},   {QSZone::SH_1A, "sh1a.qingstor.com"}
-  };
-
-  auto it = zoneNameToEndPointMap.find(zoneName);
-  if (it != zoneNameToEndPointMap.end()) {
-    return it->second;
-  } else {
-    DebugError("Try to get end point with an unrecognized zone name " + zoneName);
-    return string();
-  }
-}
-
-const char *GetDefaultZone() { return QSZone::PEK_3A; }
+ public:
+  void Initialize() override {}
+  bool Connect() override { return true; }
+  bool DisConnect() override { return true; }
+};
 
 }  // namespace Client
 }  // namespace QS
+
+// NOLINTNEXTLINE
+#endif  // _QSFS_FUSE_INCLUDED_CLIENT_NULLCLIENT_H_

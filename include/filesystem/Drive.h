@@ -17,7 +17,7 @@
 #ifndef _QSFS_FUSE_INCLUDED_FILESYSTEM_DRIVE_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_FILESYSTEM_DRIVE_H_  // NOLINT
 
-#include <atomic>
+#include <atomic>  // NOLINT
 #include <memory>
 
 namespace QS {
@@ -35,21 +35,22 @@ namespace FileSystem {
 
 class Drive {
  public:
-  Drive();
-  Drive(Drive &&) = default;
-  Drive(const Drive &) = default;
-  Drive &operator=(Drive &&) = default;
-  Drive &operator=(const Drive &) = default;
+  Drive(Drive &&) = delete;
+  Drive(const Drive &) = delete;
+  Drive &operator=(Drive &&) = delete;
+  Drive &operator=(const Drive &) = delete;
   ~Drive() = default;
 
  public:
-  bool IsMountable();
+  static Drive &Instance();
+  bool IsMountable() const;
 
  private:
+  Drive();
+  std::atomic<bool> m_mountable;
   std::shared_ptr<QS::Client::Client> m_client;
   std::shared_ptr<QS::Data::Cache> m_cache;
   std::shared_ptr<QS::Data::DirectoryTree> m_directoryTree;
-  std::atomic<bool> m_mountable;
 };
 
 }  // namespace FileSystem

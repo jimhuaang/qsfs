@@ -14,9 +14,12 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
+#include <iostream>
 #include <memory>
+#include <sstream>
 
 #include "base/Exception.h"
+#include "base/LogMacros.h"
 #include "base/Logging.h"
 #include "base/Utils.h"
 #include "client/ClientConfiguration.h"
@@ -39,8 +42,8 @@ using QS::FileSystem::Priority;
 using QS::FileSystem::PriorityInitFuncPair;
 using QS::Logging::ConsoleLog;
 using QS::Logging::DefaultLog;
-using QS::Logging::Log;
 using QS::Logging::InitializeLogging;
+using QS::Logging::Log;
 using QS::Utils::FileExists;
 using std::unique_ptr;
 
@@ -75,16 +78,30 @@ void CredentialsInitializer() {
 void ClientConfigurationInitializer() {
   InitializeClientConfiguration(unique_ptr<ClientConfiguration>(
       new ClientConfiguration(GetCredentialsProviderInstance())));
+  ClientConfiguration::Instance().InitializeByOptions();
+}
+
+void PrintCommandLineOptions() {
+  // Notice: this should only be invoked after logging initialization
+  const auto &options = QS::FileSystem::Options::Instance();
+  std::stringstream ss;
+  ss << "<<Command Line Options>> ";
+  ss << options << std::endl;
+  DebugInfo(ss.str());
 }
 
 namespace {
 
 // Register the initializers
-static Initializer logInitializer(
-    PriorityInitFuncPair(Priority::First, LoggingInitializer));
+static Initializer logInitializer(PriorityInitFuncPair(Priority::First,
+                                                       LoggingInitializer));
 static Initializer credentialsInitializer(
     PriorityInitFuncPair(Priority::Second, CredentialsInitializer));
 static Initializer clientConfigInitializer(
     PriorityInitFuncPair(Priority::Third, ClientConfigurationInitializer));
+
+// Priority must be lower than log initializer
+static Initializer printCommandLineOpts(
+    PriorityInitFuncPair(Priority::Fourth, PrintCommandLineOptions));
 
 }  // namespace

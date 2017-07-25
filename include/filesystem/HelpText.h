@@ -14,44 +14,22 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_CLIENTFACTORY_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_CLIENTFACTORY_H_  // NOLINT
-
-#include <memory>
+#ifndef _QSFS_FUSE_INCLUDED_FILESYSTEM_HELPTEXT_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_FILESYSTEM_HELPTEXT_H_  // NOLINT
 
 namespace QS {
 
 namespace FileSystem {
-class Drive;
+
+namespace HelpText {
+
+void ShowQSFSVersion();
+void ShowQSFSHelp();
+void ShowQSFSUsage();
+
+}  // namespace HelpText
 }  // namespace FileSystem
-
-namespace Client {
-
-class Client;
-class ClientImpl;
-
-class ClientFactory {
- public:
-  ClientFactory(ClientFactory &&) = delete;
-  ClientFactory(const ClientFactory &) = delete;
-  ClientFactory &operator=(ClientFactory &&) = delete;
-  ClientFactory &operator=(const ClientFactory &) = delete;
-  ~ClientFactory() = default;
-
- public:
-  static ClientFactory &Instance();
-
- private:
-  ClientFactory() = default;
-
-  std::shared_ptr<Client> MakeClient();
-  std::shared_ptr<ClientImpl> MakeClientImpl();
-  friend class Client;
-  friend class QS::FileSystem::Drive;
-};
-
-}  // namespace Client
 }  // namespace QS
 
 // NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_CLIENTFACTORY_H_
+#endif  // _QSFS_FUSE_INCLUDED_FILESYSTEM_HELPTEXT_H_

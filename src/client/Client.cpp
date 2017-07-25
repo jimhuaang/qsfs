@@ -32,8 +32,8 @@ using std::shared_ptr;
 
 static std::once_flag clientImplOnceFlag;
 
-Client::Client(const ClientConfiguration &config)
-    : m_impl(make_shared<NullClientImpl>()), m_configuration(config) {}
+Client::Client()
+    : m_impl(make_shared<NullClientImpl>()) {}
 
 shared_ptr<ClientImpl> Client::GetClientImpl() {
   std::call_once(clientImplOnceFlag, [this] {

@@ -30,6 +30,7 @@
 #include "client/URI.h"
 #include "client/Zone.h"
 #include "filesystem/Configure.h"
+#include "filesystem/Options.h"
 
 namespace QS {
 
@@ -41,6 +42,8 @@ using std::call_once;
 using std::string;
 using std::unique_ptr;
 using std::unordered_map;
+
+const static int CONNECTION_DEFAULT_RETRIES = 3;
 
 const string &GetClientLogLevelName(ClientLogLevel level) {
   static unordered_map<ClientLogLevel, string, EnumHash> logLevelNames = {
@@ -104,14 +107,26 @@ ClientConfiguration::ClientConfiguration(
       m_host(Http::GetDefaultHost()),
       m_protocol(QS::Client::Http::GetDefaultProtocol()),
       m_port(Http::GetDefaultPort(m_protocol)),
-      m_connectionRetries(3),
+      m_connectionRetries(CONNECTION_DEFAULT_RETRIES),
       m_additionalUserAgent(std::string()),
       m_logLevel(ClientLogLevel::Warn) {}
 
 ClientConfiguration::ClientConfiguration(const CredentialsProvider &provider)
     : ClientConfiguration(provider.GetCredentials()) {}
 
-// TODO(jim): set ClientLogLevel deafult with WARN,but INFO when debug on
+void ClientConfiguration::InitializeByOptions(){
+  const auto& options = QS::FileSystem::Options::Instance();
+  m_location = options.GetZone();
+  m_host = Http::StringToHost(options.GetHost());
+  m_protocol = Http::StringToProtocol(options.GetProtocol());
+  m_port = options.GetPort();
+  m_connectionRetries = CONNECTION_DEFAULT_RETRIES;
+  m_additionalUserAgent = options.GetAdditionalAgent();
+  m_logLevel = static_cast<ClientLogLevel>(options.GetLogLevel());
+  if(options.IsDebug()){
+    m_logLevel = ClientLogLevel::Debug;
+  }
+}
 
 }  // namespace Client
 }  // namespace QS

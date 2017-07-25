@@ -28,7 +28,6 @@
 #include <memory>
 #include <mutex>  // NOLINT
 #include <utility>
-#include <vector>
 
 #include "base/Exception.h"
 #include "base/LogMacros.h"
@@ -44,13 +43,10 @@ namespace FileSystem {
 
 using QS::Exception::QSException;
 using std::call_once;
-using std::make_shared;
 using std::once_flag;
 using std::pair;
-using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
-using std::vector;
 
 static unique_ptr<Mounter> instance(nullptr);
 static once_flag flag;
@@ -151,16 +147,11 @@ bool Mounter::IsMounted(const string &mountPoint, bool logOn) const {
 
 // --------------------------------------------------------------------------
 bool Mounter::Mount(const Options &options, bool logOn) const {
-  // TODO(jim)
-  // Initialize Drive
-  auto qsDrive = make_shared<Drive>();
-
-  return DoMount(options, logOn, &qsDrive);
-}
-
-// --------------------------------------------------------------------------
-bool Mounter::MountLite(const Options &options, bool logOn) const {
-  return DoMount(options, logOn, NULL);
+  const auto &drive = QS::FileSystem::Drive::Instance();
+  if (!drive.IsMountable()) {
+    throw QSException("Unable to mount ...");
+  }
+  return DoMount(options, logOn, nullptr);
 }
 
 // --------------------------------------------------------------------------
@@ -194,22 +185,8 @@ bool Mounter::DoMount(const Options &options, bool logOn,
   static fuse_operations qsfsOperations;
   InitializeFUSECallbacks(&qsfsOperations);
 
-  auto &fuseArgs = const_cast<Options &>(options).GetFuseArgs();
-
-  if(user_data == NULL){
-    //Mount Lite
-    fuse_main(fuseArgs.argc, fuseArgs.argv, &qsfsOperations, NULL);
-    return true;
-  }
-
-  auto pDrive = static_cast<shared_ptr<Drive> *>(user_data);
-  assert(pDrive != nullptr);
-  if (!(*pDrive)->IsMountable()) {
-    // TODO(jim): add more detailed info from Drive
-    throw QSException("Unable to mount ...");
-  }
-
   // Do really mount
+  auto &fuseArgs = const_cast<Options &>(options).GetFuseArgs();
   auto &mountPoint = options.GetMountPoint();
   static int maxTries = 3;
   int count = 0;

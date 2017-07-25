@@ -24,8 +24,7 @@
 #include <vector>
 
 // Declare main in global namespace before class Initializer, since friend
-// declarations
-// can only introduce names in the surrounding namespace.
+// declarations can only introduce names in the surrounding namespace.
 extern int main(int argc, char **argv);
 
 namespace QS {

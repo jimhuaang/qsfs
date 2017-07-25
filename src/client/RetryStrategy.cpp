@@ -16,6 +16,8 @@
 
 #include "client/RetryStrategy.h"
 
+#include "filesystem/Options.h"
+
 namespace QS {
 
 namespace Client {
@@ -29,6 +31,15 @@ int32_t RetryStrategy::CalculateDelayBeforeNextRetry(
     const Error<QSErrors> &error, unsigned attemptedRetryTimes) const {
   return attemptedRetryTimes == 0 ? 0
                                   : (1 << attemptedRetryTimes) * m_scaleFactor;
+}
+
+RetryStrategy GetDefaultRetryStrategy() {
+  return RetryStrategy(Retry::DefaultMaxRetries, Retry::DefaultScaleFactor);
+}
+
+RetryStrategy GetCustomRetryStrategy() {
+  const auto &options = QS::FileSystem::Options::Instance();
+  return RetryStrategy(options.GetRetries(), Retry::DefaultScaleFactor);
 }
 
 }  // namespace Client

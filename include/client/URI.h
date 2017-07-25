@@ -30,7 +30,8 @@ namespace Client {
 namespace Http {
 
 enum class Host {
-  QingStor,
+  Null,
+  QingStor
   // Add other hosts here
   // AWS
 };

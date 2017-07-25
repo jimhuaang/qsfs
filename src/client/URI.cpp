@@ -16,6 +16,7 @@
 
 #include "client/URI.h"
 
+#include <string>
 #include <unordered_map>
 
 #include "base/LogMacros.h"
@@ -29,37 +30,39 @@ namespace Client {
 namespace Http {
 
 using std::string;
+using std::to_string;
 using std::unordered_map;
 
 static const char* const HOST_QINGSTOR = "qingstor.com";
+static const char* const HOST_NULL = "";
 // static const char* const HOST_AWS = "s3.amazonaws.com";
 
 std::string HostToString(Host host) {
   static unordered_map<Host, string, QS::Utils::EnumHash> hostToNameMap = {
+      {Host::Null, HOST_NULL},
       {Host::QingStor, HOST_QINGSTOR}
       // Add other entries here
   };
   auto it = hostToNameMap.find(host);
   if (it == hostToNameMap.end()) {
     DebugWarning(
-        "Trying to get host name with unrecognized host type, default host " +
-        GetDefaultHostName() + " returned");
-    return GetDefaultHostName();
+        "Trying to get host name with unrecognized host type, null returned");
+    return HOST_NULL;
   }
   return it->second;
 }
 
 Host StringToHost(const string& name) {
   static unordered_map<string, Host, QS::Utils::StringHash> nameToHostMap = {
+      {HOST_NULL, Host::Null},
       {HOST_QINGSTOR, Host::QingStor}
       // Add other entries here
   };
   auto it = nameToHostMap.find(name);
   if (it == nameToHostMap.end()) {
     DebugWarning(
-        "Tring to get host with unrecognized host name, default host " +
-        GetDefaultHostName() + " returned");
-    return GetDefaultHost();
+        "Tring to get host with unrecognized host name, null returned");
+    return Host::Null;
   }
   return it->second;
 }
@@ -81,7 +84,8 @@ uint16_t GetDefaultPort(Protocol protocol) {
     return it->second;
   } else {
     DebugWarning("Try to get default port with a invalid protocol " +
-                 ProtocolToString(protocol) + " returned default port 443");
+                 ProtocolToString(protocol) + " returned default port " +
+                 to_string(HTTPS_DEFAULT_PORT));
     return HTTPS_DEFAULT_PORT;
   }
 }

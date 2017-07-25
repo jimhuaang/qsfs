@@ -30,7 +30,7 @@ namespace Http {
 enum class Protocol { HTTP, HTTPS };
 
 std::string ProtocolToString(Protocol protocol);
-Protocol StringToProtocol(const char* name);
+Protocol StringToProtocol(const std::string &name);
 
 Protocol GetDefaultProtocol();
 std::string GetDefaultProtocolName();

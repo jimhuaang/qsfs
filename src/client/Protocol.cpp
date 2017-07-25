@@ -46,7 +46,7 @@ string ProtocolToString(Protocol protocol) {
   return HTTPS_NAME;
 }
 
-Protocol StringToProtocol(const char* name) {
+Protocol StringToProtocol(const string &name) {
   string str = StringUtils::ToLower(StringUtils::Trim(name));
   if (str == HTTP_NAME) {
     return Protocol::HTTP;

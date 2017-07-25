@@ -30,13 +30,12 @@ namespace Client {
 
 class QSClient : public Client {
  public:
-  explicit QSClient(const ClientConfiguration &config) : Client(config){}
-  QSClient() = delete;
+  QSClient() = default;
   QSClient(QSClient &&) = default;
   QSClient(const QSClient &) = default;
   QSClient &operator=(QSClient &&) = default;
   QSClient &operator=(const QSClient &) = default;
-  ~QSClient();
+  ~QSClient() = default;
 
  public:
   // TODO(jim):
@@ -45,7 +44,6 @@ class QSClient : public Client {
   bool DisConnect() override;
 
  private:
-  std::string m_baseUrl;
   std::shared_ptr<RetryStrategy> m_retryStrategy;
   std::shared_ptr<QS::Threading::ThreadPool> m_executor;
 };

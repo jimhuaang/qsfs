@@ -39,7 +39,9 @@ class Entry;
 class Node;
 
 using FileNameToNodeMap =
-    std::unordered_map<std::string, std::shared_ptr<Node>>;
+    std::unordered_map<std::string, std::shared_ptr<Node> >;
+using FileNameToWeakNodeMap =
+    std::unordered_map<std::string, std::weak_ptr<Node> >;
 
 enum class FileType {
   None,
@@ -248,6 +250,7 @@ class Node {
 class DirectoryTree {
  public:
   DirectoryTree(time_t mtime, uid_t uid, gid_t gid, mode_t mode);
+  DirectoryTree() = default;
   DirectoryTree(DirectoryTree &&) = delete;
   DirectoryTree(const DirectoryTree &) = delete;
   DirectoryTree &operator=(DirectoryTree &&) = delete;
@@ -258,8 +261,8 @@ class DirectoryTree {
  private:
   std::shared_ptr<Node> m_root;
   std::shared_ptr<Node> m_currentNode;
-  FileNameToNodeMap m_map;  // record all nodes
   std::recursive_mutex m_mutex;
+  FileNameToWeakNodeMap m_map;  // record all nodes
 };
 
 }  // namespace Data

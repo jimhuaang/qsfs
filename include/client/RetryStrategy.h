@@ -39,12 +39,15 @@ class RetryStrategy {
                    unsigned attemptedRetryTimes) const;
 
   int32_t CalculateDelayBeforeNextRetry(const Error<QSErrors> &error,
-                                     unsigned attemptedRetryTimes) const;
+                                        unsigned attemptedRetryTimes) const;
 
  private:
   unsigned m_maxRetryTimes;
   unsigned m_scaleFactor;
 };
+
+RetryStrategy GetDefaultRetryStrategy();
+RetryStrategy GetCustomRetryStrategy();
 
 }  // namespace Client
 }  // namespace QS

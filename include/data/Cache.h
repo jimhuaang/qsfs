@@ -268,7 +268,7 @@ class File {
 
 class Cache {
  public:
-  Cache();
+  Cache() = default;
   Cache(Cache &&) = default;
   Cache(const Cache &) = default;
   Cache &operator=(Cache &&) = default;
