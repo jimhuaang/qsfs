@@ -78,7 +78,7 @@ string ToStringLine(off_t offset, size_t size) {
 // --------------------------------------------------------------------------
 File::Page::Page(off_t offset, const char *buffer, size_t len,
                  shared_ptr<iostream> body = make_shared<stringstream>())
-    : m_offset(offset), m_size(len), m_body(std::move(body)) {
+    : m_offset(offset), m_size(len), m_body(body) {
   bool isValidInput = IsValidInput(offset, buffer, len);
   assert(isValidInput);
   if (!isValidInput) {
@@ -96,7 +96,7 @@ File::Page::Page(off_t offset, const char *buffer, size_t len,
 // --------------------------------------------------------------------------
 File::Page::Page(off_t offset, const shared_ptr<iostream> &instream, size_t len,
                  shared_ptr<iostream> body = make_shared<stringstream>())
-    : m_offset(offset), m_size(len), m_body(std::move(body)) {
+    : m_offset(offset), m_size(len), m_body(body) {
   bool isValidInput = offset >= 0 && len > 0 && instream;
   assert(isValidInput);
   if (!isValidInput) {
@@ -175,7 +175,7 @@ size_t File::Page::UnguardedRead(off_t offset, char *buffer, size_t len) {
 
 // --------------------------------------------------------------------------
 File::ReadOutcome File::Read(off_t offset, size_t len,
-                             unique_ptr<Entry> &entry) {
+                             unique_ptr<Entry> *entry) {
   bool isValidInput = offset >= 0 && len > 0;
   assert(isValidInput);
   if (!isValidInput) {
@@ -188,35 +188,35 @@ File::ReadOutcome File::Read(off_t offset, size_t len,
   list<shared_ptr<Page>> outcomePages;
   auto LoadFileAndAddPage = [this, &entry, &outcomeSize, &outcomePages](
       off_t offset, size_t len) {
-    auto outcome = LoadFile(entry->GetFileId(), offset, len);
+    auto outcome = LoadFile((*entry)->GetFileId(), offset, len);
     if (outcome.first > 0 && outcome.second) {
       auto res = UnguardedAddPage(offset, outcome.second, outcome.first);
       if (res.second) {
-        SetTime(entry->GetMTime());
+        SetTime((*entry)->GetMTime());
         outcomePages.emplace_back(*(res.first));
         outcomeSize += (*(res.first))->m_size;
       }
     }
   };
 
-  if (entry->GetMTime() > 0) {
+  if ((*entry)->GetMTime() > 0) {
     // File is just created, update mtime.
     if (m_mtime == 0) {
-      SetTime(entry->GetMTime());
-    } else if (entry->GetMTime() > m_mtime) {
+      SetTime((*entry)->GetMTime());
+    } else if ((*entry)->GetMTime() > m_mtime) {
       // Detected modification in the file, clear file.
       Clear();
-      entry->SetFileSize(0);
+      (*entry)->SetFileSize(0);
     }
   }
 
   // Adjust the length.
-  if (entry->GetFileSize() > 0) {
-    auto len_ = static_cast<size_t>(entry->GetFileSize() - offset);
+  if ((*entry)->GetFileSize() > 0) {
+    auto len_ = static_cast<size_t>((*entry)->GetFileSize() - offset);
     if (len_ < len) {
       len = len_;
-      DebugWarning("Try to read file([fileId:size] = [" + entry->GetFileId() +
-                   ":" + to_string(entry->GetFileSize()) + "]) with input " +
+      DebugWarning("Try to read file([fileId:size] = [" + (*entry)->GetFileId() +
+                   ":" + to_string((*entry)->GetFileSize()) + "]) with input " +
                    ToStringLine(offset, len) + " which surpass the file size");
     }
   }
@@ -483,7 +483,7 @@ size_t Cache::Read(const string &fileId, off_t offset, char *buffer, size_t len,
   }
 
   auto &file = pos->second;
-  auto outcome = file->Read(offset, len, node->GetEntry());
+  auto outcome = file->Read(offset, len, &(node->GetEntry()));
   if (outcome.first == 0 || outcome.second.empty()) {
     DebugInfo("Read no bytes from file(" + node->GetFileName() + ")");
     return 0;

@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "data/Size.h"
 #include "filesystem/Options.h"
 
 namespace QS {
@@ -66,7 +67,7 @@ uint16_t GetFragmentSize() { return 4096; }
 
 size_t GetMaxCacheSize() {
   // TODO(Jim) :
-  return MB100;
+  return QS::Data::Size::MB100;
 }
 
 bool IsSafeDiskSpace() {

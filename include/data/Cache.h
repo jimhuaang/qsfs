@@ -56,9 +56,9 @@ class File {
    private:
     // Page attributes
     //
-    // +----------------------------------------+
-    // |An File composed of two successive pages|
-    // +----------------------------------------+
+    // +-----------------------------------------+
+    // | A File composed of two successive pages |
+    // +-----------------------------------------+
     //
     // offset  stop  next   <= 1st page
     //   ^        ^  ^
@@ -93,7 +93,7 @@ class File {
     explicit Page(off_t offset = 0, size_t size = 0,
                   std::shared_ptr<std::iostream> body =
                       std::make_shared<std::stringstream>())
-        : m_offset(offset), m_size(size), m_body(std::move(body)) {}
+        : m_offset(offset), m_size(size), m_body(body) {}
 
     Page(Page &&) = delete;
     Page(const Page &) = delete;
@@ -200,8 +200,7 @@ class File {
   // Notes the pagelist of outcome could containing more bytes than given
   // input asking for, for example, the 1st page of outcome could has a
   // offset which is ahead of input 'offset'.
-  ReadOutcome Read(off_t offset, size_t len,
-                   std::unique_ptr<Entry> &entry);  // NOLINT
+  ReadOutcome Read(off_t offset, size_t len, std::unique_ptr<Entry> *entry);
 
   // Load from local file cache or send request to sdk
   // TODO(jim) : move to transfer, and fileId probably should be replaced

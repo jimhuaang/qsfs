@@ -28,15 +28,23 @@
 #include <unordered_map>
 #include <vector>
 
+#include "data/ResourceManager.h"
+
 namespace QS {
+
+namespace Threading {
+class ThreadPool;
+}  // namespace Threading
 
 namespace Client {
 
+class Client;
 class TransferHandle;
 class Part;
 
 // TODO(jim) : check if we need std::map here
-using PartIdToPartMap = std::unordered_map<uint16_t, std::shared_ptr<Part> >;
+using PartIdToPartUnorderedMap =
+    std::unordered_map<uint16_t, std::shared_ptr<Part> >;
 
 class Part {
  public:
@@ -66,9 +74,12 @@ class Part {
   size_t GetBestProgress() const { return m_bestProgress; }
   size_t GetSize() const { return m_size; }
   size_t GetRangeBegin() const { return m_rangeBegin; }
-  std::iostream *GetDownloadPartStream() const { return m_downloadPartStream; }
-  std::vector<unsigned char> *GetDownloadBuffer() const {
-    return m_downloadBuffer;
+
+  std::shared_ptr<std::iostream> GetDownloadPartStream() const {
+    return atomic_load(&m_downloadPartStream);
+  }
+  std::shared_ptr<std::vector<char> > GetDownloadBuffer() const {
+    return atomic_load(&m_downloadBuffer);
   }
 
  private:
@@ -82,11 +93,13 @@ class Part {
   }
   void SetSize(size_t sizeInBytes) { m_size = sizeInBytes; }
   void SetRangeBegin(size_t rangeBegin) { m_rangeBegin = rangeBegin; }
-  void SetDownloadPartStream(std::iostream *downloadPartStream) {
-    m_downloadPartStream = downloadPartStream;
+
+  void SetDownloadPartStream(
+      std::shared_ptr<std::iostream> downloadPartStream) {
+    atomic_store(&m_downloadPartStream, downloadPartStream);
   }
-  void SetDownloadBuffer(std::vector<unsigned char> *downloadBuffer) {
-    m_downloadBuffer = downloadBuffer;
+  void SetDownloadBuffer(std::shared_ptr<std::vector<char> > downloadBuffer) {
+    atomic_store(&m_downloadBuffer, downloadBuffer);
   }
 
  private:
@@ -97,8 +110,12 @@ class Part {
   size_t m_size;             // in bytes
   size_t m_rangeBegin;
 
-  std::atomic<std::iostream *> m_downloadPartStream;
-  std::atomic<std::vector<unsigned char> *> m_downloadBuffer;
+  // Notice: use atomic functions every time you touch the variable
+  std::shared_ptr<std::iostream> m_downloadPartStream;
+  // TODO(jim): condsider remove this
+  std::shared_ptr<std::vector<char> > m_downloadBuffer;
+  // std::atomic<std::iostream *> m_downloadPartStream;
+  // std::atomic<std::vector<unsigned char> *> m_downloadBuffer;
 
   friend class TransferHandle;
 };
@@ -129,10 +146,10 @@ class TransferHandle {
  public:
   bool IsMultipart() const { return m_isMultipart; }
   const std::string &GetMultiPartId() const { return m_multipartId; }
-  PartIdToPartMap GetQueuedParts() const;
-  PartIdToPartMap GetPendingParts() const;
-  PartIdToPartMap GetFailedParts() const;
-  PartIdToPartMap GetCompletedParts() const;
+  PartIdToPartUnorderedMap GetQueuedParts() const;
+  PartIdToPartUnorderedMap GetPendingParts() const;
+  PartIdToPartUnorderedMap GetFailedParts() const;
+  PartIdToPartUnorderedMap GetCompletedParts() const;
   bool HasQueuedParts() const;
   bool HasPendingParts() const;
   bool HasFailedParts() const;
@@ -163,7 +180,7 @@ class TransferHandle {
   // be cancelled, either handle the callbacks or call WaitUntilFinished
   void Cancle() { m_cancel.store(true); }
   // Reset the cancellation for a retry. This will be done automatically by
-  // TransferManager.
+  // TransferManager. // TODO(jim): rename transfer manager
   void Restart() { m_cancel.store(false); }
   void UpdateStatus(TransferStatus status);
   void WaitUntilFinished() const;
@@ -174,10 +191,10 @@ class TransferHandle {
  private:
   bool m_isMultipart;
   std::string m_multipartId;
-  PartIdToPartMap m_queuedParts;
-  PartIdToPartMap m_pendingParts;
-  PartIdToPartMap m_failedParts;
-  PartIdToPartMap m_completedParts;
+  PartIdToPartUnorderedMap m_queuedParts;
+  PartIdToPartUnorderedMap m_pendingParts;
+  PartIdToPartUnorderedMap m_failedParts;
+  PartIdToPartUnorderedMap m_completedParts;
   mutable std::mutex m_partsLock;
 
   std::atomic<uint64_t> m_bytesTransferred;
@@ -194,6 +211,43 @@ class TransferHandle {
   friend class Part;
 
   // TODO(jim) : add other object meta info
+};
+
+class TransferManager {
+ public:
+  TransferManager() = default;
+  TransferManager(TransferManager &&) = default;
+  TransferManager(const TransferManager &) = default;
+  TransferManager &operator=(TransferManager &&) = default;
+  TransferManager &operator=(const TransferManager &) = default;
+  ~TransferManager() = default;
+
+ public:
+  virtual std::shared_ptr<TransferHandle> UploadFile() = 0;
+  virtual std::shared_ptr<TransferHandle> RetryUpload() = 0;
+  virtual void UploadDirectory(const std::string &directory) = 0;
+
+  virtual std::shared_ptr<TransferHandle> DownloadFile() = 0;
+  virtual std::shared_ptr<TransferHandle> RetryDownload() = 0;
+  virtual void DownloadDirectory(const std::string &directory) = 0;
+
+  virtual void AbortMultipartUpload(
+      const std::shared_ptr<TransferHandle> &handle) = 0;
+
+ private:
+  std::shared_ptr<Client> m_client;
+  std::shared_ptr<QS::Threading::ThreadPool> m_executor;
+  // Maximum size of the working buffers to use, default 50MB
+  uint64_t m_bufferMaxHeapSize;
+  // Memory size allocated for one transfer buffer, default 5MB
+  // If you are uploading large files(e.g. larger than 50GB), this needs to be
+  // specified to be a size larger than 5MB. And keeping in mind that you may
+  // need to increase your max heap size if you plan on increasing buffer size.
+  uint64_t m_bufferSize;
+  // Maximum number of file transfers to run in parallel, deafult 1.
+  size_t m_maxParallelTransfers;
+
+  QS::Data::ResourceManager m_bufferManager;
 };
 
 }  // namespace Client

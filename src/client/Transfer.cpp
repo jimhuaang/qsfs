@@ -64,22 +64,22 @@ void Part::OnDataTransferred(uint64_t amount,
   }
 }
 
-PartIdToPartMap TransferHandle::GetQueuedParts() const {
+PartIdToPartUnorderedMap TransferHandle::GetQueuedParts() const {
   lock_guard<mutex> lock(m_partsLock);
   return m_queuedParts;
 }
 
-PartIdToPartMap TransferHandle::GetPendingParts() const {
+PartIdToPartUnorderedMap TransferHandle::GetPendingParts() const {
   lock_guard<mutex> lock(m_partsLock);
   return m_pendingParts;
 }
 
-PartIdToPartMap TransferHandle::GetFailedParts() const {
+PartIdToPartUnorderedMap TransferHandle::GetFailedParts() const {
   lock_guard<mutex> lock(m_partsLock);
   return m_failedParts;
 }
 
-PartIdToPartMap TransferHandle::GetCompletedParts() const {
+PartIdToPartUnorderedMap TransferHandle::GetCompletedParts() const {
   lock_guard<mutex> lock(m_partsLock);
   return m_completedParts;
 }

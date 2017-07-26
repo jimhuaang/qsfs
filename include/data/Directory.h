@@ -38,9 +38,9 @@ class File;
 class Entry;
 class Node;
 
-using FileNameToNodeMap =
+using FileNameToNodeUnorderedMap =
     std::unordered_map<std::string, std::shared_ptr<Node> >;
-using FileNameToWeakNodeMap =
+using FileNameToWeakNodeUnorderedMap =
     std::unordered_map<std::string, std::weak_ptr<Node> >;
 
 enum class FileType {
@@ -213,10 +213,10 @@ class Node {
  public:
   bool IsEmpty() const { return m_children.empty(); }
   std::shared_ptr<Node> Find(const std::string &fileName) const;
-  const FileNameToNodeMap &GetChildren() const;
+  const FileNameToNodeUnorderedMap &GetChildren() const;
 
-  std::shared_ptr<Node> Insert(std::shared_ptr<Node> child);
-  void Remove(std::shared_ptr<Node> child);
+  std::shared_ptr<Node> Insert(const std::shared_ptr<Node> &child);
+  void Remove(const std::shared_ptr<Node> &child);
   void RenameChild(const std::string &oldFileName,
                    const std::string &newFileName);
 
@@ -239,7 +239,7 @@ class Node {
   std::unique_ptr<Entry> m_entry;
   std::weak_ptr<Node> m_parent;
   std::string m_symbolicLink;
-  FileNameToNodeMap m_children;
+  FileNameToNodeUnorderedMap m_children;
 
   friend class QS::Data::Cache;
 };
@@ -262,7 +262,7 @@ class DirectoryTree {
   std::shared_ptr<Node> m_root;
   std::shared_ptr<Node> m_currentNode;
   std::recursive_mutex m_mutex;
-  FileNameToWeakNodeMap m_map;  // record all nodes
+  FileNameToWeakNodeUnorderedMap m_map;  // record all nodes
 };
 
 }  // namespace Data

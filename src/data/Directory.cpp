@@ -59,10 +59,12 @@ shared_ptr<Node> Node::Find(const string &fileName) const {
 }
 
 // --------------------------------------------------------------------------
-const FileNameToNodeMap &Node::GetChildren() const { return m_children; }
+const FileNameToNodeUnorderedMap &Node::GetChildren() const {
+  return m_children;
+}
 
 // --------------------------------------------------------------------------
-shared_ptr<Node> Node::Insert(shared_ptr<Node> child) {
+shared_ptr<Node> Node::Insert(const shared_ptr<Node> &child) {
   if (child) {
     m_children.emplace(child->m_fileName, child);
   } else {
@@ -72,7 +74,7 @@ shared_ptr<Node> Node::Insert(shared_ptr<Node> child) {
 }
 
 // --------------------------------------------------------------------------
-void Node::Remove(shared_ptr<Node> child) {
+void Node::Remove(const shared_ptr<Node> &child) {
   if (child) {
     bool reset = m_children.size() == 1 ? true : false;
 

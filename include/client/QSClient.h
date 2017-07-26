@@ -20,13 +20,17 @@
 #include <memory>
 #include <string>
 
-#include "base/ThreadPool.h"
 #include "client/Client.h"
-#include "client/RetryStrategy.h"
 
 namespace QS {
 
+namespace Threading {
+class ThreadPool;
+}  // namespace Threading;
+
 namespace Client {
+
+class RetryStrategy;
 
 class QSClient : public Client {
  public:

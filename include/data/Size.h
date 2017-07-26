@@ -14,48 +14,23 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_QINGSTOR_CONFIGURE_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_QINGSTOR_CONFIGURE_H_  // NOLINT
-
-#include <stddef.h>
-#include <stdint.h>
-
-#include <sys/types.h>
-
-#include <string>
-
+#ifndef _QSFS_FUSE_INCLUDED_DATA_SIZE_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_DATA_SIZE_H_  // NOLINT
 namespace QS {
 
-namespace FileSystem {
+namespace Data {
 
-namespace Configure {
-  
-const char* GetProgramName();
-const char* GetQSFSVersion();
+namespace Size {
 
-std::string GetConfigureDirectory();
-std::string GetDefaultCredentialsFile();
-std::string GetCredentialsFile();
-std::string GetDefaultLogDirectory();
-std::string GetLogDirectory();
+const static uint64_t MB5 = 5 * 1024 * 1024;
+const static uint64_t MB10 = 10 * 1024 * 1024;
+const static uint64_t MB20 = 20 * 1024 * 1024;
+const static uint64_t MB100 = 100 * 1024 * 1024;
 
-uint16_t GetPathMaxLen();
-uint16_t GetNameMaxLen();
-
-mode_t GetRootMode();
-mode_t GetDefineFileMode();
-mode_t GetDefineDirMode();
-
-uint16_t GetBlockSize();
-uint16_t GetFragmentSize();
-
-size_t GetMaxCacheSize();
-
-bool IsSafeDiskSpace();
-
-}  // namespace Configure
-}  // namespace FileSystem
+}  // namespace Size
+}  // namespace Data
 }  // namespace QS
 
-// NOLINTNEXTLIN
-#endif  // _QSFS_FUSE_INCLUDE_QINGSTOR_CONFIGURE_H_
+
+// NOLINTNEXTLINE
+#endif  // _QSFS_FUSE_INCLUDED_DATA_SIZE_H_
