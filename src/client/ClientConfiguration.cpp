@@ -17,6 +17,10 @@
 #include "client/ClientConfiguration.h"
 
 #include <assert.h>
+#include <errno.h>
+#include <stdio.h>     // for fopen
+#include <string.h>    // for strerr
+#include <sys/stat.h>  // for chmod
 
 #include <memory>
 #include <mutex>  // NOLINT
@@ -24,9 +28,11 @@
 #include <unordered_map>
 #include <utility>
 
+#include "base/Exception.h"
 #include "base/Utils.h"
 #include "client/Credentials.h"
 #include "client/Protocol.h"
+#include "client/RetryStrategy.h"
 #include "client/URI.h"
 #include "client/Zone.h"
 #include "filesystem/Configure.h"
@@ -36,6 +42,9 @@ namespace QS {
 
 namespace Client {
 
+using QS::Exception::QSException;
+using QS::FileSystem::Configure::GetDefaultLogDirectory;
+using QS::FileSystem::Configure::GetDefineFileMode;
 using QS::Utils::EnumHash;
 using QS::Utils::StringHash;
 using std::call_once;
@@ -43,7 +52,9 @@ using std::string;
 using std::unique_ptr;
 using std::unordered_map;
 
-const static int CONNECTION_DEFAULT_RETRIES = 3;
+static const int CONNECTION_DEFAULT_RETRIES = 3;
+static const int CLIENT_DEFAULT_POOL_SIZE = 5;
+static const char *LOG_FILE_NAME = "sdk.log";
 
 const string &GetClientLogLevelName(ClientLogLevel level) {
   static unordered_map<ClientLogLevel, string, EnumHash> logLevelNames = {
@@ -98,9 +109,7 @@ ClientConfiguration &ClientConfiguration::Instance() {
   return *clientConfigInstance.get();
 }
 
-ClientConfiguration::ClientConfiguration(
-    const Credentials &credentials =
-        GetCredentialsProviderInstance().GetCredentials())
+ClientConfiguration::ClientConfiguration(const Credentials &credentials)
     : m_accessKeyId(credentials.GetAccessKeyId()),
       m_secretKey(credentials.GetSecretKey()),
       m_location(QS::Client::GetDefaultZone()),
@@ -109,23 +118,41 @@ ClientConfiguration::ClientConfiguration(
       m_port(Http::GetDefaultPort(m_protocol)),
       m_connectionRetries(CONNECTION_DEFAULT_RETRIES),
       m_additionalUserAgent(std::string()),
-      m_logLevel(ClientLogLevel::Warn) {}
+      m_logLevel(ClientLogLevel::Warn),
+      m_logFile(GetDefaultLogDirectory() + LOG_FILE_NAME),
+      m_transactionRetries(Retry::DefaultMaxRetries),
+      m_clientPoolSize(CLIENT_DEFAULT_POOL_SIZE) {}
 
 ClientConfiguration::ClientConfiguration(const CredentialsProvider &provider)
     : ClientConfiguration(provider.GetCredentials()) {}
 
-void ClientConfiguration::InitializeByOptions(){
-  const auto& options = QS::FileSystem::Options::Instance();
+void ClientConfiguration::InitializeByOptions() {
+  const auto &options = QS::FileSystem::Options::Instance();
   m_location = options.GetZone();
   m_host = Http::StringToHost(options.GetHost());
   m_protocol = Http::StringToProtocol(options.GetProtocol());
   m_port = options.GetPort();
-  m_connectionRetries = CONNECTION_DEFAULT_RETRIES;
   m_additionalUserAgent = options.GetAdditionalAgent();
   m_logLevel = static_cast<ClientLogLevel>(options.GetLogLevel());
-  if(options.IsDebug()){
+  if (options.IsDebug()) {
     m_logLevel = ClientLogLevel::Debug;
   }
+
+  m_logFile = options.GetLogDirectory() + LOG_FILE_NAME;
+  FILE *log = nullptr;
+  if (options.IsClearLogDir()) {
+    log = fopen(m_logFile.c_str(), "wb");
+  } else {
+    log = fopen(m_logFile.c_str(), "ab");
+  }
+  if (log != nullptr) {
+    fclose(log);
+    chmod(m_logFile.c_str(), GetDefineFileMode());
+  } else {
+    throw(string("File to create log file for sdk : ") + strerror(errno));
+  }
+
+  m_transactionRetries = options.GetRetries();
 }
 
 }  // namespace Client

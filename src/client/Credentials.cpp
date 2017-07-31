@@ -80,13 +80,31 @@ DefaultCredentialsProvider::DefaultCredentialsProvider(
   }
 }
 
+Credentials DefaultCredentialsProvider::GetCredentials() const {
+  if (!HasDefaultKey()) {
+    throw QSException(
+        "Fail to fetch default credentials which is not existing");
+  }
+
+  return Credentials(m_defaultAccessKeyId, m_defaultSecretKey);
+}
+
+Credentials DefaultCredentialsProvider::GetCredentials(
+    const std::string& bucket) const {
+  auto it = m_bucketMap.find(bucket);
+  if (it == m_bucketMap.end()) {
+    throw QSException("Fail to fetch access key for bucket " + bucket +
+                      "which is not found in credentials file " +
+                      m_credentialsFile);
+  }
+  return Credentials(it->second.first, it->second.second);
+}
+
 pair<bool, string> DefaultCredentialsProvider::ReadCredentialsFile(
     const std::string& file) {
   bool success = true;
   string errMsg;
-  auto Postfix = [&file]() -> string {
-    return "credentials file " + file;
-  };
+  auto Postfix = [&file]() -> string { return "credentials file " + file; };
 
   if (QS::Utils::FileExists(file)) {
     // Check credentials file permission

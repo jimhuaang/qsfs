@@ -25,7 +25,10 @@
 
 #include "base/LogMacros.h"
 #include "base/Utils.h"
+#include "client/Client.h"
 #include "client/ClientFactory.h"
+#include "client/TransferManager.h"
+#include "client/TransferManagerFactory.h"
 #include "data/Cache.h"
 #include "data/Directory.h"
 #include "filesystem/Configure.h"
@@ -34,6 +37,9 @@ namespace QS {
 
 namespace FileSystem {
 
+using QS::Client::ClientFactory;
+using QS::Client::TransferManagerConfigure;
+using QS::Client::TransferManagerFactory;
 using QS::Data::Cache;
 using QS::Data::DirectoryTree;
 using QS::Utils::GetProcessEffectiveUserID;
@@ -50,7 +56,9 @@ Drive &Drive::Instance() {
 
 Drive::Drive()
     : m_mountable(true),
-      m_client(QS::Client::ClientFactory::Instance().MakeClient()),
+      m_client(ClientFactory::Instance().MakeClient()),
+      m_transferManager(
+          TransferManagerFactory::Create(TransferManagerConfigure())),
       m_cache(make_shared<Cache>()),
       m_directoryTree(make_shared<DirectoryTree>()) {
   uid_t uid = -1;

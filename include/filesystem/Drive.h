@@ -24,6 +24,7 @@ namespace QS {
 
 namespace Client{
   class Client;
+  class TransferManager;
 }
 
 namespace Data{
@@ -47,8 +48,11 @@ class Drive {
 
  private:
   Drive();
+  // TODO(jim):
+  // SetTransferManager();
   std::atomic<bool> m_mountable;
   std::shared_ptr<QS::Client::Client> m_client;
+  std::shared_ptr<QS::Client::TransferManager> m_transferManager;
   std::shared_ptr<QS::Data::Cache> m_cache;
   std::shared_ptr<QS::Data::DirectoryTree> m_directoryTree;
 };

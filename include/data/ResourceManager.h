@@ -27,6 +27,10 @@
 
 namespace QS {
 
+namespace  Client {
+class TransferManager;
+}  // namespace  Client
+
 namespace Data {
 
 using Resource = std::unique_ptr<std::vector<char> >;
@@ -83,6 +87,8 @@ class ResourceManager {
   std::mutex m_queueLock;
   std::condition_variable m_semaphore;
   std::atomic<bool> m_shutdown;
+
+  friend class QS::Client::TransferManager;
 };
 
 }  // namespace Data

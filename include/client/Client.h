@@ -20,12 +20,18 @@
 #include <memory>
 
 #include "client/ClientConfiguration.h"
+#include "client/RetryStrategy.h"
 
 namespace QS {
+
+namespace Threading {
+class ThreadPool;
+}  // namespace Threading;
 
 namespace Client {
 
 class ClientImpl;
+class RetryStrategy;
 class TransferHandle;
 
 class Client {
@@ -43,22 +49,17 @@ class Client {
   virtual bool Connect() = 0;
   virtual bool DisConnect() = 0;
 
-/*   virtual std::shared_ptr<TransferHandle> UploadFile() = 0;
-  virtual std::shared_ptr<TransferHandle> RetryUpload() = 0;
-  virtual void UploadDirectory(const std::string &directory) = 0;
-
-  virtual std::shared_ptr<TransferHandle> DownloadFile() = 0;
-  virtual std::shared_ptr<TransferHandle> RetryDownload() = 0;
-  virtual void DownloadDirectory(const std::string &directory) = 0;
-
-  virtual void AbortMultipartUpload(
-      const std::shared_ptr<TransferHandle> &handle) = 0; */
+ public:
+  const RetryStrategy &GetRetryStrategy() const;
 
  protected:
   std::shared_ptr<ClientImpl> GetClientImpl();
+  std::shared_ptr<QS::Threading::ThreadPool> GetExecutor();
 
  private:
   std::shared_ptr<ClientImpl> m_impl;
+  std::shared_ptr<QS::Threading::ThreadPool> m_executor;
+  RetryStrategy m_retryStrategy;
 };
 
 }  // namespace Client

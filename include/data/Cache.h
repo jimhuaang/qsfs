@@ -80,13 +80,15 @@ class File {
     // From pointer of buffer, number of len bytes will be writen.
     // The owning file's offset is 'offset'.
     Page(off_t offset, const char *buffer, size_t len,
-         std::shared_ptr<std::iostream> body);
+         std::shared_ptr<std::iostream> body =
+             std::make_shared<std::stringstream>());
 
     // Construct Page from a stream.
     // From stream, number of len bytes will be writen.
     // The owning file's offset is 'offset'.
     Page(off_t offset, const std::shared_ptr<std::iostream> &stream, size_t len,
-         std::shared_ptr<std::iostream> body);
+         std::shared_ptr<std::iostream> body = 
+             std::make_shared<std::stringstream>());
 
    public:
     // Default Constructor and Constructors from stream
@@ -95,10 +97,10 @@ class File {
                       std::make_shared<std::stringstream>())
         : m_offset(offset), m_size(size), m_body(body) {}
 
-    Page(Page &&) = delete;
-    Page(const Page &) = delete;
-    Page &operator=(Page &&) = delete;
-    Page &operator=(const Page &) = delete;
+    Page(Page &&) = default;
+    Page(const Page &) = default;
+    Page &operator=(Page &&) = default;
+    Page &operator=(const Page &) = default;
     ~Page() = default;
 
     // Return the stop position.
@@ -258,7 +260,7 @@ class File {
  private:
   std::atomic<time_t> m_mtime;   // time of last modification
   std::atomic<size_t> m_size;    // record sum of all pages' size
-  std::recursive_mutex m_mutex;  // TODO(jim): check all set ops
+  std::recursive_mutex m_mutex;
 
   PageSet m_pages;  // a set of pages suppose to be successive
 
@@ -269,9 +271,9 @@ class Cache {
  public:
   Cache() = default;
   Cache(Cache &&) = default;
-  Cache(const Cache &) = default;
+  Cache(const Cache &) = delete;
   Cache &operator=(Cache &&) = default;
-  Cache &operator=(const Cache &) = default;
+  Cache &operator=(const Cache &) = delete;
   ~Cache() = default;
 
  public:

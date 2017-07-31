@@ -168,7 +168,7 @@ add_library(QSClient src/client/QSClient.cpp
 target_link_libraries(QSClient gtest) # for logging
 add_library(Credentials src/client/Credentials.cpp)
 target_link_libraries(Credentials gtest) # for logging
-add_library(QSErrors src/client/QSErrors.cpp)
+add_library(QSError src/client/QSError.cpp)
 add_library(RetryStrategy src/client/RetryStrategy.cpp)
 add_library(ClientConfiguration src/client/ClientConfiguration.cpp)
 add_library(Zone src/client/Zone.cpp)
@@ -177,13 +177,20 @@ add_library(Protocol src/client/Protocol.cpp)
 target_link_libraries(Protocol gtest)
 add_library(URI src/client/URI.cpp)
 target_link_libraries(URI gtest)  # for logging
-add_library(Transfer src/client/Transfer.cpp)
+add_library(Transfer src/client/TransferHandle.cpp
+                     src/client/TransferManager.cpp
+                     src/client/QSTransferManager.cpp
+                     src/client/TransferManagerFactory.cpp)
 target_link_libraries(Transfer gtest) # for logging
 
 add_library(Cache src/data/Cache.cpp)
 target_link_libraries(Cache gtest) # for logging
 add_library(Directory src/data/Directory.cpp)
 target_link_libraries(Directory gtest)
+add_library(StreamBuf src/data/StreamBuf.cpp)
+target_link_libraries(StreamBuf gtest)
+add_library(ResourceManager src/data/ResourceManager.cpp)
+target_link_libraries(ResourceManager gtest)
 
 add_library(Configure src/filesystem/Configure.cpp)
 add_library(Drive src/filesystem/Drive.cpp)
@@ -226,7 +233,7 @@ add_executable(qsfs-fuse src/main.cpp
                src/filesystem/Parser.cpp
                src/filesystem/RegisterInitializers.cpp) # must compile this together
 target_link_libraries(qsfs-fuse glog gtest fuse qingstor)
-target_link_libraries(qsfs-fuse QSClient)
+target_link_libraries(qsfs-fuse QSClient Transfer ThreadPool RetryStrategy ResourceManager)
 
 add_executable(sample1 test/sample1.cpp)
 target_link_libraries(sample1 gtest)

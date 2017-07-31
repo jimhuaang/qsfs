@@ -17,8 +17,8 @@
 #ifndef _QSFS_FUSE_INCLUDED_CLIENT_RETRYSTRATEGY_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_CLIENT_RETRYSTRATEGY_H_  // NOLINT
 
-#include "client/Error.h"
-#include "client/QSErrors.h"
+#include "client/ClientError.h"
+#include "client/QSError.h"
 
 namespace QS {
 
@@ -35,10 +35,10 @@ class RetryStrategy {
                 unsigned scaleFactor = Retry::DefaultScaleFactor)
       : m_maxRetryTimes(maxRetryTimes), m_scaleFactor(scaleFactor) {}
 
-  bool ShouldRetry(const Error<QSErrors> &error,
+  bool ShouldRetry(const ClientError<QSError> &error,
                    unsigned attemptedRetryTimes) const;
 
-  int32_t CalculateDelayBeforeNextRetry(const Error<QSErrors> &error,
+  int32_t CalculateDelayBeforeNextRetry(const ClientError<QSError> &error,
                                         unsigned attemptedRetryTimes) const;
 
  private:

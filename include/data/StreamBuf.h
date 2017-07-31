@@ -39,9 +39,9 @@ class StreamBuf : public std::streambuf {
   StreamBuf(Buffer buf, size_t lenghtToRead);
 
   StreamBuf() = delete;
-  StreamBuf(StreamBuf &&) = delete;
+  StreamBuf(StreamBuf &&) = default;
   StreamBuf(const StreamBuf &) = delete;
-  StreamBuf &operator=(StreamBuf &&) = delete;
+  StreamBuf &operator=(StreamBuf &&) = default;
   StreamBuf &operator=(const StreamBuf &) = delete;
   ~StreamBuf() = default;
 

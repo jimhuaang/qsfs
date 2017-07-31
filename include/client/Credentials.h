@@ -22,7 +22,6 @@
 #include <unordered_map>
 #include <utility>
 
-#include "base/Exception.h"
 #include "base/Utils.h"
 
 namespace QS {
@@ -56,9 +55,7 @@ class Credentials {
   void SetAccessKeyId(const std::string &accessKeyId) {
     m_accessKeyId = accessKeyId;
   }
-  void SetAccessKeyId(const char *accessKeyId) { m_accessKeyId = accessKeyId; }
   void SetSecretKey(const std::string &secretKey) { m_secretKey = secretKey; }
-  void SetSecretKey(const char *secretKey) { m_secretKey = secretKey; }
 
  private:
   std::string m_accessKeyId;
@@ -91,24 +88,8 @@ class DefaultCredentialsProvider : public CredentialsProvider {
 
   explicit DefaultCredentialsProvider(const std::string &credentialFile);
 
-  Credentials GetCredentials() const override {
-    if (!HasDefaultKey()) {
-      throw QS::Exception::QSException(
-          "Fail to fetch default credentials which is not existing");
-    }
-
-    return Credentials(m_defaultAccessKeyId, m_defaultSecretKey);
-  }
-
-  Credentials GetCredentials(const std::string &bucket) const override {
-    auto it = m_bucketMap.find(bucket);
-    if (it == m_bucketMap.end()) {
-      throw QS::Exception::QSException(
-          "Fail to fetch access key for bucket " + bucket +
-          "which is not found in credentials file " + m_credentialsFile );
-    }
-    return Credentials(it->second.first, it->second.second);
-  }
+  Credentials GetCredentials() const override;
+  Credentials GetCredentials(const std::string &bucket) const override;
 
   bool HasDefaultKey() const {
     return (!m_defaultAccessKeyId.empty()) && (!m_defaultSecretKey.empty());

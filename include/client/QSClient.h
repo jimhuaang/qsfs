@@ -24,13 +24,7 @@
 
 namespace QS {
 
-namespace Threading {
-class ThreadPool;
-}  // namespace Threading;
-
 namespace Client {
-
-class RetryStrategy;
 
 class QSClient : public Client {
  public:
@@ -46,10 +40,6 @@ class QSClient : public Client {
   void Initialize() override;
   bool Connect() override;
   bool DisConnect() override;
-
- private:
-  std::shared_ptr<RetryStrategy> m_retryStrategy;
-  std::shared_ptr<QS::Threading::ThreadPool> m_executor;
 };
 
 }  // namespace Client

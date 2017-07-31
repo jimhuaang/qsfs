@@ -14,33 +14,28 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "client/RetryStrategy.h"
+#include "client/QSTransferManager.h"
 
-#include "filesystem/Options.h"
+#include "client/TransferHandle.h"
 
 namespace QS {
 
 namespace Client {
 
-bool RetryStrategy::ShouldRetry(const ClientError<QSError> &error,
-                                unsigned attemptedRetryTimes) const {
-  return attemptedRetryTimes >= m_maxRetryTimes ? false : error.ShouldRetry();
-}
+using std::shared_ptr;
 
-int32_t RetryStrategy::CalculateDelayBeforeNextRetry(
-    const ClientError<QSError> &error, unsigned attemptedRetryTimes) const {
-  return attemptedRetryTimes == 0 ? 0
-                                  : (1 << attemptedRetryTimes) * m_scaleFactor;
-}
+shared_ptr<TransferHandle> QSTransferManager::UploadFile() { return nullptr; }
+shared_ptr<TransferHandle> QSTransferManager::RetryUpload() { return nullptr; }
+void QSTransferManager::UploadDirectory(const std::string &directory) {}
 
-RetryStrategy GetDefaultRetryStrategy() {
-  return RetryStrategy(Retry::DefaultMaxRetries, Retry::DefaultScaleFactor);
+shared_ptr<TransferHandle> QSTransferManager::DownloadFile() { return nullptr; }
+shared_ptr<TransferHandle> QSTransferManager::RetryDownload() {
+  return nullptr;
 }
+void QSTransferManager::DownloadDirectory(const std::string &directory) {}
 
-RetryStrategy GetCustomRetryStrategy() {
-  const auto &options = QS::FileSystem::Options::Instance();
-  return RetryStrategy(options.GetRetries(), Retry::DefaultScaleFactor);
-}
+void QSTransferManager::AbortMultipartUpload(
+    const shared_ptr<TransferHandle> &handle) {}
 
 }  // namespace Client
 }  // namespace QS

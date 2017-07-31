@@ -19,28 +19,29 @@
 #include <memory>
 #include <mutex>  // NOLINT
 
+#include "base/ThreadPool.h"
+#include "client/ClientConfiguration.h"
 #include "client/ClientFactory.h"
 #include "client/ClientImpl.h"
-#include "client/NullClientImpl.h"
 
 namespace QS {
 
 namespace Client {
 
+using QS::Threading::ThreadPool;
 using std::make_shared;
 using std::shared_ptr;
 
-static std::once_flag clientImplOnceFlag;
-
 Client::Client()
-    : m_impl(make_shared<NullClientImpl>()) {}
+    : m_impl(ClientFactory::Instance().MakeClientImpl()),
+      m_executor(make_shared<ThreadPool>(
+          ClientConfiguration::Instance().GetPoolSize())),
+      m_retryStrategy(GetCustomRetryStrategy()) {}
 
-shared_ptr<ClientImpl> Client::GetClientImpl() {
-  std::call_once(clientImplOnceFlag, [this] {
-    this->m_impl = ClientFactory::Instance().MakeClientImpl();
-  });
-  return m_impl;
+shared_ptr<ClientImpl> Client::GetClientImpl() { return m_impl; }
+shared_ptr<ThreadPool> Client::GetExecutor() { return m_executor; }
+const RetryStrategy &Client::GetRetryStrategy() const {
+  return m_retryStrategy;
 }
-
 }  // namespace Client
 }  // namespace QS

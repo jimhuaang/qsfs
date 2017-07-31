@@ -14,33 +14,36 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "client/RetryStrategy.h"
+#ifndef _QSFS_FUSE_INCLUDED_CLIENT_TRANSFERMANAGERFACTORY_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_CLIENT_TRANSFERMANAGERFACTORY_H_  // NOLINT
 
-#include "filesystem/Options.h"
+#include <memory>
 
 namespace QS {
 
 namespace Client {
 
-bool RetryStrategy::ShouldRetry(const ClientError<QSError> &error,
-                                unsigned attemptedRetryTimes) const {
-  return attemptedRetryTimes >= m_maxRetryTimes ? false : error.ShouldRetry();
-}
+class TransferManager;
+class TransferManagerConfigure;
 
-int32_t RetryStrategy::CalculateDelayBeforeNextRetry(
-    const ClientError<QSError> &error, unsigned attemptedRetryTimes) const {
-  return attemptedRetryTimes == 0 ? 0
-                                  : (1 << attemptedRetryTimes) * m_scaleFactor;
-}
+class TransferManagerFactory {
+ public:
+  TransferManagerFactory(TransferManagerFactory &&) = delete;
+  TransferManagerFactory(const TransferManagerFactory &) = delete;
+  TransferManagerFactory &operator=(TransferManagerFactory &&) = delete;
+  TransferManagerFactory &operator=(const TransferManagerFactory &) = delete;
+  ~TransferManagerFactory() = default;
 
-RetryStrategy GetDefaultRetryStrategy() {
-  return RetryStrategy(Retry::DefaultMaxRetries, Retry::DefaultScaleFactor);
-}
+ public:
+  static std::shared_ptr<TransferManager> Create(
+      const TransferManagerConfigure &config);
 
-RetryStrategy GetCustomRetryStrategy() {
-  const auto &options = QS::FileSystem::Options::Instance();
-  return RetryStrategy(options.GetRetries(), Retry::DefaultScaleFactor);
-}
+ private:
+  TransferManagerFactory() = default;
+};
 
 }  // namespace Client
 }  // namespace QS
+
+// NOLINTNEXTLINE
+#endif  // _QSFS_FUSE_INCLUDED_CLIENT_TRANSFERMANAGERFACTORY_H_

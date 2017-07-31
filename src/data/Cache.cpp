@@ -77,7 +77,7 @@ string ToStringLine(off_t offset, size_t size) {
 
 // --------------------------------------------------------------------------
 File::Page::Page(off_t offset, const char *buffer, size_t len,
-                 shared_ptr<iostream> body = make_shared<stringstream>())
+                 shared_ptr<iostream> body)
     : m_offset(offset), m_size(len), m_body(body) {
   bool isValidInput = IsValidInput(offset, buffer, len);
   assert(isValidInput);
@@ -86,6 +86,11 @@ File::Page::Page(off_t offset, const char *buffer, size_t len,
                ToStringLine(offset, buffer, len));
     return;
   }
+  assert(m_body);
+  if(!m_body){
+    DebugError("Try to new a page with a null stream body");
+  }
+
   m_body->seekp(0, std::ios_base::beg);
   m_body->write(buffer, len);
   DebugErrorIf(m_body->fail(),
@@ -95,7 +100,7 @@ File::Page::Page(off_t offset, const char *buffer, size_t len,
 
 // --------------------------------------------------------------------------
 File::Page::Page(off_t offset, const shared_ptr<iostream> &instream, size_t len,
-                 shared_ptr<iostream> body = make_shared<stringstream>())
+                 shared_ptr<iostream> body)
     : m_offset(offset), m_size(len), m_body(body) {
   bool isValidInput = offset >= 0 && len > 0 && instream;
   assert(isValidInput);
@@ -104,6 +109,11 @@ File::Page::Page(off_t offset, const shared_ptr<iostream> &instream, size_t len,
                ToStringLine(offset, len));
     return;
   }
+  assert(m_body);
+  if(!m_body){
+    DebugError("Try to new a page with a null stream body");
+  }
+
   stringstream ss;
   instream->seekg(0, std::ios_base::beg);
   ss << instream->rdbuf();
@@ -176,7 +186,7 @@ size_t File::Page::UnguardedRead(off_t offset, char *buffer, size_t len) {
 // --------------------------------------------------------------------------
 File::ReadOutcome File::Read(off_t offset, size_t len,
                              unique_ptr<Entry> *entry) {
-  bool isValidInput = offset >= 0 && len > 0;
+  bool isValidInput = offset >= 0 && len > 0 && entry != nullptr && (*entry);
   assert(isValidInput);
   if (!isValidInput) {
     DebugError("Fail to read file with invalid input " +
@@ -460,15 +470,15 @@ std::pair<File::PageSetConstIterator, bool> File::UnguardedAddPage(
 // --------------------------------------------------------------------------
 size_t Cache::Read(const string &fileId, off_t offset, char *buffer, size_t len,
                    shared_ptr<Node> node) {
-  bool validInput = IsValidInput(fileId, offset, buffer, len);
+  bool validInput = IsValidInput(fileId, offset, buffer, len) && (node);
   assert(validInput);
   if (!validInput) {
     DebugError("Try to read cache with invalid input " +
                ToStringLine(fileId, offset, buffer, len));
     return 0;
   }
-  memset(buffer, 0, len);  // Clear input buffer.
 
+  memset(buffer, 0, len);  // Clear input buffer.
   bool fileIsJustCreated = false;
   auto pos = m_cache.begin();
   auto it = m_map.find(fileId);
@@ -570,10 +580,16 @@ bool Cache::Free(size_t size) {
   while (!HasFreeSpace(size)) {
     // Discards the least recently used File first,
     // which is put at back.
+    assert(!m_cache.empty());
     auto &file = m_cache.back().second;
-    freedSpace += file->GetSize();
-    m_size -= file->GetSize();
-    file->Clear();
+    if (file) {
+      freedSpace += file->GetSize();
+      m_size -= file->GetSize();
+      file->Clear();
+    } else {
+      DebugWarning("The last recently used file (put at the end of cache list) has empty cache.");
+    }
+    m_cache.pop_back();
   }
   DebugInfo("Has freed cache of " + to_string(freedSpace) + " bytes");
   return true;

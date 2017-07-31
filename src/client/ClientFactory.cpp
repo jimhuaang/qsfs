@@ -48,14 +48,17 @@ shared_ptr<Client> ClientFactory::MakeClient() {
   auto client = shared_ptr<Client>(nullptr);
   auto host = ClientConfiguration::Instance().GetHost();
   switch (host) {
-    case Http::Host::QingStor:
+    case Http::Host::QingStor: {
       client = make_shared<QSClient>();
       break;
+    }
+
     // Add other cases here
     case Http::Host::Null:  // Bypass
-    default:
+    default: {
       client = make_shared<NullClient>();
       break;
+    }
   }
   return client;
 }
@@ -64,14 +67,17 @@ shared_ptr<ClientImpl> ClientFactory::MakeClientImpl() {
   auto clientImpl = shared_ptr<ClientImpl>(nullptr);
   auto host = ClientConfiguration::Instance().GetHost();
   switch (host) {
-    case Http::Host::QingStor:
+    case Http::Host::QingStor: {
       clientImpl = make_shared<QSClientImpl>();
       break;
+    }
+
     // Add other cases here
     case Http::Host::Null:  // Bypass
-    default:
+    default: {
       clientImpl = make_shared<NullClientImpl>();
       break;
+    }
   }
   return clientImpl;
 }

@@ -14,32 +14,41 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "client/RetryStrategy.h"
+#include "client/TransferManagerFactory.h"
 
-#include "filesystem/Options.h"
+#include <memory>
+
+#include "client/ClientConfiguration.h"
+#include "client/NullTransferManager.h"
+#include "client/QSTransferManager.h"
+#include "client/TransferManager.h"
 
 namespace QS {
 
 namespace Client {
 
-bool RetryStrategy::ShouldRetry(const ClientError<QSError> &error,
-                                unsigned attemptedRetryTimes) const {
-  return attemptedRetryTimes >= m_maxRetryTimes ? false : error.ShouldRetry();
-}
+using std::make_shared;
+using std::shared_ptr;
 
-int32_t RetryStrategy::CalculateDelayBeforeNextRetry(
-    const ClientError<QSError> &error, unsigned attemptedRetryTimes) const {
-  return attemptedRetryTimes == 0 ? 0
-                                  : (1 << attemptedRetryTimes) * m_scaleFactor;
-}
+shared_ptr<TransferManager> TransferManagerFactory::Create(
+    const TransferManagerConfigure &config) {
+  auto transferManager = shared_ptr<TransferManager>(nullptr);
+  auto host = ClientConfiguration::Instance().GetHost();
+  switch (host) {
+    case Http::Host::QingStor: {
+      transferManager = make_shared<QSTransferManager>(config);
+      break;
+    }
 
-RetryStrategy GetDefaultRetryStrategy() {
-  return RetryStrategy(Retry::DefaultMaxRetries, Retry::DefaultScaleFactor);
-}
-
-RetryStrategy GetCustomRetryStrategy() {
-  const auto &options = QS::FileSystem::Options::Instance();
-  return RetryStrategy(options.GetRetries(), Retry::DefaultScaleFactor);
+    // Add other cases here
+    case Http::Host::Null:  // Bypass
+    default: {
+      TransferManagerConfigure nullConfig = {0, 0, 0};
+      transferManager = make_shared<NullTransferManager>(nullConfig);
+      break;
+    }
+  }
+  return transferManager;
 }
 
 }  // namespace Client

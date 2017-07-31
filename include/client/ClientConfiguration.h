@@ -34,7 +34,7 @@ namespace QS {
 
 namespace Client {
 
-enum class ClientLogLevel : int {
+enum class ClientLogLevel : int {  // SDK log level
   Debug = -1,
   Info = 0,
   Warn = 1,
@@ -51,9 +51,11 @@ void InitializeClientConfiguration(std::unique_ptr<ClientConfiguration> config);
 class ClientConfiguration {
  public:
   static ClientConfiguration& Instance();
- 
+
  public:
-  explicit ClientConfiguration(const Credentials& credentials);
+  explicit ClientConfiguration(
+      const Credentials& credentials =
+          GetCredentialsProviderInstance().GetCredentials());
   explicit ClientConfiguration(const CredentialsProvider& provider);
 
   ClientConfiguration(const ClientConfiguration&) = default;
@@ -63,13 +65,18 @@ class ClientConfiguration {
 
  public:
   // accessor
-  const std::string& GetLocation() { return m_location; }
-  Http::Host GetHost() { return m_host; }
-  Http::Protocol GetProtocol() { return m_protocol; }
-  uint16_t GetPort() { return m_port; }
-  int GetConnectionRetried() { return m_connectionRetries; }
-  const std::string& GetAdditionalAgent() { return m_additionalUserAgent; }
-  ClientLogLevel GetClientLogLevel() { return m_logLevel; }
+  const std::string& GetLocation() const { return m_location; }
+  Http::Host GetHost() const { return m_host; }
+  Http::Protocol GetProtocol() const { return m_protocol; }
+  uint16_t GetPort() const { return m_port; }
+  int GetConnectionRetried() const { return m_connectionRetries; }
+  const std::string& GetAdditionalAgent() const {
+    return m_additionalUserAgent;
+  }
+  ClientLogLevel GetClientLogLevel() const { return m_logLevel; }
+  const std::string& GetClientLogFile() const { return m_logFile; }
+  uint16_t GetTransactionRetries() const { return m_transactionRetries; }
+  uint16_t GetPoolSize() const { return m_clientPoolSize; }
 
  private:
   const std::string& GetAccessKeyId() { return m_accessKeyId; }
@@ -78,8 +85,6 @@ class ClientConfiguration {
   friend void ::ClientConfigurationInitializer();
 
  private:
-  ClientConfiguration() = default;
-
   std::string m_accessKeyId;
   std::string m_secretKey;
   std::string m_location;  // zone or region
@@ -89,6 +94,10 @@ class ClientConfiguration {
   int m_connectionRetries;
   std::string m_additionalUserAgent;
   ClientLogLevel m_logLevel;
+  std::string m_logFile;  // log file path
+
+  uint16_t m_transactionRetries;  // retry times when transaction fails
+  uint16_t m_clientPoolSize;      // pool size of client
 };
 
 }  // namespace Client
