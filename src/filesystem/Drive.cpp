@@ -22,6 +22,7 @@
 
 #include <memory>
 #include <mutex>  // NOLINT
+#include <utility>
 
 #include "base/LogMacros.h"
 #include "base/Utils.h"
@@ -37,14 +38,17 @@ namespace QS {
 
 namespace FileSystem {
 
+using QS::Client::Client;
 using QS::Client::ClientFactory;
+using QS::Client::TransferManager;
 using QS::Client::TransferManagerConfigure;
 using QS::Client::TransferManagerFactory;
 using QS::Data::Cache;
 using QS::Data::DirectoryTree;
 using QS::Utils::GetProcessEffectiveUserID;
 using QS::Utils::GetProcessEffectiveGroupID;
-using std::make_shared;
+using std::shared_ptr;
+using std::unique_ptr;
 
 static std::unique_ptr<Drive> instance(nullptr);
 static std::once_flag flag;
@@ -57,10 +61,9 @@ Drive &Drive::Instance() {
 Drive::Drive()
     : m_mountable(true),
       m_client(ClientFactory::Instance().MakeClient()),
-      m_transferManager(
-          TransferManagerFactory::Create(TransferManagerConfigure())),
-      m_cache(make_shared<Cache>()),
-      m_directoryTree(make_shared<DirectoryTree>()) {
+      m_transferManager(std::move(
+          TransferManagerFactory::Create(TransferManagerConfigure()))),
+      m_cache(std::move(unique_ptr<Cache>(new Cache))) {
   uid_t uid = -1;
   if (!GetProcessEffectiveUserID(&uid, true)) {
     m_mountable.store(false);
@@ -74,11 +77,26 @@ Drive::Drive()
     return;
   }
 
-  m_directoryTree = make_shared<DirectoryTree>(time(NULL), uid, gid,
-                                               Configure::GetRootMode());
+  m_directoryTree = unique_ptr<DirectoryTree>(
+      new DirectoryTree(time(NULL), uid, gid, Configure::GetRootMode()));
 }
 
-bool Drive::IsMountable() const { return m_mountable.load(); }
+void Drive::SetClient(shared_ptr<Client> client) { m_client = client; }
+
+void Drive::SetTransferManager(unique_ptr<TransferManager> transferManager) {
+  m_transferManager = std::move(transferManager);
+}
+
+void Drive::SetCache(unique_ptr<Cache> cache) { m_cache = std::move(cache); }
+
+void Drive::SetDirectoryTree(unique_ptr<DirectoryTree> dirTree) {
+  m_directoryTree = std::move(dirTree);
+}
+
+bool Drive::IsMountable() const {
+  // TODO(jim): head bucket and return the status
+  return m_mountable.load();
+}
 
 }  // namespace FileSystem
 }  // namespace QS

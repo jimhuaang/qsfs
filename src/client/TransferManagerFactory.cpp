@@ -27,16 +27,16 @@ namespace QS {
 
 namespace Client {
 
-using std::make_shared;
-using std::shared_ptr;
+using std::unique_ptr;
 
-shared_ptr<TransferManager> TransferManagerFactory::Create(
+unique_ptr<TransferManager> TransferManagerFactory::Create(
     const TransferManagerConfigure &config) {
-  auto transferManager = shared_ptr<TransferManager>(nullptr);
+  auto transferManager = unique_ptr<TransferManager>(nullptr);
   auto host = ClientConfiguration::Instance().GetHost();
   switch (host) {
     case Http::Host::QingStor: {
-      transferManager = make_shared<QSTransferManager>(config);
+      transferManager =
+          unique_ptr<QSTransferManager>(new QSTransferManager(config));
       break;
     }
 
@@ -44,7 +44,8 @@ shared_ptr<TransferManager> TransferManagerFactory::Create(
     case Http::Host::Null:  // Bypass
     default: {
       TransferManagerConfigure nullConfig = {0, 0, 0};
-      transferManager = make_shared<NullTransferManager>(nullConfig);
+      transferManager =
+          unique_ptr<NullTransferManager>(new NullTransferManager(nullConfig));
       break;
     }
   }

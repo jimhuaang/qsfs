@@ -35,7 +35,7 @@ class TransferManagerFactory {
   ~TransferManagerFactory() = default;
 
  public:
-  static std::shared_ptr<TransferManager> Create(
+  static std::unique_ptr<TransferManager> Create(
       const TransferManagerConfigure &config);
 
  private:

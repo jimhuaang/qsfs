@@ -22,14 +22,14 @@
 
 namespace QS {
 
-namespace Client{
-  class Client;
-  class TransferManager;
+namespace Client {
+class Client;
+class TransferManager;
 }
 
-namespace Data{
-  class Cache;
-  class DirectoryTree;
+namespace Data {
+class Cache;
+class DirectoryTree;
 }
 
 namespace FileSystem {
@@ -44,7 +44,35 @@ class Drive {
 
  public:
   static Drive &Instance();
+  // accessor
   bool IsMountable() const;
+  const std::shared_ptr<QS::Client::Client> &GetClient() const {
+    return m_client;
+  }
+  const std::unique_ptr<QS::Client::TransferManager> &GetTransferManager()
+      const {
+    return m_transferManager;
+  }
+  const std::unique_ptr<QS::Data::Cache> &GetCache() const { return m_cache; }
+  const std::unique_ptr<QS::Data::DirectoryTree> &GetDirectoryTree() const {
+    return m_directoryTree;
+  }
+
+ private:
+  std::shared_ptr<QS::Client::Client> &GetClient() { return m_client; }
+  std::unique_ptr<QS::Client::TransferManager> &GetTransferManager() {
+    return m_transferManager;
+  }
+  std::unique_ptr<QS::Data::Cache> &GetCache() { return m_cache; }
+  std::unique_ptr<QS::Data::DirectoryTree> &GetDirectoryTree() {
+    return m_directoryTree;
+  }
+  // mutator
+  void SetClient(std::shared_ptr<QS::Client::Client> client);
+  void SetTransferManager(
+      std::unique_ptr<QS::Client::TransferManager> transferManager);
+  void SetCache(std::unique_ptr<QS::Data::Cache> cache);
+  void SetDirectoryTree(std::unique_ptr<QS::Data::DirectoryTree> dirTree);
 
  private:
   Drive();
@@ -52,9 +80,9 @@ class Drive {
   // SetTransferManager();
   std::atomic<bool> m_mountable;
   std::shared_ptr<QS::Client::Client> m_client;
-  std::shared_ptr<QS::Client::TransferManager> m_transferManager;
-  std::shared_ptr<QS::Data::Cache> m_cache;
-  std::shared_ptr<QS::Data::DirectoryTree> m_directoryTree;
+  std::unique_ptr<QS::Client::TransferManager> m_transferManager;
+  std::unique_ptr<QS::Data::Cache> m_cache;
+  std::unique_ptr<QS::Data::DirectoryTree> m_directoryTree;
 };
 
 }  // namespace FileSystem
