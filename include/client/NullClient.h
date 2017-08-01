@@ -27,13 +27,12 @@ class NullClient : public Client {
  public:
   NullClient() = default;
   NullClient(NullClient &&) = default;
-  NullClient(const NullClient &) = default;
+  NullClient(const NullClient &) = delete;
   NullClient &operator=(NullClient &&) = default;
-  NullClient &operator=(const NullClient &) = default;
+  NullClient &operator=(const NullClient &) = delete;
   ~NullClient() = default;
 
  public:
-  void Initialize() override {}
   bool Connect() override { return true; }
   bool DisConnect() override { return true; }
 };

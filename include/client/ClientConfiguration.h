@@ -34,6 +34,8 @@ namespace QS {
 
 namespace Client {
 
+class QSClient;
+
 enum class ClientLogLevel : int {  // SDK log level
   Debug = -1,
   Info = 0,
@@ -65,11 +67,12 @@ class ClientConfiguration {
 
  public:
   // accessor
-  const std::string& GetLocation() const { return m_location; }
+  const std::string& GetBucket() const { return m_bucket; }
+  const std::string& GetZone() const { return m_zone; }
   Http::Host GetHost() const { return m_host; }
   Http::Protocol GetProtocol() const { return m_protocol; }
   uint16_t GetPort() const { return m_port; }
-  int GetConnectionRetried() const { return m_connectionRetries; }
+  int GetConnectionRetries() const { return m_connectionRetries; }
   const std::string& GetAdditionalAgent() const {
     return m_additionalUserAgent;
   }
@@ -79,15 +82,17 @@ class ClientConfiguration {
   uint16_t GetPoolSize() const { return m_clientPoolSize; }
 
  private:
-  const std::string& GetAccessKeyId() { return m_accessKeyId; }
-  const std::string& GetSecretKey() { return m_secretKey; }
+  const std::string& GetAccessKeyId() const { return m_accessKeyId; }
+  const std::string& GetSecretKey() const { return m_secretKey; }
   void InitializeByOptions();
   friend void ::ClientConfigurationInitializer();
+  friend class QSClient;  // for QSClient::StartQSService
 
  private:
   std::string m_accessKeyId;
   std::string m_secretKey;
-  std::string m_location;  // zone or region
+  std::string m_bucket;
+  std::string m_zone;  // zone or region
   Http::Host m_host;
   Http::Protocol m_protocol;
   uint16_t m_port;

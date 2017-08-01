@@ -39,7 +39,6 @@ unique_ptr<TransferManager> TransferManagerFactory::Create(
           unique_ptr<QSTransferManager>(new QSTransferManager(config));
       break;
     }
-
     // Add other cases here
     case Http::Host::Null:  // Bypass
     default: {

@@ -52,7 +52,6 @@ shared_ptr<Client> ClientFactory::MakeClient() {
       client = make_shared<QSClient>();
       break;
     }
-
     // Add other cases here
     case Http::Host::Null:  // Bypass
     default: {
@@ -71,7 +70,6 @@ shared_ptr<ClientImpl> ClientFactory::MakeClientImpl() {
       clientImpl = make_shared<QSClientImpl>();
       break;
     }
-
     // Add other cases here
     case Http::Host::Null:  // Bypass
     default: {

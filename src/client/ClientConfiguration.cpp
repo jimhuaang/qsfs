@@ -112,7 +112,7 @@ ClientConfiguration &ClientConfiguration::Instance() {
 ClientConfiguration::ClientConfiguration(const Credentials &credentials)
     : m_accessKeyId(credentials.GetAccessKeyId()),
       m_secretKey(credentials.GetSecretKey()),
-      m_location(QS::Client::GetDefaultZone()),
+      m_zone(QS::Client::GetDefaultZone()),
       m_host(Http::GetDefaultHost()),
       m_protocol(QS::Client::Http::GetDefaultProtocol()),
       m_port(Http::GetDefaultPort(m_protocol)),
@@ -128,7 +128,8 @@ ClientConfiguration::ClientConfiguration(const CredentialsProvider &provider)
 
 void ClientConfiguration::InitializeByOptions() {
   const auto &options = QS::FileSystem::Options::Instance();
-  m_location = options.GetZone();
+  m_bucket = options.GetBucket();
+  m_zone = options.GetZone();
   m_host = Http::StringToHost(options.GetHost());
   m_protocol = Http::StringToProtocol(options.GetProtocol());
   m_port = options.GetPort();

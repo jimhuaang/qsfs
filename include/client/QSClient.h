@@ -22,24 +22,44 @@
 
 #include "client/Client.h"
 
+namespace QingStor {
+class QingStorService;
+}  // namespace QingStor
+
 namespace QS {
 
 namespace Client {
 
+class QSClientImpl;
+
 class QSClient : public Client {
  public:
-  QSClient() = default;
+  QSClient();
   QSClient(QSClient &&) = default;
-  QSClient(const QSClient &) = default;
+  QSClient(const QSClient &) = delete;
   QSClient &operator=(QSClient &&) = default;
-  QSClient &operator=(const QSClient &) = default;
-  ~QSClient() = default;
+  QSClient &operator=(const QSClient &) = delete;
+  ~QSClient();
 
  public:
   // TODO(jim):
-  void Initialize() override;
   bool Connect() override;
   bool DisConnect() override;
+
+ public:
+  static const std::unique_ptr<QingStor::QingStorService> &GetQingStorService() {
+    return m_qingStorService;
+  }
+
+ private:
+  std::shared_ptr<QSClientImpl> GetQSClientImpl();
+  void StartQSService();
+  void CloseQSService();
+  void InitializeClientImpl();
+
+ private:
+  static std::unique_ptr<QingStor::QingStorService> m_qingStorService;
+  std::shared_ptr<QSClientImpl> m_qsClientImpl;
 };
 
 }  // namespace Client

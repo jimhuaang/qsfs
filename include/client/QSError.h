@@ -19,6 +19,9 @@
 
 #include <string>
 
+#include "qingstor-sdk-cpp/HttpCommon.h"
+#include "qingstor-sdk-cpp/QsErrors.h"
+
 #include "client/ClientError.h"
 
 namespace QS {
@@ -51,11 +54,17 @@ enum class QSError {
   SIGNATURE_DOES_NOT_MATCH,
   SIGNATURE_INCOMPLETED,
   SIGNATURE_INVALID,
-  UPLOAD_NOT_EXIST
+  UPLOAD_NOT_EXIST,
+  SDK_CONFIGURE_FILE_INAVLID,
+  SDK_REQUEST_SEND_ERR
 };
 
 ClientError<QSError> GetQSErrorForCode(const std::string &errorCode);
 ClientError<QSError> GetQSErrorForCode(const char *errorCode);
+
+QSError SDKErrorToQSError(const QsError &sdkErr);
+bool SDKRequestSuccess(const QsError &sdkErr);
+std::string SDKResponseToString(const QingStor::Http::HttpResponseCode &code);
 
 }  // namespace Client
 }  // namespace QS

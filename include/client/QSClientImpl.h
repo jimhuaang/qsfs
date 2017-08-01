@@ -19,13 +19,25 @@
 
 #include "client/ClientImpl.h"
 
+#include "qingstor-sdk-cpp/Bucket.h"  // for instantiation of QSClientImpl
+
+#include <memory>
+
+#include "client/ClientError.h"
+#include "client/Outcome.h"
+#include "client/QSError.h"
+
 namespace QS {
 
 namespace Client {
+class QSClient;
+
+using HeadBucketOutcome =
+    Outcome<QingStor::HeadBucketOutput, ClientError<QSError>>;
 
 class QSClientImpl : public ClientImpl {
  public:
-  QSClientImpl() = default;
+  QSClientImpl();
   QSClientImpl(QSClientImpl &&) = default;
   QSClientImpl(const QSClientImpl &) = default;
   QSClientImpl &operator=(QSClientImpl &&) = default;
@@ -34,6 +46,21 @@ class QSClientImpl : public ClientImpl {
 
  public:
   void HeadObject() override;
+
+ public:
+  HeadBucketOutcome HeadBucket() const;
+
+ public:
+  const std::unique_ptr<QingStor::Bucket> &GetBucket() const {
+    return m_bucket;
+  }
+
+ private:
+  void SetBucket(std::unique_ptr<QingStor::Bucket> bucket);
+
+ private:
+  std::unique_ptr<QingStor::Bucket> m_bucket;
+  friend class QSClient;
 };
 
 }  // namespace Client

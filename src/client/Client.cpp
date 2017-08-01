@@ -31,17 +31,28 @@ namespace Client {
 using QS::Threading::ThreadPool;
 using std::make_shared;
 using std::shared_ptr;
+using std::unique_ptr;
 
 Client::Client()
     : m_impl(ClientFactory::Instance().MakeClientImpl()),
-      m_executor(make_shared<ThreadPool>(
-          ClientConfiguration::Instance().GetPoolSize())),
+      m_executor(unique_ptr<ThreadPool>(
+          new ThreadPool(ClientConfiguration::Instance().GetPoolSize()))),
       m_retryStrategy(GetCustomRetryStrategy()) {}
 
+
+const shared_ptr<ClientImpl>& Client::GetClientImpl() const { return m_impl; }
 shared_ptr<ClientImpl> Client::GetClientImpl() { return m_impl; }
-shared_ptr<ThreadPool> Client::GetExecutor() { return m_executor; }
+
+const unique_ptr<ThreadPool> &Client::GetExecutor() const { return m_executor; }
+unique_ptr<ThreadPool> &Client::GetExecutor() { return m_executor; }
+
 const RetryStrategy &Client::GetRetryStrategy() const {
   return m_retryStrategy;
 }
+
+Client::~Client(){
+// do nothing
+}
+
 }  // namespace Client
 }  // namespace QS

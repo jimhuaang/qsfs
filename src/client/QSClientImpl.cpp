@@ -16,12 +16,60 @@
 
 #include "client/QSClientImpl.h"
 
+#include <assert.h>
+
+#include <utility>
+
+#include "qingstor-sdk-cpp/Bucket.h"
+#include "qingstor-sdk-cpp/QingStor.h"
+#include "qingstor-sdk-cpp/QsErrors.h"
+
+#include "base/LogMacros.h"
+#include "client/ClientConfiguration.h"
+#include "client/QSClient.h"
+#include "client/QSError.h"
+
 namespace QS {
 
 namespace Client {
 
+using QingStor::Bucket;
+using QingStor::HeadBucketInput;
+using QingStor::HeadBucketOutput;
+using std::unique_ptr;
+
+QSClientImpl::QSClientImpl() {
+  if (!m_bucket) {
+    const auto &clientConfig = ClientConfiguration::Instance();
+    const auto &qsService = QSClient::GetQingStorService();
+    m_bucket = unique_ptr<Bucket>(new Bucket(qsService->GetConfig(),
+                                             clientConfig.GetBucket(),
+                                             clientConfig.GetZone()));
+  }
+}
+
+HeadBucketOutcome QSClientImpl::HeadBucket() const {
+  HeadBucketInput input;
+  HeadBucketOutput output;
+  auto qsErr = m_bucket->headBucket(input, output);
+  if (SDKRequestSuccess(qsErr)) {
+    return HeadBucketOutcome(output);
+  } else {
+    ClientError<QSError> err(SDKErrorToQSError(qsErr), "QingStorHeadBucket",
+                             SDKResponseToString(output.GetResponseCode()),
+                             false);
+    return HeadBucketOutcome(std::move(err));
+  }
+}
+
 void QSClientImpl::HeadObject() {
   // TODO(jim):
+}
+
+void QSClientImpl::SetBucket(unique_ptr<QingStor::Bucket> bucket) {
+  assert(bucket);
+  FatalIf(!bucket, "Setting a NULL bucket!");
+  m_bucket = std::move(bucket);
 }
 
 }  // namespace Client

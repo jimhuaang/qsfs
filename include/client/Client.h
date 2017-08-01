@@ -38,27 +38,28 @@ class Client {
  public:
   Client();
   Client(Client &&) = default;
-  Client(const Client &) = default;
+  Client(const Client &) = delete;
   Client &operator=(Client &&) = default;
-  Client &operator=(const Client &) = default;
+  Client &operator=(const Client &) = delete;
 
-  virtual ~Client() = default;
+  virtual ~Client();
 
  public:
-  virtual void Initialize() = 0;
   virtual bool Connect() = 0;
   virtual bool DisConnect() = 0;
 
  public:
   const RetryStrategy &GetRetryStrategy() const;
+  const std::shared_ptr<ClientImpl> &GetClientImpl() const;
+  const std::unique_ptr<QS::Threading::ThreadPool> &GetExecutor() const;
 
  protected:
   std::shared_ptr<ClientImpl> GetClientImpl();
-  std::shared_ptr<QS::Threading::ThreadPool> GetExecutor();
+  std::unique_ptr<QS::Threading::ThreadPool> &GetExecutor();
 
  private:
   std::shared_ptr<ClientImpl> m_impl;
-  std::shared_ptr<QS::Threading::ThreadPool> m_executor;
+  std::unique_ptr<QS::Threading::ThreadPool> m_executor;
   RetryStrategy m_retryStrategy;
 };
 

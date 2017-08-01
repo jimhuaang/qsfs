@@ -78,7 +78,7 @@ class Drive {
   Drive();
   // TODO(jim):
   // SetTransferManager();
-  std::atomic<bool> m_mountable;
+  mutable std::atomic<bool> m_mountable;
   std::shared_ptr<QS::Client::Client> m_client;
   std::unique_ptr<QS::Client::TransferManager> m_transferManager;
   std::unique_ptr<QS::Data::Cache> m_cache;
