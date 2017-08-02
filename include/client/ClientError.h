@@ -27,17 +27,17 @@ template <typename ERROR_TYPE>
 class ClientError {
  public:
   ClientError() : m_isRetryable(false) {}
-  ClientError(ERROR_TYPE errorType, const std::string &exceptionName,
+  ClientError(ERROR_TYPE error, const std::string &exceptionName,
         const std::string &errorMsg, bool isRetryable)
-      : m_errorType(errorType),
+      : m_error(error),
         m_exceptionName(exceptionName),
         m_message(errorMsg),
         m_isRetryable(isRetryable) {}
-  ClientError(ERROR_TYPE errorType, bool isRetryable)
-      : ClientError(errorType, "", "", isRetryable) {}
+  ClientError(ERROR_TYPE error, bool isRetryable)
+      : ClientError(error, "", "", isRetryable) {}
 
  public:
-  const ERROR_TYPE GetErrorType() const { return m_errorType; }
+  const ERROR_TYPE GetError() const { return m_error; }
   const std::string &GetExceptionName() const { return m_exceptionName; }
   const std::string &GetMessage() const { return m_message; }
   bool ShouldRetry() const { return m_isRetryable; }
@@ -48,7 +48,7 @@ class ClientError {
   void SetMessage(const std::string &message) { m_message = message; }
 
  private:
-  ERROR_TYPE m_errorType;
+  ERROR_TYPE m_error;
   std::string m_exceptionName;
   std::string m_message;
   bool m_isRetryable;

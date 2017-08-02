@@ -19,9 +19,12 @@
 
 #include "client/ClientImpl.h"
 
+#include <stdint.h>  // for uint64_t
+
 #include "qingstor-sdk-cpp/Bucket.h"  // for instantiation of QSClientImpl
 
 #include <memory>
+#include <vector>
 
 #include "client/ClientError.h"
 #include "client/Outcome.h"
@@ -34,6 +37,8 @@ class QSClient;
 
 using HeadBucketOutcome =
     Outcome<QingStor::HeadBucketOutput, ClientError<QSError>>;
+using ListObjectsOutcome =
+    Outcome<std::vector<QingStor::ListObjectsOutput>, ClientError<QSError>>;
 
 class QSClientImpl : public ClientImpl {
  public:
@@ -49,6 +54,15 @@ class QSClientImpl : public ClientImpl {
 
  public:
   HeadBucketOutcome HeadBucket() const;
+  // Use maxCount to specify the maximum count of objects you want to list.
+  // Use maxCount = 0 to list all the objects, this is default option.
+  // Use resultTruncated to obtain the status of whether the operation has
+  // list all of the objects of the bucket; If resultTruncated is true the
+  // input will be set with the next marker which will help to continue
+  // the following list operation.
+  ListObjectsOutcome ListObjects(QingStor::ListObjectsInput *input,
+                                 bool *resultTruncated,
+                                 uint64_t maxCount = 0) const;
 
  public:
   const std::unique_ptr<QingStor::Bucket> &GetBucket() const {

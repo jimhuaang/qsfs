@@ -30,6 +30,7 @@ namespace Client {
 
 enum class QSError {
   UNKNOWN,
+  GOOD,
   ACCESS_DENIED,
   ACCESS_KEY_ID_INVALIDE,
   ACTION_INVALID,
@@ -42,6 +43,8 @@ enum class QSError {
   INTERNAL_FAILURE,
   KEY_NOT_EXIST,
   NETWORK_CONNECTION,
+  NO_SUCH_LIST_OBJECTS,
+  NO_SUCH_UPLOAD,
   OBJECT_ALREADY_IN_ACTIVE_TIER,
   OBJECT_NOT_IN_ACTIVE_TIER,
   PARAMETER_COMBINATION_INVALID,
@@ -54,17 +57,23 @@ enum class QSError {
   SIGNATURE_DOES_NOT_MATCH,
   SIGNATURE_INCOMPLETED,
   SIGNATURE_INVALID,
-  UPLOAD_NOT_EXIST,
   SDK_CONFIGURE_FILE_INAVLID,
   SDK_REQUEST_SEND_ERR
 };
 
-ClientError<QSError> GetQSErrorForCode(const std::string &errorCode);
-ClientError<QSError> GetQSErrorForCode(const char *errorCode);
+QSError StringToQSError(const std::string &errorCode);
+std::string QSErrorToString(QSError err);
 
-QSError SDKErrorToQSError(const QsError &sdkErr);
-bool SDKRequestSuccess(const QsError &sdkErr);
-std::string SDKResponseToString(const QingStor::Http::HttpResponseCode &code);
+ClientError<QSError> GetQSErrorForCode(const std::string &errorCode);
+std::string GetMessageForQSError(const ClientError<QSError> &error);
+bool IsGoodQSError(const ClientError<QSError> &error);
+
+QSError SDKErrorToQSError(QsError sdkErr);
+bool SDKRequestSuccess(QsError sdkErr);
+
+std::string SDKResponseCodeToName(QingStor::Http::HttpResponseCode code);
+int SDKResponseCodeToInt(QingStor::Http::HttpResponseCode code);
+std::string SDKResponseCodeToString(QingStor::Http::HttpResponseCode code);
 
 }  // namespace Client
 }  // namespace QS

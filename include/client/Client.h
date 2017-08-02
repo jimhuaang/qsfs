@@ -19,14 +19,14 @@
 
 #include <memory>
 
+#include "base/ThreadPool.h"
 #include "client/ClientConfiguration.h"
+#include "client/ClientError.h"
+#include "client/ClientFactory.h"
+#include "client/QSError.h"
 #include "client/RetryStrategy.h"
 
 namespace QS {
-
-namespace Threading {
-class ThreadPool;
-}  // namespace Threading;
 
 namespace Client {
 
@@ -36,7 +36,14 @@ class TransferHandle;
 
 class Client {
  public:
-  Client();
+  Client(std::shared_ptr<ClientImpl> impl =
+             ClientFactory::Instance().MakeClientImpl(),
+         std::unique_ptr<QS::Threading::ThreadPool> executor =
+             std::unique_ptr<QS::Threading::ThreadPool>(
+                 new QS::Threading::ThreadPool(
+                     ClientConfiguration::Instance().GetPoolSize())),
+         RetryStrategy retryStratety = GetCustomRetryStrategy());
+
   Client(Client &&) = default;
   Client(const Client &) = delete;
   Client &operator=(Client &&) = default;
@@ -47,11 +54,12 @@ class Client {
  public:
   virtual bool Connect() = 0;
   virtual bool DisConnect() = 0;
+  virtual ClientError<QSError> ConstructDirectoryTree() = 0;
 
  public:
   const RetryStrategy &GetRetryStrategy() const;
   const std::shared_ptr<ClientImpl> &GetClientImpl() const;
-  const std::unique_ptr<QS::Threading::ThreadPool> &GetExecutor() const;
+  //const std::unique_ptr<QS::Threading::ThreadPool> &GetExecutor() const;
 
  protected:
   std::shared_ptr<ClientImpl> GetClientImpl();

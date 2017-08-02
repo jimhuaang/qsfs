@@ -18,11 +18,15 @@
 
 #include <assert.h>
 
+#include <memory>
 #include <utility>
+#include <vector>
 
 #include "qingstor-sdk-cpp/Bucket.h"
 #include "qingstor-sdk-cpp/QingStor.h"
-#include "qingstor-sdk-cpp/QsErrors.h"
+#include "qingstor-sdk-cpp/QsConfig.h"
+#include "qingstor-sdk-cpp/QsErrors.h"  // for sdk QsError
+#include "qingstor-sdk-cpp/Types.h"     // for sdk QsOutput
 
 #include "base/LogMacros.h"
 #include "client/ClientConfiguration.h"
@@ -36,8 +40,26 @@ namespace Client {
 using QingStor::Bucket;
 using QingStor::HeadBucketInput;
 using QingStor::HeadBucketOutput;
+using QingStor::ListObjectsInput;
+using QingStor::ListObjectsOutput;
+using QingStor::QsOutput;
 using std::unique_ptr;
+using std::vector;
 
+namespace {
+
+ClientError<QSError> BuildQSError(QsError sdkErr, const char *exceptionName,
+                                  const QsOutput &output, bool retriable) {
+  return ClientError<QSError>(
+      SDKErrorToQSError(sdkErr), exceptionName,
+      // sdk does not provide const-qualified accessor
+      SDKResponseCodeToString(const_cast<QsOutput &>(output).GetResponseCode()),
+      retriable);
+}
+
+}  // namespace
+
+// --------------------------------------------------------------------------
 QSClientImpl::QSClientImpl() {
   if (!m_bucket) {
     const auto &clientConfig = ClientConfiguration::Instance();
@@ -48,24 +70,71 @@ QSClientImpl::QSClientImpl() {
   }
 }
 
+// --------------------------------------------------------------------------
 HeadBucketOutcome QSClientImpl::HeadBucket() const {
   HeadBucketInput input;
   HeadBucketOutput output;
-  auto qsErr = m_bucket->headBucket(input, output);
-  if (SDKRequestSuccess(qsErr)) {
-    return HeadBucketOutcome(output);
+  auto sdkErr = m_bucket->headBucket(input, output);
+  if (SDKRequestSuccess(sdkErr)) {
+    return HeadBucketOutcome(std::move(output));
   } else {
-    ClientError<QSError> err(SDKErrorToQSError(qsErr), "QingStorHeadBucket",
-                             SDKResponseToString(output.GetResponseCode()),
-                             false);
-    return HeadBucketOutcome(std::move(err));
+    return HeadBucketOutcome(
+        std::move(BuildQSError(sdkErr, "QingStorHeadBucket", output, false)));
   }
 }
 
+// --------------------------------------------------------------------------
+ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
+                                             bool *resultTruncated,
+                                             uint64_t maxCount) const {
+  static const char *exceptionName = "QingStorListObjects";
+  if (input == nullptr) {
+    return ListObjectsOutcome(
+        ClientError<QSError>(QSError::NO_SUCH_LIST_OBJECTS, exceptionName,
+                             "Null ListObjectsInput", false));
+  }
+  if (resultTruncated == nullptr) {
+    return ListObjectsOutcome(
+        ClientError<QSError>(QSError::NO_SUCH_LIST_OBJECTS, exceptionName,
+                             "Null input of resultTruncated", false));
+  }
+  if (input->GetLimit() <= 0) {
+    return ListObjectsOutcome(ClientError<QSError>(
+        QSError::NO_SUCH_LIST_OBJECTS, exceptionName,
+        "ListObjectsInput with negative count limit", false));
+  }
+
+  bool listAllObjects = maxCount == 0;
+  uint64_t count = 0;
+  bool responseTruncated = true;
+  vector<ListObjectsOutput> result;
+  do {
+    if (!listAllObjects) {
+      int remainingCount = static_cast<int>(maxCount - count);
+      if (remainingCount < input->GetLimit()) input->SetLimit(remainingCount);
+    }
+    ListObjectsOutput output;
+    auto sdkErr = m_bucket->listObjects(*input, output);
+    if (SDKRequestSuccess(sdkErr)) {
+      count += output.GetKeys().size();
+      responseTruncated = !output.GetNextMarker().empty();
+      input->SetMarker(output.GetNextMarker());
+      result.push_back(std::move(output));
+    } else {
+      return ListObjectsOutcome(
+          std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+    }
+  } while (responseTruncated && (listAllObjects || count < maxCount));
+  *resultTruncated = responseTruncated;
+  return ListObjectsOutcome(std::move(result));
+}
+
+// --------------------------------------------------------------------------
 void QSClientImpl::HeadObject() {
   // TODO(jim):
 }
 
+// --------------------------------------------------------------------------
 void QSClientImpl::SetBucket(unique_ptr<QingStor::Bucket> bucket) {
   assert(bucket);
   FatalIf(!bucket, "Setting a NULL bucket!");

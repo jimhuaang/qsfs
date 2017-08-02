@@ -21,6 +21,7 @@
 #include <string>
 
 #include "client/Client.h"
+// #include "client/QSClientImpl.h"  // for friend function
 
 namespace QingStor {
 class QingStorService;
@@ -42,24 +43,24 @@ class QSClient : public Client {
   ~QSClient();
 
  public:
-  // TODO(jim):
   bool Connect() override;
   bool DisConnect() override;
+  ClientError<QSError> ConstructDirectoryTree() override;
 
  public:
-  static const std::unique_ptr<QingStor::QingStorService> &GetQingStorService() {
-    return m_qingStorService;
-  }
+  static const std::unique_ptr<QingStor::QingStorService> &GetQingStorService();
+  const std::shared_ptr<QSClientImpl> &GetQSClientImpl() const;
 
  private:
-  std::shared_ptr<QSClientImpl> GetQSClientImpl();
-  void StartQSService();
+  std::shared_ptr<QSClientImpl>& GetQSClientImpl();
+  static void StartQSService();
   void CloseQSService();
   void InitializeClientImpl();
 
  private:
   static std::unique_ptr<QingStor::QingStorService> m_qingStorService;
   std::shared_ptr<QSClientImpl> m_qsClientImpl;
+  // friend QSClientImpl::QSClientImpl();
 };
 
 }  // namespace Client

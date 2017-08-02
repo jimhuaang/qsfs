@@ -24,6 +24,7 @@ namespace QS {
 
 namespace Client {
 class Client;
+class QSClient;
 class TransferManager;
 }
 
@@ -59,6 +60,9 @@ class Drive {
   }
 
  private:
+  void ConstructDirectoryTree();
+
+ private:
   std::shared_ptr<QS::Client::Client> &GetClient() { return m_client; }
   std::unique_ptr<QS::Client::TransferManager> &GetTransferManager() {
     return m_transferManager;
@@ -83,6 +87,8 @@ class Drive {
   std::unique_ptr<QS::Client::TransferManager> m_transferManager;
   std::unique_ptr<QS::Data::Cache> m_cache;
   std::unique_ptr<QS::Data::DirectoryTree> m_directoryTree;
+
+  friend class QS::Client::QSClient;
 };
 
 }  // namespace FileSystem

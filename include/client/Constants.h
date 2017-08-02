@@ -14,43 +14,23 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "client/Client.h"
+#ifndef _QSFS_FUSE_INCLUDED_CLIENT_CONSTANTS_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_CLIENT_CONSTANTS_H_  // NOLINT
 
-#include <memory>
-#include <mutex>  // NOLINT
-
-#include "base/ThreadPool.h"
-#include "client/ClientImpl.h"
+#include <stdint.h>
 
 namespace QS {
 
 namespace Client {
 
-using QS::Threading::ThreadPool;
-using std::make_shared;
-using std::shared_ptr;
-using std::unique_ptr;
+namespace Constants {
 
-Client::Client(std::shared_ptr<ClientImpl> impl,
-               std::unique_ptr<QS::Threading::ThreadPool> executor,
-               RetryStrategy retryStratety)
-    : m_impl(std::move(impl)),
-      m_executor(std::move(executor)),
-      m_retryStrategy(std::move(retryStratety)) {}
+static const int BucketListObjectsCountLimit = 1000;
 
-const shared_ptr<ClientImpl>& Client::GetClientImpl() const { return m_impl; }
-shared_ptr<ClientImpl> Client::GetClientImpl() { return m_impl; }
-
-//const unique_ptr<ThreadPool> &Client::GetExecutor() const { return m_executor; }
-unique_ptr<ThreadPool> &Client::GetExecutor() { return m_executor; }
-
-const RetryStrategy &Client::GetRetryStrategy() const {
-  return m_retryStrategy;
-}
-
-Client::~Client(){
-// do nothing
-}
-
+}  // namespace Constants
 }  // namespace Client
 }  // namespace QS
+
+
+// NOLINTNEXTLINE
+#endif  // _QSFS_FUSE_INCLUDED_CLIENT_CONSTANTS_H_

@@ -25,7 +25,9 @@ namespace Client {
 
 class NullClient : public Client {
  public:
-  NullClient() = default;
+  NullClient()
+      : Client(std::shared_ptr<ClientImpl>(nullptr),
+               std::unique_ptr<QS::Threading::ThreadPool>(nullptr)) {}
   NullClient(NullClient &&) = default;
   NullClient(const NullClient &) = delete;
   NullClient &operator=(NullClient &&) = default;
@@ -33,8 +35,11 @@ class NullClient : public Client {
   ~NullClient() = default;
 
  public:
-  bool Connect() override { return true; }
+  bool Connect() override { return false; }
   bool DisConnect() override { return true; }
+  ClientError<QSError> ConstructDirectoryTree() override {
+    return ClientError<QSError>(QSError::GOOD, false);
+  }
 };
 
 }  // namespace Client

@@ -53,11 +53,13 @@ using std::unique_ptr;
 static std::unique_ptr<Drive> instance(nullptr);
 static std::once_flag flag;
 
+// --------------------------------------------------------------------------
 Drive &Drive::Instance() {
   std::call_once(flag, [] { instance.reset(new Drive); });
   return *instance.get();
 }
 
+// --------------------------------------------------------------------------
 Drive::Drive()
     : m_mountable(true),
       m_client(ClientFactory::Instance().MakeClient()),
@@ -81,22 +83,32 @@ Drive::Drive()
       new DirectoryTree(time(NULL), uid, gid, Configure::GetRootMode()));
 }
 
+// --------------------------------------------------------------------------
 void Drive::SetClient(shared_ptr<Client> client) { m_client = client; }
 
+// --------------------------------------------------------------------------
 void Drive::SetTransferManager(unique_ptr<TransferManager> transferManager) {
   m_transferManager = std::move(transferManager);
 }
 
+// --------------------------------------------------------------------------
 void Drive::SetCache(unique_ptr<Cache> cache) { m_cache = std::move(cache); }
 
+// --------------------------------------------------------------------------
 void Drive::SetDirectoryTree(unique_ptr<DirectoryTree> dirTree) {
   m_directoryTree = std::move(dirTree);
 }
 
+// --------------------------------------------------------------------------
 bool Drive::IsMountable() const {
   // TODO(jim): head bucket and return the status
   m_mountable.store(GetClient()->Connect());
   return m_mountable.load();
+}
+
+// --------------------------------------------------------------------------
+void Drive::ConstructDirectoryTree() {
+// TODO(jim):
 }
 
 }  // namespace FileSystem
