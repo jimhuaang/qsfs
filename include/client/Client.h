@@ -18,6 +18,7 @@
 #define _QSFS_FUSE_INCLUDED_CLIENT_CLIENT_H_  // NOLINT
 
 #include <memory>
+#include <string>
 
 #include "base/ThreadPool.h"
 #include "client/ClientConfiguration.h"
@@ -54,12 +55,15 @@ class Client {
  public:
   virtual bool Connect() = 0;
   virtual bool DisConnect() = 0;
-  virtual ClientError<QSError> ConstructDirectoryTree() = 0;
+  // Grow the directory tree one more level denoted by path
+  // Notice the dirPath should end with delimiter
+  virtual ClientError<QSError> GrowDirectoryTreeOneLevel(
+      const std::string &dirPath) = 0;
 
  public:
   const RetryStrategy &GetRetryStrategy() const;
   const std::shared_ptr<ClientImpl> &GetClientImpl() const;
-  //const std::unique_ptr<QS::Threading::ThreadPool> &GetExecutor() const;
+  // const std::unique_ptr<QS::Threading::ThreadPool> &GetExecutor() const;
 
  protected:
   std::shared_ptr<ClientImpl> GetClientImpl();

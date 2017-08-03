@@ -81,7 +81,8 @@ bool FileExists(const std::string &path);
 bool IsDirectory(const std::string &path);
 bool IsRootDirectory(const std::string &path);
 
-void AddDirectorySeperator(std::string &path);
+std::string AddDirectorySeperator(const std::string &path);
+std::string GetPathDelimiter();
 
 // Return true and parent directory if success,
 // return false and message if fail.
@@ -93,8 +94,8 @@ std::string GetUserName(uid_t uid, bool logOn);
 // Is given uid included in group of gid.
 bool IsIncludedInGroup(uid_t uid, gid_t gid, bool logOn);
 
-bool GetProcessEffectiveUserID(uid_t *uid, bool logOn);
-bool GetProcessEffectiveGroupID(gid_t *gid, bool logOn);
+uid_t GetProcessEffectiveUserID();
+gid_t GetProcessEffectiveGroupID();
 
 bool HavePermission(struct stat *st, bool logOn);
 bool HavePermission(const std::string &path, bool logOn);

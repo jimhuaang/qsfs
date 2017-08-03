@@ -193,14 +193,19 @@ bool IsDirectory(const string &path) {
 bool IsRootDirectory(const std::string &path) { return path == "/"; }
 
 // --------------------------------------------------------------------------
-void AddDirectorySeperator(string *path) {
-  assert(!path->empty());
-  DebugWarningIf(path->empty(),
+string AddDirectorySeperator(const string &path) {
+  assert(!path.empty());
+  DebugWarningIf(path.empty(),
                  "Try to add directory seperator with a empty input");
-  if (path->back() != PATH_DELIM) {
-    path->append(1, PATH_DELIM);
+  string copy(path);
+  if (path.back() != PATH_DELIM) {
+    copy.append(1, PATH_DELIM);
   }
+  return copy;
 }
+
+// --------------------------------------------------------------------------
+string GetPathDelimiter() { return string(1, PATH_DELIM); }
 
 // --------------------------------------------------------------------------
 pair<bool, string> GetParentDirectory(const string &path) {
@@ -324,49 +329,21 @@ bool IsIncludedInGroup(uid_t uid, gid_t gid, bool logOn) {
 }
 
 // --------------------------------------------------------------------------
-bool GetProcessEffectiveUserID(uid_t *uid, bool logOn) {
-  try {
-    *uid = geteuid();
-  } catch (const std::exception &err) {
-    Error(err.what());
-    return false;
-  } catch (...) {
-    if (logOn) {
-      Error(
-          "Error while getting the effective user ID of the calling process");
-    }
-    return false;
-  }
-  return true;
+uid_t GetProcessEffectiveUserID() {
+  static uid_t uid = geteuid();
+  return uid;
 }
 
 // --------------------------------------------------------------------------
-bool GetProcessEffectiveGroupID(gid_t *gid, bool logOn) {
-  try {
-    *gid = getegid();
-  } catch (const std::exception &err) {
-    Error(err.what());
-    return false;
-  } catch (...) {
-    if (logOn) {
-      Error(
-          "Error while getting the effective group ID of the calling process");
-    }
-    return false;
-  }
-  return true;
+gid_t GetProcessEffectiveGroupID() {
+  static gid_t gid = getegid();
+  return gid;
 }
 
 // --------------------------------------------------------------------------
 bool HavePermission(struct stat *st, bool logOn) {
-  uid_t uidProcess = -1;
-  if (!GetProcessEffectiveUserID(&uidProcess, logOn)) {
-    return false;
-  }
-  gid_t gidProcess = -1;
-  if (!GetProcessEffectiveGroupID(&gidProcess, logOn)) {
-    return false;
-  }
+  uid_t uidProcess = GetProcessEffectiveUserID();
+  gid_t gidProcess = GetProcessEffectiveGroupID();
 
   if (logOn) {
     DebugInfo("[Process: uid=" + to_string(uidProcess) + ", gid=" +

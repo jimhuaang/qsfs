@@ -28,12 +28,14 @@
 #include "qingstor-sdk-cpp/QingStor.h"
 #include "qingstor-sdk-cpp/QsConfig.h"
 
+#include "base/Utils.h"
 #include "base/LogMacros.h"
 #include "client/ClientConfiguration.h"
 #include "client/ClientImpl.h"
 #include "client/Constants.h"
 #include "client/Protocol.h"
 #include "client/QSClientImpl.h"
+#include "client/QSClientUtils.h"
 #include "client/QSError.h"
 #include "client/URI.h"
 #include "filesystem/Drive.h"
@@ -54,15 +56,6 @@ static std::once_flag onceFlagGetClientImpl;
 static std::once_flag onceFlagStartService;
 unique_ptr<QingStor::QingStorService> QSClient::m_qingStorService = nullptr;
 
-namespace {
-
-struct AsyncNullContext {};
-int TestNull( int a){
-  return a;
-}
-}  // namespace
-
-
 // --------------------------------------------------------------------------
 QSClient::QSClient() : Client() {
   StartQSService();
@@ -75,17 +68,14 @@ QSClient::~QSClient() { CloseQSService(); }
 // --------------------------------------------------------------------------
 bool QSClient::Connect() {
   auto outcome = GetQSClientImpl()->HeadBucket();
+  auto err = GrowDirectoryTreeOneLevel("/");
   if (outcome.IsSuccess()) {
-    auto ReceivedHandler = [](AsyncNullContext ctx, ClientError<QSError> err){
+    auto receivedHandler = [](const ClientError<QSError> &err) {
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
-      // TODO(jim): consider retry
     };
-    auto ReceivedHandler1 = [](AsyncNullContext ctx, int res, int a) {
-      // TODO(jim): consider retry
-    };
-    AsyncNullContext context;
-    GetExecutor()->SubmitAsync(ReceivedHandler1, context, TestNull, 1);
-    GetExecutor()->SubmitAsync(ReceivedHandler, context, ConstructDirectoryTree);
+    // Build up the root level of directory tree asynchornizely.
+    GetExecutor()->SubmitAsync(
+        receivedHandler, [this] { return GrowDirectoryTreeOneLevel("/"); });
     return true;
   } else {
     DebugError(GetMessageForQSError(outcome.GetError()));
@@ -100,12 +90,15 @@ bool QSClient::DisConnect() {
 }
 
 // --------------------------------------------------------------------------
-ClientError<QSError> QSClient::ConstructDirectoryTree() {
-  // TODO(jim): submit async task to build directory
+ClientError<QSError> QSClient::GrowDirectoryTreeOneLevel(
+    const string &dirPath) {
   auto &drive = QS::FileSystem::Drive::Instance();
   ListObjectsInput listObjInput;
   listObjInput.SetLimit(Constants::BucketListObjectsCountLimit);
-  listObjInput.SetDelimiter("/");  // set with root path
+  listObjInput.SetDelimiter(QS::Utils::GetPathDelimiter());
+  if(!QS::Utils::IsRootDirectory(dirPath)){
+    listObjInput.SetPrefix(QS::Utils::AddDirectorySeperator(dirPath));
+  }
   bool resultTruncated = false;
   // Set maxCount for a single list operation.
   // This will request for ListObjects seperately, so we can construct
@@ -117,10 +110,13 @@ ClientError<QSError> QSClient::ConstructDirectoryTree() {
     auto outcome = GetQSClientImpl()->ListObjects(&listObjInput,
                                                   &resultTruncated, maxCount);
     if (outcome.IsSuccess()) {
-      // TODO(jim): convert outcome to file meta data
-      drive.ConstructDirectoryTree();
+      for (auto &listObjOutput : outcome.GetResult()) {
+        auto fileMetaDatas =
+            QSClientUtils::ListObjectsOutputToFileMetaDatas(listObjOutput);
+        drive.GrowDirectoryTree(std::move(fileMetaDatas));
+      }
     } else {
-     return outcome.GetError();
+      return outcome.GetError();
     }
   } while (resultTruncated);
   return ClientError<QSError>(QSError::GOOD, false);

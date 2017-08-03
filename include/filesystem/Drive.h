@@ -19,6 +19,9 @@
 
 #include <atomic>  // NOLINT
 #include <memory>
+#include <vector>
+
+#include "data/Directory.h"
 
 namespace QS {
 
@@ -60,7 +63,7 @@ class Drive {
   }
 
  private:
-  void ConstructDirectoryTree();
+  void GrowDirectoryTree(std::vector<QS::Data::FileMetaData> &&fileMetas);
 
  private:
   std::shared_ptr<QS::Client::Client> &GetClient() { return m_client; }

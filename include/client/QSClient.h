@@ -45,7 +45,10 @@ class QSClient : public Client {
  public:
   bool Connect() override;
   bool DisConnect() override;
-  ClientError<QSError> ConstructDirectoryTree() override;
+  // Grow the directory tree one more level denoted by path.
+  // Notice the dirPath should end with delimiter
+  ClientError<QSError> GrowDirectoryTreeOneLevel(
+      const std::string &dirPath) override;
 
  public:
   static const std::unique_ptr<QingStor::QingStorService> &GetQingStorService();

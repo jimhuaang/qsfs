@@ -59,78 +59,86 @@ const std::string &GetFileTypeName(FileType fileType);
 /**
  * Object file metadata
  */
+struct FileMetaData {
+ public:
+  std::string m_fileId;  // file Id used to identify file in cache
+  uint64_t m_fileSize;
+  // notice file creation time is not stored in unix
+  time_t m_atime;  // time of last access
+  time_t m_mtime;  // time of last modification
+  time_t m_ctime;  // time of last file status change
+  time_t m_cachedTime;
+  uid_t m_uid;        // user ID of owner
+  gid_t m_gid;        // group ID of owner
+  mode_t m_fileMode;  // file type & mode (permissions)
+  FileType m_fileType;
+  std::string m_mimeType;
+  dev_t m_dev = 0;  // device number (file system)
+  int m_numLink = 0;
+  std::string m_eTag;
+  bool m_encrypted = false;
+  bool m_dirty = false;
+  bool m_write = false;
+  bool m_fileOpen = false;
+  bool m_pendingGet = false;
+  bool m_pendingCreate = false;
+
+ public:
+  FileMetaData(const std::string &fileId, uint64_t fileSize, time_t atime,
+               time_t mtime, uid_t uid, gid_t gid, mode_t fileMode,
+               FileType fileType = FileType::None, std::string mimeType = "",
+               dev_t dev = 0)
+      : m_fileId(fileId),
+        m_fileSize(fileSize),
+        m_atime(atime),
+        m_mtime(mtime),
+        m_ctime(mtime),
+        m_uid(uid),
+        m_gid(gid),
+        m_fileMode(fileMode),
+        m_fileType(fileType),
+        m_mimeType(mimeType),
+        m_dev(dev),
+        m_eTag(std::string()),
+        m_encrypted(false),
+        m_dirty(false),
+        m_write(false),
+        m_fileOpen(false),
+        m_pendingGet(false),
+        m_pendingCreate(false) {
+    // TODO(jim): Consider other types.
+    m_numLink = fileType == FileType::Directory
+                    ? 2
+                    : fileType == FileType::File ? 1 : 0;
+    m_cachedTime = time(NULL);
+  }
+
+  FileMetaData() = default;
+  FileMetaData(FileMetaData &&) = default;
+  FileMetaData(const FileMetaData &) = default;
+  FileMetaData &operator=(FileMetaData &&) = default;
+  FileMetaData &operator=(const FileMetaData &) = default;
+  ~FileMetaData() = default;
+
+  // TODO(jim) :
+  // struct stat ToStat();
+
+  //friend class Entry;
+};
+
 class Entry {
  public:
-  struct FileMetaData {
-   private:
-    time_t m_atime;  // time of last access
-    time_t m_mtime;  // time of last modification
-    time_t m_ctime;  // time of last file status change
-    time_t m_cachedTime;
-    uid_t m_uid;        // user ID of owner
-    gid_t m_gid;        // group ID of owner
-    mode_t m_fileMode;  // file type & mode (permissions)
-    FileType m_fileType;
-    std::string m_mimeType;
-    dev_t m_dev;  // device number (file system)
-    int m_numLink;
-    bool m_dirty;
-    bool m_write;
-    bool m_fileOpen;
-    bool m_pendingGet;
-    bool m_pendingCreate;
-
-   public:
-    FileMetaData(time_t atime, time_t mtime, uid_t uid, gid_t gid,
-                 mode_t fileMode, FileType fileType = FileType::None,
-                 std::string mimeType = "", dev_t dev = 0)
-        : m_atime(atime),
-          m_mtime(mtime),
-          m_ctime(mtime),
-          m_uid(uid),
-          m_gid(gid),
-          m_fileMode(fileMode),
-          m_fileType(fileType),
-          m_mimeType(mimeType),
-          m_dev(dev),
-          m_dirty(false),
-          m_write(false),
-          m_fileOpen(false),
-          m_pendingGet(false),
-          m_pendingCreate(false) {
-      // TODO(jim): Consider other types.
-      m_numLink = fileType == FileType::Directory
-                      ? 2
-                      : fileType == FileType::File ? 1 : 0;
-      m_cachedTime = time(NULL);
-    }
-
-    FileMetaData() = delete;
-    FileMetaData(FileMetaData &&) = default;
-    FileMetaData(const FileMetaData &) = default;
-    FileMetaData &operator=(FileMetaData &&) = default;
-    FileMetaData &operator=(const FileMetaData &) = default;
-    ~FileMetaData() = default;
-
-    // TODO(jim) :
-    // struct stat ToStat();
-
-    friend class Entry;
-  };
-
  public:
   Entry(const std::string &fileId, uint64_t fileSize, time_t atime,
         time_t mtime, uid_t uid, gid_t gid, mode_t fileMode,
         FileType fileType = FileType::None, std::string mimeType = "",
         dev_t dev = 0)
-      : m_fileId(fileId),
-        m_fileSize(fileSize),
-        m_metaData(atime, mtime, uid, gid, fileMode, fileType, mimeType, dev) {}
+      : m_metaData(fileId, fileSize, atime, mtime, uid, gid, fileMode, fileType,
+                   mimeType, dev) {}
 
-  Entry(const std::string &fileId, uint64_t fileSize, FileMetaData fileMetaData)
-      : m_fileId(fileId), m_fileSize(fileSize), m_metaData(fileMetaData) {}
+  Entry(FileMetaData fileMetaData) : m_metaData(fileMetaData) {}
 
-  Entry() = delete;
+  Entry() = default;
   Entry(Entry &&) = default;
   Entry(const Entry &) = default;
   Entry &operator=(Entry &&) = default;
@@ -138,7 +146,8 @@ class Entry {
   ~Entry() = default;
 
   operator bool() const {
-    return !m_fileId.empty() && m_metaData.m_fileType != FileType::None;
+    return !m_metaData.m_fileId.empty() &&
+           m_metaData.m_fileType != FileType::None;
   }
 
   bool IsDirectory() const {
@@ -146,8 +155,8 @@ class Entry {
   }
 
   // accessor
-  const std::string &GetFileId() const { return m_fileId; }
-  uint64_t GetFileSize() const { return m_fileSize; }
+  const std::string &GetFileId() const { return m_metaData.m_fileId; }
+  uint64_t GetFileSize() const { return m_metaData.m_fileSize; }
   int GetNumLink() const { return m_metaData.m_numLink; }
   FileType GetFileType() const { return m_metaData.m_fileType; }
   time_t GetMTime() const { return m_metaData.m_mtime; }
@@ -155,11 +164,9 @@ class Entry {
  private:
   void DecreaseNumLink() { --m_metaData.m_numLink; }
   void IncreaseNumLink() { ++m_metaData.m_numLink; }
-  void SetFileSize(uint64_t size) { m_fileSize = size; }
+  void SetFileSize(uint64_t size) { m_metaData.m_fileSize = size; }
 
  private:
-  std::string m_fileId;  // file Id used to identify file in cache
-  uint64_t m_fileSize;
   FileMetaData m_metaData;  // file meta data
 
   friend class Node;

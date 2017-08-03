@@ -25,11 +25,6 @@
 #include "filesystem/Options.h"
 #include "filesystem/Parser.h"
 
-#include "qingstor-sdk-cpp/Bucket.h"
-#include "qingstor-sdk-cpp/QingStor.h"
-#include "qingstor-sdk-cpp/QsConfig.h"
-#include "qingstor-sdk-cpp/QsErrors.h"
-
 using QS::Exception::QSException;
 using QS::FileSystem::Configure::GetProgramName;
 using QS::FileSystem::HelpText::ShowQSFSHelp;
@@ -58,27 +53,6 @@ int main(int argc, char **argv) {
     errorHandle(err.what());
     return ret;
   }
-
-
-  // test sdk-cpp
-  QingStor::QingStorService::initService(
-      "/home/jim/qsfs.test/qsfs.log/sdk.log");
-
-  QingStor::QsConfig sdkQsConfig;
-  sdkQsConfig.m_LogLevel = "info";
-  sdkQsConfig.m_AccessKeyId = "DIRMZUZDFDCUEGWBMEUX";
-  sdkQsConfig.m_SecretAccessKey = "wpYpihVOy5AWo9SjPZNMvFAuVPhycoRKu252rGjt";
-  QingStor::QingStorService qsService(sdkQsConfig);
-
-  QingStor::ListBucketsInput input;
-  input.SetLocation("pek3a");
-  QingStor::ListBucketsOutput output;
-
-  auto err = qsService.listBuckets(input, output);
-
-  QingStor::Bucket bucket = qsService.GetBucket("jimbucket1", "pek3a");
-
-
 
   const auto &options = QS::FileSystem::Options::Instance();
   auto &mounter = QS::FileSystem::Mounter::Instance();

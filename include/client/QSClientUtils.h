@@ -14,38 +14,32 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_NULLCLIENT_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_NULLCLIENT_H_  // NOLINT
+#ifndef _QSFS_FUSE_INCLUDED_CLIENT_QSCLIENTUTILS_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_CLIENT_QSCLIENTUTILS_H_  // NOLINT
 
-#include "client/Client.h"
+#include <string>
+#include <vector>
+
+#include "qingstor-sdk-cpp/Bucket.h"
+#include "qingstor-sdk-cpp/types/KeyType.h"
+
+#include "data/Directory.h"
 
 namespace QS {
 
 namespace Client {
 
-class NullClient : public Client {
- public:
-  NullClient()
-      : Client(std::shared_ptr<ClientImpl>(nullptr),
-               std::unique_ptr<QS::Threading::ThreadPool>(nullptr)) {}
-  NullClient(NullClient &&) = default;
-  NullClient(const NullClient &) = delete;
-  NullClient &operator=(NullClient &&) = default;
-  NullClient &operator=(const NullClient &) = delete;
-  ~NullClient() = default;
+namespace QSClientUtils {
 
- public:
-  bool Connect() override { return false; }
-  bool DisConnect() override { return true; }
+QS::Data::FileMetaData ObjectKeyToFileMetaData(const KeyType &key);
+QS::Data::FileMetaData CommonPrefixToFileMetaData(
+    const std::string &commonPrefix);
+std::vector<QS::Data::FileMetaData> ListObjectsOutputToFileMetaDatas(
+    const QingStor::ListObjectsOutput &listObjsOutput);
 
-  ClientError<QSError> GrowDirectoryTreeOneLevel(
-      const std::string &dirPath) override {
-    return ClientError<QSError>(QSError::GOOD, false);
-  }
-};
-
+}  // namespace QSClientUtils
 }  // namespace Client
 }  // namespace QS
 
 // NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_NULLCLIENT_H_
+#endif  // _QSFS_FUSE_INCLUDED_CLIENT_QSCLIENTUTILS_H_

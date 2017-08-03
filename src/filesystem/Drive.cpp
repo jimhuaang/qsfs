@@ -45,10 +45,12 @@ using QS::Client::TransferManagerConfigure;
 using QS::Client::TransferManagerFactory;
 using QS::Data::Cache;
 using QS::Data::DirectoryTree;
+using QS::Data::FileMetaData;
 using QS::Utils::GetProcessEffectiveUserID;
 using QS::Utils::GetProcessEffectiveGroupID;
 using std::shared_ptr;
 using std::unique_ptr;
+using std::vector;
 
 static std::unique_ptr<Drive> instance(nullptr);
 static std::once_flag flag;
@@ -66,18 +68,8 @@ Drive::Drive()
       m_transferManager(std::move(
           TransferManagerFactory::Create(TransferManagerConfigure()))),
       m_cache(std::move(unique_ptr<Cache>(new Cache))) {
-  uid_t uid = -1;
-  if (!GetProcessEffectiveUserID(&uid, true)) {
-    m_mountable.store(false);
-    Error("Fail to get process user id when constructing Drive");
-    return;
-  }
-  gid_t gid = -1;
-  if (!GetProcessEffectiveGroupID(&gid, true)) {
-    m_mountable.store(false);
-    Error("Fail to get process group id when constructing Drive");
-    return;
-  }
+  uid_t uid = GetProcessEffectiveUserID();
+  gid_t gid = GetProcessEffectiveGroupID();
 
   m_directoryTree = unique_ptr<DirectoryTree>(
       new DirectoryTree(time(NULL), uid, gid, Configure::GetRootMode()));
@@ -107,7 +99,7 @@ bool Drive::IsMountable() const {
 }
 
 // --------------------------------------------------------------------------
-void Drive::ConstructDirectoryTree() {
+void Drive::GrowDirectoryTree(vector<FileMetaData> &&fileMetas) {
 // TODO(jim):
 }
 

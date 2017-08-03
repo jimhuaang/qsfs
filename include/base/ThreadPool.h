@@ -50,16 +50,22 @@ class ThreadPool {
   ThreadPool &operator=(const ThreadPool &) = delete;
 
  public:
-  void Submit(Task &&task);
+  void SubmitToThread(Task &&task);
+
+  template <typename F, typename... Args>
+  void Submit(F &&f, Args &&... args);
 
   template <typename F, typename... Args>
   auto SubmitCallable(F &&f, Args &&... args)
       -> std::future<typename std::result_of<F(Args...)>::type>;
 
+  template <typename ReceivedHandler, typename F, typename... Args>
+  void SubmitAsync(ReceivedHandler &&handler, F &&f, Args &&... args);
+
   template <typename ReceivedHandler, typename CallerContext, typename F,
             typename... Args>
-  void SubmitAsync(ReceivedHandler &&handler, CallerContext &&context, F &&f,
-                   Args &&... args);
+  void SubmitAsyncWithContext(ReceivedHandler &&handler,
+                              CallerContext &&context, F &&f, Args &&... args);
 
  private:
   Task PopTask();
@@ -83,6 +89,12 @@ class ThreadPool {
 };
 
 template <typename F, typename... Args>
+void ThreadPool::Submit(F &&f, Args &&... args) {
+  return SubmitToThread(
+      std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+}
+
+template <typename F, typename... Args>
 auto ThreadPool::SubmitCallable(F &&f, Args &&... args)
     -> std::future<typename std::result_of<F(Args...)>::type> {
   using ReturnType = typename std::result_of<F(Args...)>::type;
@@ -99,10 +111,25 @@ auto ThreadPool::SubmitCallable(F &&f, Args &&... args)
   return res;
 }
 
+template <typename ReceivedHandler, typename F, typename... Args>
+void ThreadPool::SubmitAsync(ReceivedHandler &&handler, F &&f,
+                             Args &&... args) {
+  auto task =
+      std::bind(std::forward<ReceivedHandler>(handler),
+                std::bind(std::forward<F>(f), std::forward<Args>(args)...),
+                std::forward<Args>(args)...);
+  {
+    std::lock_guard<std::mutex> lock(m_queueLock);
+    m_tasks.emplace([task]() { task(); });
+  }
+  m_syncConditionVar.notify_one();
+}
+
 template <typename ReceivedHandler, typename CallerContext, typename F,
           typename... Args>
-void ThreadPool::SubmitAsync(ReceivedHandler &&handler, CallerContext &&context,
-                             F &&f, Args &&... args) {
+void ThreadPool::SubmitAsyncWithContext(ReceivedHandler &&handler,
+                                        CallerContext &&context, F &&f,
+                                        Args &&... args) {
   auto task =
       std::bind(std::forward<ReceivedHandler>(handler),
                 std::forward<CallerContext>(context),
@@ -112,6 +139,7 @@ void ThreadPool::SubmitAsync(ReceivedHandler &&handler, CallerContext &&context,
     std::lock_guard<std::mutex> lock(m_queueLock);
     m_tasks.emplace([task]() { task(); });
   }
+  m_syncConditionVar.notify_one();
 }
 
 }  // namespace Threading

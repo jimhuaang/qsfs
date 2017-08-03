@@ -31,6 +31,7 @@
 namespace {
 
 using QS::Data::Entry;
+using QS::Data::FileMetaData;
 using QS::Data::FileType;
 using QS::Data::Node;
 using std::make_shared;
@@ -68,14 +69,15 @@ class EntryTest : public Test, public WithParamInterface<MetaData> {
  public:
   EntryTest() {
     auto meta = GetParam();
-    m_pFileMetaData.reset(new Entry::FileMetaData(mtime_, mtime_, uid_, gid_,
-                                                  fileMode_, meta.fileType));
+    m_pFileMetaData.reset(new FileMetaData(meta.fileId, meta.fileSize, mtime_,
+                                           mtime_, uid_, gid_, fileMode_,
+                                           meta.fileType));
     m_pEntry.reset(new Entry(meta.fileId, meta.fileSize, mtime_, mtime_, uid_,
                              gid_, fileMode_, meta.fileType));
   }
 
  protected:
-  unique_ptr<Entry::FileMetaData> m_pFileMetaData;
+  unique_ptr<FileMetaData> m_pFileMetaData;
   unique_ptr<Entry> m_pEntry;
 };
 
@@ -126,7 +128,7 @@ unique_ptr<Node> NodeTest::pEmptyNode(nullptr);
 
 TEST_P(EntryTest, CopyControl) {
   auto meta = GetParam();
-  Entry entry = Entry(meta.fileId, meta.fileSize, *m_pFileMetaData);
+  Entry entry = Entry(*m_pFileMetaData);
   EXPECT_EQ(*m_pEntry, entry);
 }
 

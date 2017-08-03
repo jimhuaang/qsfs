@@ -57,7 +57,7 @@ class ThreadPoolTest : public Test {
   future<int> FactorialCallable(int n) {
     auto pTask =
         make_shared<packaged_task<int()>>([n] { return Factorial(n); });
-    m_pThreadPool->Submit(Task([pTask]() { (*pTask)(); }));
+    m_pThreadPool->SubmitToThread(Task([pTask]() { (*pTask)(); }));
     return pTask->get_future();
   }
 
@@ -111,22 +111,37 @@ TEST_F(ThreadPoolTest, TestSubmitCallable) {
   EXPECT_EQ(f2.get(), 12);
 }
 
+TEST_F(ThreadPoolTest, TestSubmitAsync) {
+  auto callback = [](int resultOfFactorial, int num) {
+    EXPECT_EQ(num, 5);
+    EXPECT_EQ(resultOfFactorial, 120);
+  };
+  m_pThreadPool->SubmitAsync(callback, Factorial, 5);
+
+  auto callback1 = [](int resultOfAdd, int a, int b) {
+    EXPECT_EQ(a, 1);
+    EXPECT_EQ(b, 11);
+    EXPECT_EQ(resultOfAdd, 12);
+  };
+  m_pThreadPool->SubmitAsync(callback1, Add, 1, 11);
+}
+
 struct AsyncContext {};
 
-TEST_F(ThreadPoolTest, TestSubmitAsync) {
+TEST_F(ThreadPoolTest, TestSubmitAsyncWithContext) {
   AsyncContext asyncContext;
   auto callback = [](AsyncContext context, int resultOfFactorial, int num) {
     EXPECT_EQ(num, 5);
     EXPECT_EQ(resultOfFactorial, 120);
   };
-  m_pThreadPool->SubmitAsync(callback, asyncContext, Factorial, 5);
+  m_pThreadPool->SubmitAsyncWithContext(callback, asyncContext, Factorial, 5);
 
   auto callback1 = [](AsyncContext context, int resultOfAdd, int a, int b) {
     EXPECT_EQ(a, 1);
     EXPECT_EQ(b, 11);
     EXPECT_EQ(resultOfAdd, 12);
   };
-  m_pThreadPool->SubmitAsync(callback1, asyncContext, Add, 1, 11);
+  m_pThreadPool->SubmitAsyncWithContext(callback1, asyncContext, Add, 1, 11);
 }
 
 }  // namespace Threading
