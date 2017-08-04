@@ -38,19 +38,22 @@ const char* const QSFS_DEFAULT_LOG_DIR = "/opt/qsfs/qsfs.log/";  // log dir
 const char* GetProgramName() { return PROGRAM_NAME; }
 const char* GetQSFSVersion() { return VERSION; }
 
-
 string GetDefaultCredentialsFile() { return QSFS_DEFAULT_CREDENTIALS; }
 string GetCredentialsFile() {
   auto customCredentials =
       QS::FileSystem::Options::Instance().GetCredentialsFile();
-  return customCredentials.empty() ? QSFS_DEFAULT_CREDENTIALS
-                                   : customCredentials;
+  static const char* credentials = customCredentials.empty()
+                                       ? QSFS_DEFAULT_CREDENTIALS
+                                       : customCredentials.c_str();
+  return credentials;
 }
 
 string GetDefaultLogDirectory() { return QSFS_DEFAULT_LOG_DIR; }
 string GetLogDirectory() {
   auto customLogDir = QS::FileSystem::Options::Instance().GetLogDirectory();
-  return customLogDir.empty() ? QSFS_DEFAULT_LOG_DIR : customLogDir;
+  static const char* logdir =
+      customLogDir.empty() ? QSFS_DEFAULT_LOG_DIR : customLogDir.c_str();
+  return logdir;
 }
 
 uint16_t GetPathMaxLen() { return 4096; }
@@ -65,9 +68,14 @@ mode_t GetDefineDirMode() {
 uint16_t GetBlockSize() { return 4096; }
 uint16_t GetFragmentSize() { return 4096; }
 
-size_t GetMaxCacheSize() {
+uint64_t GetMaxFileCacheSize() {
   // TODO(Jim) :
-  return QS::Data::Size::MB100;
+  return QS::Data::Size::MB100;  // default value
+}
+
+size_t GetMaxFileMetaDataEntrys() {
+  // TODO(jim): add option max_stat_entrys
+  return QS::Data::Size::K10;  // default value
 }
 
 bool IsSafeDiskSpace() {

@@ -87,15 +87,15 @@ File::Page::Page(off_t offset, const char *buffer, size_t len,
     return;
   }
   assert(m_body);
-  if(!m_body){
+  if (!m_body) {
     DebugError("Try to new a page with a null stream body");
   }
 
   m_body->seekp(0, std::ios_base::beg);
   m_body->write(buffer, len);
-  DebugErrorIf(m_body->fail(),
-               "Fail to new a page from buffer " +
-                   ToStringLine(offset, buffer, len));
+  DebugErrorIf(
+      m_body->fail(),
+      "Fail to new a page from buffer " + ToStringLine(offset, buffer, len));
 }
 
 // --------------------------------------------------------------------------
@@ -110,7 +110,7 @@ File::Page::Page(off_t offset, const shared_ptr<iostream> &instream, size_t len,
     return;
   }
   assert(m_body);
-  if(!m_body){
+  if (!m_body) {
     DebugError("Try to new a page with a null stream body");
   }
 
@@ -119,9 +119,8 @@ File::Page::Page(off_t offset, const shared_ptr<iostream> &instream, size_t len,
   ss << instream->rdbuf();
   m_body->seekp(0, std::ios_base::beg);
   m_body->write(ss.str().c_str(), len);
-  DebugErrorIf(
-      m_body->fail(),
-      "Fail to new a page from stream " + ToStringLine(offset, len));
+  DebugErrorIf(m_body->fail(),
+               "Fail to new a page from stream " + ToStringLine(offset, len));
 }
 
 // --------------------------------------------------------------------------
@@ -225,8 +224,9 @@ File::ReadOutcome File::Read(off_t offset, size_t len,
     auto len_ = static_cast<size_t>((*entry)->GetFileSize() - offset);
     if (len_ < len) {
       len = len_;
-      DebugWarning("Try to read file([fileId:size] = [" + (*entry)->GetFileId() +
-                   ":" + to_string((*entry)->GetFileSize()) + "]) with input " +
+      DebugWarning("Try to read file([fileId:size] = [" +
+                   (*entry)->GetFileId() + ":" +
+                   to_string((*entry)->GetFileSize()) + "]) with input " +
                    ToStringLine(offset, len) + " which surpass the file size");
     }
   }
@@ -485,7 +485,7 @@ size_t Cache::Read(const string &fileId, off_t offset, char *buffer, size_t len,
   if (it != m_map.end()) {
     pos = UnguardedMakeFileMostRecentlyUsed(it->second);
   } else {
-    DebugInfo("File(" + node->GetFileName() +
+    DebugInfo("File (" + node->GetFileName() +
               ") is not found in cache. Creating new one");
     fileIsJustCreated = true;
     pos = UnguardedNewEmptyFile(fileId);
@@ -564,10 +564,11 @@ bool Cache::Write(const string &fileId, off_t offset, char *buffer, size_t len,
 
 // --------------------------------------------------------------------------
 bool Cache::Free(size_t size) {
-  if (size > QS::FileSystem::Configure::GetMaxCacheSize()) {
+  if (size > QS::FileSystem::Configure::GetMaxFileCacheSize()) {
     DebugError("Try to free cache of " + to_string(size) +
                " bytes which surpass the maximum cache size(" +
-               to_string(QS::FileSystem::Configure::GetMaxCacheSize()) + ")");
+               to_string(QS::FileSystem::Configure::GetMaxFileCacheSize()) +
+               ")");
     return false;
   }
   if (HasFreeSpace(size)) {
@@ -587,7 +588,9 @@ bool Cache::Free(size_t size) {
       m_size -= file->GetSize();
       file->Clear();
     } else {
-      DebugWarning("The last recently used file (put at the end of cache list) has empty cache.");
+      DebugWarning(
+          "The last recently used file (put at the end of cache list) has "
+          "empty cache.");
     }
     m_cache.pop_back();
   }
@@ -596,13 +599,13 @@ bool Cache::Free(size_t size) {
 }
 
 // --------------------------------------------------------------------------
-void Cache::Erase(const string &fileId) {
+CacheListIterator Cache::Erase(const string &fileId) {
   auto it = m_map.find(fileId);
   if (it != m_map.end()) {
-    UnguardedErase(it);
+    return UnguardedErase(it);
   } else {
-    DebugWarning("Try to remove file " + fileId +
-                 " which is not found. Go on");
+    DebugWarning("Try to remove file " + fileId + " which is not found. Go on");
+    return m_cache.end();
   }
 }
 
@@ -615,9 +618,8 @@ void Cache::Rename(const string &oldFileId, const string &newFileId) {
 
   auto iter = m_map.find(newFileId);
   if (iter != m_map.end()) {
-    DebugWarning(
-        "New file id: + " + newFileId +
-        " is already existed in the cache. Just remove it from cache");
+    DebugWarning("New file id: + " + newFileId +
+                 " is already existed in the cache. Just remove it from cache");
     UnguardedErase(iter);
   }
 
@@ -660,20 +662,19 @@ void Cache::Resize(const string &fileId, size_t newSize) {
                     to_string(oldSize) + " to " + to_string(newSize) +
                     ". But now file size is " + to_string(file->GetSize()));
   } else {
-    DebugWarning("Try to resize file " + fileId +
-                 " which is not found. Go on");
+    DebugWarning("Try to resize file " + fileId + " which is not found. Go on");
   }
 }
 
 // --------------------------------------------------------------------------
 bool Cache::HasFreeSpace(size_t size) const {
-  return GetSize() + size < QS::FileSystem::Configure::GetMaxCacheSize();
+  return GetSize() + size < QS::FileSystem::Configure::GetMaxFileCacheSize();
 }
 
 // --------------------------------------------------------------------------
 CacheListIterator Cache::UnguardedNewEmptyFile(const string &fileId) {
   m_cache.emplace_front(fileId, unique_ptr<File>(new File));
-  if (m_cache.begin()->first == fileId) {
+  if (m_cache.begin()->first == fileId) {  // insert to cache sucessfully
     m_map.emplace(fileId, m_cache.begin());
     return m_cache.begin();
   } else {
@@ -683,16 +684,19 @@ CacheListIterator Cache::UnguardedNewEmptyFile(const string &fileId) {
 }
 
 // --------------------------------------------------------------------------
-void Cache::UnguardedErase(FileIdToCacheListIteratorMap::iterator pos) {
+CacheListIterator Cache::UnguardedErase(
+    FileIdToCacheListIteratorMap::iterator pos) {
   m_size -= pos->second->second->GetSize();
-  m_cache.erase(pos->second);
+  auto next = m_cache.erase(pos->second);
   m_map.erase(pos);
+  return next;
 }
 
 // --------------------------------------------------------------------------
 CacheListIterator Cache::UnguardedMakeFileMostRecentlyUsed(
     CacheListConstIterator pos) {
   m_cache.splice(m_cache.begin(), m_cache, pos);
+  // NO iterators or references become invalidated, so no need to update m_map.
   return m_cache.begin();
 }
 

@@ -34,6 +34,8 @@
 #include <unordered_map>
 #include <utility>
 
+#include "base/Utils.h"
+
 namespace QS {
 
 namespace Data {
@@ -48,7 +50,7 @@ using CacheList = std::list<FileIdToFilePair>;
 using CacheListIterator = CacheList::iterator;
 using CacheListConstIterator = CacheList::const_iterator;
 using FileIdToCacheListIteratorMap =
-    std::unordered_map<std::string, CacheListIterator>;
+    std::unordered_map<std::string, CacheListIterator, Utils::StringHash>;
 
 class File {
  public:
@@ -293,7 +295,7 @@ class Cache {
   // there will be number of size avaiable cache space.
   bool Free(size_t size);
 
-  void Erase(const std::string &fildId);
+  CacheListIterator Erase(const std::string &fildId);
   void Rename(const std::string &oldFileId, const std::string &newFileId);
   void SetTime(const std::string &fileId, time_t mtime);
   void Resize(const std::string &fileId, size_t newSize);
@@ -310,7 +312,7 @@ class Cache {
   CacheListIterator UnguardedNewEmptyFile(const std::string &fileId);
 
   // Erase the file denoted by pos, without checking input.
-  void UnguardedErase(FileIdToCacheListIteratorMap::iterator pos);
+  CacheListIterator UnguardedErase(FileIdToCacheListIteratorMap::iterator pos);
 
   // Move the file denoted by pos into the front of the cache,
   // without checking input.

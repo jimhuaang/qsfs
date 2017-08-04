@@ -42,11 +42,13 @@ using QS::Utils::GetProcessEffectiveGroupID;
 using std::string;
 using std::vector;
 
-FileMetaData ObjectKeyToFileMetaData(const KeyType &objectKey) {
-  FileMetaData meta;
+FileMetaData ObjectKeyToFileMetaData(const KeyType &objectKey,
+                                     const string &prefix) {
   // Do const cast as skd does not provide const-qualified accessors
   KeyType &key = const_cast<KeyType &>(objectKey);
-  meta.m_fileId = key.GetKey();
+  FileMetaData meta;
+  // add root denoter and the prefix to build the full file path
+  meta.m_fileId = AddDirectorySeperator("/" + prefix) + key.GetKey();
   meta.m_fileSize = static_cast<uint64_t>(key.GetSize());
   meta.m_atime = meta.m_cachedTime = time(NULL);
   meta.m_mtime = meta.m_ctime = static_cast<time_t>(key.GetModified());
@@ -61,22 +63,30 @@ FileMetaData ObjectKeyToFileMetaData(const KeyType &objectKey) {
   return meta;
 }
 
-FileMetaData CommonPrefixToFileMetaData(const string &commonPrefix) {
+FileMetaData CommonPrefixToFileMetaData(const string &commonPrefix,
+                                        const string &prefix) {
   time_t atime = time(NULL);
-  return FileMetaData(AddDirectorySeperator(commonPrefix), 0, atime, atime,
-                      GetProcessEffectiveUserID(), GetProcessEffectiveGroupID(),
-                      GetDefineDirMode(), FileType::Directory);
+  auto fullPath =
+      AddDirectorySeperator(AddDirectorySeperator("/" + prefix) + commonPrefix);
+  FileMetaData meta(fullPath, 0, atime, atime, GetProcessEffectiveUserID(),
+                      GetProcessEffectiveGroupID(), GetDefineDirMode(),
+                      FileType::Directory);
+  meta.m_cachedTime = atime;
+  return meta;
 }
 
-vector<FileMetaData> ListObjectsOutputToFileMetaDatas(const ListObjectsOutput &listObjsOutput){
+vector<FileMetaData> ListObjectsOutputToFileMetaDatas(
+    const ListObjectsOutput &listObjsOutput) {
   // Do const cast as skd does not provide const-qualified accessors
-  ListObjectsOutput &output = const_cast<ListObjectsOutput&>(listObjsOutput);
+  ListObjectsOutput &output = const_cast<ListObjectsOutput &>(listObjsOutput);
   vector<FileMetaData> metas;
-  for(const auto& key : output.GetKeys()){
-    metas.push_back(std::move(ObjectKeyToFileMetaData(key)));
+  for (const auto &key : output.GetKeys()) {
+    metas.push_back(
+        std::move(ObjectKeyToFileMetaData(key, output.GetPrefix())));
   }
-  for(const auto& prefix : output.GetCommonPrefixes()){
-    metas.push_back(std::move(CommonPrefixToFileMetaData(prefix)));
+  for (const auto &commonPrefix : output.GetCommonPrefixes()) {
+    metas.push_back(std::move(
+        CommonPrefixToFileMetaData(commonPrefix, output.GetPrefix())));
   }
   return metas;
 }

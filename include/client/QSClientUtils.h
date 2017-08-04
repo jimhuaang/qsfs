@@ -31,9 +31,10 @@ namespace Client {
 
 namespace QSClientUtils {
 
-QS::Data::FileMetaData ObjectKeyToFileMetaData(const KeyType &key);
+QS::Data::FileMetaData ObjectKeyToFileMetaData(const KeyType &key,
+                                               const std::string &prefix);
 QS::Data::FileMetaData CommonPrefixToFileMetaData(
-    const std::string &commonPrefix);
+    const std::string &commonPrefix, const std::string &prefix);
 std::vector<QS::Data::FileMetaData> ListObjectsOutputToFileMetaDatas(
     const QingStor::ListObjectsOutput &listObjsOutput);
 

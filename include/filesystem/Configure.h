@@ -49,7 +49,8 @@ mode_t GetDefineDirMode();
 uint16_t GetBlockSize();
 uint16_t GetFragmentSize();
 
-size_t GetMaxCacheSize();
+uint64_t GetMaxFileCacheSize();  // File cache size in bytes
+size_t GetMaxFileMetaDataEntrys();  // File meta data entry max count
 
 bool IsSafeDiskSpace();
 
