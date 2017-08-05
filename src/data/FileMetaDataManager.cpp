@@ -26,8 +26,10 @@ namespace QS {
 
 namespace Data {
 
+using QS::FileSystem::Configure::GetMaxFileMetaDataEntrys;
 using std::lock_guard;
 using std::recursive_mutex;
+using std::to_string;
 using std::unique_ptr;
 
 static unique_ptr<FileMetaDataManager> instance(nullptr);
@@ -67,12 +69,22 @@ bool FileMetaDataManager::Has(const std::string &fileId) const {
 }
 
 // --------------------------------------------------------------------------
+bool FileMetaDataManager::HasFreeSpace(size_t needEntryCount) const {
+  lock_guard<recursive_mutex> lock(m_mutex);
+  return m_metaDatas.size() + needEntryCount < GetMaxFileMetaDataEntrys();
+}
+
+// --------------------------------------------------------------------------
 MetaDataListIterator FileMetaDataManager::Add(
     std::unique_ptr<FileMetaData> fileMetaData) {
   lock_guard<recursive_mutex> lock(m_mutex);
   const auto &fileId = fileMetaData->m_fileId;
   auto it = m_map.find(fileId);
   if (it == m_map.end()) {  // not exist in manager
+    if (!HasFreeSpaceNoLock(1)) {
+      auto success = FreeNoLock(1);
+      if (!success) return m_metaDatas.end();
+    }
     m_metaDatas.emplace_front(fileId, std::move(fileMetaData));
     if (m_metaDatas.begin()->first == fileId) {  // insert sucessfully
       m_map.emplace(fileId, m_metaDatas.begin());
@@ -105,6 +117,7 @@ MetaDataListIterator FileMetaDataManager::Erase(const std::string &fileId) {
 
 // --------------------------------------------------------------------------
 void FileMetaDataManager::Clear() {
+  lock_guard<recursive_mutex> lock(m_mutex);
   m_map.clear();
   m_metaDatas.clear();
 }
@@ -118,8 +131,44 @@ MetaDataListIterator FileMetaDataManager::UnguardedMakeMetaDataMostRecentlyUsed(
 }
 
 // --------------------------------------------------------------------------
+bool FileMetaDataManager::HasFreeSpaceNoLock(size_t needEntryCount) const {
+  return m_metaDatas.size() + needEntryCount < GetMaxFileMetaDataEntrys();
+}
+
+// --------------------------------------------------------------------------
+bool FileMetaDataManager::FreeNoLock(size_t needEntryCount) {
+  if (needEntryCount > GetMaxFileMetaDataEntrys()) {
+    DebugError(
+        "Try to free file meta data manager of " + to_string(needEntryCount) +
+        " entrys which surpass the maximum file meta data entry count (" +
+        to_string(GetMaxFileMetaDataEntrys()) + "). Do nothing");
+    return false;
+  }
+  if (HasFreeSpaceNoLock(needEntryCount)) {
+    DebugInfo("Tre to free file meta data manager of " +
+              to_string(needEntryCount) +
+              " entrys while free space is still availabe. Go on");
+    return true;
+  }
+  while (!HasFreeSpaceNoLock(needEntryCount)) {
+    // Discards the least recently used entry first, which is put at back
+    assert(!m_metaDatas.empty());
+    auto &meta = m_metaDatas.back().second;
+    if (meta) {
+      meta.reset();
+    } else {
+      DebugWarning("The last recently used file metadata in manager is null");
+    }
+    m_metaDatas.pop_back();
+  }
+  DebugInfo("Has freed file meta data of " + to_string(needEntryCount) +
+            " entrys");
+  return true;
+}
+
+// --------------------------------------------------------------------------
 FileMetaDataManager::FileMetaDataManager()
-    : m_maxEntrys(QS::FileSystem::Configure::GetMaxFileMetaDataEntrys()) {}
+    : m_maxEntrys(GetMaxFileMetaDataEntrys()) {}
 
 }  // namespace Data
 }  // namespace QS

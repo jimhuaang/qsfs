@@ -568,7 +568,7 @@ bool Cache::Free(size_t size) {
     DebugError("Try to free cache of " + to_string(size) +
                " bytes which surpass the maximum cache size(" +
                to_string(QS::FileSystem::Configure::GetMaxFileCacheSize()) +
-               ")");
+               "). Do nothing");
     return false;
   }
   if (HasFreeSpace(size)) {
@@ -589,8 +589,7 @@ bool Cache::Free(size_t size) {
       file->Clear();
     } else {
       DebugWarning(
-          "The last recently used file (put at the end of cache list) has "
-          "empty cache.");
+          "The last recently used file (put at the end of cache) is null");
     }
     m_cache.pop_back();
   }

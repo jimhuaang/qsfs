@@ -89,7 +89,7 @@ class File {
     // From stream, number of len bytes will be writen.
     // The owning file's offset is 'offset'.
     Page(off_t offset, const std::shared_ptr<std::iostream> &stream, size_t len,
-         std::shared_ptr<std::iostream> body = 
+         std::shared_ptr<std::iostream> body =
              std::make_shared<std::stringstream>());
 
    public:
@@ -260,8 +260,8 @@ class File {
       off_t offset, const std::shared_ptr<std::iostream> &stream, size_t len);
 
  private:
-  std::atomic<time_t> m_mtime;   // time of last modification
-  std::atomic<size_t> m_size;    // record sum of all pages' size
+  std::atomic<time_t> m_mtime;  // time of last modification
+  std::atomic<size_t> m_size;   // record sum of all pages' size
   std::recursive_mutex m_mutex;
 
   PageSet m_pages;  // a set of pages suppose to be successive
@@ -278,7 +278,7 @@ class Cache {
   Cache &operator=(const Cache &) = delete;
   ~Cache() = default;
 
- public:
+ private:
   // Read file cache into a buffer.
   // If not found fileId in cache, create it in cache and load its pages.
   // Number of len bytes will be writen to buffer.
@@ -293,16 +293,17 @@ class Cache {
 
   // Discard the least recently used File to make sure
   // there will be number of size avaiable cache space.
-  bool Free(size_t size);
+  bool Free(size_t size);  // size in byte
 
   CacheListIterator Erase(const std::string &fildId);
   void Rename(const std::string &oldFileId, const std::string &newFileId);
   void SetTime(const std::string &fileId, time_t mtime);
   void Resize(const std::string &fileId, size_t newSize);
 
+ public:
   // If cache files' size plus needSize surpass MaxCacheSize,
   // then there is no avaiable needSize space.
-  bool HasFreeSpace(size_t needSize) const;
+  bool HasFreeSpace(size_t needSize) const;  // size in byte
 
   size_t GetSize() const { return m_size; }
 

@@ -69,7 +69,7 @@ uint16_t GetBlockSize() { return 4096; }
 uint16_t GetFragmentSize() { return 4096; }
 
 uint64_t GetMaxFileCacheSize() {
-  // TODO(Jim) :
+  // TODO(Jim) : add option max_cache 
   return QS::Data::Size::MB100;  // default value
 }
 

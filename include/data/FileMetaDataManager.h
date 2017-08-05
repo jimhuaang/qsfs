@@ -19,6 +19,8 @@
 
 #include "data/FileMetaData.h"
 
+#include <assert.h>
+
 #include <list>
 #include <memory>
 #include <mutex>
@@ -56,6 +58,9 @@ class FileMetaDataManager {
   MetaDataListConstIterator Get(const std::string &fileId) const;
   // Has file meta data
   bool Has(const std::string &fileId) const;
+  // If the meta data list size plus needEntryCount surpass
+  // MaxFileMetaDataEntrys then there is no available space
+  bool HasFreeSpace(size_t needEntryCount) const;
 
  private:
   // Get file meta data
@@ -71,6 +76,8 @@ class FileMetaDataManager {
   // internal use only
   MetaDataListIterator UnguardedMakeMetaDataMostRecentlyUsed(
       MetaDataListConstIterator pos);
+  bool HasFreeSpaceNoLock(size_t needEntryCount) const;
+  bool FreeNoLock(size_t needEntryCount);
 
  private:
   FileMetaDataManager();
