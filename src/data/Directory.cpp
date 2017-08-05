@@ -42,10 +42,13 @@ static const char * const ROOT_PATH = "/";
 // --------------------------------------------------------------------------
 const string &GetFileTypeName(FileType fileType) {
   static unordered_map<FileType, string, EnumHash> fileTypeNames = {
-      {FileType::None, "None"},           {FileType::File, "File"},
-      {FileType::Directory, "Directory"}, {FileType::SymLink, "Symbolic Link"},
-      {FileType::Block, "Block"},         {FileType::Character, "Character"},
-      {FileType::FIFO, "FIFO"},           {FileType::Socket, "Socket"}};
+      {FileType::File,      "File"},
+      {FileType::Directory, "Directory"},
+      {FileType::SymLink,   "Symbolic Link"},
+      {FileType::Block,     "Block"},
+      {FileType::Character, "Character"},
+      {FileType::FIFO,      "FIFO"},
+      {FileType::Socket,    "Socket"}};
   return fileTypeNames[fileType];
 }
 
@@ -66,7 +69,7 @@ const FileNameToNodeUnorderedMap &Node::GetChildren() const {
 // --------------------------------------------------------------------------
 shared_ptr<Node> Node::Insert(const shared_ptr<Node> &child) {
   if (child) {
-    m_children.emplace(child->m_fileName, child);
+    m_children.emplace(child->GetFileName(), child);
   } else {
     DebugWarning("Try to insert null Node. Go on");
   }
@@ -78,7 +81,7 @@ void Node::Remove(const shared_ptr<Node> &child) {
   if (child) {
     bool reset = m_children.size() == 1 ? true : false;
 
-    auto it = m_children.find(child->m_fileName);
+    auto it = m_children.find(child->GetFileName());
     if (it != m_children.end()) {
       m_children.erase(it);
       if (reset) m_children.clear();
@@ -107,7 +110,7 @@ void Node::RenameChild(const string &oldFileName, const string &newFileName) {
   auto it = m_children.find(oldFileName);
   if (it != m_children.end()) {
     auto tmp = it->second;
-    tmp->m_fileName = newFileName;
+    tmp->SetFileName(newFileName);
     auto hint = m_children.erase(it);
     m_children.emplace_hint(hint, newFileName, tmp);
   } else {
@@ -118,11 +121,11 @@ void Node::RenameChild(const string &oldFileName, const string &newFileName) {
 
 // --------------------------------------------------------------------------
 DirectoryTree::DirectoryTree(time_t mtime, uid_t uid, gid_t gid, mode_t mode) {
-  auto nullNode = make_shared<Node>();
+  auto nullParent = make_shared<Node>();
   m_root = make_shared<Node>(
-      ROOT_PATH, unique_ptr<Entry>(new Entry(ROOT_PATH, 0, mtime, mtime, uid,
-                                             gid, mode, FileType::Directory)),
-      nullNode);
+      unique_ptr<Entry>(new Entry(ROOT_PATH, 0, mtime, mtime, uid, gid, mode,
+                                  FileType::Directory)),
+      nullParent);
   m_currentNode = m_root;
   m_map.emplace(ROOT_PATH, m_root);
 }

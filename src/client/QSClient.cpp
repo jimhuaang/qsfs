@@ -68,7 +68,7 @@ QSClient::~QSClient() { CloseQSService(); }
 // --------------------------------------------------------------------------
 bool QSClient::Connect() {
   auto outcome = GetQSClientImpl()->HeadBucket();
-  auto err = GrowDirectoryTreeOneLevel("/");
+  auto err = GrowDirectoryTreeOneLevel("/");  // TODO(jim): for test only, remove
   if (outcome.IsSuccess()) {
     auto receivedHandler = [](const ClientError<QSError> &err) {
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
@@ -149,7 +149,7 @@ shared_ptr<QSClientImpl> &QSClient::GetQSClientImpl() {
 void QSClient::StartQSService() {
   std::call_once(onceFlagStartService, [] {
     const auto &clientConfig = ClientConfiguration::Instance();
-    // Must set skd log at beginning, otherwise sdk will broken due to
+    // Must set sdk log at beginning, otherwise sdk will broken due to
     // uninitialization of plog sdk depended on.
     QingStorService::initService(clientConfig.GetClientLogFile());
 

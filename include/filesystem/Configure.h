@@ -20,7 +20,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <sys/types.h>
+#include <sys/types.h>  // for blkcnt_t
 
 #include <string>
 
@@ -46,8 +46,9 @@ mode_t GetRootMode();
 mode_t GetDefineFileMode();
 mode_t GetDefineDirMode();
 
-uint16_t GetBlockSize();
+uint16_t GetBlockSize();  // Block size for filesystem I/O
 uint16_t GetFragmentSize();
+blkcnt_t GetBlocks(off_t size);  // Number of 512B blocks allocated
 
 uint64_t GetMaxFileCacheSize();  // File cache size in bytes
 size_t GetMaxFileMetaDataEntrys();  // File meta data entry max count

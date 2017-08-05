@@ -44,17 +44,17 @@ using std::vector;
 
 FileMetaData ObjectKeyToFileMetaData(const KeyType &objectKey,
                                      const string &prefix) {
-  // Do const cast as skd does not provide const-qualified accessors
+  // Do const cast as sdk does not provide const-qualified accessors
   KeyType &key = const_cast<KeyType &>(objectKey);
   FileMetaData meta;
   // add root denoter and the prefix to build the full file path
-  meta.m_fileId = AddDirectorySeperator("/" + prefix) + key.GetKey();
+  meta.m_fileName = AddDirectorySeperator("/" + prefix) + key.GetKey();
   meta.m_fileSize = static_cast<uint64_t>(key.GetSize());
   meta.m_atime = meta.m_cachedTime = time(NULL);
   meta.m_mtime = meta.m_ctime = static_cast<time_t>(key.GetModified());
-  meta.m_uid = GetProcessEffectiveUserID();
-  meta.m_gid = GetProcessEffectiveGroupID();
-  meta.m_fileMode = GetDefineFileMode();
+  meta.m_uid = GetProcessEffectiveUserID();   // TODO(jim): sdk api (meta)
+  meta.m_gid = GetProcessEffectiveGroupID();  // TODO(jim): sdk api (meta)
+  meta.m_fileMode = GetDefineFileMode();      // TODO(jim): sdk api (meta)
   meta.m_fileType = FileType::File;
   meta.m_mimeType = key.GetMimeType();
   meta.m_numLink = 1;
@@ -70,14 +70,14 @@ FileMetaData CommonPrefixToFileMetaData(const string &commonPrefix,
       AddDirectorySeperator(AddDirectorySeperator("/" + prefix) + commonPrefix);
   FileMetaData meta(fullPath, 0, atime, atime, GetProcessEffectiveUserID(),
                       GetProcessEffectiveGroupID(), GetDefineDirMode(),
-                      FileType::Directory);
+                      FileType::Directory);  // TODO(jim): sdk api (meta)
   meta.m_cachedTime = atime;
   return meta;
 }
 
 vector<FileMetaData> ListObjectsOutputToFileMetaDatas(
     const ListObjectsOutput &listObjsOutput) {
-  // Do const cast as skd does not provide const-qualified accessors
+  // Do const cast as sdk does not provide const-qualified accessors
   ListObjectsOutput &output = const_cast<ListObjectsOutput &>(listObjsOutput);
   vector<FileMetaData> metas;
   for (const auto &key : output.GetKeys()) {

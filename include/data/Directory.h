@@ -49,11 +49,11 @@ using FileNameToWeakNodeUnorderedMap =
 class Entry {
  public:
  public:
-  Entry(const std::string &fileId, uint64_t fileSize, time_t atime,
+  Entry(const std::string &fileName, uint64_t fileSize, time_t atime,
         time_t mtime, uid_t uid, gid_t gid, mode_t fileMode,
-        FileType fileType = FileType::None, std::string mimeType = "",
+        FileType fileType = FileType::File, std::string mimeType = "",
         dev_t dev = 0)
-      : m_metaData(fileId, fileSize, atime, mtime, uid, gid, fileMode, fileType,
+      : m_metaData(fileName, fileSize, atime, mtime, uid, gid, fileMode, fileType,
                    mimeType, dev) {}
 
   Entry(FileMetaData fileMetaData) : m_metaData(fileMetaData) {}
@@ -66,8 +66,7 @@ class Entry {
   ~Entry() = default;
 
   operator bool() const {
-    return !m_metaData.m_fileId.empty() &&
-           m_metaData.m_fileType != FileType::None;
+    return !m_metaData.m_fileName.empty();
   }
 
   bool IsDirectory() const {
@@ -75,7 +74,7 @@ class Entry {
   }
 
   // accessor
-  const std::string &GetFileId() const { return m_metaData.m_fileId; }
+  const std::string &GetFileName() const { return m_metaData.m_fileName; }
   uint64_t GetFileSize() const { return m_metaData.m_fileSize; }
   int GetNumLink() const { return m_metaData.m_numLink; }
   FileType GetFileType() const { return m_metaData.m_fileType; }
@@ -85,6 +84,9 @@ class Entry {
   void DecreaseNumLink() { --m_metaData.m_numLink; }
   void IncreaseNumLink() { ++m_metaData.m_numLink; }
   void SetFileSize(uint64_t size) { m_metaData.m_fileSize = size; }
+  void SetFileName(const std::string &newFileName) {
+    m_metaData.m_fileName = newFileName;
+  }
 
  private:
   // TODO(jim): change to shared_ptr
@@ -99,19 +101,20 @@ class Entry {
  */
 class Node {
  public:
-  Node(const std::string &fileName, std::unique_ptr<Entry> entry,
+  Node(std::unique_ptr<Entry> entry,
        const std::shared_ptr<Node> &parent)
-      : m_fileName(fileName), m_entry(std::move(entry)), m_parent(parent) {
+      : m_entry(std::move(entry)), m_parent(parent) {
     m_children.clear();
   }
 
+  // Need for root node which has no parent
   Node()
-      : Node("", std::unique_ptr<Entry>(nullptr),
+      : Node(std::unique_ptr<Entry>(nullptr),
              std::shared_ptr<Node>(nullptr)) {}
 
-  Node(const std::string &fileName, std::unique_ptr<Entry> entry,
+  Node(std::unique_ptr<Entry> entry,
        const std::shared_ptr<Node> &parent, const std::string &symbolicLink)
-      : Node(fileName, std::move(entry), parent) {
+      : Node(std::move(entry), parent) {
     // must use m_entry instead of entry which is moved to m_entry now
     if (m_entry && m_entry->GetFileSize() <= symbolicLink.size()) {
       m_symbolicLink = std::string(symbolicLink, 0, m_entry->GetFileSize());
@@ -149,24 +152,27 @@ class Node {
                    const std::string &newFileName);
 
   // accessor
-  std::string GetFileName() const { return m_fileName; }
   const std::unique_ptr<Entry> &GetEntry() const { return m_entry; }
   std::weak_ptr<Node> GetParent() const { return m_parent; }
   std::string GetSymbolicLink() const { return m_symbolicLink; }
 
-  std::string GetFileId() const {
+  std::string GetFileName() const {
     if (!m_entry) return std::string();
-    return m_entry->GetFileId();
+    return m_entry->GetFileName();
   }
 
  private:
   std::unique_ptr<Entry> &GetEntry() { return m_entry; }
+  void SetFileName(const std::string &newFileName) {
+    if(m_entry){
+      m_entry->SetFileName(newFileName);
+    }
+  }
 
  private:
-  std::string m_fileName;  // file path
   std::unique_ptr<Entry> m_entry;
   std::weak_ptr<Node> m_parent;
-  std::string m_symbolicLink;
+  std::string m_symbolicLink;  //TODO(jim): meaningful?
   FileNameToNodeUnorderedMap m_children;
 
   friend class QS::Data::Cache;

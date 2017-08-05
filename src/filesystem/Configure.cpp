@@ -67,6 +67,9 @@ mode_t GetDefineDirMode() {
 
 uint16_t GetBlockSize() { return 4096; }
 uint16_t GetFragmentSize() { return 4096; }
+blkcnt_t GetBlocks(off_t size) { 
+  return size / 512 + 1; 
+}
 
 uint64_t GetMaxFileCacheSize() {
   // TODO(Jim) : add option max_cache 

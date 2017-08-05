@@ -197,7 +197,7 @@ File::ReadOutcome File::Read(off_t offset, size_t len,
   list<shared_ptr<Page>> outcomePages;
   auto LoadFileAndAddPage = [this, &entry, &outcomeSize, &outcomePages](
       off_t offset, size_t len) {
-    auto outcome = LoadFile((*entry)->GetFileId(), offset, len);
+    auto outcome = LoadFile((*entry)->GetFileName(), offset, len);
     if (outcome.first > 0 && outcome.second) {
       auto res = UnguardedAddPage(offset, outcome.second, outcome.first);
       if (res.second) {
@@ -225,7 +225,7 @@ File::ReadOutcome File::Read(off_t offset, size_t len,
     if (len_ < len) {
       len = len_;
       DebugWarning("Try to read file([fileId:size] = [" +
-                   (*entry)->GetFileId() + ":" +
+                   (*entry)->GetFileName() + ":" +
                    to_string((*entry)->GetFileSize()) + "]) with input " +
                    ToStringLine(offset, len) + " which surpass the file size");
     }

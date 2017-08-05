@@ -55,20 +55,20 @@ class FileMetaDataManager {
 
  public:
   // Get file meta data
-  MetaDataListConstIterator Get(const std::string &fileId) const;
+  MetaDataListConstIterator Get(const std::string &fileName) const;
   // Has file meta data
-  bool Has(const std::string &fileId) const;
+  bool Has(const std::string &fileName) const;
   // If the meta data list size plus needEntryCount surpass
   // MaxFileMetaDataEntrys then there is no available space
   bool HasFreeSpace(size_t needEntryCount) const;
 
  private:
   // Get file meta data
-  MetaDataListIterator Get(const std::string &fileId);
+  MetaDataListIterator Get(const std::string &fileName);
   // Add file meta data
   MetaDataListIterator Add(std::unique_ptr<FileMetaData> fileMetaData);
   // Remove file meta data
-  MetaDataListIterator Erase(const std::string &fileId);
+  MetaDataListIterator Erase(const std::string &fileName);
   // Remvoe all file meta datas
   void Clear();
 

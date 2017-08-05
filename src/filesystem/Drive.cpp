@@ -93,7 +93,6 @@ void Drive::SetDirectoryTree(unique_ptr<DirectoryTree> dirTree) {
 
 // --------------------------------------------------------------------------
 bool Drive::IsMountable() const {
-  // TODO(jim): head bucket and return the status
   m_mountable.store(GetClient()->Connect());
   return m_mountable.load();
 }

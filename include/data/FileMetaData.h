@@ -20,6 +20,8 @@
 #include <stdint.h>
 #include <time.h>
 
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <string>
@@ -29,7 +31,6 @@ namespace QS {
 namespace Data {
 
 enum class FileType {
-  None,
   File,
   Directory,
   SymLink,
@@ -37,8 +38,7 @@ enum class FileType {
   Character,
   FIFO,
   Socket
-};  // TODO(jim): remove None.
-
+};
 
 const std::string &GetFileTypeName(FileType fileType);
 
@@ -47,7 +47,7 @@ const std::string &GetFileTypeName(FileType fileType);
  */
 struct FileMetaData {
  public:
-  std::string m_fileId;  // file Id used to identify file in cache
+  std::string m_fileName;  // file full path file
   uint64_t m_fileSize;
   // notice file creation time is not stored in unix
   time_t m_atime;  // time of last access
@@ -70,34 +70,10 @@ struct FileMetaData {
   bool m_pendingCreate = false;
 
  public:
-  FileMetaData(const std::string &fileId, uint64_t fileSize, time_t atime,
+  FileMetaData(const std::string &fileName, uint64_t fileSize, time_t atime,
                time_t mtime, uid_t uid, gid_t gid, mode_t fileMode,
-               FileType fileType = FileType::None, std::string mimeType = "",
-               dev_t dev = 0)
-      : m_fileId(fileId),
-        m_fileSize(fileSize),
-        m_atime(atime),
-        m_mtime(mtime),
-        m_ctime(mtime),
-        m_uid(uid),
-        m_gid(gid),
-        m_fileMode(fileMode),
-        m_fileType(fileType),
-        m_mimeType(mimeType),
-        m_dev(dev),
-        m_eTag(std::string()),
-        m_encrypted(false),
-        m_dirty(false),
-        m_write(false),
-        m_fileOpen(false),
-        m_pendingGet(false),
-        m_pendingCreate(false) {
-    // TODO(jim): Consider other types.
-    m_numLink = fileType == FileType::Directory
-                    ? 2
-                    : fileType == FileType::File ? 1 : 0;
-    m_cachedTime = time(NULL);
-  }
+               FileType fileType = FileType::File,
+               const std::string &mimeType = "", dev_t dev = 0);
 
   FileMetaData() = default;
   FileMetaData(FileMetaData &&) = default;
@@ -106,13 +82,12 @@ struct FileMetaData {
   FileMetaData &operator=(const FileMetaData &) = default;
   ~FileMetaData() = default;
 
-  // TODO(jim) :
-  // struct stat ToStat();
+  struct stat ToStat () const;
+  mode_t GetFileTypeAndMode() const;
 };
 
 }  // namespace Data
 }  // namespace QS
-
 
 // NOLINTNEXTLINE
 #endif  // _QSFS_FUSE_INCLUDED_DATA_FILEMETADATA_H_
