@@ -16,39 +16,48 @@
 
 #include "data/FileMetaData.h"
 
+#include <string>
+
 #include "base/LogMacros.h"
+#include "base/Utils.h"
 #include "filesystem/Configure.h"
 
 namespace QS {
 
 namespace Data {
 
+using QS::Utils::AddDirectorySeperator;
+using QS::Utils::IsRootDirectory;
 using std::string;
 
 FileMetaData::FileMetaData(const string &fileName, uint64_t fileSize,
                            time_t atime, time_t mtime, uid_t uid, gid_t gid,
                            mode_t fileMode, FileType fileType,
-                           const string &mimeType, dev_t dev)
+                           const string &mimeType, const string &eTag,
+                           bool encrypted, dev_t dev)
     : m_fileName(fileName),
       m_fileSize(fileSize),
       m_atime(atime),
       m_mtime(mtime),
       m_ctime(mtime),
+      m_cachedTime(atime),
       m_uid(uid),
       m_gid(gid),
       m_fileMode(fileMode),
       m_fileType(fileType),
       m_mimeType(mimeType),
+      m_eTag(eTag),
+      m_encrypted(encrypted),
       m_dev(dev),
-      m_eTag(std::string()),
-      m_encrypted(false),
       m_dirty(false),
       m_write(false),
       m_fileOpen(false),
       m_pendingGet(false),
       m_pendingCreate(false) {
   m_numLink = fileType == FileType::Directory ? 2 : 1;
-  m_cachedTime = time(NULL);
+  if (fileType == FileType::Directory) {
+    m_fileName = AddDirectorySeperator(m_fileName);
+  }
 }
 
 struct stat FileMetaData::ToStat() const {
@@ -100,6 +109,23 @@ mode_t FileMetaData::GetFileTypeAndMode() const {
       break;
   }
   return stmode;
+}
+
+string FileMetaData::MyDirName() const {
+  string cpy(m_fileName);
+  if (IsRootDirectory(cpy)) {
+    DebugError("Try to get the dirname for root directory, null path returned");
+    return string();  // return null
+  }
+  if (cpy.back() == '/') cpy.pop_back();
+  auto pos = cpy.find_last_of('/');
+  if (pos != string::npos) {
+    return cpy.substr(0, pos + 1);  // including the ending "/"
+  } else {
+    DebugError("Unable to find dirname for path " + cpy +
+               " null path returned");
+    return string();
+  }
 }
 
 }  // namespace Data

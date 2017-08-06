@@ -45,7 +45,6 @@ using QS::Client::TransferManagerConfigure;
 using QS::Client::TransferManagerFactory;
 using QS::Data::Cache;
 using QS::Data::DirectoryTree;
-using QS::Data::FileMetaData;
 using QS::Utils::GetProcessEffectiveUserID;
 using QS::Utils::GetProcessEffectiveGroupID;
 using std::shared_ptr;
@@ -98,8 +97,9 @@ bool Drive::IsMountable() const {
 }
 
 // --------------------------------------------------------------------------
-void Drive::GrowDirectoryTree(vector<FileMetaData> &&fileMetas) {
-// TODO(jim):
+void Drive::GrowDirectoryTree(
+    vector<shared_ptr<QS::Data::FileMetaData>> &&fileMetas) {
+  m_directoryTree->Grow(std::move(fileMetas));
 }
 
 }  // namespace FileSystem

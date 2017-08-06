@@ -213,15 +213,19 @@ pair<bool, string> GetParentDirectory(const string &path) {
   string str;
   if (FileExists(path)) {
     if (IsRootDirectory(path)) {
-      str.assign("Unable to get parent dir for root directory");
+      success = true;
+      str.assign("/");  // return root
     } else {
       str = path;
       if (str.back() == PATH_DELIM) {
         str.pop_back();
-      } else {
+      }
+      auto pos = str.find_last_of(PATH_DELIM);
+      if (pos != string::npos) {
         success = true;
-        auto pos = str.find_last_of(PATH_DELIM);
-        str = str.substr(0, pos);
+        str = str.substr(0, pos + 1);  // including the ending "/"
+      } else {
+        str.assign("Unable to find parent director for path " + path);
       }
     }
   } else {

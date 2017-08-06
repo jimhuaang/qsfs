@@ -27,6 +27,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include <base/Utils.h>
 
@@ -34,8 +35,10 @@ namespace QS {
 
 namespace Data {
 
+class DirectoryTree;
+
 using FileIdToMetaDataPair =
-    std::pair<std::string, std::unique_ptr<FileMetaData>>;
+    std::pair<std::string, std::shared_ptr<FileMetaData>>;
 using MetaDataList = std::list<FileIdToMetaDataPair>;
 using MetaDataListIterator = MetaDataList::iterator;
 using MetaDataListConstIterator = MetaDataList::const_iterator;
@@ -56,6 +59,10 @@ class FileMetaDataManager {
  public:
   // Get file meta data
   MetaDataListConstIterator Get(const std::string &fileName) const;
+  // Return begin of meta data list
+  MetaDataListConstIterator Begin() const;
+  // Return end of meta data list
+  MetaDataListConstIterator End() const;
   // Has file meta data
   bool Has(const std::string &fileName) const;
   // If the meta data list size plus needEntryCount surpass
@@ -65,8 +72,21 @@ class FileMetaDataManager {
  private:
   // Get file meta data
   MetaDataListIterator Get(const std::string &fileName);
+  // Return begin of meta data list
+  MetaDataListIterator Begin();
+  // Return end of meta data list
+  MetaDataListIterator End();
   // Add file meta data
-  MetaDataListIterator Add(std::unique_ptr<FileMetaData> fileMetaData);
+  // Return the iterator to the new added entry (should be the begin)
+  // if sucessfullly, otherwise return the end iterator.
+  MetaDataListIterator Add(std::shared_ptr<FileMetaData> &&fileMetaData);
+  // Add file meta data array
+  // Return the iterator to the new added entry (should be the begin) 
+  // if sucessfully, otherwise return the end iterator
+  // Notes: to obey 'the most recently used meta is always put at front',
+  // the sequence of the input array will be reversed.
+  MetaDataListIterator Add(
+      std::vector<std::shared_ptr<FileMetaData>> &&fileMetaDatas);
   // Remove file meta data
   MetaDataListIterator Erase(const std::string &fileName);
   // Remvoe all file meta datas
@@ -78,6 +98,7 @@ class FileMetaDataManager {
       MetaDataListConstIterator pos);
   bool HasFreeSpaceNoLock(size_t needEntryCount) const;
   bool FreeNoLock(size_t needEntryCount);
+  MetaDataListIterator AddNoLock(std::shared_ptr<FileMetaData> &&fileMetaData);
 
  private:
   FileMetaDataManager();
@@ -89,6 +110,8 @@ class FileMetaDataManager {
   size_t m_maxEntrys;  // max count of meta data entrys
 
   mutable std::recursive_mutex m_mutex;
+
+  friend class QS::Data::DirectoryTree;
 };
 
 }  // namespace Data

@@ -78,7 +78,7 @@ class EntryTest : public Test, public WithParamInterface<MetaData> {
   }
 
  protected:
-  unique_ptr<FileMetaData> m_pFileMetaData;
+  shared_ptr<FileMetaData> m_pFileMetaData;
   unique_ptr<Entry> m_pEntry;
 };
 
@@ -126,7 +126,7 @@ unique_ptr<Node> NodeTest::pEmptyNode(nullptr);
 
 TEST_P(EntryTest, CopyControl) {
   auto meta = GetParam();
-  Entry entry = Entry(*m_pFileMetaData);
+  Entry entry = Entry(m_pFileMetaData);
   EXPECT_EQ(*m_pEntry, entry);
 }
 

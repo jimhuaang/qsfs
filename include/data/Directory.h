@@ -27,36 +27,48 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "base/Utils.h"
 #include "data/FileMetaData.h"
 
 namespace QS {
 
+namespace FileSystem {
+
+class Drive;
+}  // namespace FileSystem
+
 namespace Data {
 
 class Cache;
 class File;
 
-class Entry;
+class DirectoryTree;
 class Node;
 
 using FileNameToNodeUnorderedMap =
     std::unordered_map<std::string, std::shared_ptr<Node>, Utils::StringHash>;
 using FileNameToWeakNodeUnorderedMap =
     std::unordered_map<std::string, std::weak_ptr<Node>, Utils::StringHash>;
+using ParentFileNameToChildrenMultiMap =
+    std::unordered_multimap<std::string, std::weak_ptr<Node>,
+                            Utils::StringHash>;
 
 class Entry {
  public:
  public:
   Entry(const std::string &fileName, uint64_t fileSize, time_t atime,
         time_t mtime, uid_t uid, gid_t gid, mode_t fileMode,
-        FileType fileType = FileType::File, std::string mimeType = "",
+        FileType fileType = FileType::File, const std::string &mimeType = "",
+        const std::string &eTag = std::string(), bool encrypted = false,
         dev_t dev = 0)
-      : m_metaData(fileName, fileSize, atime, mtime, uid, gid, fileMode, fileType,
-                   mimeType, dev) {}
+      : m_metaData(std::make_shared<FileMetaData>(
+            fileName, fileSize, atime, mtime, uid, gid, fileMode, fileType,
+            mimeType, eTag, encrypted, dev)) {}
 
-  Entry(FileMetaData fileMetaData) : m_metaData(fileMetaData) {}
+  Entry(const std::shared_ptr<FileMetaData> &fileMetaData)
+      : m_metaData(fileMetaData) {}
 
   Entry() = default;
   Entry(Entry &&) = default;
@@ -65,35 +77,33 @@ class Entry {
   Entry &operator=(const Entry &) = default;
   ~Entry() = default;
 
-  operator bool() const {
-    return !m_metaData.m_fileName.empty();
-  }
+  operator bool() const { return !m_metaData->m_fileName.empty(); }
 
   bool IsDirectory() const {
-    return m_metaData.m_fileType == FileType::Directory;
+    return m_metaData->m_fileType == FileType::Directory;
   }
 
   // accessor
-  const std::string &GetFileName() const { return m_metaData.m_fileName; }
-  uint64_t GetFileSize() const { return m_metaData.m_fileSize; }
-  int GetNumLink() const { return m_metaData.m_numLink; }
-  FileType GetFileType() const { return m_metaData.m_fileType; }
-  time_t GetMTime() const { return m_metaData.m_mtime; }
+  const std::string &GetFileName() const { return m_metaData->m_fileName; }
+  uint64_t GetFileSize() const { return m_metaData->m_fileSize; }
+  int GetNumLink() const { return m_metaData->m_numLink; }
+  FileType GetFileType() const { return m_metaData->m_fileType; }
+  time_t GetMTime() const { return m_metaData->m_mtime; }
 
  private:
-  void DecreaseNumLink() { --m_metaData.m_numLink; }
-  void IncreaseNumLink() { ++m_metaData.m_numLink; }
-  void SetFileSize(uint64_t size) { m_metaData.m_fileSize = size; }
+  void DecreaseNumLink() { --m_metaData->m_numLink; }
+  void IncreaseNumLink() { ++m_metaData->m_numLink; }
+  void SetFileSize(uint64_t size) { m_metaData->m_fileSize = size; }
   void SetFileName(const std::string &newFileName) {
-    m_metaData.m_fileName = newFileName;
+    m_metaData->m_fileName = newFileName;
   }
 
  private:
-  // TODO(jim): change to shared_ptr
-  FileMetaData m_metaData;  // file meta data
+  // TODO(jim): change to weak_ptr otherwise this will prevent FileMetaDataManger to clear it memory
+  std::shared_ptr<FileMetaData> m_metaData;  // file meta data
 
   friend class Node;
-  friend class QS::Data::File;
+  friend class QS::Data::File;  // for SetFileSize
 };
 
 /**
@@ -102,18 +112,18 @@ class Entry {
 class Node {
  public:
   Node(std::unique_ptr<Entry> entry,
-       const std::shared_ptr<Node> &parent)
+       const std::shared_ptr<Node> &parent = std::make_shared<Node>())
       : m_entry(std::move(entry)), m_parent(parent) {
     m_children.clear();
   }
 
-  // Need for root node which has no parent
+  // Ctor for root node which has no parent,
+  // or for some case the parent is cleared or still not set at the time
   Node()
-      : Node(std::unique_ptr<Entry>(nullptr),
-             std::shared_ptr<Node>(nullptr)) {}
+      : Node(std::unique_ptr<Entry>(nullptr), std::shared_ptr<Node>(nullptr)) {}
 
-  Node(std::unique_ptr<Entry> entry,
-       const std::shared_ptr<Node> &parent, const std::string &symbolicLink)
+  Node(std::unique_ptr<Entry> entry, const std::shared_ptr<Node> &parent,
+       const std::string &symbolicLink)
       : Node(std::move(entry), parent) {
     // must use m_entry instead of entry which is moved to m_entry now
     if (m_entry && m_entry->GetFileSize() <= symbolicLink.size()) {
@@ -143,7 +153,7 @@ class Node {
 
  public:
   bool IsEmpty() const { return m_children.empty(); }
-  std::shared_ptr<Node> Find(const std::string &fileName) const;
+  std::shared_ptr<Node> Find(const std::string &childFileName) const;
   const FileNameToNodeUnorderedMap &GetChildren() const;
 
   std::shared_ptr<Node> Insert(const std::shared_ptr<Node> &child);
@@ -163,19 +173,23 @@ class Node {
 
  private:
   std::unique_ptr<Entry> &GetEntry() { return m_entry; }
+
   void SetFileName(const std::string &newFileName) {
-    if(m_entry){
+    if (m_entry) {
       m_entry->SetFileName(newFileName);
     }
   }
 
+  void SetParent(const std::shared_ptr<Node> &parent) { m_parent = parent; }
+
  private:
   std::unique_ptr<Entry> m_entry;
   std::weak_ptr<Node> m_parent;
-  std::string m_symbolicLink;  //TODO(jim): meaningful?
+  std::string m_symbolicLink;  // TODO(jim): meaningful?
   FileNameToNodeUnorderedMap m_children;
 
-  friend class QS::Data::Cache;
+  friend class QS::Data::Cache;  // for GetEntry
+  friend class QS::Data::DirectoryTree;
 };
 
 /**
@@ -193,10 +207,17 @@ class DirectoryTree {
 
  public:
  private:
+  void Grow(std::shared_ptr<FileMetaData> &&fileMeta);
+  void Grow(std::vector<std::shared_ptr<FileMetaData>> &&fileMetas);
+
+ private:
   std::shared_ptr<Node> m_root;
   std::shared_ptr<Node> m_currentNode;
   std::recursive_mutex m_mutex;
-  FileNameToWeakNodeUnorderedMap m_map;  // record all nodes
+  FileNameToWeakNodeUnorderedMap m_map;  // record all nodes map
+  ParentFileNameToChildrenMultiMap m_parentToChildrenMap;
+
+  friend class QS::FileSystem::Drive;
 };
 
 }  // namespace Data

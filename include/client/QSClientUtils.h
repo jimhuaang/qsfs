@@ -17,6 +17,7 @@
 #ifndef _QSFS_FUSE_INCLUDED_CLIENT_QSCLIENTUTILS_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_CLIENT_QSCLIENTUTILS_H_  // NOLINT
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -31,11 +32,12 @@ namespace Client {
 
 namespace QSClientUtils {
 
-QS::Data::FileMetaData ObjectKeyToFileMetaData(const KeyType &key,
-                                               const std::string &prefix);
-QS::Data::FileMetaData CommonPrefixToFileMetaData(
+std::shared_ptr<QS::Data::FileMetaData> ObjectKeyToFileMetaData(
+    const KeyType &key, const std::string &prefix);
+std::shared_ptr<QS::Data::FileMetaData> CommonPrefixToFileMetaData(
     const std::string &commonPrefix, const std::string &prefix);
-std::vector<QS::Data::FileMetaData> ListObjectsOutputToFileMetaDatas(
+std::vector<std::shared_ptr<QS::Data::FileMetaData>>
+ListObjectsOutputToFileMetaDatas(
     const QingStor::ListObjectsOutput &listObjsOutput);
 
 }  // namespace QSClientUtils

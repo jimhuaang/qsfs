@@ -30,6 +30,7 @@ using QS::FileSystem::Configure::GetMaxFileMetaDataEntrys;
 using std::lock_guard;
 using std::recursive_mutex;
 using std::to_string;
+using std::shared_ptr;
 using std::unique_ptr;
 
 static unique_ptr<FileMetaDataManager> instance(nullptr);
@@ -63,6 +64,30 @@ MetaDataListIterator FileMetaDataManager::Get(const std::string &fileName) {
 }
 
 // --------------------------------------------------------------------------
+MetaDataListConstIterator FileMetaDataManager::Begin() const{
+  lock_guard<recursive_mutex> lock(m_mutex);
+  return m_metaDatas.cbegin();
+}
+
+// --------------------------------------------------------------------------
+MetaDataListIterator FileMetaDataManager::Begin(){
+  lock_guard<recursive_mutex> lock(m_mutex);
+  return m_metaDatas.begin();
+}
+
+// --------------------------------------------------------------------------
+MetaDataListConstIterator FileMetaDataManager::End() const {
+  lock_guard<recursive_mutex> lock(m_mutex);
+  return m_metaDatas.cend();
+}
+
+// --------------------------------------------------------------------------
+MetaDataListIterator FileMetaDataManager::End(){
+  lock_guard<recursive_mutex> lock(m_mutex);
+  return m_metaDatas.end();
+}
+
+// --------------------------------------------------------------------------
 bool FileMetaDataManager::Has(const std::string &fileName) const {
   lock_guard<recursive_mutex> lock(m_mutex);
   return this->Get(fileName) != m_metaDatas.cend();
@@ -75,10 +100,9 @@ bool FileMetaDataManager::HasFreeSpace(size_t needEntryCount) const {
 }
 
 // --------------------------------------------------------------------------
-MetaDataListIterator FileMetaDataManager::Add(
-    std::unique_ptr<FileMetaData> fileMetaData) {
-  lock_guard<recursive_mutex> lock(m_mutex);
-  const auto &fileName = fileMetaData->m_fileName;
+MetaDataListIterator FileMetaDataManager::AddNoLock(
+    shared_ptr<FileMetaData> &&fileMetaData) {
+  const auto &fileName = fileMetaData->GetFileName();
   auto it = m_map.find(fileName);
   if (it == m_map.end()) {  // not exist in manager
     if (!HasFreeSpaceNoLock(1)) {
@@ -98,6 +122,25 @@ MetaDataListIterator FileMetaDataManager::Add(
     pos->second = std::move(fileMetaData);
     return pos;
   }
+}
+
+// --------------------------------------------------------------------------
+MetaDataListIterator FileMetaDataManager::Add(
+    shared_ptr<FileMetaData> &&fileMetaData) {
+  lock_guard<recursive_mutex> lock(m_mutex);
+  return AddNoLock(std::move(fileMetaData));
+}
+
+// --------------------------------------------------------------------------
+MetaDataListIterator FileMetaDataManager::Add(
+    std::vector<std::shared_ptr<FileMetaData>> &&fileMetaDatas) {
+  lock_guard<recursive_mutex> lock(m_mutex);
+  auto pos = m_metaDatas.end();
+  for (auto &meta : fileMetaDatas) {
+    pos = AddNoLock(std::move(meta));
+    if (pos == m_metaDatas.end()) break;  // if fail to add an entry
+  }
+  return pos;
 }
 
 // --------------------------------------------------------------------------

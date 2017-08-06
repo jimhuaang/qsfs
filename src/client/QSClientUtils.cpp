@@ -19,6 +19,7 @@
 #include <stdint.h>  // for uint64_t
 #include <time.h>
 
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -39,47 +40,41 @@ using QS::FileSystem::Configure::GetDefineDirMode;
 using QS::Utils::AddDirectorySeperator;
 using QS::Utils::GetProcessEffectiveUserID;
 using QS::Utils::GetProcessEffectiveGroupID;
+using std::make_shared;
 using std::string;
+using std::shared_ptr;
 using std::vector;
 
-FileMetaData ObjectKeyToFileMetaData(const KeyType &objectKey,
-                                     const string &prefix) {
+shared_ptr<FileMetaData> ObjectKeyToFileMetaData(const KeyType &objectKey,
+                                                 const string &prefix) {
   // Do const cast as sdk does not provide const-qualified accessors
   KeyType &key = const_cast<KeyType &>(objectKey);
-  FileMetaData meta;
-  // add root denoter and the prefix to build the full file path
-  meta.m_fileName = AddDirectorySeperator("/" + prefix) + key.GetKey();
-  meta.m_fileSize = static_cast<uint64_t>(key.GetSize());
-  meta.m_atime = meta.m_cachedTime = time(NULL);
-  meta.m_mtime = meta.m_ctime = static_cast<time_t>(key.GetModified());
-  meta.m_uid = GetProcessEffectiveUserID();   // TODO(jim): sdk api (meta)
-  meta.m_gid = GetProcessEffectiveGroupID();  // TODO(jim): sdk api (meta)
-  meta.m_fileMode = GetDefineFileMode();      // TODO(jim): sdk api (meta)
-  meta.m_fileType = FileType::File;
-  meta.m_mimeType = key.GetMimeType();
-  meta.m_numLink = 1;
-  meta.m_eTag = key.GetEtag();
-  meta.m_encrypted = key.GetEncrypted();
+  auto meta = make_shared<FileMetaData>(
+      AddDirectorySeperator("/" + prefix) + key.GetKey(),  // build full path
+      static_cast<uint64_t>(key.GetSize()), time(NULL),
+      static_cast<time_t>(key.GetModified()), GetProcessEffectiveUserID(),
+      GetProcessEffectiveGroupID(), GetDefineFileMode(), FileType::File,
+      key.GetMimeType(), key.GetEtag(), key.GetEncrypted());
   return meta;
 }
 
-FileMetaData CommonPrefixToFileMetaData(const string &commonPrefix,
-                                        const string &prefix) {
+shared_ptr<FileMetaData> CommonPrefixToFileMetaData(const string &commonPrefix,
+                                                    const string &prefix) {
   time_t atime = time(NULL);
   auto fullPath =
       AddDirectorySeperator(AddDirectorySeperator("/" + prefix) + commonPrefix);
-  FileMetaData meta(fullPath, 0, atime, atime, GetProcessEffectiveUserID(),
-                      GetProcessEffectiveGroupID(), GetDefineDirMode(),
-                      FileType::Directory);  // TODO(jim): sdk api (meta)
-  meta.m_cachedTime = atime;
+  auto meta = make_shared<FileMetaData>(
+      fullPath, 0, atime, atime, GetProcessEffectiveUserID(),
+      GetProcessEffectiveGroupID(), GetDefineDirMode(),
+      FileType::Directory);  // TODO(jim): sdk api (meta)
   return meta;
 }
 
-vector<FileMetaData> ListObjectsOutputToFileMetaDatas(
+vector<shared_ptr<FileMetaData>> ListObjectsOutputToFileMetaDatas(
     const ListObjectsOutput &listObjsOutput) {
   // Do const cast as sdk does not provide const-qualified accessors
   ListObjectsOutput &output = const_cast<ListObjectsOutput &>(listObjsOutput);
-  vector<FileMetaData> metas;
+  vector<shared_ptr<FileMetaData>> metas;
   for (const auto &key : output.GetKeys()) {
     metas.push_back(
         std::move(ObjectKeyToFileMetaData(key, output.GetPrefix())));

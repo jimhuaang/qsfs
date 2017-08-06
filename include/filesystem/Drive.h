@@ -34,6 +34,7 @@ class TransferManager;
 namespace Data {
 class Cache;
 class DirectoryTree;
+class FileMetaData;
 }
 
 namespace FileSystem {
@@ -63,7 +64,8 @@ class Drive {
   }
 
  private:
-  void GrowDirectoryTree(std::vector<QS::Data::FileMetaData> &&fileMetas);
+  void GrowDirectoryTree(
+      std::vector<std::shared_ptr<QS::Data::FileMetaData>> &&fileMetas);
 
  private:
   std::shared_ptr<QS::Client::Client> &GetClient() { return m_client; }

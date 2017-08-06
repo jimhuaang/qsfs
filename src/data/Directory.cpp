@@ -25,36 +25,41 @@
 
 #include "base/LogMacros.h"
 #include "base/Utils.h"
+#include "data/FileMetaDataManager.h"
 
 namespace QS {
 
 namespace Data {
 
+using QS::Data::FileMetaDataManager;
 using QS::Utils::EnumHash;
+using std::lock_guard;
 using std::make_shared;
+using std::recursive_mutex;
 using std::string;
 using std::shared_ptr;
 using std::unique_ptr;
 using std::unordered_map;
+using std::vector;
 
-static const char * const ROOT_PATH = "/";
+static const char *const ROOT_PATH = "/";
 
 // --------------------------------------------------------------------------
 const string &GetFileTypeName(FileType fileType) {
   static unordered_map<FileType, string, EnumHash> fileTypeNames = {
-      {FileType::File,      "File"},
+      {FileType::File, "File"},
       {FileType::Directory, "Directory"},
-      {FileType::SymLink,   "Symbolic Link"},
-      {FileType::Block,     "Block"},
+      {FileType::SymLink, "Symbolic Link"},
+      {FileType::Block, "Block"},
       {FileType::Character, "Character"},
-      {FileType::FIFO,      "FIFO"},
-      {FileType::Socket,    "Socket"}};
+      {FileType::FIFO, "FIFO"},
+      {FileType::Socket, "Socket"}};
   return fileTypeNames[fileType];
 }
 
 // --------------------------------------------------------------------------
-shared_ptr<Node> Node::Find(const string &fileName) const {
-  auto child = m_children.find(fileName);
+shared_ptr<Node> Node::Find(const string &childFileName) const {
+  auto child = m_children.find(childFileName);
   if (child != m_children.end()) {
     return child->second;
   }
@@ -69,7 +74,11 @@ const FileNameToNodeUnorderedMap &Node::GetChildren() const {
 // --------------------------------------------------------------------------
 shared_ptr<Node> Node::Insert(const shared_ptr<Node> &child) {
   if (child) {
-    m_children.emplace(child->GetFileName(), child);
+    auto res = m_children.emplace(child->GetFileName(), child);
+    if (!res.second) {
+      DebugInfo(child->GetFileName() +
+                " is already existed, no insertion happens");
+    }
   } else {
     DebugWarning("Try to insert null Node. Go on");
   }
@@ -102,8 +111,8 @@ void Node::RenameChild(const string &oldFileName, const string &newFileName) {
   }
 
   if (m_children.find(newFileName) != m_children.end()) {
-    Error("Cannot rename " + oldFileName + " to " + newFileName +
-          " which is already existed. But continue...");
+    DebugWarning("Cannot rename " + oldFileName + " to " + newFileName +
+                 " which is already existed. But continue...");
     return;
   }
 
@@ -120,12 +129,51 @@ void Node::RenameChild(const string &oldFileName, const string &newFileName) {
 }
 
 // --------------------------------------------------------------------------
+void DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
+  lock_guard<recursive_mutex> lock(m_mutex);
+  auto node = make_shared<Node>(unique_ptr<Entry>(new Entry(fileMeta)));
+  m_currentNode = node;
+
+  auto dirName = fileMeta->MyDirName();
+  assert(!dirName.empty());
+  auto it = m_map.find(dirName);
+  if (it != m_map.end()) {
+    if (auto parent = it->second.lock()) {
+      parent->Insert(node);
+      node->SetParent(parent);
+    } else {
+      DebugInfo("Parent Node of " + fileMeta->GetFileName() +
+                " is cleared at the time in directory tree");
+    }
+  }
+
+  // record parent to children map
+  m_parentToChildrenMap.emplace(dirName, node);
+  // update
+  auto range = m_parentToChildrenMap.equal_range(fileMeta->GetFileName());
+  for (auto it = range.first; it != range.second; ++it) {
+    if (auto child = it->second.lock()) {
+      child->SetParent(node);
+      node->Insert(child);
+    }
+  }
+
+  FileMetaDataManager::Instance().Add(std::move(fileMeta));
+}
+
+// --------------------------------------------------------------------------
+void DirectoryTree::Grow(vector<shared_ptr<FileMetaData>> &&fileMetas) {
+  lock_guard<recursive_mutex> lock(m_mutex);
+  for (auto &meta : fileMetas) {
+    Grow(std::move(meta));
+  }
+}
+
+// --------------------------------------------------------------------------
 DirectoryTree::DirectoryTree(time_t mtime, uid_t uid, gid_t gid, mode_t mode) {
-  auto nullParent = make_shared<Node>();
-  m_root = make_shared<Node>(
-      unique_ptr<Entry>(new Entry(ROOT_PATH, 0, mtime, mtime, uid, gid, mode,
-                                  FileType::Directory)),
-      nullParent);
+  lock_guard<recursive_mutex> lock(m_mutex);
+  m_root = make_shared<Node>(unique_ptr<Entry>(new Entry(
+      ROOT_PATH, 0, mtime, mtime, uid, gid, mode, FileType::Directory)));
   m_currentNode = m_root;
   m_map.emplace(ROOT_PATH, m_root);
 }
