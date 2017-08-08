@@ -57,15 +57,13 @@ using ParentFileNameToChildrenMultiMap =
 
 class Entry {
  public:
- public:
   Entry(const std::string &fileName, uint64_t fileSize, time_t atime,
         time_t mtime, uid_t uid, gid_t gid, mode_t fileMode,
         FileType fileType = FileType::File, const std::string &mimeType = "",
         const std::string &eTag = std::string(), bool encrypted = false,
-        dev_t dev = 0)
-      : m_metaData(std::make_shared<FileMetaData>(
-            fileName, fileSize, atime, mtime, uid, gid, fileMode, fileType,
-            mimeType, eTag, encrypted, dev)) {}
+        dev_t dev = 0);
+
+  Entry(std::shared_ptr<FileMetaData> &&fileMetaData);
 
   Entry(const std::shared_ptr<FileMetaData> &fileMetaData)
       : m_metaData(fileMetaData) {}
@@ -77,30 +75,35 @@ class Entry {
   Entry &operator=(const Entry &) = default;
   ~Entry() = default;
 
-  operator bool() const { return !m_metaData->m_fileName.empty(); }
+  // You always need to check if the entry is operable before 
+  // invoke its member functions
+  operator bool() const {
+    auto meta = m_metaData.lock();
+    return meta ? !meta->m_fileName.empty() : false;
+  }
 
-  bool IsDirectory() const {
-    return m_metaData->m_fileType == FileType::Directory;
+   bool IsDirectory() const {
+    return m_metaData.lock()->m_fileType == FileType::Directory;
   }
 
   // accessor
-  const std::string &GetFileName() const { return m_metaData->m_fileName; }
-  uint64_t GetFileSize() const { return m_metaData->m_fileSize; }
-  int GetNumLink() const { return m_metaData->m_numLink; }
-  FileType GetFileType() const { return m_metaData->m_fileType; }
-  time_t GetMTime() const { return m_metaData->m_mtime; }
+  const std::string &GetFileName() const { return m_metaData.lock()->m_fileName; }
+  uint64_t GetFileSize() const { return m_metaData.lock()->m_fileSize; }
+  int GetNumLink() const { return m_metaData.lock()->m_numLink; }
+  FileType GetFileType() const { return m_metaData.lock()->m_fileType; }
+  time_t GetMTime() const { return m_metaData.lock()->m_mtime; }
 
  private:
-  void DecreaseNumLink() { --m_metaData->m_numLink; }
-  void IncreaseNumLink() { ++m_metaData->m_numLink; }
-  void SetFileSize(uint64_t size) { m_metaData->m_fileSize = size; }
+  void DecreaseNumLink() { --m_metaData.lock()->m_numLink; }
+  void IncreaseNumLink() { ++m_metaData.lock()->m_numLink; }
+  void SetFileSize(uint64_t size) { m_metaData.lock()->m_fileSize = size; }
   void SetFileName(const std::string &newFileName) {
-    m_metaData->m_fileName = newFileName;
+    m_metaData.lock()->m_fileName = newFileName;
   }
-
+ 
  private:
-  // TODO(jim): change to weak_ptr otherwise this will prevent FileMetaDataManger to clear it memory
-  std::shared_ptr<FileMetaData> m_metaData;  // file meta data
+  // Using weak_ptr as FileMetaDataManger will control file mete data life cycle
+  std::weak_ptr<FileMetaData> m_metaData;  // file meta data
 
   friend class Node;
   friend class QS::Data::File;  // for SetFileSize
@@ -111,7 +114,7 @@ class Entry {
  */
 class Node {
  public:
-  Node(std::unique_ptr<Entry> entry,
+  Node(Entry &&entry,
        const std::shared_ptr<Node> &parent = std::make_shared<Node>())
       : m_entry(std::move(entry)), m_parent(parent) {
     m_children.clear();
@@ -120,14 +123,14 @@ class Node {
   // Ctor for root node which has no parent,
   // or for some case the parent is cleared or still not set at the time
   Node()
-      : Node(std::unique_ptr<Entry>(nullptr), std::shared_ptr<Node>(nullptr)) {}
+      : Node(Entry(), std::shared_ptr<Node>(nullptr)) {}
 
-  Node(std::unique_ptr<Entry> entry, const std::shared_ptr<Node> &parent,
+  Node(Entry &&entry, const std::shared_ptr<Node> &parent,
        const std::string &symbolicLink)
       : Node(std::move(entry), parent) {
     // must use m_entry instead of entry which is moved to m_entry now
-    if (m_entry && m_entry->GetFileSize() <= symbolicLink.size()) {
-      m_symbolicLink = std::string(symbolicLink, 0, m_entry->GetFileSize());
+    if (m_entry && m_entry.GetFileSize() <= symbolicLink.size()) {
+      m_symbolicLink = std::string(symbolicLink, 0, m_entry.GetFileSize());
     }
   }
 
@@ -135,20 +138,11 @@ class Node {
   Node(const Node &) = delete;
   Node &operator=(Node &&) = default;
   Node &operator=(const Node &) = delete;
-
-  ~Node() {
-    if (!m_entry) return;
-
-    m_entry->DecreaseNumLink();
-    if (m_entry->GetNumLink() == 0 ||
-        (m_entry->GetNumLink() <= 1 && m_entry->IsDirectory())) {
-      m_entry.reset();
-    }
-  }
+  ~Node();
 
  public:
   virtual operator bool() const {
-    return m_entry ? m_entry->operator bool() : false;
+    return m_entry ? m_entry.operator bool() : false;
   }
 
  public:
@@ -162,28 +156,28 @@ class Node {
                    const std::string &newFileName);
 
   // accessor
-  const std::unique_ptr<Entry> &GetEntry() const { return m_entry; }
+  const Entry &GetEntry() const { return m_entry; }
   std::weak_ptr<Node> GetParent() const { return m_parent; }
   std::string GetSymbolicLink() const { return m_symbolicLink; }
 
   std::string GetFileName() const {
     if (!m_entry) return std::string();
-    return m_entry->GetFileName();
+    return m_entry.GetFileName();
   }
 
  private:
-  std::unique_ptr<Entry> &GetEntry() { return m_entry; }
+  Entry &GetEntry() { return m_entry; }
 
   void SetFileName(const std::string &newFileName) {
     if (m_entry) {
-      m_entry->SetFileName(newFileName);
+      m_entry.SetFileName(newFileName);
     }
   }
 
   void SetParent(const std::shared_ptr<Node> &parent) { m_parent = parent; }
 
  private:
-  std::unique_ptr<Entry> m_entry;
+  Entry m_entry;
   std::weak_ptr<Node> m_parent;
   std::string m_symbolicLink;  // TODO(jim): meaningful?
   FileNameToNodeUnorderedMap m_children;

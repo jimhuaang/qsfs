@@ -118,16 +118,16 @@ pair<bool, string> DeleteFilesInDirectoryNoLog(const std::string &path,
 
   unique_ptr<DIR, decltype(closedir) *> dir(opendir(path.c_str()), closedir);
   if (dir == nullptr) {
-    struct dirent *nextEntry = nullptr;
-    while ((nextEntry = readdir(dir.get())) != nullptr) {
-      if (strcmp(nextEntry->d_name, ".") == 0 ||
-          strcmp(nextEntry->d_name, "..") == 0) {
+    struct dirent *nextDir = nullptr;
+    while ((nextDir = readdir(dir.get())) != nullptr) {
+      if (strcmp(nextDir->d_name, ".") == 0 ||
+          strcmp(nextDir->d_name, "..") == 0) {
         continue;
       }
 
       string fullPath(path);
       fullPath.append(1, PATH_DELIM);
-      fullPath.append(nextEntry->d_name);
+      fullPath.append(nextDir->d_name);
 
       struct stat st;
       if (lstat(fullPath.c_str(), &st) != 0) {
@@ -239,10 +239,10 @@ pair<bool, string> GetParentDirectory(const string &path) {
 bool IsDirectoryEmpty(const std::string &path) {
   unique_ptr<DIR, decltype(closedir) *> dir(opendir(path.c_str()), closedir);
   if (dir) {
-    struct dirent *nextEntry = nullptr;
-    while ((nextEntry = readdir(dir.get())) != nullptr) {
-      if (strcmp(nextEntry->d_name, ".") != 0 &&
-          strcmp(nextEntry->d_name, "..") != 0) {
+    struct dirent *nextDir = nullptr;
+    while ((nextDir = readdir(dir.get())) != nullptr) {
+      if (strcmp(nextDir->d_name, ".") != 0 &&
+          strcmp(nextDir->d_name, "..") != 0) {
         return false;
       }
     }

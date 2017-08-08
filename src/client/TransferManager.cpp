@@ -63,7 +63,7 @@ size_t TransferManager::GetBufferCount() const {
 }
 
 void TransferManager::InitializeResources() {
-  // TODO (jim):
+  // TODO(jim):
 }
 
 }  // namespace Client

@@ -58,6 +58,35 @@ const string &GetFileTypeName(FileType fileType) {
 }
 
 // --------------------------------------------------------------------------
+Entry::Entry(const std::string &fileName, uint64_t fileSize, time_t atime,
+             time_t mtime, uid_t uid, gid_t gid, mode_t fileMode,
+             FileType fileType, const std::string &mimeType,
+             const std::string &eTag, bool encrypted, dev_t dev) {
+  auto meta = make_shared<FileMetaData>(fileName, fileSize, atime, mtime, uid,
+                                        gid, fileMode, fileType, mimeType, eTag,
+                                        encrypted, dev);
+  m_metaData = meta;
+  FileMetaDataManager::Instance().Add(std::move(meta));
+}
+
+// --------------------------------------------------------------------------
+Entry::Entry(std::shared_ptr<FileMetaData> &&fileMetaData)
+    : m_metaData(fileMetaData) {
+  FileMetaDataManager::Instance().Add(std::move(fileMetaData));
+}
+
+// --------------------------------------------------------------------------
+Node::~Node() {
+  if (!m_entry) return;
+
+  m_entry.DecreaseNumLink();
+  if (m_entry.GetNumLink() == 0 ||
+      (m_entry.GetNumLink() <= 1 && m_entry.IsDirectory())) {
+    FileMetaDataManager::Instance().Erase(GetFileName());
+  }
+}
+
+// --------------------------------------------------------------------------
 shared_ptr<Node> Node::Find(const string &childFileName) const {
   auto child = m_children.find(childFileName);
   if (child != m_children.end()) {
@@ -131,7 +160,7 @@ void Node::RenameChild(const string &oldFileName, const string &newFileName) {
 // --------------------------------------------------------------------------
 void DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
   lock_guard<recursive_mutex> lock(m_mutex);
-  auto node = make_shared<Node>(unique_ptr<Entry>(new Entry(fileMeta)));
+  auto node = make_shared<Node>(Entry(fileMeta));
   m_currentNode = node;
 
   auto dirName = fileMeta->MyDirName();
@@ -157,8 +186,6 @@ void DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
       node->Insert(child);
     }
   }
-
-  FileMetaDataManager::Instance().Add(std::move(fileMeta));
 }
 
 // --------------------------------------------------------------------------
@@ -172,8 +199,8 @@ void DirectoryTree::Grow(vector<shared_ptr<FileMetaData>> &&fileMetas) {
 // --------------------------------------------------------------------------
 DirectoryTree::DirectoryTree(time_t mtime, uid_t uid, gid_t gid, mode_t mode) {
   lock_guard<recursive_mutex> lock(m_mutex);
-  m_root = make_shared<Node>(unique_ptr<Entry>(new Entry(
-      ROOT_PATH, 0, mtime, mtime, uid, gid, mode, FileType::Directory)));
+  m_root = make_shared<Node>( Entry(
+      ROOT_PATH, 0, mtime, mtime, uid, gid, mode, FileType::Directory));
   m_currentNode = m_root;
   m_map.emplace(ROOT_PATH, m_root);
 }

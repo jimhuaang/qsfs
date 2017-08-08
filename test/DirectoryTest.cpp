@@ -23,9 +23,12 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "gtest/gtest.h"
 
+#include "base/Logging.h"
+#include "base/Utils.h"
 #include "data/Directory.h"
 #include "data/FileMetaData.h"
 
@@ -43,6 +46,16 @@ using std::unique_ptr;
 using ::testing::Test;
 using ::testing::Values;
 using ::testing::WithParamInterface;
+
+// default log dir
+static const char *defaultLogDir = "/tmp/qsfs.logs/";
+void InitLog() {
+  QS::Utils::CreateDirectoryIfNotExistsNoLog(defaultLogDir);
+      QS::Logging::InitializeLogging(unique_ptr<QS::Logging::Log>(
+          new QS::Logging::DefaultLog(defaultLogDir)));
+  EXPECT_TRUE(QS::Logging::GetLogInstance() != nullptr)
+      << "log instance is null";
+}
 
 // default values for non interested attributes
 time_t mtime_ = time(NULL);
@@ -69,32 +82,34 @@ struct MetaData {
 class EntryTest : public Test, public WithParamInterface<MetaData> {
  public:
   EntryTest() {
+    InitLog();
     auto meta = GetParam();
     m_pFileMetaData.reset(new FileMetaData(meta.fileName, meta.fileSize, mtime_,
                                            mtime_, uid_, gid_, fileMode_,
                                            meta.fileType));
-    m_pEntry.reset(new Entry(meta.fileName, meta.fileSize, mtime_, mtime_, uid_,
-                             gid_, fileMode_, meta.fileType));
+    m_pEntry = new Entry(meta.fileName, meta.fileSize, mtime_, mtime_, uid_,
+                             gid_, fileMode_, meta.fileType);
   }
 
  protected:
   shared_ptr<FileMetaData> m_pFileMetaData;
-  unique_ptr<Entry> m_pEntry;
+  Entry *m_pEntry;
 };
 
 class NodeTest : public Test {
  protected:
   static void SetUpTestCase() {
-    pRootEntry = unique_ptr<Entry>(new Entry(
-        "/", 0, mtime_, mtime_, uid_, gid_, fileMode_, FileType::Directory));
-    pRootNode = make_shared<Node>( unique_ptr<Entry>(new Entry(*pRootEntry)), nullptr);
+    InitLog();
+    pRootEntry = new Entry(
+        "/", 0, mtime_, mtime_, uid_, gid_, fileMode_, FileType::Directory);
+    pRootNode = make_shared<Node>( Entry(*pRootEntry), nullptr);
     pFileNode1 = make_shared<Node>(
-        unique_ptr<Entry>(new Entry("file1", 1024, mtime_, mtime_, uid_, gid_,
-                                    fileMode_, FileType::File)),
+         Entry("file1", 1024, mtime_, mtime_, uid_, gid_,
+                                    fileMode_, FileType::File),
         pRootNode);
     pLinkNode = make_shared<Node>(
-        unique_ptr<Entry>(new Entry("linkToFile1", strlen(path), mtime_, mtime_,
-                                    uid_, gid_, fileMode_, FileType::SymLink)),
+         Entry("linkToFile1", strlen(path), mtime_, mtime_,
+                                    uid_, gid_, fileMode_, FileType::SymLink),
         pRootNode, path);
     pEmptyNode = unique_ptr<Node>(new Node);
   }
@@ -109,7 +124,7 @@ class NodeTest : public Test {
 
  protected:
   static const char path[];
-  static unique_ptr<Entry> pRootEntry;
+  static Entry *pRootEntry;
   static shared_ptr<Node> pRootNode;
   static shared_ptr<Node> pFileNode1;
   static shared_ptr<Node> pLinkNode;
@@ -117,7 +132,7 @@ class NodeTest : public Test {
 };
 
 const char NodeTest::path[] = "pathLinkToFile1";
-unique_ptr<Entry> NodeTest::pRootEntry(nullptr);
+Entry *NodeTest::pRootEntry = nullptr;
 shared_ptr<Node> NodeTest::pRootNode(nullptr);
 shared_ptr<Node> NodeTest::pFileNode1(nullptr);
 shared_ptr<Node> NodeTest::pLinkNode(nullptr);
@@ -143,8 +158,7 @@ TEST_P(EntryTest, PublicFunctions) {
 INSTANTIATE_TEST_CASE_P(
     FSEntryTest, EntryTest,
     // fileName, fileSize, fileType, numLink, isDir, isOperable
-    Values(MetaData{"", 0, FileType::Directory, 2, true, false},
-           MetaData{"/", 0, FileType::Directory, 2, true, true},
+    Values(MetaData{"/", 0, FileType::Directory, 2, true, true},
            MetaData{"/file1", 0, FileType::File, 1, false, true},
            MetaData{"/file2", 1024, FileType::File, 1, false, true}));
 
@@ -159,7 +173,7 @@ TEST_F(NodeTest, CustomCtors) {
   EXPECT_TRUE(pRootNode->operator bool());
   EXPECT_TRUE(pRootNode->IsEmpty());
   EXPECT_EQ(pRootNode->GetFileName(), "/");
-  EXPECT_EQ(*(const_cast<const Node*>(pRootNode.get())->GetEntry()),
+  EXPECT_EQ((const_cast<const Node*>(pRootNode.get())->GetEntry()),
             *pRootEntry);
   EXPECT_EQ(pRootNode->GetFileName(), pRootEntry->GetFileName());
 

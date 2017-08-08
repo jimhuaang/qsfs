@@ -51,7 +51,7 @@ uint16_t GetFragmentSize();
 blkcnt_t GetBlocks(off_t size);  // Number of 512B blocks allocated
 
 uint64_t GetMaxFileCacheSize();  // File cache size in bytes
-size_t GetMaxFileMetaDataEntrys();  // File meta data entry max count
+size_t GetMaxFileMetaDataCount();  // File meta data max count
 
 bool IsSafeDiskSpace();
 

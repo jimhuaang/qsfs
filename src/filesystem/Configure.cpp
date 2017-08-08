@@ -42,18 +42,15 @@ string GetDefaultCredentialsFile() { return QSFS_DEFAULT_CREDENTIALS; }
 string GetCredentialsFile() {
   auto customCredentials =
       QS::FileSystem::Options::Instance().GetCredentialsFile();
-  static const char* credentials = customCredentials.empty()
-                                       ? QSFS_DEFAULT_CREDENTIALS
-                                       : customCredentials.c_str();
-  return credentials;
+  return customCredentials.empty()
+             ? QSFS_DEFAULT_CREDENTIALS
+             : customCredentials;
 }
 
 string GetDefaultLogDirectory() { return QSFS_DEFAULT_LOG_DIR; }
 string GetLogDirectory() {
   auto customLogDir = QS::FileSystem::Options::Instance().GetLogDirectory();
-  static const char* logdir =
-      customLogDir.empty() ? QSFS_DEFAULT_LOG_DIR : customLogDir.c_str();
-  return logdir;
+  return customLogDir.empty() ? QSFS_DEFAULT_LOG_DIR : customLogDir;
 }
 
 uint16_t GetPathMaxLen() { return 4096; }
@@ -76,13 +73,13 @@ uint64_t GetMaxFileCacheSize() {
   return QS::Data::Size::MB100;  // default value
 }
 
-size_t GetMaxFileMetaDataEntrys() {
+size_t GetMaxFileMetaDataCount() {
   // TODO(jim): add option max_stat_entrys
   return QS::Data::Size::K10;  // default value
 }
 
 bool IsSafeDiskSpace() {
-  // TODO (jim) :
+  // TODO(jim) :
   return true;
 }
 

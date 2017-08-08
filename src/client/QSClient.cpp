@@ -70,12 +70,12 @@ bool QSClient::Connect() {
   auto outcome = GetQSClientImpl()->HeadBucket();
   auto err = GrowDirectoryTreeOneLevel("/");  // TODO(jim): for test only, remove
   if (outcome.IsSuccess()) {
-    auto receivedHandler = [](const ClientError<QSError> &err) {
+    /* auto receivedHandler = [](const ClientError<QSError> &err) {
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     };
     // Build up the root level of directory tree asynchornizely.
     GetExecutor()->SubmitAsync(
-        receivedHandler, [this] { return GrowDirectoryTreeOneLevel("/"); });
+        receivedHandler, [this] { return GrowDirectoryTreeOneLevel("/"); }); */
     return true;
   } else {
     DebugError(GetMessageForQSError(outcome.GetError()));

@@ -58,7 +58,6 @@ bool IsValidInput(off_t offset, const char *buffer, size_t len) {
   return offset >= 0 && buffer != NULL && len > 0;
 }
 
-// TODO(jim): convert fileId to file name
 string ToStringLine(const string &fileId, off_t offset, const char *buffer,
                     size_t len) {
   return "[fileId:offset:buffer:size] = [" + fileId + ":" + to_string(offset) +
@@ -184,7 +183,7 @@ size_t File::Page::UnguardedRead(off_t offset, char *buffer, size_t len) {
 
 // --------------------------------------------------------------------------
 File::ReadOutcome File::Read(off_t offset, size_t len,
-                             unique_ptr<Entry> *entry) {
+                             Entry *entry) {
   bool isValidInput = offset >= 0 && len > 0 && entry != nullptr && (*entry);
   assert(isValidInput);
   if (!isValidInput) {
@@ -197,36 +196,36 @@ File::ReadOutcome File::Read(off_t offset, size_t len,
   list<shared_ptr<Page>> outcomePages;
   auto LoadFileAndAddPage = [this, &entry, &outcomeSize, &outcomePages](
       off_t offset, size_t len) {
-    auto outcome = LoadFile((*entry)->GetFileName(), offset, len);
+    auto outcome = LoadFile(entry->GetFileName(), offset, len);
     if (outcome.first > 0 && outcome.second) {
       auto res = UnguardedAddPage(offset, outcome.second, outcome.first);
       if (res.second) {
-        SetTime((*entry)->GetMTime());
+        SetTime(entry->GetMTime());
         outcomePages.emplace_back(*(res.first));
         outcomeSize += (*(res.first))->m_size;
       }
     }
   };
 
-  if ((*entry)->GetMTime() > 0) {
+  if (entry->GetMTime() > 0) {
     // File is just created, update mtime.
     if (m_mtime == 0) {
-      SetTime((*entry)->GetMTime());
-    } else if ((*entry)->GetMTime() > m_mtime) {
+      SetTime(entry->GetMTime());
+    } else if (entry->GetMTime() > m_mtime) {
       // Detected modification in the file, clear file.
       Clear();
-      (*entry)->SetFileSize(0);
+      entry->SetFileSize(0);
     }
   }
 
   // Adjust the length.
-  if ((*entry)->GetFileSize() > 0) {
-    auto len_ = static_cast<size_t>((*entry)->GetFileSize() - offset);
+  if (entry->GetFileSize() > 0) {
+    auto len_ = static_cast<size_t>(entry->GetFileSize() - offset);
     if (len_ < len) {
       len = len_;
       DebugWarning("Try to read file([fileId:size] = [" +
-                   (*entry)->GetFileName() + ":" +
-                   to_string((*entry)->GetFileSize()) + "]) with input " +
+                   entry->GetFileName() + ":" +
+                   to_string(entry->GetFileSize()) + "]) with input " +
                    ToStringLine(offset, len) + " which surpass the file size");
     }
   }
@@ -470,7 +469,7 @@ std::pair<File::PageSetConstIterator, bool> File::UnguardedAddPage(
 // --------------------------------------------------------------------------
 size_t Cache::Read(const string &fileId, off_t offset, char *buffer, size_t len,
                    shared_ptr<Node> node) {
-  bool validInput = IsValidInput(fileId, offset, buffer, len) && (node);
+  bool validInput = IsValidInput(fileId, offset, buffer, len) && (node) && (*node);
   assert(validInput);
   if (!validInput) {
     DebugError("Try to read cache with invalid input " +

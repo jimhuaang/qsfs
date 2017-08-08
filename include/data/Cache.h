@@ -204,7 +204,7 @@ class File {
   // Notes the pagelist of outcome could containing more bytes than given
   // input asking for, for example, the 1st page of outcome could has a
   // offset which is ahead of input 'offset'.
-  ReadOutcome Read(off_t offset, size_t len, std::unique_ptr<Entry> *entry);
+  ReadOutcome Read(off_t offset, size_t len, Entry *entry);
 
   // Load from local file cache or send request to sdk
   // TODO(jim) : move to transfer, and fileId probably should be replaced

@@ -35,7 +35,8 @@ namespace QS {
 
 namespace Data {
 
-class DirectoryTree;
+class Entry;
+class Node;
 
 using FileIdToMetaDataPair =
     std::pair<std::string, std::shared_ptr<FileMetaData>>;
@@ -65,9 +66,9 @@ class FileMetaDataManager {
   MetaDataListConstIterator End() const;
   // Has file meta data
   bool Has(const std::string &fileName) const;
-  // If the meta data list size plus needEntryCount surpass
-  // MaxFileMetaDataEntrys then there is no available space
-  bool HasFreeSpace(size_t needEntryCount) const;
+  // If the meta data list size plus needCount surpass
+  // MaxFileMetaDataCount then there is no available space
+  bool HasFreeSpace(size_t needCount) const;
 
  private:
   // Get file meta data
@@ -77,11 +78,11 @@ class FileMetaDataManager {
   // Return end of meta data list
   MetaDataListIterator End();
   // Add file meta data
-  // Return the iterator to the new added entry (should be the begin)
+  // Return the iterator to the new added meta (should be the begin)
   // if sucessfullly, otherwise return the end iterator.
   MetaDataListIterator Add(std::shared_ptr<FileMetaData> &&fileMetaData);
   // Add file meta data array
-  // Return the iterator to the new added entry (should be the begin) 
+  // Return the iterator to the new added meta (should be the begin) 
   // if sucessfully, otherwise return the end iterator
   // Notes: to obey 'the most recently used meta is always put at front',
   // the sequence of the input array will be reversed.
@@ -96,8 +97,8 @@ class FileMetaDataManager {
   // internal use only
   MetaDataListIterator UnguardedMakeMetaDataMostRecentlyUsed(
       MetaDataListConstIterator pos);
-  bool HasFreeSpaceNoLock(size_t needEntryCount) const;
-  bool FreeNoLock(size_t needEntryCount);
+  bool HasFreeSpaceNoLock(size_t needCount) const;
+  bool FreeNoLock(size_t needCount);
   MetaDataListIterator AddNoLock(std::shared_ptr<FileMetaData> &&fileMetaData);
 
  private:
@@ -107,11 +108,12 @@ class FileMetaDataManager {
   // Least recently used meta data in put at back.
   MetaDataList m_metaDatas;
   FileIdToMetaDataListIteratorMap m_map;
-  size_t m_maxEntrys;  // max count of meta data entrys
+  size_t m_maxCount;  // max count of meta datas
 
   mutable std::recursive_mutex m_mutex;
 
-  friend class QS::Data::DirectoryTree;
+  friend class QS::Data::Entry;
+  friend class QS::Data::Node;
 };
 
 }  // namespace Data
