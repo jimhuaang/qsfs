@@ -26,7 +26,7 @@ namespace QS {
 
 namespace Data {
 
-using QS::Utils::AddDirectorySeperator;
+using QS::Utils::AppendPathDelim;
 using QS::Utils::IsRootDirectory;
 using std::string;
 
@@ -56,7 +56,7 @@ FileMetaData::FileMetaData(const string &fileName, uint64_t fileSize,
       m_pendingCreate(false) {
   m_numLink = fileType == FileType::Directory ? 2 : 1;
   if (fileType == FileType::Directory) {
-    m_fileName = AddDirectorySeperator(m_fileName);
+    m_fileName = AppendPathDelim(m_fileName);
   }
 }
 

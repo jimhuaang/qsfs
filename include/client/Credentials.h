@@ -22,7 +22,7 @@
 #include <unordered_map>
 #include <utility>
 
-#include "base/Utils.h"
+#include "base/HashUtils.h"
 
 namespace QS {
 
@@ -117,7 +117,7 @@ class DefaultCredentialsProvider : public CredentialsProvider {
  private:
   using KeyIdToKeyPair = std::pair<std::string, std::string>;
   using BucketToKeyPairMap =
-      std::unordered_map<std::string, KeyIdToKeyPair, QS::Utils::StringHash>;
+      std::unordered_map<std::string, KeyIdToKeyPair, QS::HashUtils::StringHash>;
 
   std::string m_credentialsFile;
   std::string m_defaultAccessKeyId;

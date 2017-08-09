@@ -18,7 +18,7 @@
 
 #include <unordered_map>
 
-#include "base/Utils.h"
+#include "base/HashUtils.h"
 
 namespace QS {
 
@@ -31,7 +31,7 @@ using std::unordered_map;
 
 // --------------------------------------------------------------------------
 QSError StringToQSError(const string &errorCode) {
-  static unordered_map<string, QSError, QS::Utils::StringHash>
+  static unordered_map<string, QSError, QS::HashUtils::StringHash>
       errorCodeToTypeMap = {
           {"Unknow",                      QSError::UNKNOWN},
           {"Good",                        QSError::GOOD},
@@ -47,7 +47,10 @@ QSError StringToQSError(const string &errorCode) {
           {"InternalFailure",             QSError::INTERNAL_FAILURE},
           {"KeyNotExist",                 QSError::KEY_NOT_EXIST},
           {"NetworkConnection",           QSError::NETWORK_CONNECTION},
+          {"NoSuchGetObject",             QSError::NO_SUCH_GET_OBJECT},
+          {"NoSuchHeadObject",            QSError::NO_SUCH_HEAD_OBJECT},
           {"NoSuchListObjects",           QSError::NO_SUCH_LIST_OBJECTS},
+          {"NoSuchPutObject",             QSError::NO_SUCH_PUT_OBJECT},
           {"NoSuchUpload",                QSError::NO_SUCH_UPLOAD,},
           {"ObjectAlreadyInActiveTier",   QSError::OBJECT_ALREADY_IN_ACTIVE_TIER},
           {"ObjectNotInActiveTier",       QSError::OBJECT_NOT_IN_ACTIVE_TIER},
@@ -71,7 +74,7 @@ QSError StringToQSError(const string &errorCode) {
 
 // --------------------------------------------------------------------------
 std::string QSErrorToString(QSError err){
-  static unordered_map<QSError, string, QS::Utils::EnumHash>
+  static unordered_map<QSError, string, QS::HashUtils::EnumHash>
       errorTypeToCodeMap = {
           {QSError::UNKNOWN                       , "Unknow"                      },
           {QSError::GOOD                          , "Good"                        },
@@ -87,7 +90,10 @@ std::string QSErrorToString(QSError err){
           {QSError::INTERNAL_FAILURE              , "InternalFailure"             },
           {QSError::KEY_NOT_EXIST                 , "KeyNotExist"                 },
           {QSError::NETWORK_CONNECTION            , "NetworkConnection"           },
+          {QSError::NO_SUCH_GET_OBJECT            , "NoSuchGetObject"             },
+          {QSError::NO_SUCH_HEAD_OBJECT           , "NoSuchHeadObject"            },
           {QSError::NO_SUCH_LIST_OBJECTS          , "NoSuchListObjects"           },
+          {QSError::NO_SUCH_PUT_OBJECT            , "NoSuchPutObject"             },
           {QSError::NO_SUCH_UPLOAD                , "NoSuchUpload"                },
           {QSError::OBJECT_ALREADY_IN_ACTIVE_TIER , "ObjectAlreadyInActiveTier"   },
           {QSError::OBJECT_NOT_IN_ACTIVE_TIER     , "ObjectNotInActiveTier"       },
@@ -127,7 +133,7 @@ bool IsGoodQSError(const ClientError<QSError> &error){
 
 // --------------------------------------------------------------------------
 QSError SDKErrorToQSError(QsError sdkErr) {
-  static unordered_map<QsError, QSError, QS::Utils::EnumHash> sdkErrToQSErrMap =
+  static unordered_map<QsError, QSError, QS::HashUtils::EnumHash> sdkErrToQSErrMap =
       {
           {QsError::QS_ERR_NO_ERROR,              QSError::GOOD},
           {QsError::QS_ERR_INVAILD_CONFIG_FILE,   QSError::SDK_CONFIGURE_FILE_INAVLID},
@@ -141,13 +147,13 @@ QSError SDKErrorToQSError(QsError sdkErr) {
 }
 
 // --------------------------------------------------------------------------
-bool SDKRequestSuccess(QsError sdkErr) {
+bool SDKResponseSuccess(QsError sdkErr) {
   return sdkErr == QsError::QS_ERR_NO_ERROR;
 }
 
 // --------------------------------------------------------------------------
 string SDKResponseCodeToName(HttpResponseCode code) {
-  static unordered_map<HttpResponseCode, string, QS::Utils::EnumHash>
+  static unordered_map<HttpResponseCode, string, QS::HashUtils::EnumHash>
       sdkResponseCodeToNameMap = {
           {HttpResponseCode::REQUEST_NOT_MADE,                "RequestNotMade"},                 // 0
           {HttpResponseCode::CONTINUE,                        "Continue"},                       // 100
@@ -232,7 +238,7 @@ string SDKResponseCodeToName(HttpResponseCode code) {
 
 // --------------------------------------------------------------------------
 int SDKResponseCodeToInt(HttpResponseCode code) {
-  static unordered_map<HttpResponseCode, int, QS::Utils::EnumHash>
+  static unordered_map<HttpResponseCode, int, QS::HashUtils::EnumHash>
       sdkResponseCodeToNumMap = {
           {HttpResponseCode::REQUEST_NOT_MADE,                 0},
           {HttpResponseCode::CONTINUE,                         100},

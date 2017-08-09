@@ -17,18 +17,36 @@
 #ifndef _QSFS_FUSE_INCLUDED_BASE_STRINGUTILS_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_BASE_STRINGUTILS_H_  // NOLINT
 
+#include <stdio.h>
+
 #include <string>
+#include <type_traits>
+#include <vector>
 
 namespace QS {
 
 namespace StringUtils {
 
+template <typename P>
+std::string PointerAddress(P p) {
+  if (std::is_pointer<P>::value) {
+    int sz = snprintf(NULL, 0, "%p", p);
+    std::vector<char> buf(sz + 1);
+    snprintf(&buf[0], sz + 1, "%p", p);
+    std::string ss(buf.begin(), buf.end());
+    return ss;
+  }
+  return std::string();
+}
+
 std::string ToLower(const std::string &str);
 std::string ToUpper(const std::string &str);
 
-std::string LTrim(const std::string &str);
-std::string RTrim(const std::string &str);
-std::string Trim(const std::string &str);
+std::string LTrim(const std::string &str, unsigned char c);
+std::string RTrim(const std::string &str, unsigned char c);
+std::string Trim(const std::string &str, unsigned char c);
+
+
 
 }  // namespace StringUtils
 }  // namespace QS

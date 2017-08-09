@@ -14,24 +14,22 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_CONSTANTS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_CONSTANTS_H_  // NOLINT
+#ifndef _QSFS_FUSE_INCLUDED_BASE_TIMEUTILS_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_BASE_TIMEUTILS_H_  // NOLINT
 
-#include <stdint.h>  // for uint16_t
+#include <time.h>
+
+#include <string>
 
 namespace QS {
 
-namespace Client {
+namespace TimeUtils {
 
-namespace Constants {
+time_t RFC822GMTToSeconds(const std::string &date);
+std::string SecondsToRFC822GMT(time_t time);
 
-static const uint16_t BucketListObjectsCountLimit = 500;
-static const uint16_t BucketDeleteMultipleObjectsLimit = 100;
-
-}  // namespace Constants
-}  // namespace Client
+}  // namespace TimeUtils
 }  // namespace QS
 
-
 // NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_CONSTANTS_H_
+#endif  // _QSFS_FUSE_INCLUDED_BASE_TIMEUTILS_H_

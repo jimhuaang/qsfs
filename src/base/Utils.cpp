@@ -193,7 +193,7 @@ bool IsDirectory(const string &path) {
 bool IsRootDirectory(const std::string &path) { return path == "/"; }
 
 // --------------------------------------------------------------------------
-string AddDirectorySeperator(const string &path) {
+string AppendPathDelim(const string &path) {
   assert(!path.empty());
   DebugWarningIf(path.empty(),
                  "Try to add directory seperator with a empty input");

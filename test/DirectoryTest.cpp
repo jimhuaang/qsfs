@@ -177,7 +177,7 @@ TEST_F(NodeTest, CustomCtors) {
             *pRootEntry);
   EXPECT_EQ(pRootNode->GetFileName(), pRootEntry->GetFileName());
 
-  EXPECT_EQ(*(pFileNode1->GetParent().lock()), *pRootNode);
+  EXPECT_EQ(*(pFileNode1->GetParent()), *pRootNode);
 
   EXPECT_EQ(pLinkNode->GetSymbolicLink(), string(path));
 }

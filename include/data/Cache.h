@@ -18,10 +18,10 @@
 #define _QSFS_FUSE_INCLUDE_DATA_CACHE_H_  // NOLINT
 
 #include <assert.h>
-#include <stddef.h>
+#include <stddef.h>  // for size_t
 #include <time.h>
 
-#include <sys/types.h>
+#include <sys/types.h>  // for off_t
 
 #include <atomic>
 #include <iostream>
@@ -34,7 +34,7 @@
 #include <unordered_map>
 #include <utility>
 
-#include "base/Utils.h"
+#include "base/HashUtils.h"
 
 namespace QS {
 
@@ -50,7 +50,7 @@ using CacheList = std::list<FileIdToFilePair>;
 using CacheListIterator = CacheList::iterator;
 using CacheListConstIterator = CacheList::const_iterator;
 using FileIdToCacheListIteratorMap =
-    std::unordered_map<std::string, CacheListIterator, Utils::StringHash>;
+    std::unordered_map<std::string, CacheListIterator, HashUtils::StringHash>;
 
 class File {
  public:

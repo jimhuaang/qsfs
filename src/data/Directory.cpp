@@ -24,7 +24,7 @@
 #include <utility>
 
 #include "base/LogMacros.h"
-#include "base/Utils.h"
+#include "base/HashUtils.h"
 #include "data/FileMetaDataManager.h"
 
 namespace QS {
@@ -32,7 +32,7 @@ namespace QS {
 namespace Data {
 
 using QS::Data::FileMetaDataManager;
-using QS::Utils::EnumHash;
+using QS::HashUtils::EnumHash;
 using std::lock_guard;
 using std::make_shared;
 using std::recursive_mutex;
@@ -102,9 +102,14 @@ const FileNameToNodeUnorderedMap &Node::GetChildren() const {
 
 // --------------------------------------------------------------------------
 shared_ptr<Node> Node::Insert(const shared_ptr<Node> &child) {
+  assert(IsDirectory());
   if (child) {
     auto res = m_children.emplace(child->GetFileName(), child);
-    if (!res.second) {
+    if (res.second) {
+      if(child->IsDirectory()){
+        m_entry.IncreaseNumLink();
+      }
+    } else {
       DebugInfo(child->GetFileName() +
                 " is already existed, no insertion happens");
     }
@@ -158,12 +163,34 @@ void Node::RenameChild(const string &oldFileName, const string &newFileName) {
 }
 
 // --------------------------------------------------------------------------
+shared_ptr<Node> DirectoryTree::Find(const string &fileName) const{
+  lock_guard<recursive_mutex> lock(m_mutex);
+  auto it = m_map.find(fileName);
+  if(it != m_map.end()){
+    return it->second.lock();
+  } else {
+    DebugInfo("Node (" + fileName + ") is not existed in directory tree");
+    return nullptr;
+  }
+}
+
+// --------------------------------------------------------------------------
+std::pair<ChildrenMultiMapIterator, ChildrenMultiMapIterator>
+DirectoryTree::FindChildren(const string &dirName) {
+  return m_parentToChildrenMap.equal_range(dirName);
+}
+
+// --------------------------------------------------------------------------
 void DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
   lock_guard<recursive_mutex> lock(m_mutex);
-  auto node = make_shared<Node>(Entry(fileMeta));
+  string fileName = fileMeta->GetFileName();
+  bool isDir = fileMeta->IsDirectory();
+  auto dirName = fileMeta->MyDirName();
+
+  auto node = make_shared<Node>(Entry(std::move(fileMeta)));
   m_currentNode = node;
 
-  auto dirName = fileMeta->MyDirName();
+  // hook up with parent
   assert(!dirName.empty());
   auto it = m_map.find(dirName);
   if (it != m_map.end()) {
@@ -171,21 +198,24 @@ void DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
       parent->Insert(node);
       node->SetParent(parent);
     } else {
-      DebugInfo("Parent Node of " + fileMeta->GetFileName() +
+      DebugInfo("Parent Node of " + fileName +
                 " is cleared at the time in directory tree");
+    }
+  }
+
+  // hook up with children
+  if (isDir) {
+    auto range = m_parentToChildrenMap.equal_range(fileName);
+    for (auto it = range.first; it != range.second; ++it) {
+      if (auto child = it->second.lock()) {
+        child->SetParent(node);
+        node->Insert(child);
+      }
     }
   }
 
   // record parent to children map
   m_parentToChildrenMap.emplace(dirName, node);
-  // update
-  auto range = m_parentToChildrenMap.equal_range(fileMeta->GetFileName());
-  for (auto it = range.first; it != range.second; ++it) {
-    if (auto child = it->second.lock()) {
-      child->SetParent(node);
-      node->Insert(child);
-    }
-  }
 }
 
 // --------------------------------------------------------------------------

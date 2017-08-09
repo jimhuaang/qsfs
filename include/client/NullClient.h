@@ -38,10 +38,9 @@ class NullClient : public Client {
   bool Connect() override { return false; }
   bool DisConnect() override { return true; }
 
-  ClientError<QSError> GrowDirectoryTreeOneLevel(
-      const std::string &dirPath) override {
-    return ClientError<QSError>(QSError::GOOD, false);
-  }
+  ClientError<QSError> ReadDirectory(const std::string &dirPath) override;
+  ClientError<QSError> DeleteFile(const std::string &filePath) override ;
+  ClientError<QSError> DeleteDirectory(const std::string &dirPath) override;
 };
 
 }  // namespace Client

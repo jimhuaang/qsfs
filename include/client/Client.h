@@ -55,10 +55,10 @@ class Client {
  public:
   virtual bool Connect() = 0;
   virtual bool DisConnect() = 0;
-  // Grow the directory tree one more level denoted by path
-  // Notice the dirPath should end with delimiter
-  virtual ClientError<QSError> GrowDirectoryTreeOneLevel(
-      const std::string &dirPath) = 0;
+
+  virtual ClientError<QSError> ReadDirectory(const std::string &dirPath) = 0;
+  virtual ClientError<QSError> DeleteFile(const std::string &filePath) = 0;
+  virtual ClientError<QSError> DeleteDirectory(const std::string &dirPath) = 0;
 
  public:
   const RetryStrategy &GetRetryStrategy() const;

@@ -23,6 +23,9 @@
 #include <utility>
 #include <vector>
 
+#include <sys/stat.h>  // for mode_t
+
+#include "base/TimeUtils.h"
 #include "base/Utils.h"
 #include "filesystem/Configure.h"
 
@@ -32,12 +35,14 @@ namespace Client {
 
 namespace QSClientUtils {
 
+using QingStor::HeadObjectOutput;
 using QingStor::ListObjectsOutput;
 using QS::Data::FileMetaData;
 using QS::Data::FileType;
 using QS::FileSystem::Configure::GetDefineFileMode;
 using QS::FileSystem::Configure::GetDefineDirMode;
-using QS::Utils::AddDirectorySeperator;
+using QS::TimeUtils::RFC822GMTToSeconds;
+using QS::Utils::AppendPathDelim;
 using QS::Utils::GetProcessEffectiveUserID;
 using QS::Utils::GetProcessEffectiveGroupID;
 using std::make_shared;
@@ -45,31 +50,48 @@ using std::string;
 using std::shared_ptr;
 using std::vector;
 
+// --------------------------------------------------------------------------
+shared_ptr<FileMetaData> HeadObjectOutputToFileMetaData(
+    const string &objKey, const HeadObjectOutput &headObjOutput) {
+  auto output = const_cast<HeadObjectOutput &>(headObjOutput);
+  // TODO(jim): confirm the mode and type definition
+  auto size = static_cast<uint64_t>(output.GetContentLength());
+  mode_t mode = size == 0 ? GetDefineDirMode() : GetDefineFileMode();
+  FileType type = size == 0 ? FileType::Directory : FileType::File;
+  time_t mtime = RFC822GMTToSeconds(output.GetLastModified());
+  bool encrypted = !output.GetXQSEncryptionCustomerAlgorithm().empty();
+  return make_shared<FileMetaData>(
+      objKey, size, time(NULL), mtime, GetProcessEffectiveUserID(),
+      GetProcessEffectiveGroupID(), mode, type, output.GetContentType(),
+      output.GetETag(), encrypted);
+}
+
+// --------------------------------------------------------------------------
 shared_ptr<FileMetaData> ObjectKeyToFileMetaData(const KeyType &objectKey,
                                                  const string &prefix) {
   // Do const cast as sdk does not provide const-qualified accessors
   KeyType &key = const_cast<KeyType &>(objectKey);
-  auto meta = make_shared<FileMetaData>(
-      AddDirectorySeperator("/" + prefix) + key.GetKey(),  // build full path
+  return make_shared<FileMetaData>(
+      AppendPathDelim("/" + prefix) + key.GetKey(),  // build full path
       static_cast<uint64_t>(key.GetSize()), time(NULL),
       static_cast<time_t>(key.GetModified()), GetProcessEffectiveUserID(),
       GetProcessEffectiveGroupID(), GetDefineFileMode(), FileType::File,
       key.GetMimeType(), key.GetEtag(), key.GetEncrypted());
-  return meta;
 }
 
+// --------------------------------------------------------------------------
 shared_ptr<FileMetaData> CommonPrefixToFileMetaData(const string &commonPrefix,
                                                     const string &prefix) {
   time_t atime = time(NULL);
   auto fullPath =
-      AddDirectorySeperator(AddDirectorySeperator("/" + prefix) + commonPrefix);
-  auto meta = make_shared<FileMetaData>(
+      AppendPathDelim(AppendPathDelim("/" + prefix) + commonPrefix);
+  return make_shared<FileMetaData>(
       fullPath, 0, atime, atime, GetProcessEffectiveUserID(),
       GetProcessEffectiveGroupID(), GetDefineDirMode(),
       FileType::Directory);  // TODO(jim): sdk api (meta)
-  return meta;
 }
 
+// --------------------------------------------------------------------------
 vector<shared_ptr<FileMetaData>> ListObjectsOutputToFileMetaDatas(
     const ListObjectsOutput &listObjsOutput) {
   // Do const cast as sdk does not provide const-qualified accessors

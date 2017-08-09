@@ -47,7 +47,7 @@ string ProtocolToString(Protocol protocol) {
 }
 
 Protocol StringToProtocol(const string &name) {
-  string str = StringUtils::ToLower(StringUtils::Trim(name));
+  string str = StringUtils::ToLower(StringUtils::Trim(name,' '));
   if (str == HTTP_NAME) {
     return Protocol::HTTP;
   } else if (str == HTTPS_NAME) {

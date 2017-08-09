@@ -14,24 +14,35 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_CONSTANTS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_CONSTANTS_H_  // NOLINT
+#include "client/NullClient.h"
 
-#include <stdint.h>  // for uint16_t
+#include "client/ClientError.h"
+#include "client/QSError.h"
+
 
 namespace QS {
 
 namespace Client {
 
-namespace Constants {
+namespace {
+ClientError<QSError> GoodState() {
+  return ClientError<QSError>(QSError::GOOD, false);
+}
+}  // namespace
 
-static const uint16_t BucketListObjectsCountLimit = 500;
-static const uint16_t BucketDeleteMultipleObjectsLimit = 100;
+using std::string;
 
-}  // namespace Constants
+ClientError<QSError> NullClient::ReadDirectory(const string &dirPath) {
+  return GoodState();
+}
+
+ClientError<QSError> NullClient::DeleteFile(const string &filePath) {
+  return GoodState();
+}
+
+ClientError<QSError> NullClient::DeleteDirectory(const string &dirPath) {
+  return GoodState();
+}
+
 }  // namespace Client
 }  // namespace QS
-
-
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_CONSTANTS_H_

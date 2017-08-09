@@ -29,7 +29,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/Utils.h"
+#include "base/HashUtils.h"
 #include "data/FileMetaData.h"
 
 namespace QS {
@@ -48,12 +48,13 @@ class DirectoryTree;
 class Node;
 
 using FileNameToNodeUnorderedMap =
-    std::unordered_map<std::string, std::shared_ptr<Node>, Utils::StringHash>;
+    std::unordered_map<std::string, std::shared_ptr<Node>, HashUtils::StringHash>;
 using FileNameToWeakNodeUnorderedMap =
-    std::unordered_map<std::string, std::weak_ptr<Node>, Utils::StringHash>;
+    std::unordered_map<std::string, std::weak_ptr<Node>, HashUtils::StringHash>;
 using ParentFileNameToChildrenMultiMap =
     std::unordered_multimap<std::string, std::weak_ptr<Node>,
-                            Utils::StringHash>;
+                            HashUtils::StringHash>;
+using ChildrenMultiMapIterator = ParentFileNameToChildrenMultiMap::iterator;
 
 class Entry {
  public:
@@ -145,6 +146,10 @@ class Node {
     return m_entry ? m_entry.operator bool() : false;
   }
 
+  bool IsDirectory() const {
+    return m_entry && m_entry.IsDirectory();
+  }
+
  public:
   bool IsEmpty() const { return m_children.empty(); }
   std::shared_ptr<Node> Find(const std::string &childFileName) const;
@@ -157,7 +162,7 @@ class Node {
 
   // accessor
   const Entry &GetEntry() const { return m_entry; }
-  std::weak_ptr<Node> GetParent() const { return m_parent; }
+  std::shared_ptr<Node> GetParent() const { return m_parent.lock(); }
   std::string GetSymbolicLink() const { return m_symbolicLink; }
 
   std::string GetFileName() const {
@@ -200,6 +205,12 @@ class DirectoryTree {
   ~DirectoryTree() { m_map.clear(); }
 
  public:
+  // Find Node by file full path
+  std::shared_ptr<Node> Find(const std::string &fileName) const;
+  // Find children nodes by dirname which should be ending with "/"
+  std::pair<ChildrenMultiMapIterator, ChildrenMultiMapIterator> FindChildren(
+      const std::string &dirName);
+
  private:
   void Grow(std::shared_ptr<FileMetaData> &&fileMeta);
   void Grow(std::vector<std::shared_ptr<FileMetaData>> &&fileMetas);
@@ -207,7 +218,7 @@ class DirectoryTree {
  private:
   std::shared_ptr<Node> m_root;
   std::shared_ptr<Node> m_currentNode;
-  std::recursive_mutex m_mutex;
+  mutable std::recursive_mutex m_mutex;
   FileNameToWeakNodeUnorderedMap m_map;  // record all nodes map
   ParentFileNameToChildrenMultiMap m_parentToChildrenMap;
 

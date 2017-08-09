@@ -14,42 +14,42 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "client/Zone.h"
+#include <base/TimeUtils.h>
 
-#include <unordered_map>
+#include <string.h>  // for memset
 
 #include "base/LogMacros.h"
-#include "base/HashUtils.h"
 
 namespace QS {
 
-namespace Client {
+namespace TimeUtils {
 
 using std::string;
-using std::unordered_map;
 
-string FromEndPoint(const string &zoneName) {
-  if (zoneName.empty()) {
-    DebugError("Try to get end point with empty zone name");
-    return string();
+// --------------------------------------------------------------------------
+time_t RFC822GMTToSeconds(const string &date) {
+  if (date.empty()) {
+    DebugWarning("Null date input");
+    return 0L;
   }
+  struct tm res;
+  memset(&res, 0, sizeof(struct tm));
 
-  unordered_map<string, string, QS::HashUtils::StringHash> zoneNameToEndPointMap = {
-      {QSZone::AP_1, "ap1.qingstor.com"},     {QSZone::PEK_2, "pek2.qingstor.com"},
-      {QSZone::PEK_3A, "pek3a.qingstor.com"}, {QSZone::GD_1, "gd1.qingstor.com"},
-      {QSZone::GD_2A, "gd2a.qingstor.com"},   {QSZone::SH_1A, "sh1a.qingstor.com"}
-  };
-
-  auto it = zoneNameToEndPointMap.find(zoneName);
-  if (it != zoneNameToEndPointMap.end()) {
-    return it->second;
-  } else {
-    DebugError("Try to get end point with an unrecognized zone name " + zoneName);
-    return string();
-  }
+  // date example: Tue, 15 Nov 1994 08:12:31 GMT
+  static const char *formatGMT = "%a, %d %b %Y %H:%M:%S %Z";
+  strptime(date.c_str(), formatGMT, &res);
+  return timegm(&res);  // GMT
 }
 
-const char *GetDefaultZone() { return QSZone::PEK_3A; }
+// --------------------------------------------------------------------------
+string SecondsToRFC822GMT(time_t time){
+  char date[100];
+  memset(date, 0, sizeof(date));
 
-}  // namespace Client
+  static const char *formatGMT = "%a, %d %b %Y %H:%M:%S GMT";
+  strftime(date, sizeof(date), formatGMT, gmtime(&time));
+  return date;
+}
+
+}  // namespace TimeUtils
 }  // namespace QS

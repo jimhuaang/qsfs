@@ -18,14 +18,14 @@
 
 #include <unordered_map>
 
-#include "base/Utils.h"
+#include "base/HashUtils.h"
 
 namespace QS {
 
 namespace Logging {
 
-using QS::Utils::EnumHash;
-using QS::Utils::StringHash;
+using QS::HashUtils::EnumHash;
+using QS::HashUtils::StringHash;
 using std::string;
 using std::unordered_map;
 

@@ -28,8 +28,9 @@
 #include "qingstor-sdk-cpp/QingStor.h"
 #include "qingstor-sdk-cpp/QsConfig.h"
 
-#include "base/Utils.h"
 #include "base/LogMacros.h"
+#include "base/StringUtils.h"
+#include "base/Utils.h"
 #include "client/ClientConfiguration.h"
 #include "client/ClientImpl.h"
 #include "client/Constants.h"
@@ -48,6 +49,8 @@ using QingStor::Bucket;
 using QingStor::ListObjectsInput;
 using QingStor::QingStorService;
 using QingStor::QsConfig;  // sdk config
+using QS::StringUtils::LTrim;
+using QS::Utils::AppendPathDelim;
 using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
@@ -68,14 +71,15 @@ QSClient::~QSClient() { CloseQSService(); }
 // --------------------------------------------------------------------------
 bool QSClient::Connect() {
   auto outcome = GetQSClientImpl()->HeadBucket();
-  auto err = GrowDirectoryTreeOneLevel("/");  // TODO(jim): for test only, remove
+  /*   auto err =
+        ReadDirectory("/");  // TODO(jim): for test only, remove */
   if (outcome.IsSuccess()) {
-    /* auto receivedHandler = [](const ClientError<QSError> &err) {
+    auto receivedHandler = [](const ClientError<QSError> &err) {
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     };
     // Build up the root level of directory tree asynchornizely.
-    GetExecutor()->SubmitAsync(
-        receivedHandler, [this] { return GrowDirectoryTreeOneLevel("/"); }); */
+    GetExecutor()->SubmitAsync(receivedHandler,
+                               [this] { return ReadDirectory("/"); });
     return true;
   } else {
     DebugError(GetMessageForQSError(outcome.GetError()));
@@ -90,14 +94,14 @@ bool QSClient::DisConnect() {
 }
 
 // --------------------------------------------------------------------------
-ClientError<QSError> QSClient::GrowDirectoryTreeOneLevel(
-    const string &dirPath) {
+ClientError<QSError> QSClient::ReadDirectory(const string &dirPath) {
   auto &drive = QS::FileSystem::Drive::Instance();
   ListObjectsInput listObjInput;
   listObjInput.SetLimit(Constants::BucketListObjectsCountLimit);
   listObjInput.SetDelimiter(QS::Utils::GetPathDelimiter());
   if(!QS::Utils::IsRootDirectory(dirPath)){
-    listObjInput.SetPrefix(QS::Utils::AddDirectorySeperator(dirPath));
+    string prefix = AppendPathDelim(LTrim(dirPath, '/'));
+    listObjInput.SetPrefix(prefix);
   }
   bool resultTruncated = false;
   // Set maxCount for a single list operation.
@@ -119,6 +123,22 @@ ClientError<QSError> QSClient::GrowDirectoryTreeOneLevel(
       return outcome.GetError();
     }
   } while (resultTruncated);
+  return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::DeleteFile(const string &filePath) {
+  // TODO(jim):
+  return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::DeleteDirectory(const string &dirPath) {
+  // TODO(jim):
+  // call list object
+  // and recursive delete all object under
+  // can we use delete multiple objects
+  // maybe can call deleteMultipleObjects
   return ClientError<QSError>(QSError::GOOD, false);
 }
 

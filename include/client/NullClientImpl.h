@@ -32,8 +32,6 @@ class NullClientImpl : public ClientImpl {
   NullClientImpl &operator=(const NullClientImpl &) = default;
   ~NullClientImpl() = default;
 
- public:
-  void HeadObject() override {}
 };
 
 }  // namespace Client

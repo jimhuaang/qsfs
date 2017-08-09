@@ -30,8 +30,6 @@ class ClientImpl {
   ClientImpl &operator=(const ClientImpl &) = default;
   virtual ~ClientImpl() = default;
 
- public:
-  virtual void HeadObject() = 0;
 };
 
 }  // namespace Client

@@ -29,7 +29,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/Utils.h>
+#include <base/HashUtils.h>
 
 namespace QS {
 
@@ -44,7 +44,7 @@ using MetaDataList = std::list<FileIdToMetaDataPair>;
 using MetaDataListIterator = MetaDataList::iterator;
 using MetaDataListConstIterator = MetaDataList::const_iterator;
 using FileIdToMetaDataListIteratorMap =
-    std::unordered_map<std::string, MetaDataListIterator, Utils::StringHash>;
+    std::unordered_map<std::string, MetaDataListIterator, HashUtils::StringHash>;
 
 class FileMetaDataManager {
  public:

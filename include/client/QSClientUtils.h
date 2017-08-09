@@ -32,10 +32,15 @@ namespace Client {
 
 namespace QSClientUtils {
 
+std::shared_ptr<QS::Data::FileMetaData> HeadObjectOutputToFileMetaData(
+    const std::string &objKey, const QingStor::HeadObjectOutput &headObjOutput);
+
 std::shared_ptr<QS::Data::FileMetaData> ObjectKeyToFileMetaData(
     const KeyType &key, const std::string &prefix);
+
 std::shared_ptr<QS::Data::FileMetaData> CommonPrefixToFileMetaData(
     const std::string &commonPrefix, const std::string &prefix);
+
 std::vector<std::shared_ptr<QS::Data::FileMetaData>>
 ListObjectsOutputToFileMetaDatas(
     const QingStor::ListObjectsOutput &listObjsOutput);

@@ -41,23 +41,23 @@ string ToUpper(const string &str) {
   return copy;
 }
 
-string LTrim(const string &str) {
+string LTrim(const string &str , unsigned char ch) {
   string copy(str);
   auto pos = std::find_if_not(copy.begin(), copy.end(),
-                              [](unsigned char c) { return std::isspace(c); });
+                              [&ch](unsigned char c) { return ch == c; });
   copy.erase(copy.begin(), pos);
   return copy;
 }
 
-string RTrim(const string &str) {
+string RTrim(const string &str, unsigned char ch) {
   string copy(str);
   auto rpos = std::find_if_not(copy.rbegin(), copy.rend(),
-                               [](unsigned char c) { return std::isspace(c); });
+                               [&ch](unsigned char c) { return ch == c; });
   copy.erase(rpos.base(), copy.end());
   return copy;
 }
 
-string Trim(const string &str) { return LTrim(RTrim(str)); }
+string Trim(const string &str, unsigned char ch) { return LTrim(RTrim(str, ch), ch); }
 
 }  // namespace StringUtils
 }  // namespace QS

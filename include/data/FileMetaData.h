@@ -65,6 +65,7 @@ class FileMetaData {
 public:
   struct stat ToStat () const;
   mode_t GetFileTypeAndMode() const;
+  bool IsDirectory() const { return m_fileType == FileType::Directory; }
   // Return the directory path (ending with "/") this file belongs to
   std::string MyDirName() const;
 

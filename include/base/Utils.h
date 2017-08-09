@@ -17,52 +17,17 @@
 #ifndef _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
 
-#include <stdio.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>
 
 #include <string>
-#include <type_traits>
 #include <utility>
-#include <vector>
+
 
 namespace QS {
 
 namespace Utils {
-
-struct EnumHash {
-  template <typename T>
-  int operator()(T enumValue) const {
-    return static_cast<int>(enumValue);
-  }
-};
-
-struct StringHash {
-  int operator()(const std::string &strToHash) const {
-    if (strToHash.empty()) {
-      return 0;
-    }
-
-    int hash = 0;
-    for (const auto &charValue : strToHash) {
-      hash = charValue + 31 * hash;
-    }
-    return hash;
-  }
-};
-
-template <typename P>
-std::string PointerAddress(P p) {
-  if (std::is_pointer<P>::value) {
-    int sz = snprintf(NULL, 0, "%p", p);
-    std::vector<char> buf(sz + 1);
-    snprintf(&buf[0], sz + 1, "%p", p);
-    std::string ss(buf.begin(), buf.end());
-    return ss;
-  }
-  return std::string();
-}
 
 bool CreateDirectoryIfNotExistsNoLog(const std::string &path);
 bool CreateDirectoryIfNotExists(const std::string &path);
@@ -81,7 +46,7 @@ bool FileExists(const std::string &path);
 bool IsDirectory(const std::string &path);
 bool IsRootDirectory(const std::string &path);
 
-std::string AddDirectorySeperator(const std::string &path);
+std::string AppendPathDelim(const std::string &path);
 std::string GetPathDelimiter();
 
 // Return true and parent directory if success,

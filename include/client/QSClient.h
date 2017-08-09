@@ -21,7 +21,6 @@
 #include <string>
 
 #include "client/Client.h"
-// #include "client/QSClientImpl.h"  // for friend function
 
 namespace QingStor {
 class QingStorService;
@@ -45,10 +44,10 @@ class QSClient : public Client {
  public:
   bool Connect() override;
   bool DisConnect() override;
-  // Grow the directory tree one more level denoted by path.
   // Notice the dirPath should end with delimiter
-  ClientError<QSError> GrowDirectoryTreeOneLevel(
-      const std::string &dirPath) override;
+  ClientError<QSError> ReadDirectory(const std::string &dirPath) override;
+  ClientError<QSError> DeleteFile(const std::string &filePath) override ;
+  ClientError<QSError> DeleteDirectory(const std::string &dirPath) override;
 
  public:
   static const std::unique_ptr<QingStor::QingStorService> &GetQingStorService();
@@ -63,7 +62,6 @@ class QSClient : public Client {
  private:
   static std::unique_ptr<QingStor::QingStorService> m_qingStorService;
   std::shared_ptr<QSClientImpl> m_qsClientImpl;
-  // friend QSClientImpl::QSClientImpl();
 };
 
 }  // namespace Client

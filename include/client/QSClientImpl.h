@@ -24,6 +24,7 @@
 #include "qingstor-sdk-cpp/Bucket.h"  // for instantiation of QSClientImpl
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "client/ClientError.h"
@@ -35,10 +36,36 @@ namespace QS {
 namespace Client {
 class QSClient;
 
+using GetBucketStatisticsOutcome =
+    Outcome<QingStor::GetBucketStatisticsOutput, ClientError<QSError>>;
 using HeadBucketOutcome =
     Outcome<QingStor::HeadBucketOutput, ClientError<QSError>>;
 using ListObjectsOutcome =
     Outcome<std::vector<QingStor::ListObjectsOutput>, ClientError<QSError>>;
+using DeleteMultipleObjectsOutcome =
+    Outcome<QingStor::DeleteMultipleObjectsOutput, ClientError<QSError>>;
+using ListMultipartUploadsOutcome =
+    Outcome<QingStor::ListMultipartUploadsOutput, ClientError<QSError>>;
+
+using DeleteObjectOutcome =
+    Outcome<QingStor::DeleteObjectOutput, ClientError<QSError>>;
+using GetObjectOutcome =
+    Outcome<QingStor::GetObjectOutput, ClientError<QSError>>;
+using HeadObjectOutcome =
+    Outcome<QingStor::HeadObjectOutput, ClientError<QSError>>;
+using PutObjectOutcome =
+    Outcome<QingStor::PutObjectOutput, ClientError<QSError>>;
+
+using InitiateMultipartUploadOutcome =
+    Outcome<QingStor::InitiateMultipartUploadOutput, ClientError<QSError>>;
+using UploadMultipartOutcome =
+    Outcome<QingStor::UploadMultipartOutput, ClientError<QSError>>;
+using CompleteMultipartUploadOutcome =
+    Outcome<QingStor::CompleteMultipartUploadOutput, ClientError<QSError>>;
+using AbortMultipartUploadOutcome =
+    Outcome<QingStor::AbortMultipartUploadOutput, ClientError<QSError>>;
+using ListMultipartOutcome =
+    Outcome<QingStor::ListMultipartOutput, ClientError<QSError>>;
 
 class QSClientImpl : public ClientImpl {
  public:
@@ -50,9 +77,10 @@ class QSClientImpl : public ClientImpl {
   ~QSClientImpl() = default;
 
  public:
-  void HeadObject() override;
-
- public:
+  //
+  // Bucket Level Operations
+  //
+  GetBucketStatisticsOutcome GetBucketStatistics() const;
   HeadBucketOutcome HeadBucket() const;
   // Use maxCount to specify the maximum count of objects you want to list.
   // Use maxCount = 0 to list all the objects, this is default option.
@@ -63,6 +91,37 @@ class QSClientImpl : public ClientImpl {
   ListObjectsOutcome ListObjects(QingStor::ListObjectsInput *input,
                                  bool *resultTruncated,
                                  uint64_t maxCount = 0) const;
+
+  DeleteMultipleObjectsOutcome DeleteMultipleObjects(
+      QingStor::DeleteMultipleObjectsInput *input) const;
+  ListMultipartUploadsOutcome ListMultipartUploads(
+      QingStor::ListMultipartUploadsInput *input) const;
+
+  //
+  // Object Level Operations
+  //
+  DeleteObjectOutcome DeleteObject(const std::string &objKey) const;
+  GetObjectOutcome GetObject(const std::string &objKey,
+                             QingStor::GetObjectInput *input) const;
+  HeadObjectOutcome HeadObject(const std::string &objKey,
+                               QingStor::HeadObjectInput *input) const;
+  PutObjectOutcome PutObject(const std::string &objKey,
+                             QingStor::PutObjectInput *input) const;
+  // TODO(jim): PostObject
+  // Multipart Operations
+  InitiateMultipartUploadOutcome InitiateMultipartUpload(
+      const std::string &objKey,
+      QingStor::InitiateMultipartUploadInput *input) const;
+  UploadMultipartOutcome UploadMultipart(
+      const std::string &objKey, QingStor::UploadMultipartInput *input) const;
+  CompleteMultipartUploadOutcome CompleteMultipartUpload(
+      const std::string &objKey,
+      QingStor::CompleteMultipartUploadInput *input) const;
+  AbortMultipartUploadOutcome AbortMultipartUpload(
+      const std::string &objKey,
+      QingStor::AbortMultipartUploadInput *input) const;
+  ListMultipartOutcome ListMultipart(const std::string &objKey,
+                                     QingStor::ListMultipartInput *input) const;
 
  public:
   const std::unique_ptr<QingStor::Bucket> &GetBucket() const {

@@ -14,24 +14,38 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_CONSTANTS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_CONSTANTS_H_  // NOLINT
+#ifndef _QSFS_FUSE_INCLUDED_BASE_HASHUTILS_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_BASE_HASHUTILS_H_  // NOLINT
 
-#include <stdint.h>  // for uint16_t
+#include <string>
 
 namespace QS {
 
-namespace Client {
+namespace HashUtils {
 
-namespace Constants {
+struct EnumHash {
+  template <typename T>
+  int operator()(T enumValue) const {
+    return static_cast<int>(enumValue);
+  }
+};
 
-static const uint16_t BucketListObjectsCountLimit = 500;
-static const uint16_t BucketDeleteMultipleObjectsLimit = 100;
+struct StringHash {
+  int operator()(const std::string &strToHash) const {
+    if (strToHash.empty()) {
+      return 0;
+    }
 
-}  // namespace Constants
-}  // namespace Client
+    int hash = 0;
+    for (const auto &charValue : strToHash) {
+      hash = charValue + 31 * hash;
+    }
+    return hash;
+  }
+};
+
+}  // namespace HashUtils
 }  // namespace QS
 
-
 // NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_CONSTANTS_H_
+#endif  // _QSFS_FUSE_INCLUDED_BASE_HASHUTILS_H_

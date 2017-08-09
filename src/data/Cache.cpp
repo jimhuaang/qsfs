@@ -23,7 +23,7 @@
 #include <iterator>
 
 #include "base/LogMacros.h"
-#include "base/Utils.h"
+#include "base/StringUtils.h"
 #include "data/Directory.h"
 #include "filesystem/Configure.h"
 
@@ -33,7 +33,7 @@ namespace Data {
 
 using QS::Data::Node;
 using QS::Data::Entry;
-using QS::Utils::PointerAddress;
+using QS::StringUtils::PointerAddress;
 using std::iostream;
 using std::list;
 using std::lock_guard;

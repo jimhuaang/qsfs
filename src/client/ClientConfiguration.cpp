@@ -29,7 +29,7 @@
 #include <utility>
 
 #include "base/Exception.h"
-#include "base/Utils.h"
+#include "base/HashUtils.h"
 #include "client/Credentials.h"
 #include "client/Protocol.h"
 #include "client/RetryStrategy.h"
@@ -45,8 +45,8 @@ namespace Client {
 using QS::Exception::QSException;
 using QS::FileSystem::Configure::GetDefaultLogDirectory;
 using QS::FileSystem::Configure::GetDefineFileMode;
-using QS::Utils::EnumHash;
-using QS::Utils::StringHash;
+using QS::HashUtils::EnumHash;
+using QS::HashUtils::StringHash;
 using std::call_once;
 using std::string;
 using std::unique_ptr;
