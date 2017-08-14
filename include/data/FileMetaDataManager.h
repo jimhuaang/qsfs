@@ -92,6 +92,8 @@ class FileMetaDataManager {
   MetaDataListIterator Erase(const std::string &fileName);
   // Remvoe all file meta datas
   void Clear();
+  // TODO(jim):
+  // Update
 
  private:
   // internal use only

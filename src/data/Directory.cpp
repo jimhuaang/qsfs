@@ -41,6 +41,7 @@ using std::shared_ptr;
 using std::unique_ptr;
 using std::unordered_map;
 using std::vector;
+using std::weak_ptr;
 
 static const char *const ROOT_PATH = "/";
 
@@ -163,14 +164,14 @@ void Node::RenameChild(const string &oldFileName, const string &newFileName) {
 }
 
 // --------------------------------------------------------------------------
-shared_ptr<Node> DirectoryTree::Find(const string &fileName) const{
+weak_ptr<Node> DirectoryTree::Find(const string &fileName) const{
   lock_guard<recursive_mutex> lock(m_mutex);
   auto it = m_map.find(fileName);
   if(it != m_map.end()){
-    return it->second.lock();
+    return it->second;
   } else {
     DebugInfo("Node (" + fileName + ") is not existed in directory tree");
-    return nullptr;
+    return weak_ptr<Node>();
   }
 }
 
@@ -184,38 +185,44 @@ DirectoryTree::FindChildren(const string &dirName) {
 void DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
   lock_guard<recursive_mutex> lock(m_mutex);
   string fileName = fileMeta->GetFileName();
-  bool isDir = fileMeta->IsDirectory();
-  auto dirName = fileMeta->MyDirName();
 
-  auto node = make_shared<Node>(Entry(std::move(fileMeta)));
-  m_currentNode = node;
+  auto node = Find(fileName).lock();
+  if(node){
+    node->SetEntry(Entry(std::move(fileMeta)));
+  } else {
+    bool isDir = fileMeta->IsDirectory();
+    auto dirName = fileMeta->MyDirName();
+    node = make_shared<Node>(Entry(std::move(fileMeta)));
 
-  // hook up with parent
-  assert(!dirName.empty());
-  auto it = m_map.find(dirName);
-  if (it != m_map.end()) {
-    if (auto parent = it->second.lock()) {
-      parent->Insert(node);
-      node->SetParent(parent);
-    } else {
-      DebugInfo("Parent Node of " + fileName +
-                " is cleared at the time in directory tree");
-    }
-  }
-
-  // hook up with children
-  if (isDir) {
-    auto range = m_parentToChildrenMap.equal_range(fileName);
-    for (auto it = range.first; it != range.second; ++it) {
-      if (auto child = it->second.lock()) {
-        child->SetParent(node);
-        node->Insert(child);
+    // hook up with parent
+    assert(!dirName.empty());
+    auto it = m_map.find(dirName);
+    if (it != m_map.end()) {
+      if (auto parent = it->second.lock()) {
+        parent->Insert(node);
+        node->SetParent(parent);
+      } else {
+        DebugInfo("Parent Node of " + fileName +
+                  " is cleared at the time in directory tree");
       }
     }
+
+    // hook up with children
+    if (isDir) {
+      auto range = m_parentToChildrenMap.equal_range(fileName);
+      for (auto it = range.first; it != range.second; ++it) {
+        if (auto child = it->second.lock()) {
+          child->SetParent(node);
+          node->Insert(child);
+        }
+      }
+    }
+
+    // record parent to children map
+    m_parentToChildrenMap.emplace(dirName, node);
   }
 
-  // record parent to children map
-  m_parentToChildrenMap.emplace(dirName, node);
+  m_currentNode = node;
 }
 
 // --------------------------------------------------------------------------

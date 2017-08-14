@@ -17,6 +17,8 @@
 #ifndef _QSFS_FUSE_INCLUDED_CLIENT_CLIENT_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_CLIENT_CLIENT_H_  // NOLINT
 
+#include <time.h>
+
 #include <memory>
 #include <string>
 
@@ -56,14 +58,29 @@ class Client {
   virtual bool Connect() = 0;
   virtual bool DisConnect() = 0;
 
-  virtual ClientError<QSError> ReadDirectory(const std::string &dirPath) = 0;
   virtual ClientError<QSError> DeleteFile(const std::string &filePath) = 0;
   virtual ClientError<QSError> DeleteDirectory(const std::string &dirPath) = 0;
+  virtual ClientError<QSError> MakeFile(const std::string &filePath) = 0;
+  virtual ClientError<QSError> MakeDirectory(const std::string &dirPath) = 0;
+  virtual ClientError<QSError> RenameFile(const std::string &filePath) = 0;
+  virtual ClientError<QSError> RenameDirectory(const std::string &dirPath) = 0;
+
+  virtual ClientError<QSError> DownloadFile(const std::string &filePath) = 0;
+  virtual ClientError<QSError> DownloadDirectory(const std::string &dirPath) = 0;
+  virtual ClientError<QSError> UploadFile(const std::string &filePath) = 0;
+  virtual ClientError<QSError> UploadDirectory(const std::string &dirPath) = 0;
+
+  virtual ClientError<QSError> ReadFile(const std::string &filePath) = 0;
+  virtual ClientError<QSError> ListDirectory(const std::string &dirPath) = 0;
+  virtual ClientError<QSError> WriteFile(const std::string &filePath) = 0;
+  virtual ClientError<QSError> WriteDirectory(const std::string &dirPath) = 0;
+
+  virtual ClientError<QSError> Stat(const std::string &path,
+                                    time_t modifiedSince = 0) = 0;
 
  public:
   const RetryStrategy &GetRetryStrategy() const;
   const std::shared_ptr<ClientImpl> &GetClientImpl() const;
-  // const std::unique_ptr<QS::Threading::ThreadPool> &GetExecutor() const;
 
  protected:
   std::shared_ptr<ClientImpl> GetClientImpl();

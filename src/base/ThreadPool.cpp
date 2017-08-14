@@ -36,10 +36,14 @@ ThreadPool::ThreadPool(size_t poolSize) : m_poolSize(poolSize) {
 
 ThreadPool::~ThreadPool() { StopProcessing(); }
 
-void ThreadPool::SubmitToThread(Task &&task) {
+void ThreadPool::SubmitToThread(Task &&task, bool prioritized) {
   {
     lock_guard<mutex> lock(m_queueLock);
-    m_tasks.push(std::move(task));
+    if(prioritized){
+      m_tasks.push_front(std::move(task));
+    } else {
+      m_tasks.push_back(std::move(task));
+    }
   }
   m_syncConditionVar.notify_one();
 }
@@ -47,12 +51,12 @@ void ThreadPool::SubmitToThread(Task &&task) {
 Task ThreadPool::PopTask() {
   lock_guard<mutex> lock(m_queueLock);
   if (!m_tasks.empty()) {
-    // Must invoke move ctor to store task before call m_tasks.pop()
+    // Must invoke move ctor to store task before call m_tasks.pop_front()
     // which will remove the task element, especially if Task is type
     // of unique_ptr this will delete the previously managed object.
     Task task = std::move(m_tasks.front());
     if (task) {
-      m_tasks.pop();
+      m_tasks.pop_front();
       return task;
     }
   }

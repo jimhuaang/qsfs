@@ -31,6 +31,7 @@ using std::make_shared;
 using std::shared_ptr;
 using std::unique_ptr;
 
+// --------------------------------------------------------------------------
 Client::Client(std::shared_ptr<ClientImpl> impl,
                std::unique_ptr<QS::Threading::ThreadPool> executor,
                RetryStrategy retryStratety)
@@ -38,19 +39,24 @@ Client::Client(std::shared_ptr<ClientImpl> impl,
       m_executor(std::move(executor)),
       m_retryStrategy(std::move(retryStratety)) {}
 
+// --------------------------------------------------------------------------
+Client::~Client(){
+// do nothing
+}
+
+// --------------------------------------------------------------------------
 const shared_ptr<ClientImpl>& Client::GetClientImpl() const { return m_impl; }
-shared_ptr<ClientImpl> Client::GetClientImpl() { return m_impl; }
 
-//const unique_ptr<ThreadPool> &Client::GetExecutor() const { return m_executor; }
-unique_ptr<ThreadPool> &Client::GetExecutor() { return m_executor; }
-
+// --------------------------------------------------------------------------
 const RetryStrategy &Client::GetRetryStrategy() const {
   return m_retryStrategy;
 }
 
-Client::~Client(){
-// do nothing
-}
+// --------------------------------------------------------------------------
+shared_ptr<ClientImpl> Client::GetClientImpl() { return m_impl; }
+
+// --------------------------------------------------------------------------
+unique_ptr<ThreadPool> &Client::GetExecutor() { return m_executor; }
 
 }  // namespace Client
 }  // namespace QS

@@ -45,7 +45,7 @@ using ListObjectsOutcome =
 using DeleteMultipleObjectsOutcome =
     Outcome<QingStor::DeleteMultipleObjectsOutput, ClientError<QSError>>;
 using ListMultipartUploadsOutcome =
-    Outcome<QingStor::ListMultipartUploadsOutput, ClientError<QSError>>;
+    Outcome<std::vector<QingStor::ListMultipartUploadsOutput>, ClientError<QSError>>;
 
 using DeleteObjectOutcome =
     Outcome<QingStor::DeleteObjectOutput, ClientError<QSError>>;
@@ -65,7 +65,7 @@ using CompleteMultipartUploadOutcome =
 using AbortMultipartUploadOutcome =
     Outcome<QingStor::AbortMultipartUploadOutput, ClientError<QSError>>;
 using ListMultipartOutcome =
-    Outcome<QingStor::ListMultipartOutput, ClientError<QSError>>;
+    Outcome<std::vector<QingStor::ListMultipartOutput>, ClientError<QSError>>;
 
 class QSClientImpl : public ClientImpl {
  public:
@@ -82,7 +82,7 @@ class QSClientImpl : public ClientImpl {
   //
   GetBucketStatisticsOutcome GetBucketStatistics() const;
   HeadBucketOutcome HeadBucket() const;
-  // Use maxCount to specify the maximum count of objects you want to list.
+  // Use maxCount to specify the count limit of objects you want to list.
   // Use maxCount = 0 to list all the objects, this is default option.
   // Use resultTruncated to obtain the status of whether the operation has
   // list all of the objects of the bucket; If resultTruncated is true the
@@ -91,11 +91,17 @@ class QSClientImpl : public ClientImpl {
   ListObjectsOutcome ListObjects(QingStor::ListObjectsInput *input,
                                  bool *resultTruncated,
                                  uint64_t maxCount = 0) const;
-
   DeleteMultipleObjectsOutcome DeleteMultipleObjects(
       QingStor::DeleteMultipleObjectsInput *input) const;
+  // Use maxCount to specify the count limit of uploading part you want to list.
+  // Use maxCount = 0 to list all the uploading part, this is default option.
+  // Use resultTruncated to obtain the status of whether the operation has
+  // list all of the uploading parts of the bucket; If resultTruncated is true
+  // the input will be set with the next marker which will help to continue
+  // the following list operation.
   ListMultipartUploadsOutcome ListMultipartUploads(
-      QingStor::ListMultipartUploadsInput *input) const;
+      QingStor::ListMultipartUploadsInput *input, bool *resultTruncated,
+      uint64_t maxCount) const;
 
   //
   // Object Level Operations
@@ -107,7 +113,7 @@ class QSClientImpl : public ClientImpl {
                                QingStor::HeadObjectInput *input) const;
   PutObjectOutcome PutObject(const std::string &objKey,
                              QingStor::PutObjectInput *input) const;
-  // TODO(jim): PostObject
+
   // Multipart Operations
   InitiateMultipartUploadOutcome InitiateMultipartUpload(
       const std::string &objKey,
@@ -120,8 +126,18 @@ class QSClientImpl : public ClientImpl {
   AbortMultipartUploadOutcome AbortMultipartUpload(
       const std::string &objKey,
       QingStor::AbortMultipartUploadInput *input) const;
+  // Use maxCount to specify the count limit of parts you want to list.
+  // Use maxCount = 0 to list all the parts, this is default option.
+  // Use resultTruncated to obtain the status of whether the operation has
+  // list all of the parts of the object; If resultTruncated is true the
+  // input will be set with the last part id of this operation which will 
+  // help to continue the following list operation.
   ListMultipartOutcome ListMultipart(const std::string &objKey,
-                                     QingStor::ListMultipartInput *input) const;
+                                     QingStor::ListMultipartInput *input,
+                                     bool *resultTruncated,
+                                     uint64_t maxCount = 0) const;
+
+  // TODO(jim): Add CopyObject for fuse rename
 
  public:
   const std::unique_ptr<QingStor::Bucket> &GetBucket() const {

@@ -44,17 +44,37 @@ class QSClient : public Client {
  public:
   bool Connect() override;
   bool DisConnect() override;
-  // Notice the dirPath should end with delimiter
-  ClientError<QSError> ReadDirectory(const std::string &dirPath) override;
-  ClientError<QSError> DeleteFile(const std::string &filePath) override ;
+
+  ClientError<QSError> DeleteFile(const std::string &filePath) override;
   ClientError<QSError> DeleteDirectory(const std::string &dirPath) override;
+  ClientError<QSError> MakeFile(const std::string &filePath) override;
+  ClientError<QSError> MakeDirectory(const std::string &dirPath) override;
+  ClientError<QSError> RenameFile(const std::string &filePath) override;
+  ClientError<QSError> RenameDirectory(const std::string &dirPath) override;
+
+  ClientError<QSError> DownloadFile(const std::string &filePath) override;
+  ClientError<QSError> DownloadDirectory(const std::string &dirPath) override;
+  ClientError<QSError> UploadFile(const std::string &filePath) override;
+  ClientError<QSError> UploadDirectory(const std::string &dirPath) override;
+
+  ClientError<QSError> ReadFile(const std::string &filePath) override;
+  // Notice the dirPath should end with delimiter
+  ClientError<QSError> ListDirectory(const std::string &dirPath) override;
+  ClientError<QSError> WriteFile(const std::string &filePath) override;
+  ClientError<QSError> WriteDirectory(const std::string &dirPath) override;
+
+  // Get object meta data
+  // Using modifiedSince to match if the object modified since then, 
+  // Using modifiedSince = 0 to always get object meta data, this is default.
+  ClientError<QSError> Stat(const std::string &path,
+                            time_t modifiedSince = 0) override;
 
  public:
   static const std::unique_ptr<QingStor::QingStorService> &GetQingStorService();
   const std::shared_ptr<QSClientImpl> &GetQSClientImpl() const;
 
  private:
-  std::shared_ptr<QSClientImpl>& GetQSClientImpl();
+  std::shared_ptr<QSClientImpl> &GetQSClientImpl();
   static void StartQSService();
   void CloseQSService();
   void InitializeClientImpl();

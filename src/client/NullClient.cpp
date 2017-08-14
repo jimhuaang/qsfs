@@ -19,7 +19,6 @@
 #include "client/ClientError.h"
 #include "client/QSError.h"
 
-
 namespace QS {
 
 namespace Client {
@@ -32,15 +31,64 @@ ClientError<QSError> GoodState() {
 
 using std::string;
 
-ClientError<QSError> NullClient::ReadDirectory(const string &dirPath) {
-  return GoodState();
-}
-
 ClientError<QSError> NullClient::DeleteFile(const string &filePath) {
   return GoodState();
 }
 
 ClientError<QSError> NullClient::DeleteDirectory(const string &dirPath) {
+  return GoodState();
+}
+
+ClientError<QSError> NullClient::MakeFile(const std::string &filePath) {
+  return GoodState();
+}
+
+ClientError<QSError> NullClient::MakeDirectory(const std::string &dirPath) {
+  return GoodState();
+}
+
+ClientError<QSError> NullClient::RenameFile(const std::string &filePath) {
+  return GoodState();
+}
+
+ClientError<QSError> NullClient::RenameDirectory(const std::string &dirPath) {
+  return GoodState();
+}
+
+ClientError<QSError> NullClient::DownloadFile(const std::string &filePath) {
+  return GoodState();
+}
+
+ClientError<QSError> NullClient::DownloadDirectory(const std::string &dirPath) {
+  return GoodState();
+}
+
+ClientError<QSError> NullClient::UploadFile(const std::string &filePath) {
+  return GoodState();
+}
+
+ClientError<QSError> NullClient::UploadDirectory(const std::string &dirPath) {
+  return GoodState();
+}
+
+ClientError<QSError> NullClient::ReadFile(const std::string &filePath) {
+  return GoodState();
+}
+
+ClientError<QSError> NullClient::ListDirectory(const std::string &dirPath) {
+  return GoodState();
+}
+
+ClientError<QSError> NullClient::WriteFile(const std::string &filePath) {
+  return GoodState();
+}
+
+ClientError<QSError> NullClient::WriteDirectory(const std::string &dirPath) {
+  return GoodState();
+}
+
+ClientError<QSError> NullClient::Stat(const std::string &path,
+                                      time_t modifiedSince) {
   return GoodState();
 }
 

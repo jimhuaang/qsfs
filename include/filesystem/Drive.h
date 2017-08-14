@@ -35,6 +35,7 @@ namespace Data {
 class Cache;
 class DirectoryTree;
 class FileMetaData;
+class Node;
 }
 
 namespace FileSystem {
@@ -63,7 +64,11 @@ class Drive {
     return m_directoryTree;
   }
 
+ public:
+  std::weak_ptr<QS::Data::Node> FindNode(const std::string &path);
+
  private:
+  void GrowDirectoryTree(std::shared_ptr<QS::Data::FileMetaData> &&fileMeta);
   void GrowDirectoryTree(
       std::vector<std::shared_ptr<QS::Data::FileMetaData>> &&fileMetas);
 

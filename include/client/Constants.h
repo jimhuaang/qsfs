@@ -25,8 +25,8 @@ namespace Client {
 
 namespace Constants {
 
-static const uint16_t BucketListObjectsCountLimit = 500;
-static const uint16_t BucketDeleteMultipleObjectsLimit = 100;
+static const uint16_t BucketListObjectsLimit = 1000;
+static const uint16_t BucketDeleteMultipleObjectsLimit = 200;
 
 }  // namespace Constants
 }  // namespace Client

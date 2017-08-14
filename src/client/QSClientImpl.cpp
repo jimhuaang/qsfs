@@ -28,6 +28,7 @@
 #include "qingstor-sdk-cpp/QsConfig.h"
 #include "qingstor-sdk-cpp/QsErrors.h"  // for sdk QsError
 #include "qingstor-sdk-cpp/Types.h"     // for sdk QsOutput
+//#include "qingstor-sdk-cpp/types/ObjectPartType.h"
 
 #include "base/LogMacros.h"
 #include "client/ClientConfiguration.h"
@@ -160,7 +161,9 @@ ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
     if (SDKResponseSuccess(sdkErr)) {
       count += output.GetKeys().size();
       responseTruncated = !output.GetNextMarker().empty();
-      input->SetMarker(output.GetNextMarker());
+      if (responseTruncated) {
+        input->SetMarker(output.GetNextMarker());
+      }
       result.push_back(std::move(output));
     } else {
       return ListObjectsOutcome(
@@ -183,6 +186,7 @@ DeleteMultipleObjectsOutcome QSClientImpl::DeleteMultipleObjects(
   DeleteMultipleObjectsOutput output;
   auto sdkErr = m_bucket->deleteMultipleObjects(*input, output);
   if (SDKResponseSuccess(sdkErr)) {
+    // TODO(jim): check undeleted objects
     return DeleteMultipleObjectsOutcome(std::move(output));
   } else {
     return DeleteMultipleObjectsOutcome(
@@ -192,22 +196,50 @@ DeleteMultipleObjectsOutcome QSClientImpl::DeleteMultipleObjects(
 
 // --------------------------------------------------------------------------
 ListMultipartUploadsOutcome QSClientImpl::ListMultipartUploads(
-    QingStor::ListMultipartUploadsInput *input) const {
+    QingStor::ListMultipartUploadsInput *input, bool *resultTruncated,
+    uint64_t maxCount) const {
   static const char *exceptionName = "QingStorListMultipartUploads";
   if (input == nullptr) {
     return ListMultipartUploadsOutcome(
         ClientError<QSError>(QSError::PARAMETER_MISSING, exceptionName,
                              "Null ListMultipartUploadsInput", false));
   }
-  // TODO(jim) : update to refer to ListObjects
-  ListMultipartUploadsOutput output;
-  auto sdkErr = m_bucket->listMultipartUploads(*input, output);
-  if (SDKResponseSuccess(sdkErr)) {
-    return ListMultipartUploadsOutcome(std::move(output));
-  } else {
+  if (resultTruncated == nullptr) {
     return ListMultipartUploadsOutcome(
-        std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+        ClientError<QSError>(QSError::PARAMETER_MISSING, exceptionName,
+                             "Null input of resultTruncated", false));
   }
+  if (input->GetLimit() <= 0) {
+    return ListMultipartUploadsOutcome(ClientError<QSError>(
+        QSError::NO_SUCH_LIST_MULTIPART_UPLOADS, exceptionName,
+        "ListMultipartUploadsInput with negative count limit", false));
+  }
+
+  bool listAllPartUploads = maxCount == 0;
+  uint64_t count = 0;
+  bool responseTruncated = true;
+  vector<ListMultipartUploadsOutput> result;
+  do {
+    if (!listAllPartUploads) {
+      int remainingCount = static_cast<int>(maxCount - count);
+      if (remainingCount < input->GetLimit()) input->SetLimit(remainingCount);
+    }
+    ListMultipartUploadsOutput output;
+    auto sdkErr = m_bucket->listMultipartUploads(*input, output);
+    if (SDKResponseSuccess(sdkErr)) {
+      count += output.GetUploads().size();
+      responseTruncated = !output.GetNextMarker().empty();
+      if (responseTruncated) {
+        input->SetMarker(output.GetNextMarker());
+      }
+      result.push_back(std::move(output));
+    } else {
+      return ListMultipartUploadsOutcome(
+          std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+    }
+  } while (responseTruncated && (listAllPartUploads || count < maxCount));
+  *resultTruncated = responseTruncated;
+  return ListMultipartUploadsOutcome(std::move(result));
 }
 
 // --------------------------------------------------------------------------
@@ -352,7 +384,7 @@ CompleteMultipartUploadOutcome QSClientImpl::CompleteMultipartUpload(
 AbortMultipartUploadOutcome QSClientImpl::AbortMultipartUpload(
     const string &objKey, AbortMultipartUploadInput *input) const {
   static const char *exceptionName = "QingStorAbortMultipartUpload";
-  if (objKey.empty() || input == nullptr)  {
+  if (objKey.empty() || input == nullptr) {
     return AbortMultipartUploadOutcome(ClientError<QSError>(
         QSError::PARAMETER_MISSING, exceptionName,
         "Empty ObjectKey or Null AbortMultipartUploadInput", false));
@@ -369,22 +401,51 @@ AbortMultipartUploadOutcome QSClientImpl::AbortMultipartUpload(
 
 // --------------------------------------------------------------------------
 ListMultipartOutcome QSClientImpl::ListMultipart(
-    const std::string &objKey, QingStor::ListMultipartInput *input) const {
+    const string &objKey, QingStor::ListMultipartInput *input,
+    bool *resultTruncated, uint64_t maxCount) const {
   static const char *exceptionName = "QingStorListMultipart";
   if (objKey.empty() || input == nullptr) {
     return ListMultipartOutcome(ClientError<QSError>(
         QSError::PARAMETER_MISSING, exceptionName,
         "Empty ObjectKey or Null ListMultipartInput", false));
   }
-  // TODO(jim) : update refer to ListObjects
-  ListMultipartOutput output;
-  auto sdkErr = m_bucket->listMultipart(objKey, *input, output);
-  if (SDKResponseSuccess(sdkErr)) {
-    return ListMultipartOutcome(std::move(output));
-  } else {
+  if (resultTruncated == nullptr) {
     return ListMultipartOutcome(
-        std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+        ClientError<QSError>(QSError::PARAMETER_MISSING, exceptionName,
+                             "Null input of resultTruncated", false));
   }
+  if (input->GetLimit() <= 0) {
+    return ListMultipartOutcome(ClientError<QSError>(
+        QSError::NO_SUCH_LIST_MULTIPART, exceptionName,
+        "ListMultipartInput with negative count limit", false));
+  }
+
+  bool listAllParts = maxCount == 0;
+  uint64_t count = 0;
+  bool responseTruncated = true;
+  vector<ListMultipartOutput> result;
+  do {
+    if (!listAllParts) {
+      int remainingCount = static_cast<int>(maxCount - count);
+      if (remainingCount < input->GetLimit()) input->SetLimit(remainingCount);
+    }
+    ListMultipartOutput output;
+    auto sdkErr = m_bucket->listMultipart(objKey, *input, output);
+    if (SDKResponseSuccess(sdkErr)) {
+      count += output.GetCount();
+      auto objParts = output.GetObjectParts();
+      responseTruncated = !objParts.empty();
+      if (!objParts.empty()) {
+        input->SetPartNumberMarker(objParts.back().GetPartNumber());
+      }
+      result.push_back(std::move(output));
+    } else {
+      return ListMultipartOutcome(
+          std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+    }
+  } while (responseTruncated && (listAllParts || count < maxCount));
+  *resultTruncated = responseTruncated;
+  return ListMultipartOutcome(std::move(result));
 }
 
 // --------------------------------------------------------------------------

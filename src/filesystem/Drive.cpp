@@ -28,6 +28,7 @@
 #include "base/Utils.h"
 #include "client/Client.h"
 #include "client/ClientFactory.h"
+#include "client/QSError.h"
 #include "client/TransferManager.h"
 #include "client/TransferManagerFactory.h"
 #include "data/Cache.h"
@@ -40,16 +41,23 @@ namespace FileSystem {
 
 using QS::Client::Client;
 using QS::Client::ClientFactory;
+using QS::Client::GetMessageForQSError;
+using QS::Client::IsGoodQSError;
 using QS::Client::TransferManager;
 using QS::Client::TransferManagerConfigure;
 using QS::Client::TransferManagerFactory;
 using QS::Data::Cache;
 using QS::Data::DirectoryTree;
+using QS::Data::FileMetaData;
+using QS::Data::Node;
+using QS::Utils::AppendPathDelim;
 using QS::Utils::GetProcessEffectiveUserID;
 using QS::Utils::GetProcessEffectiveGroupID;
 using std::shared_ptr;
+using std::string;
 using std::unique_ptr;
 using std::vector;
+using std::weak_ptr;
 
 static std::unique_ptr<Drive> instance(nullptr);
 static std::once_flag flag;
@@ -97,8 +105,45 @@ bool Drive::IsMountable() const {
 }
 
 // --------------------------------------------------------------------------
-void Drive::GrowDirectoryTree(
-    vector<shared_ptr<QS::Data::FileMetaData>> &&fileMetas) {
+weak_ptr<Node> Drive::FindNode(const string &path) {
+  if (path.empty()) {
+    Error("Try to search null file path");
+    return weak_ptr<Node>();
+  }
+
+  auto UpdateNode = [this](const string &path,
+                           const shared_ptr<Node> &node) -> weak_ptr<Node> {
+    time_t modifiedSince = 0;
+    modifiedSince = const_cast<const Node &>(*node).GetEntry().GetMTime();
+    auto err = GetClient()->Stat(path, modifiedSince);
+    DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+    return m_directoryTree->Find(path);
+  };
+
+  auto node = m_directoryTree->Find(path).lock();
+  if (node) {
+    return UpdateNode(path, node);
+  }
+
+  if (path.back() != '/') {
+    node = m_directoryTree->Find(AppendPathDelim(path)).lock();
+    if (node) {
+      return UpdateNode(path, node);
+    }
+  }
+
+  auto err = GetClient()->Stat(path);
+  DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+  return m_directoryTree->Find(path);
+}
+
+// --------------------------------------------------------------------------
+void Drive::GrowDirectoryTree(shared_ptr<FileMetaData> &&fileMeta) {
+  m_directoryTree->Grow(std::move(fileMeta));
+}
+
+// --------------------------------------------------------------------------
+void Drive::GrowDirectoryTree(vector<shared_ptr<FileMetaData>> &&fileMetas) {
   m_directoryTree->Grow(std::move(fileMetas));
 }
 

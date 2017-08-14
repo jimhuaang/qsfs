@@ -16,11 +16,52 @@
 
 #include "filesystem/Operations.h"
 
-#include <string.h>
+#include <assert.h>
+#include <string.h>  // for memset
+
+#include <errno.h>
+#include <sys/types.h>  // for uid_t
+
+#include <memory>
+
+#include "base/Exception.h"
+#include "base/LogMacros.h"
+#include "data/Directory.h"
+#include "filesystem/Drive.h"
+
+namespace {
+
+bool IsValidPath(const char *path) {
+  return path != nullptr && *path != 0;
+}
+
+void FillStat(const struct stat& source, struct stat* target) {
+  assert(target != nullptr);
+  target->st_size = source.st_size;
+  target->st_blocks = source.st_blocks;
+  target->st_blksize = source.st_blksize;
+  target->st_atim = source.st_atim;
+  target->st_mtim = source.st_mtim;
+  target->st_ctim = source.st_ctim;
+  target->st_uid = source.st_uid;
+  target->st_gid = source.st_gid;
+  target->st_mode = source.st_mode;
+  target->st_dev = source.st_dev;
+  target->st_nlink = source.st_nlink;
+}
+
+}  // namespace
+
 
 namespace QS {
 
 namespace FileSystem {
+
+using QS::Data::Node;
+using QS::Exception::QSException;
+using QS::FileSystem::Drive;
+using std::string;
+using std::weak_ptr;
 
 void InitializeFUSECallbacks(struct fuse_operations *fuseOps) {
   memset(fuseOps, 0, sizeof(*fuseOps));  // clear input
@@ -65,65 +106,182 @@ void InitializeFUSECallbacks(struct fuse_operations *fuseOps) {
   fuseOps->fallocate   = NULL;
 }
 
-int qsfs_getattr(const char * path, struct stat * statbuf) {
-  return 0;
+// --------------------------------------------------------------------------
+int qsfs_getattr(const char* path, struct stat* statbuf) {
+  if(!IsValidPath(path)){
+    Error("Null path parameter from fuse");
+    return -EINVAL;  // invalid argument
+  }
+
+  memset(statbuf, 0, sizeof(*statbuf));
+  int ret = 0;
+  auto &drive = Drive::Instance();
+  try {
+    auto node = drive.FindNode(path).lock();
+    if(node){
+      auto st = const_cast<const Node&>(*node).GetEntry().ToStat();
+      FillStat(st, statbuf);
+    } else {
+      throw QSException("Fail to find path " + string(path));
+    }
+  } catch (const QSException& err) {
+    ret = -errno;
+    Error(err.get());
+    return ret;
+  }
+  return ret;
 }
-int qsfs_readlink(const char * path, char * link, size_t size) {
-  return 0;
-}
-int qsfs_mknod(const char* path, mode_t mode, dev_t dev) {
-  return 0;
-}
-int qsfs_mkdir(const char* path, mode_t mode) {
-  return 0;
-}
-int qsfs_unlink(const char* path) {
-  return 0;
-}
-int qsfs_rmdir(const char* path) {
-  return 0;
-}
-int qsfs_symlink(const char* path, const char* link) {
-  return 0;
-}
-int qsfs_rename(const char* path, const char* newpath) {
+
+// --------------------------------------------------------------------------
+int qsfs_readlink(const char* path, char* link, size_t size) { 
+  //
   return 0; 
 }
-int qsfs_link(const char* path, const char* newpath) {
-  return 0;
-}
-int qsfs_chmod(const char* path, mode_t mode) {
-  return 0;
-}
-int qsfs_chown(const char* path, uid_t uid, gid_t gid){   return 0; }
-int qsfs_truncate(const char* path, off_t newsize){   return 0; }
-int qsfs_open(const char* path, struct fuse_file_info* fi){   return 0; }
-int qsfs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_file_info* fi){   return 0; }
-int qsfs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* fi){   return 0; }
-int qsfs_statfs(const char* path, struct statvfs* statv){   return 0; }
-int qsfs_flush(const char* path, struct fuse_file_info* fi){   return 0; }
-int qsfs_release(const char* path, struct fuse_file_info* fi){   return 0; }
-int qsfs_fsync(const char* path, int datasync, struct fuse_file_info* fi){   return 0; }
-int qsfs_setxattr(const char* path, const char* name, const char* value, size_t size, int flags){   return 0; }
-int qsfs_getxattr(const char* path, const char* name, char* value, size_t size){   return 0; }
-int qsfs_listxattr(const char* path, char* list, size_t size){   return 0; }
-int qsfs_removexattr(const char* path, const char* name){   return 0; }
-int qsfs_opendir(const char* path, struct fuse_file_info* fi){   return 0; }
-int qsfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info* fi){   return 0; }
-int qsfs_releasedir(const char* path, struct fuse_file_info* fi){   return 0; }
-int qsfs_fsyncdir(const char* path, int datasync, struct fuse_file_info* fi){   return 0; }
-void* qsfs_init(struct fuse_conn_info* conn){   return NULL; }
-void qsfs_destroy(void* userdata){   }
-int qsfs_access(const char* path, int mask){   return 0; }
-int qsfs_create(const char* path, mode_t mode, struct fuse_file_info* fi){   return 0; }
-int qsfs_ftruncate(const char* path, off_t offset, struct fuse_file_info* fi){   return 0; }
-int qsfs_fgetattr(const char* path, struct stat* statbuf, struct fuse_file_info* fi){   return 0; }
-int qsfs_lock(const char* path, struct fuse_file_info* fi, int cmd, struct flock* lock){   return 0; }
-int qsfs_utimens(const char * path, const struct timespec tv[2]){   return 0; }
-int qsfs_write_buf(const char * path, struct fuse_bufvec *buf, off_t off, struct fuse_file_info *){   return 0; }
-int qsfs_read_buf(const char* path, struct fuse_bufvec **bufp, size_t size, off_t off, struct fuse_file_info* fi){   return 0; }
-int qsfs_fallocate(const char* path, int, off_t offseta, off_t offsetb, struct fuse_file_info* fi){   return 0; }
 
+// --------------------------------------------------------------------------
+int qsfs_mknod(const char* path, mode_t mode, dev_t dev) {
+  // put object
+  return 0;
+}
+
+// --------------------------------------------------------------------------
+int qsfs_mkdir(const char* path, mode_t mode) {
+  // put object
+  return 0;
+}
+
+// --------------------------------------------------------------------------
+int qsfs_unlink(const char* path) {
+  // delete object
+  return 0;
+}
+
+// --------------------------------------------------------------------------
+int qsfs_rmdir(const char* path) {
+  // delete whole tree recursively
+  return 0;
+}
+
+// --------------------------------------------------------------------------
+int qsfs_symlink(const char* path, const char* link) { return 0; }
+
+// --------------------------------------------------------------------------
+int qsfs_rename(const char* path, const char* newpath) {
+  // copy object
+  return 0;
+}
+
+int qsfs_link(const char* path, const char* newpath) { return 0; }
+int qsfs_chmod(const char* path, mode_t mode) { return 0; }
+int qsfs_chown(const char* path, uid_t uid, gid_t gid) { return 0; }
+int qsfs_truncate(const char* path, off_t newsize) { return 0; }
+
+// --------------------------------------------------------------------------
+int qsfs_open(const char* path, struct fuse_file_info* fi) { 
+  // head oject, store file size for reading
+  // if file not exist, create empty one
+  // put object
+  return 0; 
+}
+
+// --------------------------------------------------------------------------
+int qsfs_read(const char* path, char* buf, size_t size, off_t offset,
+              struct fuse_file_info* fi) {
+  // get object
+  return 0;
+}
+
+// --------------------------------------------------------------------------
+int qsfs_write(const char* path, const char* buf, size_t size, off_t offset,
+               struct fuse_file_info* fi) {
+  // create a write buffer if necceaary
+  // handle hole if file
+  return 0;
+}
+
+
+int qsfs_statfs(const char* path, struct statvfs* statv) { return 0; }
+int qsfs_flush(const char* path, struct fuse_file_info* fi) { return 0; }
+
+// --------------------------------------------------------------------------
+int qsfs_release(const char* path, struct fuse_file_info* fi) {
+  // put object
+  return 0;
+}
+
+
+int qsfs_fsync(const char* path, int datasync, struct fuse_file_info* fi) {
+  return 0;
+}
+int qsfs_setxattr(const char* path, const char* name, const char* value,
+                  size_t size, int flags) {
+  return 0;
+}
+int qsfs_getxattr(const char* path, const char* name, char* value,
+                  size_t size) {
+  return 0;
+}
+int qsfs_listxattr(const char* path, char* list, size_t size) { return 0; }
+int qsfs_removexattr(const char* path, const char* name) { return 0; }
+int qsfs_opendir(const char* path, struct fuse_file_info* fi) { return 0; }
+int qsfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
+                 off_t offset, struct fuse_file_info* fi) {
+  return 0;
+}
+int qsfs_releasedir(const char* path, struct fuse_file_info* fi) { return 0; }
+int qsfs_fsyncdir(const char* path, int datasync, struct fuse_file_info* fi) {
+  return 0;
+}
+
+// --------------------------------------------------------------------------
+void* qsfs_init(struct fuse_conn_info* conn) {
+  // Initialization and checking are done when mounting
+  // just print info here
+  Info("Connecting qsfs...")
+  return NULL; 
+}
+
+// --------------------------------------------------------------------------
+void qsfs_destroy(void* userdata) {
+  Info("Disconnecting qsfs...");
+}
+
+int qsfs_access(const char* path, int mask) { return 0; }
+
+// --------------------------------------------------------------------------
+int qsfs_create(const char* path, mode_t mode, struct fuse_file_info* fi) {
+  // refer qsfs_open
+  return 0;
+}
+
+// --------------------------------------------------------------------------
+int qsfs_ftruncate(const char* path, off_t offset, struct fuse_file_info* fi) {
+  // 
+  return 0;
+}
+
+
+int qsfs_fgetattr(const char* path, struct stat* statbuf,
+                  struct fuse_file_info* fi) {
+  return 0;
+}
+int qsfs_lock(const char* path, struct fuse_file_info* fi, int cmd,
+              struct flock* lock) {
+  return 0;
+}
+int qsfs_utimens(const char* path, const struct timespec tv[2]) { return 0; }
+int qsfs_write_buf(const char* path, struct fuse_bufvec* buf, off_t off,
+                   struct fuse_file_info*) {
+  return 0;
+}
+int qsfs_read_buf(const char* path, struct fuse_bufvec** bufp, size_t size,
+                  off_t off, struct fuse_file_info* fi) {
+  return 0;
+}
+int qsfs_fallocate(const char* path, int, off_t offseta, off_t offsetb,
+                   struct fuse_file_info* fi) {
+  return 0;
+}
 
 }  // namespace FileSystem
 }  // namespace QS

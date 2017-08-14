@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <time.h>
 
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <memory>
@@ -88,11 +89,18 @@ class Entry {
   }
 
   // accessor
-  const std::string &GetFileName() const { return m_metaData.lock()->m_fileName; }
+  const std::weak_ptr<FileMetaData> &GetMetaData() const { return m_metaData; }
+  const std::string &GetFileName() const {
+    return m_metaData.lock()->m_fileName;
+  }
   uint64_t GetFileSize() const { return m_metaData.lock()->m_fileSize; }
   int GetNumLink() const { return m_metaData.lock()->m_numLink; }
   FileType GetFileType() const { return m_metaData.lock()->m_fileType; }
   time_t GetMTime() const { return m_metaData.lock()->m_mtime; }
+
+  struct stat ToStat() const {
+    return m_metaData.lock()->ToStat();
+  }
 
  private:
   void DecreaseNumLink() { --m_metaData.lock()->m_numLink; }
@@ -179,6 +187,7 @@ class Node {
     }
   }
 
+  void SetEntry(Entry &&entry) { m_entry = std::move(entry); }
   void SetParent(const std::shared_ptr<Node> &parent) { m_parent = parent; }
 
  private:
@@ -205,8 +214,11 @@ class DirectoryTree {
   ~DirectoryTree() { m_map.clear(); }
 
  public:
+  // TODO(jim):
+  // GetRoot
+  // UpdateNode
   // Find Node by file full path
-  std::shared_ptr<Node> Find(const std::string &fileName) const;
+  std::weak_ptr<Node> Find(const std::string &fileName) const;
   // Find children nodes by dirname which should be ending with "/"
   std::pair<ChildrenMultiMapIterator, ChildrenMultiMapIterator> FindChildren(
       const std::string &dirName);

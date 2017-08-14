@@ -24,7 +24,7 @@
 #include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
-#include <queue>
+#include <list>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -50,22 +50,39 @@ class ThreadPool {
   ThreadPool &operator=(const ThreadPool &) = delete;
 
  public:
-  void SubmitToThread(Task &&task);
+  void SubmitToThread(Task &&task, bool prioritized = false);
 
   template <typename F, typename... Args>
   void Submit(F &&f, Args &&... args);
 
   template <typename F, typename... Args>
+  void SubmitPrioritized(F &&f, Args &&... args);
+
+  template <typename F, typename... Args>
   auto SubmitCallable(F &&f, Args &&... args)
+      -> std::future<typename std::result_of<F(Args...)>::type>;
+
+  template <typename F, typename... Args>
+  auto SubmitCallablePrioritized(F &&f, Args &&... args)
       -> std::future<typename std::result_of<F(Args...)>::type>;
 
   template <typename ReceivedHandler, typename F, typename... Args>
   void SubmitAsync(ReceivedHandler &&handler, F &&f, Args &&... args);
 
+  template <typename ReceivedHandler, typename F, typename... Args>
+  void SubmitAsyncPrioritized(ReceivedHandler &&handler, F &&f,
+                              Args &&... args);
+
   template <typename ReceivedHandler, typename CallerContext, typename F,
             typename... Args>
   void SubmitAsyncWithContext(ReceivedHandler &&handler,
                               CallerContext &&context, F &&f, Args &&... args);
+
+  template <typename ReceivedHandler, typename CallerContext, typename F,
+            typename... Args>
+  void SubmitAsyncWithContextPrioritized(ReceivedHandler &&handler,
+                                         CallerContext &&context, F &&f,
+                                         Args &&... args);
 
  private:
   Task PopTask();
@@ -79,7 +96,7 @@ class ThreadPool {
 
  private:
   size_t m_poolSize;
-  std::queue<Task> m_tasks;
+  std::list<Task> m_tasks;
   std::mutex m_queueLock;
   std::vector<std::unique_ptr<TaskHandle>> m_taskHandles;
   std::mutex m_syncLock;
@@ -95,6 +112,12 @@ void ThreadPool::Submit(F &&f, Args &&... args) {
 }
 
 template <typename F, typename... Args>
+void ThreadPool::SubmitPrioritized(F &&f, Args &&... args) {
+  auto fun = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
+  return SubmitToThread(fun, true);
+}
+
+template <typename F, typename... Args>
 auto ThreadPool::SubmitCallable(F &&f, Args &&... args)
     -> std::future<typename std::result_of<F(Args...)>::type> {
   using ReturnType = typename std::result_of<F(Args...)>::type;
@@ -105,7 +128,24 @@ auto ThreadPool::SubmitCallable(F &&f, Args &&... args)
   std::future<ReturnType> res = task->get_future();
   {
     std::lock_guard<std::mutex> lock(m_queueLock);
-    m_tasks.emplace([task]() { (*task)(); });
+    m_tasks.emplace_back([task]() { (*task)(); });
+  }
+  m_syncConditionVar.notify_one();
+  return res;
+}
+
+template <typename F, typename... Args>
+auto ThreadPool::SubmitCallablePrioritized(F &&f, Args &&... args)
+    -> std::future<typename std::result_of<F(Args...)>::type> {
+  using ReturnType = typename std::result_of<F(Args...)>::type;
+
+  auto task = std::make_shared<std::packaged_task<ReturnType()>>(
+      std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+
+  std::future<ReturnType> res = task->get_future();
+  {
+    std::lock_guard<std::mutex> lock(m_queueLock);
+    m_tasks.emplace_front([task]() { (*task)(); });
   }
   m_syncConditionVar.notify_one();
   return res;
@@ -120,7 +160,21 @@ void ThreadPool::SubmitAsync(ReceivedHandler &&handler, F &&f,
                 std::forward<Args>(args)...);
   {
     std::lock_guard<std::mutex> lock(m_queueLock);
-    m_tasks.emplace([task]() { task(); });
+    m_tasks.emplace_back([task]() { task(); });
+  }
+  m_syncConditionVar.notify_one();
+}
+
+template <typename ReceivedHandler, typename F, typename... Args>
+void ThreadPool::SubmitAsyncPrioritized(ReceivedHandler &&handler, F &&f,
+                                        Args &&... args) {
+  auto task =
+      std::bind(std::forward<ReceivedHandler>(handler),
+                std::bind(std::forward<F>(f), std::forward<Args>(args)...),
+                std::forward<Args>(args)...);
+  {
+    std::lock_guard<std::mutex> lock(m_queueLock);
+    m_tasks.emplace_front([task]() { task(); });
   }
   m_syncConditionVar.notify_one();
 }
@@ -137,7 +191,24 @@ void ThreadPool::SubmitAsyncWithContext(ReceivedHandler &&handler,
                 std::forward<Args>(args)...);
   {
     std::lock_guard<std::mutex> lock(m_queueLock);
-    m_tasks.emplace([task]() { task(); });
+    m_tasks.emplace_back([task]() { task(); });
+  }
+  m_syncConditionVar.notify_one();
+}
+
+template <typename ReceivedHandler, typename CallerContext, typename F,
+          typename... Args>
+void ThreadPool::SubmitAsyncWithContextPrioritized(ReceivedHandler &&handler,
+                                                   CallerContext &&context,
+                                                   F &&f, Args &&... args) {
+  auto task =
+      std::bind(std::forward<ReceivedHandler>(handler),
+                std::forward<CallerContext>(context),
+                std::bind(std::forward<F>(f), std::forward<Args>(args)...),
+                std::forward<Args>(args)...);
+  {
+    std::lock_guard<std::mutex> lock(m_queueLock);
+    m_tasks.emplace_front([task]() { task(); });
   }
   m_syncConditionVar.notify_one();
 }

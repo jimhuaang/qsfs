@@ -25,11 +25,13 @@
 #include <utility>
 
 #include "qingstor-sdk-cpp/Bucket.h"
+#include "qingstor-sdk-cpp/HttpCommon.h"
 #include "qingstor-sdk-cpp/QingStor.h"
 #include "qingstor-sdk-cpp/QsConfig.h"
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
+#include "base/TimeUtils.h"
 #include "base/Utils.h"
 #include "client/ClientConfiguration.h"
 #include "client/ClientImpl.h"
@@ -46,10 +48,14 @@ namespace QS {
 namespace Client {
 
 using QingStor::Bucket;
+using QingStor::HeadObjectInput;
+using QingStor::Http::HttpResponseCode;
 using QingStor::ListObjectsInput;
 using QingStor::QingStorService;
 using QingStor::QsConfig;  // sdk config
+
 using QS::StringUtils::LTrim;
+using QS::TimeUtils::SecondsToRFC822GMT;
 using QS::Utils::AppendPathDelim;
 using std::shared_ptr;
 using std::string;
@@ -72,14 +78,14 @@ QSClient::~QSClient() { CloseQSService(); }
 bool QSClient::Connect() {
   auto outcome = GetQSClientImpl()->HeadBucket();
   /*   auto err =
-        ReadDirectory("/");  // TODO(jim): for test only, remove */
+        ListDirectory("/");  // TODO(jim): for test only, remove */
   if (outcome.IsSuccess()) {
     auto receivedHandler = [](const ClientError<QSError> &err) {
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     };
     // Build up the root level of directory tree asynchornizely.
     GetExecutor()->SubmitAsync(receivedHandler,
-                               [this] { return ReadDirectory("/"); });
+                               [this] { return ListDirectory("/"); });
     return true;
   } else {
     DebugError(GetMessageForQSError(outcome.GetError()));
@@ -91,39 +97,6 @@ bool QSClient::Connect() {
 bool QSClient::DisConnect() {
   // TODO(jim):
   return true;
-}
-
-// --------------------------------------------------------------------------
-ClientError<QSError> QSClient::ReadDirectory(const string &dirPath) {
-  auto &drive = QS::FileSystem::Drive::Instance();
-  ListObjectsInput listObjInput;
-  listObjInput.SetLimit(Constants::BucketListObjectsCountLimit);
-  listObjInput.SetDelimiter(QS::Utils::GetPathDelimiter());
-  if(!QS::Utils::IsRootDirectory(dirPath)){
-    string prefix = AppendPathDelim(LTrim(dirPath, '/'));
-    listObjInput.SetPrefix(prefix);
-  }
-  bool resultTruncated = false;
-  // Set maxCount for a single list operation.
-  // This will request for ListObjects seperately, so we can construct
-  // directory tree gradually. This will be helpful for the performance
-  // if there are a huge number of objects to list.
-  uint64_t maxCount =
-      static_cast<uint64_t>(Constants::BucketListObjectsCountLimit);
-  do {
-    auto outcome = GetQSClientImpl()->ListObjects(&listObjInput,
-                                                  &resultTruncated, maxCount);
-    if (outcome.IsSuccess()) {
-      for (auto &listObjOutput : outcome.GetResult()) {
-        auto fileMetaDatas =
-            QSClientUtils::ListObjectsOutputToFileMetaDatas(listObjOutput);
-        drive.GrowDirectoryTree(std::move(fileMetaDatas));
-      }
-    } else {
-      return outcome.GetError();
-    }
-  } while (resultTruncated);
-  return ClientError<QSError>(QSError::GOOD, false);
 }
 
 // --------------------------------------------------------------------------
@@ -140,6 +113,114 @@ ClientError<QSError> QSClient::DeleteDirectory(const string &dirPath) {
   // can we use delete multiple objects
   // maybe can call deleteMultipleObjects
   return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::MakeFile(const string &filePath) {
+  return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::MakeDirectory(const string &dirPath) {
+  return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::RenameFile(const string &filePath) {
+  return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::RenameDirectory(const string &dirPath) {
+  return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::DownloadFile(const string &filePath) {
+  return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::DownloadDirectory(const string &dirPath) {
+  return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::UploadFile(const string &filePath) {
+  return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::UploadDirectory(const string &dirPath) {
+  return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::ReadFile(const string &filePath) {
+  return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
+  ListObjectsInput listObjInput;
+  listObjInput.SetLimit(Constants::BucketListObjectsLimit);
+  listObjInput.SetDelimiter(QS::Utils::GetPathDelimiter());
+  if (!QS::Utils::IsRootDirectory(dirPath)) {
+    string prefix = AppendPathDelim(LTrim(dirPath, '/'));
+    listObjInput.SetPrefix(prefix);
+  }
+  bool resultTruncated = false;
+  // Set maxCount for a single list operation.
+  // This will request for ListObjects seperately, so we can construct
+  // directory tree gradually. This will be helpful for the performance
+  // if there are a huge number of objects to list.
+  uint64_t maxCount = static_cast<uint64_t>(Constants::BucketListObjectsLimit);
+  do {
+    auto outcome = GetQSClientImpl()->ListObjects(&listObjInput,
+                                                  &resultTruncated, maxCount);
+    if (outcome.IsSuccess()) {
+      for (auto &listObjOutput : outcome.GetResult()) {
+        auto fileMetaDatas =
+            QSClientUtils::ListObjectsOutputToFileMetaDatas(listObjOutput);
+        auto &drive = QS::FileSystem::Drive::Instance();
+        drive.GrowDirectoryTree(std::move(fileMetaDatas));
+      }
+    } else {
+      return outcome.GetError();
+    }
+  } while (resultTruncated);
+  return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::WriteFile(const string &filePath) {
+  return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::WriteDirectory(const string &dirPath) {
+  return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince) {
+  HeadObjectInput input;
+  if (modifiedSince > 0) {
+    input.SetIfModifiedSince(SecondsToRFC822GMT(modifiedSince));
+  }
+  auto outcome = GetQSClientImpl()->HeadObject(path, &input);
+  if (outcome.IsSuccess()) {
+    auto res = outcome.GetResult();
+    if(res.GetResponseCode() != HttpResponseCode::NOT_MODIFIED){
+      auto fileMetaData =
+          QSClientUtils::HeadObjectOutputToFileMetaData(path, res);
+      auto &drive = QS::FileSystem::Drive::Instance();
+      drive.GrowDirectoryTree(std::move(fileMetaData));
+    }
+    return ClientError<QSError>(QSError::GOOD, false);
+  } else {
+    return outcome.GetError();
+  }
 }
 
 // --------------------------------------------------------------------------

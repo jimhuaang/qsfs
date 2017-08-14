@@ -38,9 +38,25 @@ class NullClient : public Client {
   bool Connect() override { return false; }
   bool DisConnect() override { return true; }
 
-  ClientError<QSError> ReadDirectory(const std::string &dirPath) override;
-  ClientError<QSError> DeleteFile(const std::string &filePath) override ;
+  ClientError<QSError> DeleteFile(const std::string &filePath) override;
   ClientError<QSError> DeleteDirectory(const std::string &dirPath) override;
+  ClientError<QSError> MakeFile(const std::string &filePath) override;
+  ClientError<QSError> MakeDirectory(const std::string &dirPath) override;
+  ClientError<QSError> RenameFile(const std::string &filePath) override;
+  ClientError<QSError> RenameDirectory(const std::string &dirPath) override;
+
+  ClientError<QSError> DownloadFile(const std::string &filePath) override;
+  ClientError<QSError> DownloadDirectory(const std::string &dirPath) override;
+  ClientError<QSError> UploadFile(const std::string &filePath) override;
+  ClientError<QSError> UploadDirectory(const std::string &dirPath) override;
+
+  ClientError<QSError> ReadFile(const std::string &filePath) override;
+  ClientError<QSError> ListDirectory(const std::string &dirPath) override;
+  ClientError<QSError> WriteFile(const std::string &filePath) override;
+  ClientError<QSError> WriteDirectory(const std::string &dirPath) override;
+
+  ClientError<QSError> Stat(const std::string &path,
+                            time_t modifiedSince = 0) override;
 };
 
 }  // namespace Client
