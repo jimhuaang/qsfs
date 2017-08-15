@@ -56,10 +56,11 @@ using ParentFileNameToChildrenMultiMap =
     std::unordered_multimap<std::string, std::weak_ptr<Node>,
                             HashUtils::StringHash>;
 using ChildrenMultiMapIterator = ParentFileNameToChildrenMultiMap::iterator;
+using ChildrenMultiMapConstIterator = ParentFileNameToChildrenMultiMap::const_iterator;
 
 class Entry {
  public:
-  Entry(const std::string &fileName, uint64_t fileSize, time_t atime,
+  Entry(const std::string &filePath, uint64_t fileSize, time_t atime,
         time_t mtime, uid_t uid, gid_t gid, mode_t fileMode,
         FileType fileType = FileType::File, const std::string &mimeType = "",
         const std::string &eTag = std::string(), bool encrypted = false,
@@ -81,7 +82,7 @@ class Entry {
   // invoke its member functions
   operator bool() const {
     auto meta = m_metaData.lock();
-    return meta ? !meta->m_fileName.empty() : false;
+    return meta ? !meta->m_filePath.empty() : false;
   }
 
    bool IsDirectory() const {
@@ -90,24 +91,31 @@ class Entry {
 
   // accessor
   const std::weak_ptr<FileMetaData> &GetMetaData() const { return m_metaData; }
-  const std::string &GetFileName() const {
-    return m_metaData.lock()->m_fileName;
+  const std::string &GetFilePath() const {
+    return m_metaData.lock()->m_filePath;
   }
   uint64_t GetFileSize() const { return m_metaData.lock()->m_fileSize; }
   int GetNumLink() const { return m_metaData.lock()->m_numLink; }
   FileType GetFileType() const { return m_metaData.lock()->m_fileType; }
   time_t GetMTime() const { return m_metaData.lock()->m_mtime; }
 
+  std::string MyDirName() const { return m_metaData.lock()->MyDirName(); }
+  std::string MyBaseName() const { return m_metaData.lock()->MyBaseName(); }
+
   struct stat ToStat() const {
     return m_metaData.lock()->ToStat();
+  }
+
+  bool FileAccess(uid_t uid, gid_t gid, int amode) const {
+    return m_metaData.lock()->FileAccess(uid, gid, amode);
   }
 
  private:
   void DecreaseNumLink() { --m_metaData.lock()->m_numLink; }
   void IncreaseNumLink() { ++m_metaData.lock()->m_numLink; }
   void SetFileSize(uint64_t size) { m_metaData.lock()->m_fileSize = size; }
-  void SetFileName(const std::string &newFileName) {
-    m_metaData.lock()->m_fileName = newFileName;
+  void SetFilePath(const std::string &newFilePath) {
+    m_metaData.lock()->m_filePath = newFilePath;
   }
  
  private:
@@ -165,25 +173,39 @@ class Node {
 
   std::shared_ptr<Node> Insert(const std::shared_ptr<Node> &child);
   void Remove(const std::shared_ptr<Node> &child);
-  void RenameChild(const std::string &oldFileName,
-                   const std::string &newFileName);
+  void RenameChild(const std::string &oldFilePath,
+                   const std::string &newFilePath);
 
   // accessor
   const Entry &GetEntry() const { return m_entry; }
   std::shared_ptr<Node> GetParent() const { return m_parent.lock(); }
   std::string GetSymbolicLink() const { return m_symbolicLink; }
 
-  std::string GetFileName() const {
+  std::string GetFilePath() const {
     if (!m_entry) return std::string();
-    return m_entry.GetFileName();
+    return m_entry.GetFilePath();
+  }
+
+  std::string MyDirName() const {
+    if (!m_entry) return std::string();
+    return m_entry.MyDirName();
+  }
+
+  std::string MyBaseName() const {
+    if (!m_entry) return std::string();
+    return m_entry.MyBaseName();
+  }
+
+  bool FileAccess(uid_t uid, gid_t gid, int amode) const {
+    return m_entry ? m_entry.FileAccess(uid, gid, amode) : false;
   }
 
  private:
   Entry &GetEntry() { return m_entry; }
 
-  void SetFileName(const std::string &newFileName) {
+  void SetFilePath(const std::string &newFilePath) {
     if (m_entry) {
-      m_entry.SetFileName(newFileName);
+      m_entry.SetFilePath(newFilePath);
     }
   }
 
@@ -218,12 +240,18 @@ class DirectoryTree {
   // GetRoot
   // UpdateNode
   // Find Node by file full path
-  std::weak_ptr<Node> Find(const std::string &fileName) const;
-  // Find children nodes by dirname which should be ending with "/"
-  std::pair<ChildrenMultiMapIterator, ChildrenMultiMapIterator> FindChildren(
-      const std::string &dirName);
+  std::weak_ptr<Node> Find(const std::string &filePath) const;
+  // Find children by dirname which should be ending with "/"
+  std::pair<ChildrenMultiMapConstIterator, ChildrenMultiMapConstIterator>
+  FindChildren(const std::string &dirName) const;
+
+  ChildrenMultiMapConstIterator CBeginParentToChildrenMap() const;
+  ChildrenMultiMapConstIterator CEndParentToChildrenMap() const;
 
  private:
+  // Grow the directory tree.
+  // If the node reference to the meta data already exist, update meta data;
+  // otherwise add node to the tree and build up the references.
   void Grow(std::shared_ptr<FileMetaData> &&fileMeta);
   void Grow(std::vector<std::shared_ptr<FileMetaData>> &&fileMetas);
 
@@ -232,6 +260,11 @@ class DirectoryTree {
   std::shared_ptr<Node> m_currentNode;
   mutable std::recursive_mutex m_mutex;
   FileNameToWeakNodeUnorderedMap m_map;  // record all nodes map
+  // As we grow directory tree gradually, that means the directory tree can
+  // be a partial part of the entire tree, at some point some nodes haven't built
+  // the reference to its parent or children because which have not been added to 
+  // the tree yet.
+  // So, the dirName to children map which will help to update these references.
   ParentFileNameToChildrenMultiMap m_parentToChildrenMap;
 
   friend class QS::FileSystem::Drive;

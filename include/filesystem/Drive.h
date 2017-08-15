@@ -19,6 +19,7 @@
 
 #include <atomic>  // NOLINT
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "data/Directory.h"
@@ -65,7 +66,19 @@ class Drive {
   }
 
  public:
-  std::weak_ptr<QS::Data::Node> FindNode(const std::string &path);
+  // Get the Node in directory tree by path.
+  // Dir path should ending with '/'.
+  // Using growDriectory to invoke growing the directory tree asynchronizely,
+  // which means the children of the directory will be add to the tree.
+  // Return a pair: the first member is the node, the second member denote
+  // if the node is modified comparing with the moment before this operation
+  std::pair<std::weak_ptr<QS::Data::Node>, bool> GetNode(
+      const std::string &path, bool growDirectory = true);
+  // Get the children to the given directory.
+  // This will grow the directory tree synchronizely.
+  std::pair<QS::Data::ChildrenMultiMapConstIterator,
+            QS::Data::ChildrenMultiMapConstIterator>
+  GetChildren(const std::string &dirPath);
 
  private:
   void GrowDirectoryTree(std::shared_ptr<QS::Data::FileMetaData> &&fileMeta);

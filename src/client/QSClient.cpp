@@ -203,7 +203,11 @@ ClientError<QSError> QSClient::WriteDirectory(const string &dirPath) {
 }
 
 // --------------------------------------------------------------------------
-ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince) {
+ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
+                                    bool *modified) {
+  if (modified != nullptr) {
+    *modified = false;
+  }
   HeadObjectInput input;
   if (modifiedSince > 0) {
     input.SetIfModifiedSince(SecondsToRFC822GMT(modifiedSince));
@@ -211,7 +215,10 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince) {
   auto outcome = GetQSClientImpl()->HeadObject(path, &input);
   if (outcome.IsSuccess()) {
     auto res = outcome.GetResult();
-    if(res.GetResponseCode() != HttpResponseCode::NOT_MODIFIED){
+    if (res.GetResponseCode() != HttpResponseCode::NOT_MODIFIED) {
+      if (modified != nullptr) {
+        *modified = true;
+      }
       auto fileMetaData =
           QSClientUtils::HeadObjectOutputToFileMetaData(path, res);
       auto &drive = QS::FileSystem::Drive::Instance();

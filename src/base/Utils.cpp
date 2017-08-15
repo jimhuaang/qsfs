@@ -25,7 +25,7 @@
 #include <pwd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>  // for access
+#include <unistd.h>  // for access, R_OK
 
 #include <exception>
 #include <iostream>
@@ -346,6 +346,12 @@ gid_t GetProcessEffectiveGroupID() {
 
 // --------------------------------------------------------------------------
 bool HavePermission(struct stat *st, bool logOn) {
+  // Check type
+  if(st == nullptr){
+    DebugInfo("Null stat input");
+    return false;
+  }
+
   uid_t uidProcess = GetProcessEffectiveUserID();
   gid_t gidProcess = GetProcessEffectiveGroupID();
 
@@ -383,7 +389,7 @@ bool HavePermission(const std::string &path, bool logOn) {
   if (errorCode != 0) {
     if (logOn) {
       DebugError("Unable to access " + path +
-                 " when trying to check its permission");
+                 " when trying to check its permission : " + strerror(errno));
     }
     return false;
   } else {
@@ -392,6 +398,32 @@ bool HavePermission(const std::string &path, bool logOn) {
     }
     return HavePermission(&st, logOn);
   }
+}
+
+// --------------------------------------------------------------------------
+string AccessModeToString(int amode, bool logOn) {
+  string ret;
+  switch (amode) {
+    case R_OK:
+      ret = "R_OK";
+      break;
+    case W_OK:
+      ret = "W_OK";
+      break;
+    case X_OK:
+      ret = "X_OK";
+      break;
+    case F_OK:
+      ret = "F_OK";
+      break;
+    default:
+      ret = "";
+      if (logOn) {
+        DebugWarning("Invalid access mode with value " + to_string(amode));
+      }
+      break;
+  }
+  return ret;
 }
 
 }  // namespace Utils

@@ -49,7 +49,7 @@ const std::string &GetFileTypeName(FileType fileType);
  */
 class FileMetaData {
  public:
-  FileMetaData(const std::string &fileName, uint64_t fileSize, time_t atime,
+  FileMetaData(const std::string &filePath, uint64_t fileSize, time_t atime,
                time_t mtime, uid_t uid, gid_t gid, mode_t fileMode,
                FileType fileType = FileType::File,
                const std::string &mimeType = "",
@@ -68,15 +68,17 @@ public:
   bool IsDirectory() const { return m_fileType == FileType::Directory; }
   // Return the directory path (ending with "/") this file belongs to
   std::string MyDirName() const;
+  std::string MyBaseName() const;
+  bool FileAccess(uid_t uid, gid_t gid, int amode) const;
 
   // accessor
-  const std::string &GetFileName() const { return m_fileName;}
+  const std::string &GetFilePath() const { return m_filePath;}
 
  private:
   FileMetaData() = default;
 
   // file full path name
-  std::string m_fileName;  // For a directory, this will be ending with "/"
+  std::string m_filePath;  // For a directory, this will be ending with "/"
   uint64_t m_fileSize;
   // Notice: file creation time is not stored in unix
   time_t m_atime;  // time of last access

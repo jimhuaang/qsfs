@@ -64,7 +64,7 @@ gid_t gid_ = 1000U;
 mode_t fileMode_ = S_IRWXU | S_IRWXG | S_IROTH;
 
 struct MetaData {
-  string fileName;
+  string filePath;
   uint64_t fileSize;
   FileType fileType;
   int numLink;
@@ -72,7 +72,7 @@ struct MetaData {
   bool isOperable;
 
   friend ostream &operator<<(ostream &os, const MetaData &meta) {
-    return os << "FileName: " << meta.fileName << " FileSize: " << meta.fileSize
+    return os << "FileName: " << meta.filePath << " FileSize: " << meta.fileSize
               << " FileType: " << QS::Data::GetFileTypeName(meta.fileType)
               << " NumLink: " << meta.numLink << " IsDir: " << meta.isDir
               << " IsOperable: " << meta.isOperable;
@@ -84,10 +84,10 @@ class EntryTest : public Test, public WithParamInterface<MetaData> {
   EntryTest() {
     InitLog();
     auto meta = GetParam();
-    m_pFileMetaData.reset(new FileMetaData(meta.fileName, meta.fileSize, mtime_,
+    m_pFileMetaData.reset(new FileMetaData(meta.filePath, meta.fileSize, mtime_,
                                            mtime_, uid_, gid_, fileMode_,
                                            meta.fileType));
-    m_pEntry = new Entry(meta.fileName, meta.fileSize, mtime_, mtime_, uid_,
+    m_pEntry = new Entry(meta.filePath, meta.fileSize, mtime_, mtime_, uid_,
                              gid_, fileMode_, meta.fileType);
   }
 
@@ -147,7 +147,7 @@ TEST_P(EntryTest, CopyControl) {
 
 TEST_P(EntryTest, PublicFunctions) {
   auto meta = GetParam();
-  EXPECT_EQ(m_pEntry->GetFileName(), meta.fileName);
+  EXPECT_EQ(m_pEntry->GetFilePath(), meta.filePath);
   EXPECT_EQ(m_pEntry->GetFileSize(), meta.fileSize);
   EXPECT_EQ(m_pEntry->GetFileType(), meta.fileType);
   EXPECT_EQ(m_pEntry->GetNumLink(), meta.numLink);
@@ -157,7 +157,7 @@ TEST_P(EntryTest, PublicFunctions) {
 
 INSTANTIATE_TEST_CASE_P(
     FSEntryTest, EntryTest,
-    // fileName, fileSize, fileType, numLink, isDir, isOperable
+    // filePath, fileSize, fileType, numLink, isDir, isOperable
     Values(MetaData{"/", 0, FileType::Directory, 2, true, true},
            MetaData{"/file1", 0, FileType::File, 1, false, true},
            MetaData{"/file2", 1024, FileType::File, 1, false, true}));
@@ -166,16 +166,16 @@ TEST_F(NodeTest, DefaultCtor) {
   EXPECT_FALSE(pEmptyNode->operator bool());
   EXPECT_TRUE(pEmptyNode->IsEmpty());
   EXPECT_FALSE(const_cast<const Node*> (pEmptyNode.get())->GetEntry());
-  EXPECT_TRUE(pEmptyNode->GetFileName().empty());
+  EXPECT_TRUE(pEmptyNode->GetFilePath().empty());
 }
 
 TEST_F(NodeTest, CustomCtors) {
   EXPECT_TRUE(pRootNode->operator bool());
   EXPECT_TRUE(pRootNode->IsEmpty());
-  EXPECT_EQ(pRootNode->GetFileName(), "/");
+  EXPECT_EQ(pRootNode->GetFilePath(), "/");
   EXPECT_EQ((const_cast<const Node*>(pRootNode.get())->GetEntry()),
             *pRootEntry);
-  EXPECT_EQ(pRootNode->GetFileName(), pRootEntry->GetFileName());
+  EXPECT_EQ(pRootNode->GetFilePath(), pRootEntry->GetFilePath());
 
   EXPECT_EQ(*(pFileNode1->GetParent()), *pRootNode);
 
@@ -186,28 +186,28 @@ TEST_F(NodeTest, PublicFunctions) {
   // When sharing resources between tests in test case of NodeTest,
   // as the test oreder is undefined, so we must restore the state
   // to its original value before passing control to the next test.
-  EXPECT_FALSE(pRootNode->Find(pFileNode1->GetFileName()));
+  EXPECT_FALSE(pRootNode->Find(pFileNode1->GetFilePath()));
   pRootNode->Insert(pFileNode1);
-  EXPECT_EQ(pRootNode->Find(pFileNode1->GetFileName()), pFileNode1);
+  EXPECT_EQ(pRootNode->Find(pFileNode1->GetFilePath()), pFileNode1);
   EXPECT_EQ(pRootNode->GetChildren().size(), 1U);
 
-  EXPECT_FALSE(pRootNode->Find(pLinkNode->GetFileName()));
+  EXPECT_FALSE(pRootNode->Find(pLinkNode->GetFilePath()));
   pRootNode->Insert(pLinkNode);
-  EXPECT_EQ(pRootNode->Find(pLinkNode->GetFileName()), pLinkNode);
+  EXPECT_EQ(pRootNode->Find(pLinkNode->GetFilePath()), pLinkNode);
   EXPECT_EQ(pRootNode->GetChildren().size(), 2U);
 
-  string oldFileName = pFileNode1->GetFileName();
-  string newFileName("myNewFile1");
-  pRootNode->RenameChild(oldFileName, newFileName);
-  EXPECT_FALSE(pRootNode->Find(oldFileName));
-  EXPECT_TRUE(pRootNode->Find(newFileName));
-  EXPECT_EQ(pFileNode1->GetFileName(), newFileName);
-  pRootNode->RenameChild(newFileName, oldFileName);
+  string oldFilePath = pFileNode1->GetFilePath();
+  string newFilePath("myNewFile1");
+  pRootNode->RenameChild(oldFilePath, newFilePath);
+  EXPECT_FALSE(pRootNode->Find(oldFilePath));
+  EXPECT_TRUE(pRootNode->Find(newFilePath));
+  EXPECT_EQ(pFileNode1->GetFilePath(), newFilePath);
+  pRootNode->RenameChild(newFilePath, oldFilePath);
 
   pRootNode->Remove(pFileNode1);
-  EXPECT_FALSE(pRootNode->Find(pFileNode1->GetFileName()));
+  EXPECT_FALSE(pRootNode->Find(pFileNode1->GetFilePath()));
   pRootNode->Remove(pLinkNode);
-  EXPECT_FALSE(pRootNode->Find(pLinkNode->GetFileName()));
+  EXPECT_FALSE(pRootNode->Find(pLinkNode->GetFilePath()));
   EXPECT_TRUE(pRootNode->IsEmpty());
 }
 

@@ -27,15 +27,18 @@ namespace QS {
 namespace Data {
 
 using QS::Utils::AppendPathDelim;
+using QS::Utils::AccessModeToString;
 using QS::Utils::IsRootDirectory;
 using std::string;
+using std::to_string;
 
-FileMetaData::FileMetaData(const string &fileName, uint64_t fileSize,
+// --------------------------------------------------------------------------
+FileMetaData::FileMetaData(const string &filePath, uint64_t fileSize,
                            time_t atime, time_t mtime, uid_t uid, gid_t gid,
                            mode_t fileMode, FileType fileType,
                            const string &mimeType, const string &eTag,
                            bool encrypted, dev_t dev)
-    : m_fileName(fileName),
+    : m_filePath(filePath),
       m_fileSize(fileSize),
       m_atime(atime),
       m_mtime(mtime),
@@ -56,10 +59,11 @@ FileMetaData::FileMetaData(const string &fileName, uint64_t fileSize,
       m_pendingCreate(false) {
   m_numLink = fileType == FileType::Directory ? 2 : 1;
   if (fileType == FileType::Directory) {
-    m_fileName = AppendPathDelim(m_fileName);
+    m_filePath = AppendPathDelim(m_filePath);
   }
 }
 
+// --------------------------------------------------------------------------
 struct stat FileMetaData::ToStat() const {
   struct stat st;
   st.st_size = m_fileSize;
@@ -80,6 +84,7 @@ struct stat FileMetaData::ToStat() const {
   return st;
 }
 
+// --------------------------------------------------------------------------
 mode_t FileMetaData::GetFileTypeAndMode() const {
   mode_t stmode;
   switch (m_fileType) {
@@ -111,10 +116,11 @@ mode_t FileMetaData::GetFileTypeAndMode() const {
   return stmode;
 }
 
+// --------------------------------------------------------------------------
 string FileMetaData::MyDirName() const {
-  string cpy(m_fileName);
+  string cpy(m_filePath);
   if (IsRootDirectory(cpy)) {
-    DebugError("Try to get the dirname for root directory, null path returned");
+    DebugWarning("Try to get the dirname for root directory, null path returned");
     return string();  // return null
   }
   if (cpy.back() == '/') cpy.pop_back();
@@ -125,6 +131,94 @@ string FileMetaData::MyDirName() const {
     DebugError("Unable to find dirname for path " + cpy +
                " null path returned");
     return string();
+  }
+}
+
+// --------------------------------------------------------------------------
+string FileMetaData::MyBaseName() const {
+  string cpy(m_filePath);
+  if (IsRootDirectory(cpy)) {
+    DebugWarning(
+        "Try to get the basename for root directory, null basename returned");
+    return string();  // return null
+  }
+  if (cpy.back() == '/') cpy.pop_back();
+  auto pos = cpy.find_last_of('/');
+  if (pos != string::npos) {
+    return cpy.substr(pos + 1);  // not including "/"
+  } else {
+    DebugError("Unable to find basename for path " + cpy +
+               " null basename returned");
+    return string();
+  }
+}
+
+// --------------------------------------------------------------------------
+bool FileMetaData::FileAccess(uid_t uid, gid_t gid, int amode) const {
+  DebugInfo("Check object access of " + m_filePath +
+            "[Parameter: uid=" + to_string(uid) + ", gid=" + to_string(gid) +
+            ", amode=" + AccessModeToString(amode) +
+            "] - [File uid=" + to_string(m_uid) + ", gid=" + to_string(m_gid) +
+            ", mode=" + to_string(m_fileMode) + "]");
+
+  if (m_filePath.empty()) {
+    DebugWarning("object file path is empty");
+    return false;
+  }
+
+  // Check file existence
+  if (amode & F_OK) {
+    return true;  // there is a file, always allowed
+  }
+
+  // Check read permission
+  if (amode & R_OK) {
+    if ((uid == m_uid || uid == 0) && (m_fileMode & S_IRUSR)) {
+      return true;
+    }
+    if ((gid == m_gid || gid == 0) && (m_fileMode & S_IRGRP)) {
+      return true;
+    }
+    if (m_fileMode & S_IROTH) {
+      return true;
+    }
+    return false;
+  }
+
+  // Check write permission
+  if (amode & W_OK) {
+    if ((uid == m_uid || uid == 0) && (m_fileMode & S_IWUSR)) {
+      return true;
+    }
+    if ((gid == m_gid || gid == 0) && (m_fileMode & S_IWGRP)) {
+      return true;
+    }
+    if (m_fileMode & S_IWOTH) {
+      return true;
+    }
+    return false;
+  }
+
+  // Check execute permission
+  if (amode & W_OK) {
+    if (uid == 0) {
+      // if execute permission is allowed for any user,
+      // root shall get execute permission too.
+      if ((m_fileMode & S_IXUSR) || (m_fileMode & S_IXGRP) ||
+          (m_fileMode & S_IXOTH)) {
+        return true;
+      }
+    }
+    if ((uid == m_uid) && (m_fileMode & S_IXUSR)) {
+      return true;
+    }
+    if ((gid == m_gid) && (m_fileMode & S_IXGRP)) {
+      return true;
+    }
+    if (m_fileMode & S_IXOTH) {
+      return true;
+    }
+    return false;
   }
 }
 

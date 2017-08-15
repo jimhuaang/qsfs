@@ -55,8 +55,8 @@ class NullClient : public Client {
   ClientError<QSError> WriteFile(const std::string &filePath) override;
   ClientError<QSError> WriteDirectory(const std::string &dirPath) override;
 
-  ClientError<QSError> Stat(const std::string &path,
-                            time_t modifiedSince = 0) override;
+  ClientError<QSError> Stat(const std::string &path, time_t modifiedSince = 0,
+                            bool *modified = nullptr) override;
 };
 
 }  // namespace Client

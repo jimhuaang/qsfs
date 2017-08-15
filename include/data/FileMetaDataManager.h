@@ -59,27 +59,28 @@ class FileMetaDataManager {
 
  public:
   // Get file meta data
-  MetaDataListConstIterator Get(const std::string &fileName) const;
+  MetaDataListConstIterator Get(const std::string &filePath) const;
   // Return begin of meta data list
   MetaDataListConstIterator Begin() const;
   // Return end of meta data list
   MetaDataListConstIterator End() const;
   // Has file meta data
-  bool Has(const std::string &fileName) const;
+  bool Has(const std::string &filePath) const;
   // If the meta data list size plus needCount surpass
   // MaxFileMetaDataCount then there is no available space
   bool HasFreeSpace(size_t needCount) const;
 
  private:
   // Get file meta data
-  MetaDataListIterator Get(const std::string &fileName);
+  MetaDataListIterator Get(const std::string &filePath);
   // Return begin of meta data list
   MetaDataListIterator Begin();
   // Return end of meta data list
   MetaDataListIterator End();
   // Add file meta data
   // Return the iterator to the new added meta (should be the begin)
-  // if sucessfullly, otherwise return the end iterator.
+  // if add sucessfully, otherwise return the end iterator.
+  // Notes: if file meta already existed, this will update its meta data.
   MetaDataListIterator Add(std::shared_ptr<FileMetaData> &&fileMetaData);
   // Add file meta data array
   // Return the iterator to the new added meta (should be the begin) 
@@ -89,11 +90,9 @@ class FileMetaDataManager {
   MetaDataListIterator Add(
       std::vector<std::shared_ptr<FileMetaData>> &&fileMetaDatas);
   // Remove file meta data
-  MetaDataListIterator Erase(const std::string &fileName);
+  MetaDataListIterator Erase(const std::string &filePath);
   // Remvoe all file meta datas
   void Clear();
-  // TODO(jim):
-  // Update
 
  private:
   // internal use only

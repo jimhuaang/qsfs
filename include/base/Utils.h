@@ -65,6 +65,8 @@ gid_t GetProcessEffectiveGroupID();
 bool HavePermission(struct stat *st, bool logOn);
 bool HavePermission(const std::string &path, bool logOn);
 
+std::string AccessModeToString(int amode, bool logOn = true);
+
 }  // namespace Utils
 }  // namespace QS
 

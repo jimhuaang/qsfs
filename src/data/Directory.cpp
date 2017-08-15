@@ -59,11 +59,11 @@ const string &GetFileTypeName(FileType fileType) {
 }
 
 // --------------------------------------------------------------------------
-Entry::Entry(const std::string &fileName, uint64_t fileSize, time_t atime,
+Entry::Entry(const std::string &filePath, uint64_t fileSize, time_t atime,
              time_t mtime, uid_t uid, gid_t gid, mode_t fileMode,
              FileType fileType, const std::string &mimeType,
              const std::string &eTag, bool encrypted, dev_t dev) {
-  auto meta = make_shared<FileMetaData>(fileName, fileSize, atime, mtime, uid,
+  auto meta = make_shared<FileMetaData>(filePath, fileSize, atime, mtime, uid,
                                         gid, fileMode, fileType, mimeType, eTag,
                                         encrypted, dev);
   m_metaData = meta;
@@ -83,7 +83,7 @@ Node::~Node() {
   m_entry.DecreaseNumLink();
   if (m_entry.GetNumLink() == 0 ||
       (m_entry.GetNumLink() <= 1 && m_entry.IsDirectory())) {
-    FileMetaDataManager::Instance().Erase(GetFileName());
+    FileMetaDataManager::Instance().Erase(GetFilePath());
   }
 }
 
@@ -105,13 +105,13 @@ const FileNameToNodeUnorderedMap &Node::GetChildren() const {
 shared_ptr<Node> Node::Insert(const shared_ptr<Node> &child) {
   assert(IsDirectory());
   if (child) {
-    auto res = m_children.emplace(child->GetFileName(), child);
+    auto res = m_children.emplace(child->GetFilePath(), child);
     if (res.second) {
       if(child->IsDirectory()){
         m_entry.IncreaseNumLink();
       }
     } else {
-      DebugInfo(child->GetFileName() +
+      DebugInfo(child->GetFilePath() +
                 " is already existed, no insertion happens");
     }
   } else {
@@ -125,12 +125,12 @@ void Node::Remove(const shared_ptr<Node> &child) {
   if (child) {
     bool reset = m_children.size() == 1 ? true : false;
 
-    auto it = m_children.find(child->GetFileName());
+    auto it = m_children.find(child->GetFilePath());
     if (it != m_children.end()) {
       m_children.erase(it);
       if (reset) m_children.clear();
     } else {
-      DebugWarning("Try to remove Node " + child->GetFileName() +
+      DebugWarning("Try to remove Node " + child->GetFilePath() +
                    " which is not found. Go on");
     }
   } else {
@@ -139,60 +139,71 @@ void Node::Remove(const shared_ptr<Node> &child) {
 }
 
 // --------------------------------------------------------------------------
-void Node::RenameChild(const string &oldFileName, const string &newFileName) {
-  if (oldFileName == newFileName) {
+void Node::RenameChild(const string &oldFilePath, const string &newFilePath) {
+  if (oldFilePath == newFilePath) {
     DebugInfo("New file name is the same as the old one. Go on");
     return;
   }
 
-  if (m_children.find(newFileName) != m_children.end()) {
-    DebugWarning("Cannot rename " + oldFileName + " to " + newFileName +
+  if (m_children.find(newFilePath) != m_children.end()) {
+    DebugWarning("Cannot rename " + oldFilePath + " to " + newFilePath +
                  " which is already existed. But continue...");
     return;
   }
 
-  auto it = m_children.find(oldFileName);
+  auto it = m_children.find(oldFilePath);
   if (it != m_children.end()) {
     auto tmp = it->second;
-    tmp->SetFileName(newFileName);
+    tmp->SetFilePath(newFilePath);
     auto hint = m_children.erase(it);
-    m_children.emplace_hint(hint, newFileName, tmp);
+    m_children.emplace_hint(hint, newFilePath, tmp);
   } else {
-    DebugWarning("Try to rename Node " + oldFileName +
+    DebugWarning("Try to rename Node " + oldFilePath +
                  " which is not found. Go on");
   }
 }
 
 // --------------------------------------------------------------------------
-weak_ptr<Node> DirectoryTree::Find(const string &fileName) const{
+weak_ptr<Node> DirectoryTree::Find(const string &filePath) const{
   lock_guard<recursive_mutex> lock(m_mutex);
-  auto it = m_map.find(fileName);
+  auto it = m_map.find(filePath);
   if(it != m_map.end()){
     return it->second;
   } else {
-    DebugInfo("Node (" + fileName + ") is not existed in directory tree");
+    DebugInfo("Node (" + filePath + ") is not existed in directory tree");
     return weak_ptr<Node>();
   }
 }
 
 // --------------------------------------------------------------------------
-std::pair<ChildrenMultiMapIterator, ChildrenMultiMapIterator>
-DirectoryTree::FindChildren(const string &dirName) {
+std::pair<ChildrenMultiMapConstIterator, ChildrenMultiMapConstIterator>
+DirectoryTree::FindChildren(const string &dirName) const {
   return m_parentToChildrenMap.equal_range(dirName);
+}
+
+// --------------------------------------------------------------------------
+ChildrenMultiMapConstIterator DirectoryTree::CBeginParentToChildrenMap() const {
+  return m_parentToChildrenMap.cbegin();
+}
+
+// --------------------------------------------------------------------------
+ChildrenMultiMapConstIterator DirectoryTree::CEndParentToChildrenMap() const {
+  return m_parentToChildrenMap.cend();
 }
 
 // --------------------------------------------------------------------------
 void DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
   lock_guard<recursive_mutex> lock(m_mutex);
-  string fileName = fileMeta->GetFileName();
+  string filePath = fileMeta->GetFilePath();
 
-  auto node = Find(fileName).lock();
+  auto node = Find(filePath).lock();
   if(node){
-    node->SetEntry(Entry(std::move(fileMeta)));
+    node->SetEntry(Entry(std::move(fileMeta)));  // update entry
   } else {
     bool isDir = fileMeta->IsDirectory();
     auto dirName = fileMeta->MyDirName();
     node = make_shared<Node>(Entry(std::move(fileMeta)));
+    m_map.emplace(filePath, node);
 
     // hook up with parent
     assert(!dirName.empty());
@@ -202,14 +213,14 @@ void DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
         parent->Insert(node);
         node->SetParent(parent);
       } else {
-        DebugInfo("Parent Node of " + fileName +
-                  " is cleared at the time in directory tree");
+        DebugInfo("Parent Node of " + filePath +
+                  " is not available at the time in directory tree");
       }
     }
 
     // hook up with children
     if (isDir) {
-      auto range = m_parentToChildrenMap.equal_range(fileName);
+      auto range = m_parentToChildrenMap.equal_range(filePath);
       for (auto it = range.first; it != range.second; ++it) {
         if (auto child = it->second.lock()) {
           child->SetParent(node);

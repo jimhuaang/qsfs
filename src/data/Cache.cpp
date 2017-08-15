@@ -196,7 +196,7 @@ File::ReadOutcome File::Read(off_t offset, size_t len,
   list<shared_ptr<Page>> outcomePages;
   auto LoadFileAndAddPage = [this, &entry, &outcomeSize, &outcomePages](
       off_t offset, size_t len) {
-    auto outcome = LoadFile(entry->GetFileName(), offset, len);
+    auto outcome = LoadFile(entry->GetFilePath(), offset, len);
     if (outcome.first > 0 && outcome.second) {
       auto res = UnguardedAddPage(offset, outcome.second, outcome.first);
       if (res.second) {
@@ -224,7 +224,7 @@ File::ReadOutcome File::Read(off_t offset, size_t len,
     if (len_ < len) {
       len = len_;
       DebugWarning("Try to read file([fileId:size] = [" +
-                   entry->GetFileName() + ":" +
+                   entry->GetFilePath() + ":" +
                    to_string(entry->GetFileSize()) + "]) with input " +
                    ToStringLine(offset, len) + " which surpass the file size");
     }
@@ -484,7 +484,7 @@ size_t Cache::Read(const string &fileId, off_t offset, char *buffer, size_t len,
   if (it != m_map.end()) {
     pos = UnguardedMakeFileMostRecentlyUsed(it->second);
   } else {
-    DebugInfo("File (" + node->GetFileName() +
+    DebugInfo("File (" + node->GetFilePath() +
               ") is not found in cache. Creating new one");
     fileIsJustCreated = true;
     pos = UnguardedNewEmptyFile(fileId);
@@ -494,7 +494,7 @@ size_t Cache::Read(const string &fileId, off_t offset, char *buffer, size_t len,
   auto &file = pos->second;
   auto outcome = file->Read(offset, len, &(node->GetEntry()));
   if (outcome.first == 0 || outcome.second.empty()) {
-    DebugInfo("Read no bytes from file(" + node->GetFileName() + ")");
+    DebugInfo("Read no bytes from file(" + node->GetFilePath() + ")");
     return 0;
   }
   if (fileIsJustCreated) {

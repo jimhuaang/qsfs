@@ -21,18 +21,20 @@
 
 #include <errno.h>
 #include <sys/types.h>  // for uid_t
+#include <unistd.h>     // for R_OK
 
 #include <memory>
 
 #include "base/Exception.h"
 #include "base/LogMacros.h"
+#include "base/Utils.h"
 #include "data/Directory.h"
 #include "filesystem/Drive.h"
 
 namespace {
 
 bool IsValidPath(const char *path) {
-  return path != nullptr && *path != 0;
+  return path != nullptr && path[0] != '\0';
 }
 
 void FillStat(const struct stat& source, struct stat* target) {
@@ -50,6 +52,16 @@ void FillStat(const struct stat& source, struct stat* target) {
   target->st_nlink = source.st_nlink;
 }
 
+uid_t GetFuseContextUID() {
+  static struct fuse_context* fuseCtx = fuse_get_context();
+  return fuseCtx->uid;
+}
+
+gid_t GetFuseContextGID() {
+  static struct fuse_context* fuseCtx = fuse_get_context();
+  return fuseCtx->gid;
+}
+
 }  // namespace
 
 
@@ -60,6 +72,8 @@ namespace FileSystem {
 using QS::Data::Node;
 using QS::Exception::QSException;
 using QS::FileSystem::Drive;
+using QS::Utils::AppendPathDelim;
+using std::shared_ptr;
 using std::string;
 using std::weak_ptr;
 
@@ -117,18 +131,23 @@ int qsfs_getattr(const char* path, struct stat* statbuf) {
   int ret = 0;
   auto &drive = Drive::Instance();
   try {
-    auto node = drive.FindNode(path).lock();
+    auto res = drive.GetNode(path);
+    auto node = res.first.lock();
+    if(!node && string(path).back() != '/'){
+      node = drive.GetNode(AppendPathDelim(path)).first.lock();
+    }
     if(node){
       auto st = const_cast<const Node&>(*node).GetEntry().ToStat();
       FillStat(st, statbuf);
-    } else {
-      throw QSException("Fail to find path " + string(path));
+    } else {  // node not existing
+      ret = -ENOENT;  // No such file or directory
+      throw QSException("No such file or directory " + string(path));
     }
   } catch (const QSException& err) {
-    ret = -errno;
     Error(err.get());
     return ret;
   }
+  ret = -errno;
   return ret;
 }
 
@@ -224,10 +243,65 @@ int qsfs_getxattr(const char* path, const char* name, char* value,
 int qsfs_listxattr(const char* path, char* list, size_t size) { return 0; }
 int qsfs_removexattr(const char* path, const char* name) { return 0; }
 int qsfs_opendir(const char* path, struct fuse_file_info* fi) { return 0; }
+
+// --------------------------------------------------------------------------
 int qsfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                  off_t offset, struct fuse_file_info* fi) {
-  return 0;
+  if (!IsValidPath(path)) {
+    Error("Null path parameter from fuse");
+    return -EINVAL;  // invalid argument
+  }
+  if (buf == nullptr) {
+    Error("Null buffer parameter from fuse");
+    return -EINVAL;
+  }
+
+  int ret = 0;
+  auto& drive = Drive::Instance();
+  shared_ptr<Node> node = nullptr;
+  auto dirPath = AppendPathDelim(path);
+  try {
+    auto res = drive.GetNode(dirPath);
+    node = res.first.lock();
+    if (node) {
+      // Check access permission
+      if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), R_OK)) {
+        Error("Have no read permission for " + dirPath);
+        return -EACCES;  // Permission denied
+      }
+
+      // Put the . and .. entries in the filler
+      if (filler(buf, ".", NULL, 0) != 0 || filler(buf, "..", NULL, 0) != 0) {
+        ret = -ENOMEM;  // out of memeory
+        throw QSException("Fuse filler is full! dir: " + dirPath);
+      }
+
+      // Retrive the children list
+      auto range = drive.GetChildren(dirPath);
+      for (auto it = range.first; it != range.second; ++it) {
+        if (auto child = it->second.lock()) {
+          auto filename = child->MyBaseName();
+          assert(!filename.empty());
+          if (filename.empty()) continue;
+          if (filler(buf, filename.c_str(), NULL, 0) != 0) {
+            ret = -ENOMEM;  // out of memory
+            throw QSException("Fuse filler is full! dir: " + dirPath +
+                              "child: " + filename);
+          }
+        }
+      }
+    } else {  // node not existing
+      ret = -ENOENT;  // No such file or directory
+      throw QSException("No such directory " + string(path));
+    }
+  } catch (const QSException& err) {
+    Error(err.get());
+    return ret;
+  }
+  ret = -errno;
+  return ret;
 }
+
 int qsfs_releasedir(const char* path, struct fuse_file_info* fi) { return 0; }
 int qsfs_fsyncdir(const char* path, int datasync, struct fuse_file_info* fi) {
   return 0;

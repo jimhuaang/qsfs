@@ -88,7 +88,7 @@ ClientError<QSError> NullClient::WriteDirectory(const std::string &dirPath) {
 }
 
 ClientError<QSError> NullClient::Stat(const std::string &path,
-                                      time_t modifiedSince) {
+                                      time_t modifiedSince, bool *modified) {
   return GoodState();
 }
 

@@ -20,6 +20,7 @@
 
 #include <sys/types.h>
 
+#include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
 #include <utility>
@@ -27,6 +28,7 @@
 #include "base/LogMacros.h"
 #include "base/Utils.h"
 #include "client/Client.h"
+#include "client/ClientError.h"
 #include "client/ClientFactory.h"
 #include "client/QSError.h"
 #include "client/TransferManager.h"
@@ -40,19 +42,24 @@ namespace QS {
 namespace FileSystem {
 
 using QS::Client::Client;
+using QS::Client::ClientError;
 using QS::Client::ClientFactory;
 using QS::Client::GetMessageForQSError;
 using QS::Client::IsGoodQSError;
+using QS::Client::QSError;
 using QS::Client::TransferManager;
 using QS::Client::TransferManagerConfigure;
 using QS::Client::TransferManagerFactory;
 using QS::Data::Cache;
+using QS::Data::ChildrenMultiMapConstIterator;
 using QS::Data::DirectoryTree;
 using QS::Data::FileMetaData;
+using QS::Data::FileNameToNodeUnorderedMap;
 using QS::Data::Node;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::GetProcessEffectiveUserID;
 using QS::Utils::GetProcessEffectiveGroupID;
+using std::pair;
 using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
@@ -105,36 +112,79 @@ bool Drive::IsMountable() const {
 }
 
 // --------------------------------------------------------------------------
-weak_ptr<Node> Drive::FindNode(const string &path) {
+pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
+                                          bool growDirectory) {
   if (path.empty()) {
-    Error("Try to search null file path");
-    return weak_ptr<Node>();
+    Error("Null file path");
+    return {weak_ptr<Node>(), false};
   }
+  auto node = m_directoryTree->Find(path).lock();
+  bool modified = false;
 
-  auto UpdateNode = [this](const string &path,
-                           const shared_ptr<Node> &node) -> weak_ptr<Node> {
+  auto UpdateNode = [this, &modified](const string &path,
+                                      const shared_ptr<Node> &node) {
     time_t modifiedSince = 0;
     modifiedSince = const_cast<const Node &>(*node).GetEntry().GetMTime();
-    auto err = GetClient()->Stat(path, modifiedSince);
+    auto err = GetClient()->Stat(path, modifiedSince, &modified);
     DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
-    return m_directoryTree->Find(path);
   };
 
-  auto node = m_directoryTree->Find(path).lock();
   if (node) {
-    return UpdateNode(path, node);
-  }
-
-  if (path.back() != '/') {
-    node = m_directoryTree->Find(AppendPathDelim(path)).lock();
-    if (node) {
-      return UpdateNode(path, node);
+    UpdateNode(path, node);
+  } else {
+    auto err = GetClient()->Stat(path, 0, &modified);  // head it
+    if (IsGoodQSError(err)) {
+      node = m_directoryTree->Find(path).lock();
+    } else {
+      DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     }
   }
 
-  auto err = GetClient()->Stat(path);
-  DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
-  return m_directoryTree->Find(path);
+  // Grow directory tree asynchornizely.
+  if (node->IsDirectory() && growDirectory && modified) {
+    auto receivedHandler = [](const ClientError<QSError> &err) {
+      DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+    };
+    GetClient()->GetExecutor()->SubmitAsync(receivedHandler, [this, path] {
+      return GetClient()->ListDirectory(AppendPathDelim(path));
+    });
+  }
+
+  return {node, modified};
+}
+
+// --------------------------------------------------------------------------
+pair<ChildrenMultiMapConstIterator, ChildrenMultiMapConstIterator>
+Drive::GetChildren(const string &dirPath) {
+  auto emptyRes = std::make_pair(m_directoryTree->CEndParentToChildrenMap(),
+                                 m_directoryTree->CEndParentToChildrenMap());
+  if (dirPath.empty()) {
+    Error("Null dir path");
+    return emptyRes;
+  }
+
+  auto path = dirPath;
+  if (dirPath.back() != '/') {
+    path = AppendPathDelim(dirPath);
+    DebugInfo("Input dir path not ending with '/', append it");
+  }
+  // Do not invoke growing dirctory asynchronizedly as we will do it
+  // synchronizely
+  auto res = GetNode(path, false);
+  auto node = res.first.lock();
+  bool modified = res.second;
+  if (node) {
+    if (modified) {
+      // Grow directory tree synchornizely
+      auto f = GetClient()->GetExecutor()->SubmitCallablePrioritized(
+          [this, path] { return GetClient()->ListDirectory(path); });
+      auto err = f.get();
+      DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+    }
+    return m_directoryTree->FindChildren(path);
+  } else {
+    return emptyRes;
+  }
 }
 
 // --------------------------------------------------------------------------

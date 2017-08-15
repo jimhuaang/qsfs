@@ -44,20 +44,20 @@ FileMetaDataManager &FileMetaDataManager::Instance() {
 
 // --------------------------------------------------------------------------
 MetaDataListConstIterator FileMetaDataManager::Get(
-    const std::string &fileName) const {
+    const std::string &filePath) const {
   lock_guard<recursive_mutex> lock(m_mutex);
-  return const_cast<FileMetaDataManager *>(this)->Get(fileName);
+  return const_cast<FileMetaDataManager *>(this)->Get(filePath);
 }
 
 // --------------------------------------------------------------------------
-MetaDataListIterator FileMetaDataManager::Get(const std::string &fileName) {
+MetaDataListIterator FileMetaDataManager::Get(const std::string &filePath) {
   lock_guard<recursive_mutex> lock(m_mutex);
   auto pos = m_metaDatas.end();
-  auto it = m_map.find(fileName);
+  auto it = m_map.find(filePath);
   if (it != m_map.end()) {
     pos = UnguardedMakeMetaDataMostRecentlyUsed(it->second);
   } else {
-    DebugWarning("File (" + fileName +
+    DebugWarning("File (" + filePath +
                  ") is not found in file meta data manager.");
   }
   return pos;
@@ -88,9 +88,9 @@ MetaDataListIterator FileMetaDataManager::End(){
 }
 
 // --------------------------------------------------------------------------
-bool FileMetaDataManager::Has(const std::string &fileName) const {
+bool FileMetaDataManager::Has(const std::string &filePath) const {
   lock_guard<recursive_mutex> lock(m_mutex);
-  return this->Get(fileName) != m_metaDatas.cend();
+  return this->Get(filePath) != m_metaDatas.cend();
 }
 
 // --------------------------------------------------------------------------
@@ -102,19 +102,19 @@ bool FileMetaDataManager::HasFreeSpace(size_t needCount) const {
 // --------------------------------------------------------------------------
 MetaDataListIterator FileMetaDataManager::AddNoLock(
     shared_ptr<FileMetaData> &&fileMetaData) {
-  const auto &fileName = fileMetaData->GetFileName();
-  auto it = m_map.find(fileName);
+  const auto &filePath = fileMetaData->GetFilePath();
+  auto it = m_map.find(filePath);
   if (it == m_map.end()) {  // not exist in manager
     if (!HasFreeSpaceNoLock(1)) {
       auto success = FreeNoLock(1);
       if (!success) return m_metaDatas.end();
     }
-    m_metaDatas.emplace_front(fileName, std::move(fileMetaData));
-    if (m_metaDatas.begin()->first == fileName) {  // insert sucessfully
-      m_map.emplace(fileName, m_metaDatas.begin());
+    m_metaDatas.emplace_front(filePath, std::move(fileMetaData));
+    if (m_metaDatas.begin()->first == filePath) {  // insert sucessfully
+      m_map.emplace(filePath, m_metaDatas.begin());
       return m_metaDatas.begin();
     } else {
-      DebugError("Fail to add meta data into manager for file " + fileName);
+      DebugError("Fail to add meta data into manager for file " + filePath);
       return m_metaDatas.end();
     }
   } else {  // exist already, update it
@@ -144,16 +144,16 @@ MetaDataListIterator FileMetaDataManager::Add(
 }
 
 // --------------------------------------------------------------------------
-MetaDataListIterator FileMetaDataManager::Erase(const std::string &fileName) {
+MetaDataListIterator FileMetaDataManager::Erase(const std::string &filePath) {
   lock_guard<recursive_mutex> lock(m_mutex);
   auto next = m_metaDatas.end();
-  auto it = m_map.find(fileName);
+  auto it = m_map.find(filePath);
   if (it != m_map.end()) {
     next = m_metaDatas.erase(it->second);
     m_map.erase(it);
   } else {
     DebugWarning("Try to remove non-existing meta data from manager for file " +
-                 fileName);
+                 filePath);
   }
   return next;
 }

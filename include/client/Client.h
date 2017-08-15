@@ -31,6 +31,10 @@
 
 namespace QS {
 
+namespace FileSystem {
+class Drive;
+}  // namespace FileSystem
+
 namespace Client {
 
 class ClientImpl;
@@ -76,7 +80,8 @@ class Client {
   virtual ClientError<QSError> WriteDirectory(const std::string &dirPath) = 0;
 
   virtual ClientError<QSError> Stat(const std::string &path,
-                                    time_t modifiedSince = 0) = 0;
+                                    time_t modifiedSince = 0,
+                                    bool *modified = nullptr) = 0;
 
  public:
   const RetryStrategy &GetRetryStrategy() const;
@@ -90,6 +95,8 @@ class Client {
   std::shared_ptr<ClientImpl> m_impl;
   std::unique_ptr<QS::Threading::ThreadPool> m_executor;
   RetryStrategy m_retryStrategy;
+
+  friend class QS::FileSystem::Drive;
 };
 
 }  // namespace Client

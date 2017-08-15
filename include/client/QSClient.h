@@ -66,8 +66,11 @@ class QSClient : public Client {
   // Get object meta data
   // Using modifiedSince to match if the object modified since then, 
   // Using modifiedSince = 0 to always get object meta data, this is default.
-  ClientError<QSError> Stat(const std::string &path,
-                            time_t modifiedSince = 0) override;
+  // Using modified to gain output of object modified status since given time.
+  // Notes: Stat will grow the directory asynchronizely if objcet is directory
+  // and if object is modified comparing with the moment before this operation.
+  ClientError<QSError> Stat(const std::string &path, time_t modifiedSince = 0,
+                            bool *modified = nullptr ) override;
 
  public:
   static const std::unique_ptr<QingStor::QingStorService> &GetQingStorService();
