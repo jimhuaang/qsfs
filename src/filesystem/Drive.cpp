@@ -174,7 +174,7 @@ Drive::GetChildren(const string &dirPath) {
   auto node = res.first.lock();
   bool modified = res.second;
   if (node) {
-    if (modified) {
+    if (modified || node->IsEmpty()) {
       // Grow directory tree synchornizely
       auto f = GetClient()->GetExecutor()->SubmitCallablePrioritized(
           [this, path] { return GetClient()->ListDirectory(path); });

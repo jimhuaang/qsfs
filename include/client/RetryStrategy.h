@@ -25,7 +25,7 @@ namespace QS {
 namespace Client {
 
 namespace Retry {
-static const unsigned DefaultMaxRetries = 5;
+static const unsigned DefaultMaxRetries = 1;
 static const unsigned DefaultScaleFactor = 25;
 }  // namespace Retry
 

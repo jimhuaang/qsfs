@@ -45,18 +45,10 @@ Client::~Client(){
 }
 
 // --------------------------------------------------------------------------
-const shared_ptr<ClientImpl>& Client::GetClientImpl() const { return m_impl; }
-
-// --------------------------------------------------------------------------
-const RetryStrategy &Client::GetRetryStrategy() const {
-  return m_retryStrategy;
+void Client::RetryRequestSleep(std::chrono::milliseconds sleepTime) const {
+  std::unique_lock<std::mutex> lock(m_retryLock);
+  m_retrySignal.wait_for(lock, sleepTime);
 }
-
-// --------------------------------------------------------------------------
-shared_ptr<ClientImpl> Client::GetClientImpl() { return m_impl; }
-
-// --------------------------------------------------------------------------
-unique_ptr<ThreadPool> &Client::GetExecutor() { return m_executor; }
 
 }  // namespace Client
 }  // namespace QS

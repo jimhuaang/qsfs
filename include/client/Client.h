@@ -19,7 +19,10 @@
 
 #include <time.h>
 
+#include <chrono>
+#include <condition_variable>  // NOLINT
 #include <memory>
+#include <mutex>  // NOLINT
 #include <string>
 
 #include "base/ThreadPool.h"
@@ -84,17 +87,23 @@ class Client {
                                     bool *modified = nullptr) = 0;
 
  public:
-  const RetryStrategy &GetRetryStrategy() const;
-  const std::shared_ptr<ClientImpl> &GetClientImpl() const;
+  void RetryRequestSleep(std::chrono::milliseconds sleepTime) const;
+
+  const RetryStrategy &GetRetryStrategy() const { return m_retryStrategy; }
+  const std::shared_ptr<ClientImpl> &GetClientImpl() const { return m_impl; }
 
  protected:
-  std::shared_ptr<ClientImpl> GetClientImpl();
-  std::unique_ptr<QS::Threading::ThreadPool> &GetExecutor();
+  std::shared_ptr<ClientImpl> GetClientImpl() { return m_impl; }
+  std::unique_ptr<QS::Threading::ThreadPool> &GetExecutor() {
+    return m_executor;
+  }
 
  private:
   std::shared_ptr<ClientImpl> m_impl;
   std::unique_ptr<QS::Threading::ThreadPool> m_executor;
   RetryStrategy m_retryStrategy;
+  mutable std::mutex m_retryLock;
+  mutable std::condition_variable m_retrySignal;
 
   friend class QS::FileSystem::Drive;
 };

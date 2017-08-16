@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <stdint.h>  // for uint64_t
 
+#include <chrono>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -57,6 +58,7 @@ using QingStor::QsConfig;  // sdk config
 using QS::StringUtils::LTrim;
 using QS::TimeUtils::SecondsToRFC822GMT;
 using QS::Utils::AppendPathDelim;
+using std::chrono::milliseconds;
 using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
@@ -77,6 +79,17 @@ QSClient::~QSClient() { CloseQSService(); }
 // --------------------------------------------------------------------------
 bool QSClient::Connect() {
   auto outcome = GetQSClientImpl()->HeadBucket();
+  unsigned attemptedRetries = 0;
+  while (!outcome.IsSuccess() &&
+         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+    int32_t sleepMilliseconds =
+        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                         attemptedRetries);
+    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+    outcome = GetQSClientImpl()->HeadBucket();
+    ++attemptedRetries;
+  }
+
   /*   auto err =
         ListDirectory("/");  // TODO(jim): for test only, remove */
   if (outcome.IsSuccess()) {
@@ -178,6 +191,19 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
   do {
     auto outcome = GetQSClientImpl()->ListObjects(&listObjInput,
                                                   &resultTruncated, maxCount);
+    unsigned attemptedRetries = 0;
+    while (
+        !outcome.IsSuccess() &&
+        GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+      int32_t sleepMilliseconds =
+          GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                           attemptedRetries);
+      RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+      outcome = GetQSClientImpl()->ListObjects(&listObjInput, &resultTruncated,
+                                               maxCount);
+      ++attemptedRetries;
+    }
+
     if (outcome.IsSuccess()) {
       for (auto &listObjOutput : outcome.GetResult()) {
         auto fileMetaDatas =
@@ -212,7 +238,19 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
   if (modifiedSince > 0) {
     input.SetIfModifiedSince(SecondsToRFC822GMT(modifiedSince));
   }
+
   auto outcome = GetQSClientImpl()->HeadObject(path, &input);
+  unsigned attemptedRetries = 0;
+  while (!outcome.IsSuccess() &&
+         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+    int32_t sleepMilliseconds =
+        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                         attemptedRetries);
+    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+    outcome = GetQSClientImpl()->HeadObject(path, &input);
+    ++attemptedRetries;
+  }
+
   if (outcome.IsSuccess()) {
     auto res = outcome.GetResult();
     if (res.GetResponseCode() != HttpResponseCode::NOT_MODIFIED) {
@@ -287,5 +325,5 @@ void QSClient::InitializeClientImpl() {
                  clientConfig.GetZone())));
 }
 
-}  // namespace QSClient
+}  // namespace Client
 }  // namespace QS

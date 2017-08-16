@@ -64,7 +64,7 @@ class QSClient : public Client {
   ClientError<QSError> WriteDirectory(const std::string &dirPath) override;
 
   // Get object meta data
-  // Using modifiedSince to match if the object modified since then, 
+  // Using modifiedSince to match if the object modified since then.
   // Using modifiedSince = 0 to always get object meta data, this is default.
   // Using modified to gain output of object modified status since given time.
   // Notes: Stat will grow the directory asynchronizely if objcet is directory

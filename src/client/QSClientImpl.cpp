@@ -105,11 +105,13 @@ GetBucketStatisticsOutcome QSClientImpl::GetBucketStatistics() const {
   GetBucketStatisticsInput input;  // dummy input
   GetBucketStatisticsOutput output;
   auto sdkErr = m_bucket->getBucketStatistics(input, output);
-  if (SDKResponseSuccess(sdkErr)) {
+  auto responseCode = output.GetResponseCode();
+  if (SDKResponseSuccess(sdkErr, responseCode)) {
     return GetBucketStatisticsOutcome(std::move(output));
   } else {
-    return GetBucketStatisticsOutcome(std::move(
-        BuildQSError(sdkErr, "QingStorGetBucketStatistics", output, false)));
+    return GetBucketStatisticsOutcome(
+        std::move(BuildQSError(sdkErr, "QingStorGetBucketStatistics", output,
+                               SDKShouldRetry(responseCode))));
   }
 }
 
@@ -118,11 +120,12 @@ HeadBucketOutcome QSClientImpl::HeadBucket() const {
   HeadBucketInput input;  // dummy input
   HeadBucketOutput output;
   auto sdkErr = m_bucket->headBucket(input, output);
-  if (SDKResponseSuccess(sdkErr)) {
+  auto responseCode = output.GetResponseCode();
+  if (SDKResponseSuccess(sdkErr, responseCode)) {
     return HeadBucketOutcome(std::move(output));
   } else {
-    return HeadBucketOutcome(
-        std::move(BuildQSError(sdkErr, "QingStorHeadBucket", output, false)));
+    return HeadBucketOutcome(std::move(BuildQSError(
+        sdkErr, "QingStorHeadBucket", output, SDKShouldRetry(responseCode))));
   }
 }
 
@@ -158,7 +161,8 @@ ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
     }
     ListObjectsOutput output;
     auto sdkErr = m_bucket->listObjects(*input, output);
-    if (SDKResponseSuccess(sdkErr)) {
+    auto responseCode = output.GetResponseCode();
+    if (SDKResponseSuccess(sdkErr, responseCode)) {
       count += output.GetKeys().size();
       responseTruncated = !output.GetNextMarker().empty();
       if (responseTruncated) {
@@ -166,8 +170,8 @@ ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
       }
       result.push_back(std::move(output));
     } else {
-      return ListObjectsOutcome(
-          std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+      return ListObjectsOutcome(std::move(BuildQSError(
+          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
     }
   } while (responseTruncated && (listAllObjects || count < maxCount));
   *resultTruncated = responseTruncated;
@@ -185,12 +189,13 @@ DeleteMultipleObjectsOutcome QSClientImpl::DeleteMultipleObjects(
   }
   DeleteMultipleObjectsOutput output;
   auto sdkErr = m_bucket->deleteMultipleObjects(*input, output);
-  if (SDKResponseSuccess(sdkErr)) {
+  auto responseCode = output.GetResponseCode();
+  if (SDKResponseSuccess(sdkErr, responseCode)) {
     // TODO(jim): check undeleted objects
     return DeleteMultipleObjectsOutcome(std::move(output));
   } else {
-    return DeleteMultipleObjectsOutcome(
-        std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+    return DeleteMultipleObjectsOutcome(std::move(BuildQSError(
+        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
   }
 }
 
@@ -226,7 +231,8 @@ ListMultipartUploadsOutcome QSClientImpl::ListMultipartUploads(
     }
     ListMultipartUploadsOutput output;
     auto sdkErr = m_bucket->listMultipartUploads(*input, output);
-    if (SDKResponseSuccess(sdkErr)) {
+    auto responseCode = output.GetResponseCode();
+    if (SDKResponseSuccess(sdkErr, responseCode)) {
       count += output.GetUploads().size();
       responseTruncated = !output.GetNextMarker().empty();
       if (responseTruncated) {
@@ -234,8 +240,8 @@ ListMultipartUploadsOutcome QSClientImpl::ListMultipartUploads(
       }
       result.push_back(std::move(output));
     } else {
-      return ListMultipartUploadsOutcome(
-          std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+      return ListMultipartUploadsOutcome(std::move(BuildQSError(
+          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
     }
   } while (responseTruncated && (listAllPartUploads || count < maxCount));
   *resultTruncated = responseTruncated;
@@ -252,11 +258,12 @@ DeleteObjectOutcome QSClientImpl::DeleteObject(const string &objKey) const {
   DeleteObjectInput input;  // dummy input
   DeleteObjectOutput output;
   auto sdkErr = m_bucket->deleteObject(objKey, input, output);
-  if (SDKResponseSuccess(sdkErr)) {
+  auto responseCode = output.GetResponseCode();
+  if (SDKResponseSuccess(sdkErr, responseCode)) {
     return DeleteObjectOutcome(std::move(output));
   } else {
-    return DeleteObjectOutcome(
-        std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+    return DeleteObjectOutcome(std::move(BuildQSError(
+        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
   }
 }
 
@@ -271,7 +278,8 @@ GetObjectOutcome QSClientImpl::GetObject(const std::string &objKey,
   }
   GetObjectOutput output;
   auto sdkErr = m_bucket->getObject(objKey, *input, output);
-  if (SDKResponseSuccess(sdkErr)) {
+  auto responseCode = output.GetResponseCode();
+  if (SDKResponseSuccess(sdkErr, responseCode)) {
     // TODO(jim): check if get all content of object, otherwise set input status
     if (!input->GetRange().empty()) {
       if (output.GetResponseCode() == HttpResponseCode::PARTIAL_CONTENT) {
@@ -280,8 +288,8 @@ GetObjectOutcome QSClientImpl::GetObject(const std::string &objKey,
     }
     return GetObjectOutcome(std::move(output));
   } else {
-    return GetObjectOutcome(
-        std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+    return GetObjectOutcome(std::move(BuildQSError(
+        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
   }
 }
 
@@ -296,11 +304,12 @@ HeadObjectOutcome QSClientImpl::HeadObject(const string &objKey,
   }
   HeadObjectOutput output;
   auto sdkErr = m_bucket->headObject(objKey, *input, output);
-  if (SDKResponseSuccess(sdkErr)) {
+  auto responseCode = output.GetResponseCode();
+  if (SDKResponseSuccess(sdkErr, responseCode)) {
     return HeadObjectOutcome(std::move(output));
   } else {
-    return HeadObjectOutcome(
-        std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+    return HeadObjectOutcome(std::move(BuildQSError(
+        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
   }
 }
 
@@ -315,11 +324,12 @@ PutObjectOutcome QSClientImpl::PutObject(const string &objKey,
   }
   PutObjectOutput output;
   auto sdkErr = m_bucket->putObject(objKey, *input, output);
-  if (SDKResponseSuccess(sdkErr)) {
+  auto responseCode = output.GetResponseCode();
+  if (SDKResponseSuccess(sdkErr, responseCode)) {
     return PutObjectOutcome(std::move(output));
   } else {
-    return PutObjectOutcome(
-        std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+    return PutObjectOutcome(std::move(BuildQSError(
+        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
   }
 }
 
@@ -334,11 +344,12 @@ InitiateMultipartUploadOutcome QSClientImpl::InitiateMultipartUpload(
   }
   InitiateMultipartUploadOutput output;
   auto sdkErr = m_bucket->initiateMultipartUpload(objKey, *input, output);
-  if (SDKResponseSuccess(sdkErr)) {
+  auto responseCode = output.GetResponseCode();
+  if (SDKResponseSuccess(sdkErr, responseCode)) {
     return InitiateMultipartUploadOutcome(std::move(output));
   } else {
-    return InitiateMultipartUploadOutcome(
-        std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+    return InitiateMultipartUploadOutcome(std::move(BuildQSError(
+        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
   }
 }
 
@@ -353,11 +364,12 @@ UploadMultipartOutcome QSClientImpl::UploadMultipart(
   }
   UploadMultipartOutput output;
   auto sdkErr = m_bucket->uploadMultipart(objKey, *input, output);
-  if (SDKResponseSuccess(sdkErr)) {
+  auto responseCode = output.GetResponseCode();
+  if (SDKResponseSuccess(sdkErr, responseCode)) {
     return UploadMultipartOutcome(std::move(output));
   } else {
-    return UploadMultipartOutcome(
-        std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+    return UploadMultipartOutcome(std::move(BuildQSError(
+        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
   }
 }
 
@@ -372,11 +384,12 @@ CompleteMultipartUploadOutcome QSClientImpl::CompleteMultipartUpload(
   }
   CompleteMultipartUploadOutput output;
   auto sdkErr = m_bucket->completeMultipartUpload(objKey, *input, output);
-  if (SDKResponseSuccess(sdkErr)) {
+  auto responseCode = output.GetResponseCode();
+  if (SDKResponseSuccess(sdkErr, responseCode)) {
     return CompleteMultipartUploadOutcome(std::move(output));
   } else {
-    return CompleteMultipartUploadOutcome(
-        std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+    return CompleteMultipartUploadOutcome(std::move(BuildQSError(
+        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
   }
 }
 
@@ -391,11 +404,12 @@ AbortMultipartUploadOutcome QSClientImpl::AbortMultipartUpload(
   }
   AbortMultipartUploadOutput output;
   auto sdkErr = m_bucket->abortMultipartUpload(objKey, *input, output);
-  if (SDKResponseSuccess(sdkErr)) {
+  auto responseCode = output.GetResponseCode();
+  if (SDKResponseSuccess(sdkErr, responseCode)) {
     return AbortMultipartUploadOutcome(std::move(output));
   } else {
-    return AbortMultipartUploadOutcome(
-        std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+    return AbortMultipartUploadOutcome(std::move(BuildQSError(
+        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
   }
 }
 
@@ -431,7 +445,8 @@ ListMultipartOutcome QSClientImpl::ListMultipart(
     }
     ListMultipartOutput output;
     auto sdkErr = m_bucket->listMultipart(objKey, *input, output);
-    if (SDKResponseSuccess(sdkErr)) {
+    auto responseCode = output.GetResponseCode();
+    if (SDKResponseSuccess(sdkErr, responseCode)) {
       count += output.GetCount();
       auto objParts = output.GetObjectParts();
       responseTruncated = !objParts.empty();
@@ -440,8 +455,8 @@ ListMultipartOutcome QSClientImpl::ListMultipart(
       }
       result.push_back(std::move(output));
     } else {
-      return ListMultipartOutcome(
-          std::move(BuildQSError(sdkErr, exceptionName, output, false)));
+      return ListMultipartOutcome(std::move(BuildQSError(
+          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
     }
   } while (responseTruncated && (listAllParts || count < maxCount));
   *resultTruncated = responseTruncated;

@@ -74,7 +74,7 @@ class Drive {
   // if the node is modified comparing with the moment before this operation
   std::pair<std::weak_ptr<QS::Data::Node>, bool> GetNode(
       const std::string &path, bool growDirectory = true);
-  // Get the children to the given directory.
+  // Retrive the children of the given directory in the directory tree.
   // This will grow the directory tree synchronizely.
   std::pair<QS::Data::ChildrenMultiMapConstIterator,
             QS::Data::ChildrenMultiMapConstIterator>

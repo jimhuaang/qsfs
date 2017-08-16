@@ -53,8 +53,12 @@ class Outcome {
     return *this;
   }
 
-  Outcome &operator=(Outcome rhs) {
-    this->swap(rhs);
+  Outcome &operator=(const Outcome &rhs) {
+    if (&rhs != this) {
+      m_result = rhs.m_result;
+      m_error = rhs.m_error;
+      m_success = rhs.m_success;
+    }
     return *this;
   }
 
