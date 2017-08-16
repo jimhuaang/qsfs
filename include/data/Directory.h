@@ -25,6 +25,7 @@
 
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -48,15 +49,15 @@ class File;
 class DirectoryTree;
 class Node;
 
-using FileNameToNodeUnorderedMap =
+using FilePathToNodeUnorderedMap =
     std::unordered_map<std::string, std::shared_ptr<Node>, HashUtils::StringHash>;
-using FileNameToWeakNodeUnorderedMap =
+using FilePathToWeakNodeUnorderedMap =
     std::unordered_map<std::string, std::weak_ptr<Node>, HashUtils::StringHash>;
-using ParentFileNameToChildrenMultiMap =
+using ParentFilePathToChildrenMultiMap =
     std::unordered_multimap<std::string, std::weak_ptr<Node>,
                             HashUtils::StringHash>;
-using ChildrenMultiMapIterator = ParentFileNameToChildrenMultiMap::iterator;
-using ChildrenMultiMapConstIterator = ParentFileNameToChildrenMultiMap::const_iterator;
+using ChildrenMultiMapIterator = ParentFilePathToChildrenMultiMap::iterator;
+using ChildrenMultiMapConstIterator = ParentFilePathToChildrenMultiMap::const_iterator;
 
 class Entry {
  public:
@@ -168,11 +169,13 @@ class Node {
 
  public:
   bool IsEmpty() const { return m_children.empty(); }
-  std::shared_ptr<Node> Find(const std::string &childFileName) const;
-  const FileNameToNodeUnorderedMap &GetChildren() const;
+  std::shared_ptr<Node> Find(const std::string &childFilePath) const;
+  const FilePathToNodeUnorderedMap &GetChildren() const;
+  std::set<std::string> GetChildrenIds() const;
 
   std::shared_ptr<Node> Insert(const std::shared_ptr<Node> &child);
   void Remove(const std::shared_ptr<Node> &child);
+  void Remove(const std::string& childFilePath);
   void RenameChild(const std::string &oldFilePath,
                    const std::string &newFilePath);
 
@@ -216,7 +219,7 @@ class Node {
   Entry m_entry;
   std::weak_ptr<Node> m_parent;
   std::string m_symbolicLink;  // TODO(jim): meaningful?
-  FileNameToNodeUnorderedMap m_children;
+  FilePathToNodeUnorderedMap m_children;
 
   friend class QS::Data::Cache;  // for GetEntry
   friend class QS::Data::DirectoryTree;
@@ -255,17 +258,22 @@ class DirectoryTree {
   void Grow(std::shared_ptr<FileMetaData> &&fileMeta);
   void Grow(std::vector<std::shared_ptr<FileMetaData>> &&fileMetas);
 
+  // Update a directory node in the directory tree.
+  void UpdateDiretory(
+      const std::string &dirPath,
+      std::vector<std::shared_ptr<FileMetaData>> &&childrenMetas);
+
  private:
   std::shared_ptr<Node> m_root;
   std::shared_ptr<Node> m_currentNode;
   mutable std::recursive_mutex m_mutex;
-  FileNameToWeakNodeUnorderedMap m_map;  // record all nodes map
+  FilePathToWeakNodeUnorderedMap m_map;  // record all nodes map
   // As we grow directory tree gradually, that means the directory tree can
   // be a partial part of the entire tree, at some point some nodes haven't built
   // the reference to its parent or children because which have not been added to 
   // the tree yet.
   // So, the dirName to children map which will help to update these references.
-  ParentFileNameToChildrenMultiMap m_parentToChildrenMap;
+  ParentFilePathToChildrenMultiMap m_parentToChildrenMap;
 
   friend class QS::FileSystem::Drive;
 };

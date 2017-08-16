@@ -18,45 +18,34 @@
 
 #include <cassert>
 
+#include <algorithm>
+#include <iterator>
 #include <memory>
+#include <set>
 #include <string>
-#include <unordered_map>
+
 #include <utility>
 
 #include "base/LogMacros.h"
-#include "base/HashUtils.h"
+#include "base/Utils.h"
 #include "data/FileMetaDataManager.h"
 
 namespace QS {
 
 namespace Data {
 
-using QS::Data::FileMetaDataManager;
-using QS::HashUtils::EnumHash;
+using QS::Utils::AppendPathDelim;
 using std::lock_guard;
 using std::make_shared;
 using std::recursive_mutex;
+using std::set;
 using std::string;
 using std::shared_ptr;
 using std::unique_ptr;
-using std::unordered_map;
 using std::vector;
 using std::weak_ptr;
 
 static const char *const ROOT_PATH = "/";
-
-// --------------------------------------------------------------------------
-const string &GetFileTypeName(FileType fileType) {
-  static unordered_map<FileType, string, EnumHash> fileTypeNames = {
-      {FileType::File, "File"},
-      {FileType::Directory, "Directory"},
-      {FileType::SymLink, "Symbolic Link"},
-      {FileType::Block, "Block"},
-      {FileType::Character, "Character"},
-      {FileType::FIFO, "FIFO"},
-      {FileType::Socket, "Socket"}};
-  return fileTypeNames[fileType];
-}
 
 // --------------------------------------------------------------------------
 Entry::Entry(const std::string &filePath, uint64_t fileSize, time_t atime,
@@ -80,7 +69,13 @@ Entry::Entry(std::shared_ptr<FileMetaData> &&fileMetaData)
 Node::~Node() {
   if (!m_entry) return;
 
-  m_entry.DecreaseNumLink();
+  if (IsDirectory()) {
+    auto parent = m_parent.lock();
+    if (parent) {
+      parent->GetEntry().DecreaseNumLink();
+    }
+  }
+
   if (m_entry.GetNumLink() == 0 ||
       (m_entry.GetNumLink() <= 1 && m_entry.IsDirectory())) {
     FileMetaDataManager::Instance().Erase(GetFilePath());
@@ -97,8 +92,17 @@ shared_ptr<Node> Node::Find(const string &childFileName) const {
 }
 
 // --------------------------------------------------------------------------
-const FileNameToNodeUnorderedMap &Node::GetChildren() const {
+const FilePathToNodeUnorderedMap &Node::GetChildren() const {
   return m_children;
+}
+
+// --------------------------------------------------------------------------
+set<string> Node::GetChildrenIds() const {
+  set<string> ids;
+  for (const auto &pair : m_children) {
+    ids.emplace(pair.first);
+  }
+  return ids;
 }
 
 // --------------------------------------------------------------------------
@@ -107,7 +111,7 @@ shared_ptr<Node> Node::Insert(const shared_ptr<Node> &child) {
   if (child) {
     auto res = m_children.emplace(child->GetFilePath(), child);
     if (res.second) {
-      if(child->IsDirectory()){
+      if (child->IsDirectory()) {
         m_entry.IncreaseNumLink();
       }
     } else {
@@ -139,6 +143,12 @@ void Node::Remove(const shared_ptr<Node> &child) {
 }
 
 // --------------------------------------------------------------------------
+void Node::Remove(const std::string &childFilePath) {
+  if (childFilePath.empty()) return;
+  Remove(Find(childFilePath));
+}
+
+// --------------------------------------------------------------------------
 void Node::RenameChild(const string &oldFilePath, const string &newFilePath) {
   if (oldFilePath == newFilePath) {
     DebugInfo("New file name is the same as the old one. Go on");
@@ -164,10 +174,10 @@ void Node::RenameChild(const string &oldFilePath, const string &newFilePath) {
 }
 
 // --------------------------------------------------------------------------
-weak_ptr<Node> DirectoryTree::Find(const string &filePath) const{
+weak_ptr<Node> DirectoryTree::Find(const string &filePath) const {
   lock_guard<recursive_mutex> lock(m_mutex);
   auto it = m_map.find(filePath);
-  if(it != m_map.end()){
+  if (it != m_map.end()) {
     return it->second;
   } else {
     DebugInfo("Node (" + filePath + ") is not existed in directory tree");
@@ -197,7 +207,7 @@ void DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
   string filePath = fileMeta->GetFilePath();
 
   auto node = Find(filePath).lock();
-  if(node){
+  if (node) {
     node->SetEntry(Entry(std::move(fileMeta)));  // update entry
   } else {
     bool isDir = fileMeta->IsDirectory();
@@ -245,10 +255,77 @@ void DirectoryTree::Grow(vector<shared_ptr<FileMetaData>> &&fileMetas) {
 }
 
 // --------------------------------------------------------------------------
+void DirectoryTree::UpdateDiretory(
+    const string &dirPath, vector<shared_ptr<FileMetaData>> &&childrenMetas) {
+  lock_guard<recursive_mutex> lock(m_mutex);
+  if (dirPath.empty()) {
+    DebugWarning("Null dir path");
+    return;
+  }
+  DebugInfo("Update directory of " + dirPath);
+  string path = dirPath;
+  if (dirPath.back() != '/') {
+    DebugInfo("Input dir path is not ending with '/', append it");
+    path = AppendPathDelim(dirPath);
+  }
+  // Check children metas and collect valid ones
+  vector<shared_ptr<FileMetaData>> newChildrenMetas;
+  set<string> newChildrenIds;
+  for (auto &child : childrenMetas) {
+    auto childDirName = child->MyDirName();
+    if (childDirName != path) {
+      DebugWarning("Invalid child meta data with dirname " + childDirName);
+      continue;
+    }
+    newChildrenIds.emplace(child->GetFilePath());
+    newChildrenMetas.push_back(std::move(child));
+  }
+
+  auto node = Find(path).lock();
+  if (!node) {  // directory not existing
+    Grow(std::move(BuildDefaultDirectoryMeta(path)));
+    Grow(std::move(newChildrenMetas));
+  } else {
+    if (!node->IsDirectory()) {
+      DebugError("Found Node is not a directory for path " + path);
+      return;
+    }
+
+    // Do deleting
+    set<string> oldChildrenIds = node->GetChildrenIds();
+    set<string> deleteChildrenIds;
+    std::set_difference(
+        oldChildrenIds.begin(), oldChildrenIds.end(), newChildrenIds.begin(),
+        newChildrenIds.end(),
+        std::inserter(deleteChildrenIds, deleteChildrenIds.end()));
+    auto range = FindChildren(path);
+    for (auto it = range.first; it != range.second; ++it) {
+      auto childNode = it->second.lock();
+      if (childNode && (*childNode)) {
+        if (deleteChildrenIds.find(childNode->GetFilePath()) !=
+            deleteChildrenIds.end()) {
+          m_parentToChildrenMap.erase(it);
+        }
+      }
+    }
+    for (auto &childId : deleteChildrenIds) {
+      m_map.erase(childId);
+      node->Remove(childId);
+    }
+
+    // Do updating
+    Grow(std::move(newChildrenMetas));
+    m_currentNode = node;
+  }
+
+  // Check if directory node existing
+}
+
+// --------------------------------------------------------------------------
 DirectoryTree::DirectoryTree(time_t mtime, uid_t uid, gid_t gid, mode_t mode) {
   lock_guard<recursive_mutex> lock(m_mutex);
-  m_root = make_shared<Node>( Entry(
-      ROOT_PATH, 0, mtime, mtime, uid, gid, mode, FileType::Directory));
+  m_root = make_shared<Node>(
+      Entry(ROOT_PATH, 0, mtime, mtime, uid, gid, mode, FileType::Directory));
   m_currentNode = m_root;
   m_map.emplace(ROOT_PATH, m_root);
 }

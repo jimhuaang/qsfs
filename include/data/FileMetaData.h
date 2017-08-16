@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <memory>
 #include <string>
 
 namespace QS {
@@ -31,6 +32,7 @@ namespace QS {
 namespace Data {
 
 class Entry;
+class FileMetaData;
 
 enum class FileType {
   File,
@@ -43,6 +45,9 @@ enum class FileType {
 };
 
 const std::string &GetFileTypeName(FileType fileType);
+
+std::shared_ptr<QS::Data::FileMetaData> BuildDefaultDirectoryMeta(
+    const std::string &dirPath);
 
 /**
  * Object file metadata

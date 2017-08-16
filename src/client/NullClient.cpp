@@ -92,5 +92,7 @@ ClientError<QSError> NullClient::Stat(const std::string &path,
   return GoodState();
 }
 
+ClientError<QSError> NullClient::Statvfs(struct statvfs *stvfs) { return GoodState(); }
+
 }  // namespace Client
 }  // namespace QS

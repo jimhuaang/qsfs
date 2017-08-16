@@ -21,6 +21,7 @@
 
 #include <errno.h>
 #include <sys/types.h>  // for uid_t
+#include <sys/statvfs.h>
 #include <unistd.h>     // for R_OK
 
 #include <memory>
@@ -31,6 +32,19 @@
 #include "data/Directory.h"
 #include "filesystem/Drive.h"
 
+namespace QS {
+
+namespace FileSystem {
+
+using QS::Data::Node;
+using QS::Exception::QSException;
+using QS::FileSystem::Drive;
+using QS::Utils::AppendPathDelim;
+using std::shared_ptr;
+using std::string;
+using std::weak_ptr;
+
+
 namespace {
 
 bool IsValidPath(const char *path) {
@@ -39,17 +53,28 @@ bool IsValidPath(const char *path) {
 
 void FillStat(const struct stat& source, struct stat* target) {
   assert(target != nullptr);
-  target->st_size = source.st_size;
-  target->st_blocks = source.st_blocks;
+  target->st_size    = source.st_size;
+  target->st_blocks  = source.st_blocks;
   target->st_blksize = source.st_blksize;
-  target->st_atim = source.st_atim;
-  target->st_mtim = source.st_mtim;
-  target->st_ctim = source.st_ctim;
-  target->st_uid = source.st_uid;
-  target->st_gid = source.st_gid;
-  target->st_mode = source.st_mode;
-  target->st_dev = source.st_dev;
-  target->st_nlink = source.st_nlink;
+  target->st_atim    = source.st_atim;
+  target->st_mtim    = source.st_mtim;
+  target->st_ctim    = source.st_ctim;
+  target->st_uid     = source.st_uid;
+  target->st_gid     = source.st_gid;
+  target->st_mode    = source.st_mode;
+  target->st_dev     = source.st_dev;
+  target->st_nlink   = source.st_nlink;
+}
+
+void FillStatvfs(const struct statvfs& source, struct statvfs* target) {
+  assert(target != nullptr);
+  target->f_bsize   = source.f_bsize;
+  target->f_frsize  = source.f_frsize;
+  target->f_blocks  = source.f_blocks;
+  target->f_bfree   = source.f_bfree;
+  target->f_bavail  = source.f_bavail;
+  target->f_files   = source.f_files;
+  target->f_namemax = source.f_namemax;
 }
 
 uid_t GetFuseContextUID() {
@@ -64,19 +89,7 @@ gid_t GetFuseContextGID() {
 
 }  // namespace
 
-
-namespace QS {
-
-namespace FileSystem {
-
-using QS::Data::Node;
-using QS::Exception::QSException;
-using QS::FileSystem::Drive;
-using QS::Utils::AppendPathDelim;
-using std::shared_ptr;
-using std::string;
-using std::weak_ptr;
-
+// --------------------------------------------------------------------------
 void InitializeFUSECallbacks(struct fuse_operations *fuseOps) {
   memset(fuseOps, 0, sizeof(*fuseOps));  // clear input
 
@@ -126,6 +139,10 @@ int qsfs_getattr(const char* path, struct stat* statbuf) {
     Error("Null path parameter from fuse");
     return -EINVAL;  // invalid argument
   }
+  if(statbuf == nullptr){
+    Error("Null statbuf parameter from fuse");
+    return -EINVAL;
+  }
 
   memset(statbuf, 0, sizeof(*statbuf));
   int ret = 0;
@@ -145,9 +162,10 @@ int qsfs_getattr(const char* path, struct stat* statbuf) {
     }
   } catch (const QSException& err) {
     Error(err.get());
-    return ret;
+    if (ret == 0) {
+      ret = -errno;  // catch exception from lower level
+    }
   }
-  ret = -errno;
   return ret;
 }
 
@@ -218,8 +236,44 @@ int qsfs_write(const char* path, const char* buf, size_t size, off_t offset,
   return 0;
 }
 
+// --------------------------------------------------------------------------
+int qsfs_statfs(const char* path, struct statvfs* statv) {
+  if (!IsValidPath(path)) {
+    Error("Null path parameter from fuse");
+    return -EINVAL;  // invalid argument
+  }
+  if(statv == nullptr){
+    Error("Null statvfs parameter from fuse");
+    return -EINVAL;
+  }
 
-int qsfs_statfs(const char* path, struct statvfs* statv) { return 0; }
+  memset(statv, 0, sizeof(*statv));
+  int ret = 0;
+  auto& drive = Drive::Instance();
+  try {
+    // Check whether path existing within the mounted filesystem
+    auto res = drive.GetNode(path);
+    auto node = res.first.lock();
+    if (!node && string(path).back() != '/') {
+      node = drive.GetNode(AppendPathDelim(path)).first.lock();
+    }
+    if (node) {
+      // Set qsfs parameters
+      struct statvfs stfs = drive.GetFilesystemStatistics();
+      FillStatvfs(stfs, statv);
+    } else {          // node not existing
+      ret = -ENOENT;  // No such file or directory
+      throw QSException("No such file or directory " + string(path));
+    }
+  } catch (const QSException& err) {
+    Error(err.get());
+    if (ret == 0) {
+      ret = -errno;  // catch exception from lower level
+    }
+  }
+  return ret;
+}
+
 int qsfs_flush(const char* path, struct fuse_file_info* fi) { return 0; }
 
 // --------------------------------------------------------------------------
@@ -266,8 +320,8 @@ int qsfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     if (node) {
       // Check access permission
       if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), R_OK)) {
-        Error("Have no read permission for " + dirPath);
-        return -EACCES;  // Permission denied
+        ret = -EACCES;  // Permission denied
+        throw QSException("Have no read permission for " + dirPath);
       }
 
       // Put the . and .. entries in the filler
@@ -296,9 +350,10 @@ int qsfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     }
   } catch (const QSException& err) {
     Error(err.get());
-    return ret;
+    if(ret == 0) {
+      ret = -errno;  // catch exception from lower level
+    }
   }
-  ret = -errno;
   return ret;
 }
 

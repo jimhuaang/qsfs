@@ -54,7 +54,7 @@ using QS::Data::Cache;
 using QS::Data::ChildrenMultiMapConstIterator;
 using QS::Data::DirectoryTree;
 using QS::Data::FileMetaData;
-using QS::Data::FileNameToNodeUnorderedMap;
+using QS::Data::FilePathToNodeUnorderedMap;
 using QS::Data::Node;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::GetProcessEffectiveUserID;
@@ -112,8 +112,16 @@ bool Drive::IsMountable() const {
 }
 
 // --------------------------------------------------------------------------
+struct statvfs Drive::GetFilesystemStatistics() {
+  struct statvfs statv;
+  auto err = GetClient()->Statvfs(&statv);
+  DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+  return statv;
+}
+
+// --------------------------------------------------------------------------
 pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
-                                          bool growDirectory) {
+                                          bool updateDirectory) {
   if (path.empty()) {
     Error("Null file path");
     return {weak_ptr<Node>(), false};
@@ -140,8 +148,8 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
     }
   }
 
-  // Grow directory tree asynchornizely.
-  if (node->IsDirectory() && growDirectory && modified) {
+  // Update directory tree asynchornizely.
+  if (node->IsDirectory() && updateDirectory && modified) {
     auto receivedHandler = [](const ClientError<QSError> &err) {
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     };
@@ -168,14 +176,14 @@ Drive::GetChildren(const string &dirPath) {
     path = AppendPathDelim(dirPath);
     DebugInfo("Input dir path not ending with '/', append it");
   }
-  // Do not invoke growing dirctory asynchronizedly as we will do it
+  // Do not invoke updating dirctory asynchronizedly as we will do it
   // synchronizely
   auto res = GetNode(path, false);
   auto node = res.first.lock();
   bool modified = res.second;
   if (node) {
     if (modified || node->IsEmpty()) {
-      // Grow directory tree synchornizely
+      // Update directory tree synchornizely
       auto f = GetClient()->GetExecutor()->SubmitCallablePrioritized(
           [this, path] { return GetClient()->ListDirectory(path); });
       auto err = f.get();
@@ -195,6 +203,12 @@ void Drive::GrowDirectoryTree(shared_ptr<FileMetaData> &&fileMeta) {
 // --------------------------------------------------------------------------
 void Drive::GrowDirectoryTree(vector<shared_ptr<FileMetaData>> &&fileMetas) {
   m_directoryTree->Grow(std::move(fileMetas));
+}
+
+// --------------------------------------------------------------------------
+void Drive::UpdateDiretory(
+    const string &dirPath, vector<shared_ptr<FileMetaData>> &&childrenMetas) {
+  m_directoryTree->UpdateDiretory(dirPath, std::move(childrenMetas));
 }
 
 }  // namespace FileSystem

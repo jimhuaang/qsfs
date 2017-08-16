@@ -25,6 +25,8 @@
 #include <mutex>  // NOLINT
 #include <string>
 
+#include <sys/statvfs.h>
+
 #include "base/ThreadPool.h"
 #include "client/ClientConfiguration.h"
 #include "client/ClientError.h"
@@ -85,6 +87,7 @@ class Client {
   virtual ClientError<QSError> Stat(const std::string &path,
                                     time_t modifiedSince = 0,
                                     bool *modified = nullptr) = 0;
+  virtual ClientError<QSError> Statvfs(struct statvfs *stvfs) = 0;
 
  public:
   void RetryRequestSleep(std::chrono::milliseconds sleepTime) const;

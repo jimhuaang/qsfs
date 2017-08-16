@@ -42,6 +42,7 @@
 #include "client/QSClientUtils.h"
 #include "client/QSError.h"
 #include "client/URI.h"
+#include "data/Directory.h"
 #include "filesystem/Drive.h"
 
 namespace QS {
@@ -66,6 +67,8 @@ using std::unique_ptr;
 static std::once_flag onceFlagGetClientImpl;
 static std::once_flag onceFlagStartService;
 unique_ptr<QingStor::QingStorService> QSClient::m_qingStorService = nullptr;
+
+// TODO(jim): add template for retrying code
 
 // --------------------------------------------------------------------------
 QSClient::QSClient() : Client() {
@@ -209,7 +212,16 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
         auto fileMetaDatas =
             QSClientUtils::ListObjectsOutputToFileMetaDatas(listObjOutput);
         auto &drive = QS::FileSystem::Drive::Instance();
-        drive.GrowDirectoryTree(std::move(fileMetaDatas));
+        // DO NOT invoking update directory rescursively
+        auto res = drive.GetNode(dirPath, false);
+        auto dirNode = res.first.lock();
+        bool modified = res.second;
+        if (dirNode && modified) {
+          drive.UpdateDiretory(dirPath, std::move(fileMetaDatas));
+        } else {  // directory not existing at this moment
+          // Add its children to dir tree
+          drive.GrowDirectoryTree(std::move(fileMetaDatas));
+        }
       }
     } else {
       return outcome.GetError();
@@ -260,9 +272,38 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
       auto fileMetaData =
           QSClientUtils::HeadObjectOutputToFileMetaData(path, res);
       auto &drive = QS::FileSystem::Drive::Instance();
-      drive.GrowDirectoryTree(std::move(fileMetaData));
+      drive.GrowDirectoryTree(std::move(fileMetaData));  // add Node to dir tree
     }
     return ClientError<QSError>(QSError::GOOD, false);
+  } else {
+    return outcome.GetError();
+  }
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::Statvfs(struct statvfs *stvfs) {
+  assert(stvfs != nullptr);
+  if (stvfs == nullptr) {
+    DebugError("Null statvfs parameter");
+    return ClientError<QSError>(QSError::PARAMETER_MISSING, false);
+  }
+
+  auto outcome = GetQSClientImpl()->GetBucketStatistics();
+  unsigned attemptedRetries = 0;
+  while (!outcome.IsSuccess() &&
+         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+    int32_t sleepMilliseconds =
+        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                         attemptedRetries);
+    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+    outcome = GetQSClientImpl()->GetBucketStatistics();
+    ++attemptedRetries;
+  }
+
+  if (outcome.IsSuccess()) {
+    auto res = outcome.GetResult();
+    QSClientUtils::GetBucketStatisticsOutputToStatvfs(res, stvfs);
+    return ClientError<QSError>(QSError::GOOD, false); 
   } else {
     return outcome.GetError();
   }

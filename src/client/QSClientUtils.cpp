@@ -16,6 +16,7 @@
 
 #include "client/QSClientUtils.h"
 
+#include <assert.h>
 #include <stdint.h>  // for uint64_t
 #include <time.h>
 
@@ -35,12 +36,16 @@ namespace Client {
 
 namespace QSClientUtils {
 
+using QingStor::GetBucketStatisticsOutput;
 using QingStor::HeadObjectOutput;
 using QingStor::ListObjectsOutput;
 using QS::Data::FileMetaData;
 using QS::Data::FileType;
+using QS::FileSystem::Configure::GetBlockSize;
 using QS::FileSystem::Configure::GetDefineFileMode;
 using QS::FileSystem::Configure::GetDefineDirMode;
+using QS::FileSystem::Configure::GetFragmentSize;
+using QS::FileSystem::Configure::GetNameMaxLen;
 using QS::TimeUtils::RFC822GMTToSeconds;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::GetProcessEffectiveUserID;
@@ -49,6 +54,27 @@ using std::make_shared;
 using std::string;
 using std::shared_ptr;
 using std::vector;
+
+// --------------------------------------------------------------------------
+void GetBucketStatisticsOutputToStatvfs(
+    const GetBucketStatisticsOutput &bucketStatsOutput, struct statvfs *statv) {
+  assert(statv != nullptr);
+  if (statv == nullptr) return;
+
+  auto output = const_cast<GetBucketStatisticsOutput &>(bucketStatsOutput);
+  uint64_t numObjs = output.GetCount();
+  uint64_t bytesUsed = output.GetSize();
+  uint64_t freeBlocks = UINT64_MAX;  // object storage is unlimited
+
+  statv->f_bsize = GetBlockSize();      // Filesystem block size
+  statv->f_frsize = GetFragmentSize();  // Fragment size
+  statv->f_blocks =
+      (bytesUsed / statv->f_frsize);    // Size of fs in f_frsize units
+  statv->f_bfree = freeBlocks;          // Number of free blocks
+  statv->f_bavail = freeBlocks;         // Number of free blocks for unprivileged users
+  statv->f_files = numObjs;             // Number of inodes
+  statv->f_namemax = GetNameMaxLen();   // Maximum filename length
+}
 
 // --------------------------------------------------------------------------
 shared_ptr<FileMetaData> HeadObjectOutputToFileMetaData(

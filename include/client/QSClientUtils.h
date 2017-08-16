@@ -21,6 +21,8 @@
 #include <string>
 #include <vector>
 
+#include <sys/statvfs.h>
+
 #include "qingstor-sdk-cpp/Bucket.h"
 #include "qingstor-sdk-cpp/types/KeyType.h"
 
@@ -31,6 +33,10 @@ namespace QS {
 namespace Client {
 
 namespace QSClientUtils {
+
+void GetBucketStatisticsOutputToStatvfs(
+    const QingStor::GetBucketStatisticsOutput &bucketStatsOutput,
+    struct statvfs *statv);
 
 std::shared_ptr<QS::Data::FileMetaData> HeadObjectOutputToFileMetaData(
     const std::string &objKey, const QingStor::HeadObjectOutput &headObjOutput);

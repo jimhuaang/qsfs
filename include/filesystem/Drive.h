@@ -22,6 +22,8 @@
 #include <utility>
 #include <vector>
 
+#include <sys/statvfs.h>
+
 #include "data/Directory.h"
 
 namespace QS {
@@ -66,24 +68,32 @@ class Drive {
   }
 
  public:
+  // Return information about the mounted bucket.
+  struct statvfs GetFilesystemStatistics();
+
   // Get the Node in directory tree by path.
   // Dir path should ending with '/'.
-  // Using growDriectory to invoke growing the directory tree asynchronizely,
+  // Using updateDirectory to invoke updating the directory tree asynchronizely,
   // which means the children of the directory will be add to the tree.
   // Return a pair: the first member is the node, the second member denote
-  // if the node is modified comparing with the moment before this operation
+  // if the node is modified comparing with the moment before this operation.
   std::pair<std::weak_ptr<QS::Data::Node>, bool> GetNode(
-      const std::string &path, bool growDirectory = true);
+      const std::string &path, bool updateDirectory = true);
   // Retrive the children of the given directory in the directory tree.
-  // This will grow the directory tree synchronizely.
+  // This will update the directory tree synchronizely if directory is modified.
   std::pair<QS::Data::ChildrenMultiMapConstIterator,
             QS::Data::ChildrenMultiMapConstIterator>
   GetChildren(const std::string &dirPath);
 
  private:
+  // Grow or update the directory tree
   void GrowDirectoryTree(std::shared_ptr<QS::Data::FileMetaData> &&fileMeta);
   void GrowDirectoryTree(
       std::vector<std::shared_ptr<QS::Data::FileMetaData>> &&fileMetas);
+  //Update a directory in the directory tree
+  void UpdateDiretory(
+      const std::string &dirPath,
+      std::vector<std::shared_ptr<QS::Data::FileMetaData>> &&childrenMetas);
 
  private:
   std::shared_ptr<QS::Client::Client> &GetClient() { return m_client; }

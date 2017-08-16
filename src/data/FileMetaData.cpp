@@ -16,9 +16,12 @@
 
 #include "data/FileMetaData.h"
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 
 #include "base/LogMacros.h"
+#include "base/HashUtils.h"
 #include "base/Utils.h"
 #include "filesystem/Configure.h"
 
@@ -26,11 +29,41 @@ namespace QS {
 
 namespace Data {
 
+using QS::FileSystem::Configure::GetDefineDirMode;
+using QS::HashUtils::EnumHash;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::AccessModeToString;
+using QS::Utils::GetProcessEffectiveUserID;
+using QS::Utils::GetProcessEffectiveGroupID;
 using QS::Utils::IsRootDirectory;
+using std::make_shared;
 using std::string;
 using std::to_string;
+using std::unordered_map;
+
+
+// --------------------------------------------------------------------------
+const string &GetFileTypeName(FileType fileType) {
+  static unordered_map<FileType, string, EnumHash> fileTypeNames = {
+      {FileType::File, "File"},
+      {FileType::Directory, "Directory"},
+      {FileType::SymLink, "Symbolic Link"},
+      {FileType::Block, "Block"},
+      {FileType::Character, "Character"},
+      {FileType::FIFO, "FIFO"},
+      {FileType::Socket, "Socket"}};
+  return fileTypeNames[fileType];
+}
+
+
+// --------------------------------------------------------------------------
+std::shared_ptr<FileMetaData> BuildDefaultDirectoryMeta(const string &dirPath) {
+  time_t ttime = time(NULL);
+  mode_t mode = GetDefineDirMode();
+  return make_shared<FileMetaData>(
+      AppendPathDelim(dirPath), 0, ttime, ttime, GetProcessEffectiveUserID(),
+      GetProcessEffectiveGroupID(), mode, FileType::Directory);
+}
 
 // --------------------------------------------------------------------------
 FileMetaData::FileMetaData(const string &filePath, uint64_t fileSize,
@@ -220,6 +253,8 @@ bool FileMetaData::FileAccess(uid_t uid, gid_t gid, int amode) const {
     }
     return false;
   }
+
+  return false;
 }
 
 }  // namespace Data

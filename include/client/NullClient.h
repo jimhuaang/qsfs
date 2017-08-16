@@ -57,6 +57,7 @@ class NullClient : public Client {
 
   ClientError<QSError> Stat(const std::string &path, time_t modifiedSince = 0,
                             bool *modified = nullptr) override;
+  ClientError<QSError> Statvfs(struct statvfs *stvfs) override;
 };
 
 }  // namespace Client

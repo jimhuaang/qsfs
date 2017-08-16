@@ -72,6 +72,9 @@ class QSClient : public Client {
   ClientError<QSError> Stat(const std::string &path, time_t modifiedSince = 0,
                             bool *modified = nullptr ) override;
 
+  // Get information about mounted bucket.
+  ClientError<QSError> Statvfs(struct statvfs *stvfs) override;
+
  public:
   static const std::unique_ptr<QingStor::QingStorService> &GetQingStorService();
   const std::shared_ptr<QSClientImpl> &GetQSClientImpl() const;
