@@ -35,6 +35,7 @@ namespace QS {
 namespace Data {
 
 using QS::Utils::AppendPathDelim;
+using QS::Utils::IsRootDirectory;
 using std::lock_guard;
 using std::make_shared;
 using std::recursive_mutex;
@@ -174,6 +175,18 @@ void Node::RenameChild(const string &oldFilePath, const string &newFilePath) {
 }
 
 // --------------------------------------------------------------------------
+shared_ptr<Node> DirectoryTree::GetRoot() const {
+  lock_guard<recursive_mutex> lock(m_mutex);
+  return m_root;
+}
+
+// --------------------------------------------------------------------------
+shared_ptr<Node> DirectoryTree::GetCurrentNode() const {
+  lock_guard<recursive_mutex> lock(m_mutex);
+  return m_currentNode;
+}
+
+// --------------------------------------------------------------------------
 weak_ptr<Node> DirectoryTree::Find(const string &filePath) const {
   lock_guard<recursive_mutex> lock(m_mutex);
   auto it = m_map.find(filePath);
@@ -257,11 +270,12 @@ void DirectoryTree::Grow(vector<shared_ptr<FileMetaData>> &&fileMetas) {
 // --------------------------------------------------------------------------
 void DirectoryTree::UpdateDiretory(
     const string &dirPath, vector<shared_ptr<FileMetaData>> &&childrenMetas) {
-  lock_guard<recursive_mutex> lock(m_mutex);
   if (dirPath.empty()) {
     DebugWarning("Null dir path");
     return;
   }
+
+  lock_guard<recursive_mutex> lock(m_mutex);
   DebugInfo("Update directory of " + dirPath);
   string path = dirPath;
   if (dirPath.back() != '/') {
@@ -317,8 +331,56 @@ void DirectoryTree::UpdateDiretory(
     Grow(std::move(newChildrenMetas));
     m_currentNode = node;
   }
+}
 
-  // Check if directory node existing
+// --------------------------------------------------------------------------
+void DirectoryTree::Rename(const string &oldFilePath,
+                           const string &newFilePath) {
+  if (oldFilePath.empty() || newFilePath.empty()) {
+    DebugWarning("Null input parameter [old file: " + oldFilePath +
+                 ", new file: " + newFilePath + "]");
+    return;
+  }
+  if (IsRootDirectory(oldFilePath)) {
+    DebugError("Unable to rename root");
+    return;
+  }
+
+  lock_guard<recursive_mutex> lock(m_mutex);
+  auto node = Find(oldFilePath).lock();
+  if (node) {
+    // Check parameter
+    if (Find(newFilePath).lock()) {
+      DebugWarning("Cannot renameing, Node is existing for new file path " +
+                   newFilePath);
+      return;
+    }
+    if (!(*node)) {
+      DebugError("Node is not operable for file path " + oldFilePath);
+      return;
+    }
+
+    // Do Renaming
+    auto parentName = node->MyDirName();
+    node->SetFilePath(newFilePath);
+    auto parent = node->GetParent();
+    if (parent) {
+      parent->RenameChild(oldFilePath, newFilePath);
+    }
+    m_map.emplace(newFilePath, node);
+    m_map.erase(oldFilePath);
+    if (node->IsDirectory()) {
+      auto range = FindChildren(newFilePath);
+      for (auto it = range.first; it != range.second; ++it) {
+        m_parentToChildrenMap.emplace(newFilePath, std::move(it->second));
+        m_parentToChildrenMap.erase(it);
+      }
+    }
+    m_currentNode = node;
+  }
+  else {
+    DebugWarning("Node is not existing for " + oldFilePath);
+  }
 }
 
 // --------------------------------------------------------------------------

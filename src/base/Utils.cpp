@@ -208,6 +208,44 @@ string AppendPathDelim(const string &path) {
 string GetPathDelimiter() { return string(1, PATH_DELIM); }
 
 // --------------------------------------------------------------------------
+std::string GetDirName(const std::string &path) {
+  string cpy(path);
+  if (IsRootDirectory(cpy)) {
+    DebugWarning(
+        "Try to get the dirname for root directory, null path returned");
+    return string();  // return null
+  }
+  if (cpy.back() == '/') cpy.pop_back();
+  auto pos = cpy.find_last_of('/');
+  if (pos != string::npos) {
+    return cpy.substr(0, pos + 1);  // including the ending "/"
+  } else {
+    DebugError("Unable to find dirname for path " + cpy +
+               " null path returned");
+    return string();
+  }
+}
+
+// --------------------------------------------------------------------------
+std::string GetBaseName(const std::string &path) {
+  string cpy(path);
+  if (IsRootDirectory(cpy)) {
+    DebugWarning(
+        "Try to get the basename for root directory, null basename returned");
+    return string();  // return null
+  }
+  if (cpy.back() == '/') cpy.pop_back();
+  auto pos = cpy.find_last_of('/');
+  if (pos != string::npos) {
+    return cpy.substr(pos + 1);  // not including "/"
+  } else {
+    DebugError("Unable to find basename for path " + cpy +
+               " null basename returned");
+    return string();
+  }
+}
+
+// --------------------------------------------------------------------------
 pair<bool, string> GetParentDirectory(const string &path) {
   bool success = false;
   string str;

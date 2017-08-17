@@ -68,32 +68,27 @@ class Drive {
   }
 
  public:
+  // Return the drive root node.
+  std::shared_ptr<QS::Data::Node> GetRoot();
   // Return information about the mounted bucket.
   struct statvfs GetFilesystemStatistics();
 
   // Get the Node in directory tree by path.
   // Dir path should ending with '/'.
-  // Using updateDirectory to invoke updating the directory tree asynchronizely,
+  // Using updateIfDirectory to invoke updating the directory tree asynchronizely,
   // which means the children of the directory will be add to the tree.
   // Return a pair: the first member is the node, the second member denote
   // if the node is modified comparing with the moment before this operation.
   std::pair<std::weak_ptr<QS::Data::Node>, bool> GetNode(
-      const std::string &path, bool updateDirectory = true);
+      const std::string &path, bool updateIfDirectory = true);
   // Retrive the children of the given directory in the directory tree.
   // This will update the directory tree synchronizely if directory is modified.
   std::pair<QS::Data::ChildrenMultiMapConstIterator,
             QS::Data::ChildrenMultiMapConstIterator>
   GetChildren(const std::string &dirPath);
 
- private:
-  // Grow or update the directory tree
-  void GrowDirectoryTree(std::shared_ptr<QS::Data::FileMetaData> &&fileMeta);
-  void GrowDirectoryTree(
-      std::vector<std::shared_ptr<QS::Data::FileMetaData>> &&fileMetas);
-  //Update a directory in the directory tree
-  void UpdateDiretory(
-      const std::string &dirPath,
-      std::vector<std::shared_ptr<QS::Data::FileMetaData>> &&childrenMetas);
+  //Rename file
+  void RenameFile(const std::string &filePath, const std::string &newFilePath);
 
  private:
   std::shared_ptr<QS::Client::Client> &GetClient() { return m_client; }

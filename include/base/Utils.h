@@ -48,6 +48,8 @@ bool IsRootDirectory(const std::string &path);
 
 std::string AppendPathDelim(const std::string &path);
 std::string GetPathDelimiter();
+std::string GetDirName(const std::string &path);
+std::string GetBaseName(const std::string &path);
 
 // Return true and parent directory if success,
 // return false and message if fail.

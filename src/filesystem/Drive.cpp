@@ -25,6 +25,7 @@
 #include <mutex>  // NOLINT
 #include <utility>
 
+#include "base/Exception.h"
 #include "base/LogMacros.h"
 #include "base/Utils.h"
 #include "client/Client.h"
@@ -56,9 +57,12 @@ using QS::Data::DirectoryTree;
 using QS::Data::FileMetaData;
 using QS::Data::FilePathToNodeUnorderedMap;
 using QS::Data::Node;
+using QS::Exception::QSException;
 using QS::Utils::AppendPathDelim;
+using QS::Utils::GetDirName;
 using QS::Utils::GetProcessEffectiveUserID;
 using QS::Utils::GetProcessEffectiveGroupID;
+using QS::Utils::IsRootDirectory;
 using std::pair;
 using std::shared_ptr;
 using std::string;
@@ -112,6 +116,15 @@ bool Drive::IsMountable() const {
 }
 
 // --------------------------------------------------------------------------
+shared_ptr<Node> Drive::GetRoot() {
+  bool connectSuccess = GetClient()->Connect();
+  if (!connectSuccess) {
+    throw QSException("Unable to connect to object storage bucket");
+  }
+  return m_directoryTree->GetRoot();
+}
+
+// --------------------------------------------------------------------------
 struct statvfs Drive::GetFilesystemStatistics() {
   struct statvfs statv;
   auto err = GetClient()->Statvfs(&statv);
@@ -121,7 +134,7 @@ struct statvfs Drive::GetFilesystemStatistics() {
 
 // --------------------------------------------------------------------------
 pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
-                                          bool updateDirectory) {
+                                          bool updateIfDirectory) {
   if (path.empty()) {
     Error("Null file path");
     return {weak_ptr<Node>(), false};
@@ -144,12 +157,12 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
     if (IsGoodQSError(err)) {
       node = m_directoryTree->Find(path).lock();
     } else {
-      DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+      DebugError(GetMessageForQSError(err));
     }
   }
 
   // Update directory tree asynchornizely.
-  if (node->IsDirectory() && updateDirectory && modified) {
+  if (node->IsDirectory() && updateIfDirectory && modified) {
     auto receivedHandler = [](const ClientError<QSError> &err) {
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     };
@@ -176,9 +189,9 @@ Drive::GetChildren(const string &dirPath) {
     path = AppendPathDelim(dirPath);
     DebugInfo("Input dir path not ending with '/', append it");
   }
-  // Do not invoke updating dirctory asynchronizedly as we will do it
-  // synchronizely
-  auto res = GetNode(path, false);
+
+  auto res = GetNode(path, false);  // Do not invoke updating dirctory
+                                    // as we will do it synchronizely
   auto node = res.first.lock();
   bool modified = res.second;
   if (node) {
@@ -191,24 +204,71 @@ Drive::GetChildren(const string &dirPath) {
     }
     return m_directoryTree->FindChildren(path);
   } else {
+    DebugInfo("Directory is not existing for " + dirPath);
     return emptyRes;
   }
 }
 
 // --------------------------------------------------------------------------
-void Drive::GrowDirectoryTree(shared_ptr<FileMetaData> &&fileMeta) {
-  m_directoryTree->Grow(std::move(fileMeta));
-}
+void Drive::RenameFile(const string &filePath, const string &newFilePath) {
+  if (filePath.empty() || newFilePath.empty()) {
+    DebugWarning("Invalid empty parameter");
+    return;
+  }
+  if (IsRootDirectory(filePath)) {
+    DebugError("Unable to rename root");
+    return;
+  }
+  auto oldDir = GetDirName(filePath);
+  auto newDir = GetDirName(newFilePath);
+  if (oldDir.empty() || newDir.empty()) {
+    DebugError("Input file paths have invalid dir path");
+    return;
+  }
+  if (oldDir != newDir) {
+    DebugError("Input file paths have different dir path [old file: " +
+               filePath + ", new file: " + newFilePath + "]");
+    return;
+  }
 
-// --------------------------------------------------------------------------
-void Drive::GrowDirectoryTree(vector<shared_ptr<FileMetaData>> &&fileMetas) {
-  m_directoryTree->Grow(std::move(fileMetas));
-}
+  auto res = GetNode(filePath, false);  // Do not invoke updating dirctory
+                                        // as we are changing it
+  auto node = res.first.lock();
+  if (node) {
+    // Check parameter
+    auto newPath = newFilePath;
+    bool isDir = node->IsDirectory();
+    if (isDir) {
+      if (newFilePath.back() != '/') {
+        DebugWarning(
+            "New file path is not ending with '/' for a directory, appending "
+            "it");
+        newPath = AppendPathDelim(newFilePath);
+      }
+    } else {
+      if (newFilePath.back() == '/') {
+        DebugWarning(
+            "New file path ending with '/' for a non directory, cut it");
+        newPath.pop_back();
+      }
+    }
 
-// --------------------------------------------------------------------------
-void Drive::UpdateDiretory(
-    const string &dirPath, vector<shared_ptr<FileMetaData>> &&childrenMetas) {
-  m_directoryTree->UpdateDiretory(dirPath, std::move(childrenMetas));
+    // Do Renaming
+    auto err = GetClient()->RenameFile(filePath, newPath);
+    if (IsGoodQSError(err)) {
+      // Update meta and invoking updating directory tree asynchronizely
+      res = GetNode(newPath, true);
+      node = res.first.lock();
+      DebugErrorIf(!node, "Fail to rename file for " + filePath);
+      return;
+    } else {
+      DebugError(GetMessageForQSError(err));
+      return;
+    }
+  } else {
+    DebugInfo("File is not existing for " + filePath);
+    return;
+  }
 }
 
 }  // namespace FileSystem

@@ -49,7 +49,9 @@ class QSClient : public Client {
   ClientError<QSError> DeleteDirectory(const std::string &dirPath) override;
   ClientError<QSError> MakeFile(const std::string &filePath) override;
   ClientError<QSError> MakeDirectory(const std::string &dirPath) override;
-  ClientError<QSError> RenameFile(const std::string &filePath) override;
+  //
+  ClientError<QSError> RenameFile(const std::string &filePath,
+                                  const std::string &newFilePath) override;
   ClientError<QSError> RenameDirectory(const std::string &dirPath) override;
 
   ClientError<QSError> DownloadFile(const std::string &filePath) override;
@@ -60,6 +62,7 @@ class QSClient : public Client {
   ClientError<QSError> ReadFile(const std::string &filePath) override;
   // Notice the dirPath should end with delimiter
   ClientError<QSError> ListDirectory(const std::string &dirPath) override;
+  //
   ClientError<QSError> WriteFile(const std::string &filePath) override;
   ClientError<QSError> WriteDirectory(const std::string &dirPath) override;
 

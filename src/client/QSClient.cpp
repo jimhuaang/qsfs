@@ -43,6 +43,7 @@
 #include "client/QSError.h"
 #include "client/URI.h"
 #include "data/Directory.h"
+#include "data/FileMetaData.h"
 #include "filesystem/Drive.h"
 
 namespace QS {
@@ -53,9 +54,11 @@ using QingStor::Bucket;
 using QingStor::HeadObjectInput;
 using QingStor::Http::HttpResponseCode;
 using QingStor::ListObjectsInput;
+using QingStor::PutObjectInput;
 using QingStor::QingStorService;
 using QingStor::QsConfig;  // sdk config
 
+using QS::FileSystem::Drive;
 using QS::StringUtils::LTrim;
 using QS::TimeUtils::SecondsToRFC822GMT;
 using QS::Utils::AppendPathDelim;
@@ -63,6 +66,20 @@ using std::chrono::milliseconds;
 using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
+
+namespace {
+
+string BuildXQSSourceString(const string &objKey) {
+  const auto &clientConfig = ClientConfiguration::Instance();
+  // format: /bucket-name/object-key
+  string ret = "/";
+  ret.append(clientConfig.GetBucket());
+  ret.append("/");
+  ret.append(LTrim(objKey, '/'));
+  return ret;
+}
+
+}  // namespace
 
 static std::once_flag onceFlagGetClientImpl;
 static std::once_flag onceFlagStartService;
@@ -96,10 +113,16 @@ bool QSClient::Connect() {
   /*   auto err =
         ListDirectory("/");  // TODO(jim): for test only, remove */
   if (outcome.IsSuccess()) {
+    // Update root node of the tree
+    auto &dirTree = Drive::Instance().GetDirectoryTree();
+    if (dirTree) {
+      dirTree->Grow(QS::Data::BuildDefaultDirectoryMeta("/"));
+    }
+
+    // Build up the root level of directory tree asynchornizely.
     auto receivedHandler = [](const ClientError<QSError> &err) {
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     };
-    // Build up the root level of directory tree asynchornizely.
     GetExecutor()->SubmitAsync(receivedHandler,
                                [this] { return ListDirectory("/"); });
     return true;
@@ -142,8 +165,36 @@ ClientError<QSError> QSClient::MakeDirectory(const string &dirPath) {
 }
 
 // --------------------------------------------------------------------------
-ClientError<QSError> QSClient::RenameFile(const string &filePath) {
-  return ClientError<QSError>(QSError::GOOD, false);
+ClientError<QSError> QSClient::RenameFile(const string &filePath,
+                                          const string &newFilePath) {
+  // PutObject (move)
+  // drive.renamenode
+  // asynchornize head object (to update meta)
+  // TODO(jim):
+  PutObjectInput input;
+  input.SetXQSMoveSource(BuildXQSSourceString(filePath));
+
+  auto outcome = GetQSClientImpl()->PutObject(filePath, &input);
+  unsigned attemptedRetries = 0;
+  while (!outcome.IsSuccess() &&
+         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+    int32_t sleepMilliseconds =
+        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                         attemptedRetries);
+    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+    outcome = GetQSClientImpl()->PutObject(filePath, &input);
+    ++attemptedRetries;
+  }
+
+  if (outcome.IsSuccess()) {
+    auto &dirTree = Drive::Instance().GetDirectoryTree();
+    if (dirTree) {
+      dirTree->Rename(filePath, newFilePath);
+    }
+    return ClientError<QSError>(QSError::GOOD, false);
+  } else {
+    return outcome.GetError();
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -163,6 +214,7 @@ ClientError<QSError> QSClient::DownloadDirectory(const string &dirPath) {
 
 // --------------------------------------------------------------------------
 ClientError<QSError> QSClient::UploadFile(const string &filePath) {
+  
   return ClientError<QSError>(QSError::GOOD, false);
 }
 
@@ -212,15 +264,17 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
         auto fileMetaDatas =
             QSClientUtils::ListObjectsOutputToFileMetaDatas(listObjOutput);
         auto &drive = QS::FileSystem::Drive::Instance();
+        auto &dirTree = drive.GetDirectoryTree();
+        if (!dirTree) break;
         // DO NOT invoking update directory rescursively
         auto res = drive.GetNode(dirPath, false);
         auto dirNode = res.first.lock();
         bool modified = res.second;
         if (dirNode && modified) {
-          drive.UpdateDiretory(dirPath, std::move(fileMetaDatas));
+          dirTree->UpdateDiretory(dirPath, std::move(fileMetaDatas));
         } else {  // directory not existing at this moment
           // Add its children to dir tree
-          drive.GrowDirectoryTree(std::move(fileMetaDatas));
+          dirTree->Grow(std::move(fileMetaDatas));
         }
       }
     } else {
@@ -232,6 +286,7 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
 
 // --------------------------------------------------------------------------
 ClientError<QSError> QSClient::WriteFile(const string &filePath) {
+  // PutObject
   return ClientError<QSError>(QSError::GOOD, false);
 }
 
@@ -271,8 +326,10 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
       }
       auto fileMetaData =
           QSClientUtils::HeadObjectOutputToFileMetaData(path, res);
-      auto &drive = QS::FileSystem::Drive::Instance();
-      drive.GrowDirectoryTree(std::move(fileMetaData));  // add Node to dir tree
+      auto &dirTree = Drive::Instance().GetDirectoryTree();
+      if (dirTree) {
+        dirTree->Grow(std::move(fileMetaData));  // add Node to dir tree
+      }
     }
     return ClientError<QSError>(QSError::GOOD, false);
   } else {
@@ -303,7 +360,7 @@ ClientError<QSError> QSClient::Statvfs(struct statvfs *stvfs) {
   if (outcome.IsSuccess()) {
     auto res = outcome.GetResult();
     QSClientUtils::GetBucketStatisticsOutputToStatvfs(res, stvfs);
-    return ClientError<QSError>(QSError::GOOD, false); 
+    return ClientError<QSError>(QSError::GOOD, false);
   } else {
     return outcome.GetError();
   }

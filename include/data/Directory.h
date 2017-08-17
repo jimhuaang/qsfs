@@ -36,8 +36,11 @@
 
 namespace QS {
 
-namespace FileSystem {
+namespace Client {
+class QSClient;
+}  // namespace Client
 
+namespace FileSystem {
 class Drive;
 }  // namespace FileSystem
 
@@ -50,14 +53,16 @@ class DirectoryTree;
 class Node;
 
 using FilePathToNodeUnorderedMap =
-    std::unordered_map<std::string, std::shared_ptr<Node>, HashUtils::StringHash>;
+    std::unordered_map<std::string, std::shared_ptr<Node>,
+                       HashUtils::StringHash>;
 using FilePathToWeakNodeUnorderedMap =
     std::unordered_map<std::string, std::weak_ptr<Node>, HashUtils::StringHash>;
 using ParentFilePathToChildrenMultiMap =
     std::unordered_multimap<std::string, std::weak_ptr<Node>,
                             HashUtils::StringHash>;
 using ChildrenMultiMapIterator = ParentFilePathToChildrenMultiMap::iterator;
-using ChildrenMultiMapConstIterator = ParentFilePathToChildrenMultiMap::const_iterator;
+using ChildrenMultiMapConstIterator =
+    ParentFilePathToChildrenMultiMap::const_iterator;
 
 class Entry {
  public:
@@ -79,14 +84,14 @@ class Entry {
   Entry &operator=(const Entry &) = default;
   ~Entry() = default;
 
-  // You always need to check if the entry is operable before 
+  // You always need to check if the entry is operable before
   // invoke its member functions
   operator bool() const {
     auto meta = m_metaData.lock();
     return meta ? !meta->m_filePath.empty() : false;
   }
 
-   bool IsDirectory() const {
+  bool IsDirectory() const {
     return m_metaData.lock()->m_fileType == FileType::Directory;
   }
 
@@ -98,7 +103,9 @@ class Entry {
   uint64_t GetFileSize() const { return m_metaData.lock()->m_fileSize; }
   int GetNumLink() const { return m_metaData.lock()->m_numLink; }
   FileType GetFileType() const { return m_metaData.lock()->m_fileType; }
+  mode_t GetFileMode() const { return m_metaData.lock()->m_fileMode; }
   time_t GetMTime() const { return m_metaData.lock()->m_mtime; }
+  uid_t GetUID() const { return m_metaData.lock()->m_uid; }
 
   std::string MyDirName() const { return m_metaData.lock()->MyDirName(); }
   std::string MyBaseName() const { return m_metaData.lock()->MyBaseName(); }
@@ -118,7 +125,7 @@ class Entry {
   void SetFilePath(const std::string &newFilePath) {
     m_metaData.lock()->m_filePath = newFilePath;
   }
- 
+
  private:
   // Using weak_ptr as FileMetaDataManger will control file mete data life cycle
   std::weak_ptr<FileMetaData> m_metaData;  // file meta data
@@ -140,8 +147,7 @@ class Node {
 
   // Ctor for root node which has no parent,
   // or for some case the parent is cleared or still not set at the time
-  Node()
-      : Node(Entry(), std::shared_ptr<Node>(nullptr)) {}
+  Node() : Node(Entry(), std::shared_ptr<Node>(nullptr)) {}
 
   Node(Entry &&entry, const std::shared_ptr<Node> &parent,
        const std::string &symbolicLink)
@@ -163,9 +169,7 @@ class Node {
     return m_entry ? m_entry.operator bool() : false;
   }
 
-  bool IsDirectory() const {
-    return m_entry && m_entry.IsDirectory();
-  }
+  bool IsDirectory() const { return m_entry && m_entry.IsDirectory(); }
 
  public:
   bool IsEmpty() const { return m_children.empty(); }
@@ -175,7 +179,7 @@ class Node {
 
   std::shared_ptr<Node> Insert(const std::shared_ptr<Node> &child);
   void Remove(const std::shared_ptr<Node> &child);
-  void Remove(const std::string& childFilePath);
+  void Remove(const std::string &childFilePath);
   void RenameChild(const std::string &oldFilePath,
                    const std::string &newFilePath);
 
@@ -187,6 +191,16 @@ class Node {
   std::string GetFilePath() const {
     if (!m_entry) return std::string();
     return m_entry.GetFilePath();
+  }
+
+  mode_t GetFileMode() const {
+    if (!m_entry) return 0;
+    return m_entry.GetFileMode();
+  }
+
+  uid_t GetUID() const {
+    if (!m_entry) return -1;
+    return m_entry.GetUID();
   }
 
   std::string MyDirName() const {
@@ -239,8 +253,9 @@ class DirectoryTree {
   ~DirectoryTree() { m_map.clear(); }
 
  public:
+  std::shared_ptr<Node> GetRoot() const;
+  std::shared_ptr<Node> GetCurrentNode() const;
   // TODO(jim):
-  // GetRoot
   // UpdateNode
   // Find Node by file full path
   std::weak_ptr<Node> Find(const std::string &filePath) const;
@@ -255,13 +270,15 @@ class DirectoryTree {
   // Grow the directory tree.
   // If the node reference to the meta data already exist, update meta data;
   // otherwise add node to the tree and build up the references.
-  void Grow(std::shared_ptr<FileMetaData> &&fileMeta);
+  void Grow(std::shared_ptr<FileMetaData> &&fileMeta);  // add or update
   void Grow(std::vector<std::shared_ptr<FileMetaData>> &&fileMetas);
-
   // Update a directory node in the directory tree.
   void UpdateDiretory(
       const std::string &dirPath,
       std::vector<std::shared_ptr<FileMetaData>> &&childrenMetas);
+
+  // Rename
+  void Rename(const std::string &oldFilePath, const std::string &newFilePath);
 
  private:
   std::shared_ptr<Node> m_root;
@@ -269,13 +286,14 @@ class DirectoryTree {
   mutable std::recursive_mutex m_mutex;
   FilePathToWeakNodeUnorderedMap m_map;  // record all nodes map
   // As we grow directory tree gradually, that means the directory tree can
-  // be a partial part of the entire tree, at some point some nodes haven't built
-  // the reference to its parent or children because which have not been added to 
-  // the tree yet.
+  // be a partial part of the entire tree, at some point some nodes haven't
+  // built the reference to its parent or children because which have not been 
+  // added to the tree yet.
   // So, the dirName to children map which will help to update these references.
   ParentFilePathToChildrenMultiMap m_parentToChildrenMap;
 
   friend class QS::FileSystem::Drive;
+  friend class QS::Client::QSClient;
 };
 
 }  // namespace Data

@@ -71,7 +71,8 @@ class Client {
   virtual ClientError<QSError> DeleteDirectory(const std::string &dirPath) = 0;
   virtual ClientError<QSError> MakeFile(const std::string &filePath) = 0;
   virtual ClientError<QSError> MakeDirectory(const std::string &dirPath) = 0;
-  virtual ClientError<QSError> RenameFile(const std::string &filePath) = 0;
+  virtual ClientError<QSError> RenameFile(const std::string &filePath,
+                                          const std::string &newFilePath) = 0;
   virtual ClientError<QSError> RenameDirectory(const std::string &dirPath) = 0;
 
   virtual ClientError<QSError> DownloadFile(const std::string &filePath) = 0;

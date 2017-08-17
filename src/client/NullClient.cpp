@@ -47,7 +47,8 @@ ClientError<QSError> NullClient::MakeDirectory(const std::string &dirPath) {
   return GoodState();
 }
 
-ClientError<QSError> NullClient::RenameFile(const std::string &filePath) {
+ClientError<QSError> NullClient::RenameFile(const std::string &filePath,
+                                            const std::string &newFilePath) {
   return GoodState();
 }
 
