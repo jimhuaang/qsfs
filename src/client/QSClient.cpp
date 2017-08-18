@@ -42,6 +42,7 @@
 #include "client/QSClientUtils.h"
 #include "client/QSError.h"
 #include "client/URI.h"
+#include "data/Cache.h"
 #include "data/Directory.h"
 #include "data/FileMetaData.h"
 #include "filesystem/Drive.h"
@@ -167,14 +168,11 @@ ClientError<QSError> QSClient::MakeDirectory(const string &dirPath) {
 // --------------------------------------------------------------------------
 ClientError<QSError> QSClient::RenameFile(const string &filePath,
                                           const string &newFilePath) {
-  // PutObject (move)
-  // drive.renamenode
-  // asynchornize head object (to update meta)
   // TODO(jim):
   PutObjectInput input;
   input.SetXQSMoveSource(BuildXQSSourceString(filePath));
 
-  auto outcome = GetQSClientImpl()->PutObject(filePath, &input);
+  auto outcome = GetQSClientImpl()->PutObject(newFilePath, &input);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -182,14 +180,19 @@ ClientError<QSError> QSClient::RenameFile(const string &filePath,
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->PutObject(filePath, &input);
+    outcome = GetQSClientImpl()->PutObject(newFilePath, &input);
     ++attemptedRetries;
   }
 
   if (outcome.IsSuccess()) {
-    auto &dirTree = Drive::Instance().GetDirectoryTree();
+    auto &drive = Drive::Instance();
+    auto &dirTree = drive.GetDirectoryTree();
     if (dirTree) {
       dirTree->Rename(filePath, newFilePath);
+    }
+    auto &cache = drive.GetCache();
+    if (cache) {
+      cache->Rename(filePath, newFilePath);
     }
     return ClientError<QSError>(QSError::GOOD, false);
   } else {

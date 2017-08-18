@@ -40,10 +40,6 @@ namespace Client {
 class QSClient;
 }  // namespace Client
 
-namespace FileSystem {
-class Drive;
-}  // namespace FileSystem
-
 namespace Data {
 
 class Cache;
@@ -94,6 +90,9 @@ class Entry {
   bool IsDirectory() const {
     return m_metaData.lock()->m_fileType == FileType::Directory;
   }
+  bool IsSymLink() const {
+    return m_metaData.lock()->m_fileType == FileType::SymLink;
+  }
 
   // accessor
   const std::weak_ptr<FileMetaData> &GetMetaData() const { return m_metaData; }
@@ -106,6 +105,7 @@ class Entry {
   mode_t GetFileMode() const { return m_metaData.lock()->m_fileMode; }
   time_t GetMTime() const { return m_metaData.lock()->m_mtime; }
   uid_t GetUID() const { return m_metaData.lock()->m_uid; }
+  bool IsNeedUpload() const { return m_metaData.lock()->m_needUpload; }
 
   std::string MyDirName() const { return m_metaData.lock()->MyDirName(); }
   std::string MyBaseName() const { return m_metaData.lock()->MyBaseName(); }
@@ -124,6 +124,9 @@ class Entry {
   void SetFileSize(uint64_t size) { m_metaData.lock()->m_fileSize = size; }
   void SetFilePath(const std::string &newFilePath) {
     m_metaData.lock()->m_filePath = newFilePath;
+  }
+  void SetNeedUpload(bool needUpload) {
+    m_metaData.lock()->m_needUpload = needUpload;
   }
 
  private:
@@ -170,9 +173,11 @@ class Node {
   }
 
   bool IsDirectory() const { return m_entry && m_entry.IsDirectory(); }
+  bool IsSymLink() const { return m_entry && m_entry.IsSymLink(); }
 
  public:
   bool IsEmpty() const { return m_children.empty(); }
+  bool HaveChild(const std::string &childFilePath) const;
   std::shared_ptr<Node> Find(const std::string &childFilePath) const;
   const FilePathToNodeUnorderedMap &GetChildren() const;
   std::set<std::string> GetChildrenIds() const;
@@ -189,28 +194,18 @@ class Node {
   std::string GetSymbolicLink() const { return m_symbolicLink; }
 
   std::string GetFilePath() const {
-    if (!m_entry) return std::string();
-    return m_entry.GetFilePath();
+    return m_entry ? m_entry.GetFilePath() : std::string();
   }
 
-  mode_t GetFileMode() const {
-    if (!m_entry) return 0;
-    return m_entry.GetFileMode();
-  }
-
-  uid_t GetUID() const {
-    if (!m_entry) return -1;
-    return m_entry.GetUID();
-  }
+  mode_t GetFileMode() const { return m_entry ? m_entry.GetFileMode() : 0; }
+  uid_t GetUID() const { return m_entry ? m_entry.GetUID() : -1; }
+  bool IsNeedUpload() const { return m_entry ? m_entry.IsNeedUpload() : false; }
 
   std::string MyDirName() const {
-    if (!m_entry) return std::string();
-    return m_entry.MyDirName();
+    return m_entry ? m_entry.MyDirName() : std::string();
   }
-
   std::string MyBaseName() const {
-    if (!m_entry) return std::string();
-    return m_entry.MyBaseName();
+    return m_entry ? m_entry.MyBaseName() : std::string();
   }
 
   bool FileAccess(uid_t uid, gid_t gid, int amode) const {
@@ -226,13 +221,19 @@ class Node {
     }
   }
 
+  void SetNeedUpload (bool needUpload){
+    if(m_entry){
+      m_entry.SetNeedUpload(needUpload);
+    }
+  }
+
   void SetEntry(Entry &&entry) { m_entry = std::move(entry); }
   void SetParent(const std::shared_ptr<Node> &parent) { m_parent = parent; }
 
  private:
   Entry m_entry;
   std::weak_ptr<Node> m_parent;
-  std::string m_symbolicLink;  // TODO(jim): meaningful?
+  std::string m_symbolicLink;
   FilePathToNodeUnorderedMap m_children;
 
   friend class QS::Data::Cache;  // for GetEntry
@@ -292,7 +293,6 @@ class DirectoryTree {
   // So, the dirName to children map which will help to update these references.
   ParentFilePathToChildrenMultiMap m_parentToChildrenMap;
 
-  friend class QS::FileSystem::Drive;
   friend class QS::Client::QSClient;
 };
 

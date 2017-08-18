@@ -38,6 +38,10 @@
 
 namespace QS {
 
+namespace Client {
+class QSClient;
+}  // namespace Client
+
 namespace Data {
 
 class Entry;
@@ -74,8 +78,9 @@ class File {
     // 1st Page: offset = 0, size = 4, stop = 3, next = 4
     // 2nd Page: offset = 4, size = 3, stop = 6, next = 7
 
-    off_t m_offset = 0;  // offset from the begin of owning File
-    size_t m_size = 0;   // size of bytes this page contains
+    off_t m_offset = 0;     // offset from the begin of owning File
+    size_t m_size = 0;      // size of bytes this page contains
+    bool m_loaded = false;  // denote if the page has been loaded TODO(jim):
     std::shared_ptr<std::iostream> m_body;  // stream storing the bytes
 
     // Construct Page from a block of bytes.
@@ -329,6 +334,8 @@ class Cache {
   CacheList m_cache;
 
   FileIdToCacheListIteratorMap m_map;
+
+  friend class QS::Client::QSClient;
 };
 
 }  // namespace Data

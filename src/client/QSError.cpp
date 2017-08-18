@@ -34,7 +34,7 @@ using std::unordered_set;
 namespace {
 
 bool SDKResponseCodeSuccess(HttpResponseCode code){
-  // TODO(jim): 
+  // TODO(jim):
   static unordered_set<HttpResponseCode, QS::HashUtils::EnumHash> 
       successCodeSet = {
           //HttpResponseCode::REQUEST_NOT_MADE,                //"RequestNotMade"                 // 0

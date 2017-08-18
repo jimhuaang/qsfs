@@ -93,6 +93,11 @@ shared_ptr<Node> Node::Find(const string &childFileName) const {
 }
 
 // --------------------------------------------------------------------------
+bool Node::HaveChild(const std::string &childFilePath) const {
+  return m_children.find(childFilePath) != m_children.end();
+}
+
+// --------------------------------------------------------------------------
 const FilePathToNodeUnorderedMap &Node::GetChildren() const {
   return m_children;
 }

@@ -104,6 +104,7 @@ public:
   bool m_fileOpen = false;
   bool m_pendingGet = false;
   bool m_pendingCreate = false;
+  bool m_needUpload = false;
 
   friend class Entry;
 };

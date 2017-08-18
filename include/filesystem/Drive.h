@@ -22,6 +22,7 @@
 #include <utility>
 #include <vector>
 
+#include <sys/stat.h>
 #include <sys/statvfs.h>
 
 #include "data/Directory.h"
@@ -87,8 +88,21 @@ class Drive {
             QS::Data::ChildrenMultiMapConstIterator>
   GetChildren(const std::string &dirPath);
 
-  //Rename file
+  // Delete a file.
+  void DeleteFile(const std::string &filePath);
+  // Create a file.
+  // TODO(jim): may be add another para of FileType
+  void MakeFile(const std::string &filePath, mode_t mode, dev_t dev = 0);
+  // Create a Directory.
+  void MakeDir(const std::string &dirPath, mode_t mode);
+  // Rename a file.
   void RenameFile(const std::string &filePath, const std::string &newFilePath);
+  // Truncate a file.
+  void TruncateFile(const std::string& filePath);
+  // Upload a file.
+  void UploadFile(const std::string &filePath);
+  // Write a file.
+  void WriteFile(const std::string &filePath, const char* buf, size_t size, off_t offset);
 
  private:
   std::shared_ptr<QS::Client::Client> &GetClient() { return m_client; }

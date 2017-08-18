@@ -210,6 +210,34 @@ Drive::GetChildren(const string &dirPath) {
 }
 
 // --------------------------------------------------------------------------
+void Drive::DeleteFile(const std::string &filePath){
+  // first check if file exist in dir
+  // call QSClient to delete which will update cache and dir
+}
+
+// --------------------------------------------------------------------------
+void Drive::MakeFile(const std::string &filePath, mode_t mode, dev_t dev){
+/*   if(mode & S_IRFEG){
+    // make regular file
+    // new a fileMeta, ignore dev
+  } else {
+    // make non-directory, non-symlink file 
+    // new a fileMeta considering dev
+  } 
+  else make symlink file
+  */
+  // call GetClient()->MakeFile(, mode_t mode, dev_t dev);
+  // which will call m_directoryTree->Grow(fileMeta);
+  // put object
+  // TODO(jim): store symbolic link to Node, refer gdfs_mkmod, gdfs_getattr
+}
+
+// --------------------------------------------------------------------------
+void Drive::MakeDir(const std::string &dirPath, mode_t mode) {
+  //
+}
+
+// --------------------------------------------------------------------------
 void Drive::RenameFile(const string &filePath, const string &newFilePath) {
   if (filePath.empty() || newFilePath.empty()) {
     DebugWarning("Invalid empty parameter");
@@ -255,8 +283,8 @@ void Drive::RenameFile(const string &filePath, const string &newFilePath) {
 
     // Do Renaming
     auto err = GetClient()->RenameFile(filePath, newPath);
+    // Update meta and invoking updating directory tree asynchronizely
     if (IsGoodQSError(err)) {
-      // Update meta and invoking updating directory tree asynchronizely
       res = GetNode(newPath, true);
       node = res.first.lock();
       DebugErrorIf(!node, "Fail to rename file for " + filePath);
@@ -269,6 +297,35 @@ void Drive::RenameFile(const string &filePath, const string &newFilePath) {
     DebugInfo("File is not existing for " + filePath);
     return;
   }
+}
+
+// --------------------------------------------------------------------------
+void Drive::TruncateFile(const std::string& filePath){
+  // download file, truncate it, delete old file, and write it
+  // TODO(jim): maybe we do not need this method, just call delete and write
+  // node->SetNeedUpload(true);  // Mark upload
+}
+
+// --------------------------------------------------------------------------
+void Drive::UploadFile(const std::string &filePath) {
+  // 
+  // if file size > 20M call tranfser to upload multipart
+  // need a mechnasim to handle the memory insufficient situation
+  // // set entry->write = fasle; // should do this in drive:: 
+  // invoke putobject
+  // or invoke multipart upload (first two step) transfer manager
+  // and at end invoke complete mulitpart upload
+
+  // at last entry->write = fasle; // should do this in drive:: 
+  // node->SetNeedUpload(false);  // Done upload
+}
+
+// --------------------------------------------------------------------------
+void Drive::WriteFile(const std::string &filePath, const char* buf, size_t size, off_t offset){
+  //
+  // cache the file and when overpass max size, invoke multipart upload (first two step)
+
+  // node->SetNeedUpload(true);  // Mark upload
 }
 
 }  // namespace FileSystem

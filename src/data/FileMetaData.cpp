@@ -20,8 +20,8 @@
 #include <string>
 #include <unordered_map>
 
-#include "base/LogMacros.h"
 #include "base/HashUtils.h"
+#include "base/LogMacros.h"
 #include "base/Utils.h"
 #include "filesystem/Configure.h"
 
@@ -41,7 +41,6 @@ using std::string;
 using std::to_string;
 using std::unordered_map;
 
-
 // --------------------------------------------------------------------------
 const string &GetFileTypeName(FileType fileType) {
   static unordered_map<FileType, string, EnumHash> fileTypeNames = {
@@ -54,7 +53,6 @@ const string &GetFileTypeName(FileType fileType) {
       {FileType::Socket, "Socket"}};
   return fileTypeNames[fileType];
 }
-
 
 // --------------------------------------------------------------------------
 std::shared_ptr<FileMetaData> BuildDefaultDirectoryMeta(const string &dirPath) {
@@ -177,34 +175,31 @@ bool FileMetaData::FileAccess(uid_t uid, gid_t gid, int amode) const {
     return true;  // there is a file, always allowed
   }
 
+  bool ret = false;
   // Check read permission
   if (amode & R_OK) {
     if ((uid == m_uid || uid == 0) && (m_fileMode & S_IRUSR)) {
-      return true;
+      ret = true;
+    } else if ((gid == m_gid || gid == 0) && (m_fileMode & S_IRGRP)) {
+      ret = true;
+    } else if (m_fileMode & S_IROTH) {
+      ret = true;
+    } else {
+      return false;
     }
-    if ((gid == m_gid || gid == 0) && (m_fileMode & S_IRGRP)) {
-      return true;
-    }
-    if (m_fileMode & S_IROTH) {
-      return true;
-    }
-    return false;
   }
-
   // Check write permission
   if (amode & W_OK) {
     if ((uid == m_uid || uid == 0) && (m_fileMode & S_IWUSR)) {
-      return true;
+      ret = true;
+    } else if ((gid == m_gid || gid == 0) && (m_fileMode & S_IWGRP)) {
+      ret = true;
+    } else if (m_fileMode & S_IWOTH) {
+      ret = true;
+    } else {
+      return false;
     }
-    if ((gid == m_gid || gid == 0) && (m_fileMode & S_IWGRP)) {
-      return true;
-    }
-    if (m_fileMode & S_IWOTH) {
-      return true;
-    }
-    return false;
   }
-
   // Check execute permission
   if (amode & W_OK) {
     if (uid == 0) {
@@ -212,22 +207,24 @@ bool FileMetaData::FileAccess(uid_t uid, gid_t gid, int amode) const {
       // root shall get execute permission too.
       if ((m_fileMode & S_IXUSR) || (m_fileMode & S_IXGRP) ||
           (m_fileMode & S_IXOTH)) {
-        return true;
+        ret = true;
+      } else {
+        return false;
+      }
+    } else {
+      if ((uid == m_uid) && (m_fileMode & S_IXUSR)) {
+        ret = true;
+      } else if ((gid == m_gid) && (m_fileMode & S_IXGRP)) {
+        ret = true;
+      } else if (m_fileMode & S_IXOTH) {
+        ret = true;
+      } else {
+        return false;
       }
     }
-    if ((uid == m_uid) && (m_fileMode & S_IXUSR)) {
-      return true;
-    }
-    if ((gid == m_gid) && (m_fileMode & S_IXGRP)) {
-      return true;
-    }
-    if (m_fileMode & S_IXOTH) {
-      return true;
-    }
-    return false;
   }
 
-  return false;
+  return ret;
 }
 
 }  // namespace Data
