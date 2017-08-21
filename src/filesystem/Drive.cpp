@@ -210,22 +210,48 @@ Drive::GetChildren(const string &dirPath) {
 }
 
 // --------------------------------------------------------------------------
-void Drive::DeleteFile(const std::string &filePath){
+void Drive::Chmod(const std::string &filePath, mode_t mode) {
+  // TODO(jim): this need call sdk api of meta data
+  // change meta mode
+  // change ctime
+}
+
+// --------------------------------------------------------------------------
+void Drive::Chown(const std::string &filePath, uid_t uid, gid_t gid) {
+  // TODO(jim): this nedd call sdk api of meta
+  // change meta uid gid
+  // chang ctime
+}
+
+// --------------------------------------------------------------------------
+void Drive::DeleteFile(const string &filePath) {
+  // Delete a file.
   // first check if file exist in dir
   // call QSClient to delete which will update cache and dir
 }
 
 // --------------------------------------------------------------------------
-void Drive::MakeFile(const std::string &filePath, mode_t mode, dev_t dev){
-/*   if(mode & S_IRFEG){
-    // make regular file
-    // new a fileMeta, ignore dev
-  } else {
-    // make non-directory, non-symlink file 
-    // new a fileMeta considering dev
-  } 
-  else make symlink file
-  */
+void Drive::DeleteDir(const string &dirPath) {
+  // Delete a emptyr diectory
+}
+
+// --------------------------------------------------------------------------
+void Drive::Link(const string &filePath, const string &hardlinkPath) {
+  // gdfs_link: ++entry->ref_count; node->insert(newNode(..,'h')); // locally
+  //
+}
+
+// --------------------------------------------------------------------------
+void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
+  /*   if(mode & S_IRFEG){
+      // make regular file
+      // new a fileMeta, ignore dev
+    } else {
+      // make non-directory, non-symlink file
+      // new a fileMeta considering dev
+    }
+    else make symlink file
+    */
   // call GetClient()->MakeFile(, mode_t mode, dev_t dev);
   // which will call m_directoryTree->Grow(fileMeta);
   // put object
@@ -233,8 +259,35 @@ void Drive::MakeFile(const std::string &filePath, mode_t mode, dev_t dev){
 }
 
 // --------------------------------------------------------------------------
-void Drive::MakeDir(const std::string &dirPath, mode_t mode) {
+void Drive::MakeDir(const string &dirPath, mode_t mode) {
+  // Call GetClient()->MakeDirectory();
+  // whicl will call putObject to create a dir
+  // and call m_directorytree->Grow(fileMata)
+}
+
+// --------------------------------------------------------------------------
+void Drive::OpenFile(const string &filePath) {
+  // call GetClient->HeadFile
+  // call call GetClient->GetObject asynchornizeing download object
+  // call m_directoryTree->Open a file to set entry with fileOpen = true
+}
+
+// --------------------------------------------------------------------------
+void Drive::OpenDir(const string &dirPath) {
   //
+}
+
+// --------------------------------------------------------------------------
+void Drive::ReadFile(const string &filePath, char *buf, size_t size,
+                     off_t offset) {
+  // memset(buf, 0, size);
+  // call GetNode see if it changed
+  // store file to cache synchornizely
+  // call cache-Get()
+  // Should change access time and call GetClient->PutObject
+  // cal the size, use minmum
+
+  // if node->IsEmpty(), return and debugInfo
 }
 
 // --------------------------------------------------------------------------
@@ -300,32 +353,54 @@ void Drive::RenameFile(const string &filePath, const string &newFilePath) {
 }
 
 // --------------------------------------------------------------------------
-void Drive::TruncateFile(const std::string& filePath){
-  // download file, truncate it, delete old file, and write it
-  // TODO(jim): maybe we do not need this method, just call delete and write
-  // node->SetNeedUpload(true);  // Mark upload
+void Drive::SymLink(const string &filePath, const string &linkPath) {
+  // create a new Node in local directory tree
+  // no need to put object
+  // refer gdfs_symlik gdfs_mknod
 }
 
 // --------------------------------------------------------------------------
-void Drive::UploadFile(const std::string &filePath) {
-  // 
+void Drive::TruncateFile(const string &filePath, size_t newSize) {
+  // download file, truncate it, delete old file, and write it
+  // TODO(jim): maybe we do not need this method, just call delete and write
+  // node->SetNeedUpload(true);  // Mark upload
+
+  // if newSize = 0,
+  // if newSize > size, fill the hole
+  // if newSize < size, resize it
+
+  // update cached file
+  // set entry->write = true; should do this in Drive
+  // TODO(jim): any modification on diretory tree should be synchronized by its
+  // api
+}
+
+// --------------------------------------------------------------------------
+void Drive::UploadFile(const string &filePath) {
+  //
   // if file size > 20M call tranfser to upload multipart
   // need a mechnasim to handle the memory insufficient situation
-  // // set entry->write = fasle; // should do this in drive:: 
+  // // set entry->write = fasle; // should do this in drive::
   // invoke putobject
   // or invoke multipart upload (first two step) transfer manager
   // and at end invoke complete mulitpart upload
 
-  // at last entry->write = fasle; // should do this in drive:: 
+  // at last entry->write = fasle; // should do this in drive::
   // node->SetNeedUpload(false);  // Done upload
 }
 
 // --------------------------------------------------------------------------
-void Drive::WriteFile(const std::string &filePath, const char* buf, size_t size, off_t offset){
-  //
-  // cache the file and when overpass max size, invoke multipart upload (first two step)
+void Drive::WriteFile(const string &filePath, const char *buf, size_t size,
+                      off_t offset) {
+  // if entry->file size < size + offset, update the entry size with max one
+  // Call Cache->Put to store fiel into cache and when overpass max size,
+  // invoke multipart upload (first two step)
+  // Finshed will be done in Release/ (here in Drive::UploadFile)
 
   // node->SetNeedUpload(true);  // Mark upload
+
+  // create a write buffer if necceaary
+  // handle hole if file
 }
 
 }  // namespace FileSystem

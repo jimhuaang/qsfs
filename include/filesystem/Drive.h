@@ -76,7 +76,8 @@ class Drive {
 
   // Get the Node in directory tree by path.
   // Dir path should ending with '/'.
-  // Using updateIfDirectory to invoke updating the directory tree asynchronizely,
+  // Using updateIfDirectory to invoke updating the directory tree
+  // asynchronizely,
   // which means the children of the directory will be add to the tree.
   // Return a pair: the first member is the node, the second member denote
   // if the node is modified comparing with the moment before this operation.
@@ -88,21 +89,40 @@ class Drive {
             QS::Data::ChildrenMultiMapConstIterator>
   GetChildren(const std::string &dirPath);
 
+  // Change the permission bits of a file.
+  void Chmod(const std::string &filePath, mode_t mode);
+  // Change the owner and group of a file.
+  void Chown(const std::string &filePath, uid_t uid, gid_t gid);
   // Delete a file.
   void DeleteFile(const std::string &filePath);
+  // Delete a empty directory.
+  void DeleteDir(const std::string &dirPath);
+  // Create a hard link to a file.
+  void Link(const std::string &filePath, const std::string &hardlinkPath);
   // Create a file.
   // TODO(jim): may be add another para of FileType
   void MakeFile(const std::string &filePath, mode_t mode, dev_t dev = 0);
   // Create a Directory.
   void MakeDir(const std::string &dirPath, mode_t mode);
+  // Open a file.
+  void OpenFile(const std::string &filePath);
+  // Open a directory.
+  void OpenDir(const std::string &dirPath);
+  // Read data from a file.
+  void ReadFile(const std::string &filePath, char *buf, size_t size,
+                off_t offset);
+
   // Rename a file.
   void RenameFile(const std::string &filePath, const std::string &newFilePath);
+  // Create a symbolic link to a file.
+  void SymLink(const std::string &filePath, const std::string &linkPath);
   // Truncate a file.
-  void TruncateFile(const std::string& filePath);
+  void TruncateFile(const std::string &filePath, size_t newSize);
   // Upload a file.
   void UploadFile(const std::string &filePath);
   // Write a file.
-  void WriteFile(const std::string &filePath, const char* buf, size_t size, off_t offset);
+  void WriteFile(const std::string &filePath, const char *buf, size_t size,
+                 off_t offset);
 
  private:
   std::shared_ptr<QS::Client::Client> &GetClient() { return m_client; }

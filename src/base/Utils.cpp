@@ -36,6 +36,7 @@
 #include <vector>
 
 #include "base/LogMacros.h"
+#include "base/StringUtils.h"
 #include "filesystem/Configure.h"
 
 namespace QS {
@@ -439,29 +440,46 @@ bool HavePermission(const std::string &path, bool logOn) {
 }
 
 // --------------------------------------------------------------------------
-string AccessModeToString(int amode, bool logOn) {
+string AccessMaskToString(int amode) {
   string ret;
-  switch (amode) {
-    case R_OK:
-      ret = "R_OK";
-      break;
-    case W_OK:
-      ret = "W_OK";
-      break;
-    case X_OK:
-      ret = "X_OK";
-      break;
-    case F_OK:
-      ret = "F_OK";
-      break;
-    default:
-      ret = "";
-      if (logOn) {
-        DebugWarning("Invalid access mode with value " + to_string(amode));
-      }
-      break;
+  if(amode & R_OK){
+    ret.append("R_OK ");
+  }
+  if(amode & W_OK){
+    ret.append("W_OK ");
+  }
+  if(amode & X_OK){
+    ret.append("X_OK");
+  }
+  ret = QS::StringUtils::RTrim(ret,' ');
+  string::size_type pos = 0;
+  while((pos = ret.find(' ')) != string::npos){
+    ret.replace(pos, 1, "&");
   }
   return ret;
+}
+
+// --------------------------------------------------------------------------
+std::string ModeToString(mode_t mode) {
+  // access MODE bits          000    001    010    011
+  //                           100    101    110    111
+  static const char *rwx[] = {"---", "--x", "-w-", "-wx",
+                              "r--", "r-x", "rw-", "rwx"};
+  string modeStr;
+  modeStr.append(rwx[(mode >> 6) & 7]);  // user
+  modeStr.append(rwx[(mode >> 3) & 7]);  // group
+  modeStr.append(rwx[(mode & 7)]);
+
+  if (mode & S_ISUID) {
+    modeStr[2] = (mode & S_IXUSR) ? 's' : 'S';
+  }
+  if (mode & S_ISGID) {
+    modeStr[5] = (mode & S_IXGRP) ? 's' : 'l';
+  }
+  if (mode & S_ISVTX) {
+    modeStr[8] = (mode & S_IXUSR) ? 't' : 'T';
+  }
+  return modeStr;
 }
 
 }  // namespace Utils
