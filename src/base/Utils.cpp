@@ -118,7 +118,7 @@ pair<bool, string> DeleteFilesInDirectoryNoLog(const std::string &path,
   };
 
   unique_ptr<DIR, decltype(closedir) *> dir(opendir(path.c_str()), closedir);
-  if (dir == nullptr) {
+  if (dir) {
     struct dirent *nextDir = nullptr;
     while ((nextDir = readdir(dir.get())) != nullptr) {
       if (strcmp(nextDir->d_name, ".") == 0 ||

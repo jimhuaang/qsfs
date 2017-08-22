@@ -96,15 +96,18 @@ class DefaultCredentialsProvider : public CredentialsProvider {
   }
 
  private:
-  // Returned pair with first member to denote if read credentials successfully,
-  // if fail to read credentials, second member contain error messages.
+  // Read credentials file
+  //
+  // @param  : credentials file path
+  // @return : a pair of {true, ""} or {false, message}
   //
   // Credentials file format: [bucket:]AccessKeyId:SecretKey
-  // Support for per bucket credentials.
-  // To set default key pair by not providing bucket name.
+  // Support for per bucket credentials;
+  // Set default key pair by not providing bucket name;
   // Only allow to have one default key pair, but not required to.
   //
-  // Comment line beginning with #. Empty line are ignored.
+  // Comment line is beginning with #;
+  // Empty lines are ignored;
   // Uncommented lines without the ":" character are flaged as an error,
   // so are lines with space or tabs and lines starting with bracket "[".
   std::pair<bool, std::string> ReadCredentialsFile(const std::string &file);

@@ -100,11 +100,11 @@ public:
   dev_t m_dev = 0;  // device number (file system)
   int m_numLink = 1;
   bool m_dirty = false;
-  bool m_write = false;  // replaced by m_needUpload
-  bool m_fileOpen = false;  // consider use atomic
+  bool m_write = false;  // TODO(jim): replaced by m_needUpload
+  bool m_fileOpen = false;  // TODO(jim): consider use atomic
   bool m_pendingGet = false;
   bool m_pendingCreate = false;
-  bool m_needUpload = false;  // consider use atomic
+  bool m_needUpload = false;  // TODO(jim): consider use atomic
 
   friend class Entry;
 };

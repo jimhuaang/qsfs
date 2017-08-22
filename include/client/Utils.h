@@ -34,34 +34,34 @@ namespace Utils {
 
 // Build request header of 'Range'
 //
-// @param : start, size
-// @return: string with format of "bytes=start_offset-stop_offset"
+// @param  : start, size
+// @return : string with format of "bytes=start_offset-stop_offset"
 std::string BuildRequestRange(off_t start, size_t size);
 
 // Build request header of 'Range'
 //
-// @param : start
-// @return: string with format of "bytes=start_offset-"
+// @param  : start
+// @return : string with format of "bytes=start_offset-"
 std::string BuildRequestRangeStart(off_t start);
 
 // Build request header of 'Range'
 //
-// @param : suffix length
-// @return: string with format of "bytes=-suffix_length"
+// @param  : suffix length
+// @return : string with format of "bytes=-suffix_length"
 std::string BuildRequestRangeEnd(off_t suffixLen);
 
 // Parse response header
 //
-// @param : 'Content-Range' or 'Content-Copy-Range'
+// @param  : 'Content-Range' or 'Content-Copy-Range'
 //          which has format of "bytes start_offset-stop_offset/file_size"
-// @return: start, body length(stop - start + 1), total file_size
+// @return : start, body length(stop - start + 1), total file_size
 std::tuple<off_t, size_t, size_t> ParseResponseContentRange(
     const std::string &range);
 
 // Look up the mime type from the file path
 //
-// @param : e.g., "index.html"
-// @return: e.g., "text/html"
+// @param  : e.g., "index.html"
+// @return : e.g., "text/html"
 std::string LookupMimeType(const std::string &path);
 
 }  // namespace Utils

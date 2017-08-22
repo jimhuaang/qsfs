@@ -80,11 +80,11 @@ class Drive {
   // @param  : file path, bool denotes if update dir tree if node is a directory
   // @return : a pair of { node, bool denotes if the node is modified comparing
   //           with the moment before this operation }
-
+  //
   // Dir path should ending with '/'.
   // Using updateIfDirectory to invoke updating the directory tree
-  // asynchronizely,
-  // which means the children of the directory will be add to the tree.
+  // asynchronizely if node is directory, which means the children of the
+  // directory will be add to the tree.
   std::pair<std::weak_ptr<QS::Data::Node>, bool> GetNode(
       const std::string &path, bool updateIfDirectory = true);
 

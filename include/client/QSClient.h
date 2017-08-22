@@ -42,16 +42,36 @@ class QSClient : public Client {
   ~QSClient();
 
  public:
+  // Connect to object storage
+  //
+  // @param  : void
+  // @return : flag of success
+  //
+  // Connect will build up the root level of directory tree asynchornizely.
   bool Connect() override;
+
   bool DisConnect() override;
 
   ClientError<QSError> DeleteFile(const std::string &filePath) override;
   ClientError<QSError> DeleteDirectory(const std::string &dirPath) override;
   
+  // Create an empty file
+  //
+  // @param  : file path
+  // @return : ClientError
+  // As qs sdk doesn't return the created file meta data in PutObjectOutput,
+  // So we cannot grow the directory tree here, instead we need to call
+  // Stat to head the object again in Drive::MakeFile;
   ClientError<QSError> MakeFile(const std::string &filePath) override;
+
   ClientError<QSError> MakeDirectory(const std::string &dirPath) override;
 
+  // Rename file
   //
+  // @param  : file path, new file path
+  // @return : ClientError
+  //
+  // RenameFile will invoke dirTree and Cache renaming.
   ClientError<QSError> RenameFile(const std::string &filePath,
                                   const std::string &newFilePath) override;
 
@@ -63,22 +83,39 @@ class QSClient : public Client {
   ClientError<QSError> UploadDirectory(const std::string &dirPath) override;
 
   ClientError<QSError> ReadFile(const std::string &filePath) override;
-  // Notice the dirPath should end with delimiter
+
+  // List directory
+  //
+  // @param  : dir path
+  // @return : ClientError
+  //
+  // ListDirectory will update directory in tree if dir exists and is modified
+  // or grow the tree if the directory is not existing in tree.
+  //
+  // Notice the dirPath should end with delimiter.
   ClientError<QSError> ListDirectory(const std::string &dirPath) override;
+
   //
   ClientError<QSError> WriteFile(const std::string &filePath) override;
   ClientError<QSError> WriteDirectory(const std::string &dirPath) override;
 
   // Get object meta data
+  //
+  // @param  : file path, modifiedSince, *modified(output)
+  // @return : ClientError
+  //
   // Using modifiedSince to match if the object modified since then.
   // Using modifiedSince = 0 to always get object meta data, this is default.
   // Using modified to gain output of object modified status since given time.
-  // Notes: Stat will grow the directory asynchronizely if objcet is directory
-  // and if object is modified comparing with the moment before this operation.
+  //
+  // Stat will update the dir tree if the node is modified
   ClientError<QSError> Stat(const std::string &path, time_t modifiedSince = 0,
                             bool *modified = nullptr ) override;
 
-  // Get information about mounted bucket.
+  // Get information about mounted bucket
+  //
+  // @param  : *stvfs(output)
+  // @return : ClientError
   ClientError<QSError> Statvfs(struct statvfs *stvfs) override;
 
  public:

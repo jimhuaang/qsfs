@@ -25,12 +25,24 @@ namespace Logging {
 
 enum class LogLevel : int { Info = 0, Warn = 1, Error = 2, Fatal = 3 };
 
+// Get log level name
+//
+// @param  : log level enumeration
+// @return : log level name
 const std::string &GetLogLevelName(LogLevel logLevel);
 
-// Return default level of Info if name not belongs to
-// {INFO, WARN, ERROR, FATAL}
+// Get log level
+//
+// @param  : log level name
+// @return : log level enumeration
+//
+// Return Info if name not belongs to {INFO, WARN, ERROR, FATAL}
 LogLevel GetLogLevelByName(const std::string &name);
 
+// Get log level prefix
+//
+// @param  : log level enumeration
+// @return : prefix
 std::string GetLogLevelPrefix(LogLevel logLevel);
 
 }  // namespace Logging

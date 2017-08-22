@@ -25,7 +25,16 @@ namespace QS {
 
 namespace TimeUtils {
 
+// Convert rfc822 GMT date to time in seconds
+//
+// @param  : date string in rfc822 GMT format
+// @return : time in seconds
 time_t RFC822GMTToSeconds(const std::string &date);
+
+// Convert time to rfc822 GMT date string
+//
+// @param  : time in seconds
+// @return : date string in rfc822 GMT format
 std::string SecondsToRFC822GMT(time_t time);
 
 }  // namespace TimeUtils

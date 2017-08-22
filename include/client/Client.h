@@ -64,15 +64,36 @@ class Client {
   virtual ~Client();
 
  public:
+  // Connect to object storage
+  //
+  // @param  : void
+  // @return : flag of success
+  //
+  // Connect will build up the root level of directory tree asynchornizely.
   virtual bool Connect() = 0;
+
   virtual bool DisConnect() = 0;
 
   virtual ClientError<QSError> DeleteFile(const std::string &filePath) = 0;
   virtual ClientError<QSError> DeleteDirectory(const std::string &dirPath) = 0;
+
+  // Create an empty file
+  //
+  // @param  : file path
+  // @return : ClientError
   virtual ClientError<QSError> MakeFile(const std::string &filePath) = 0;
+
   virtual ClientError<QSError> MakeDirectory(const std::string &dirPath) = 0;
+
+  // Rename file
+  //
+  // @param  : file path, new file path
+  // @return : ClientError
+  //
+  // RenameFile will invoke dirTree and Cache renaming.
   virtual ClientError<QSError> RenameFile(const std::string &filePath,
                                           const std::string &newFilePath) = 0;
+
   virtual ClientError<QSError> RenameDirectory(const std::string &dirPath) = 0;
 
   virtual ClientError<QSError> DownloadFile(const std::string &filePath) = 0;
@@ -81,13 +102,39 @@ class Client {
   virtual ClientError<QSError> UploadDirectory(const std::string &dirPath) = 0;
 
   virtual ClientError<QSError> ReadFile(const std::string &filePath) = 0;
+
+  // List directory
+  //
+  // @param  : dir path
+  // @return : ClientError
+  //
+  // ListDirectory will update directory in tree if dir exists and is modified
+  // or grow the tree if the directory is not existing in tree.
+  //
+  // Notice the dirPath should end with delimiter.
   virtual ClientError<QSError> ListDirectory(const std::string &dirPath) = 0;
+
   virtual ClientError<QSError> WriteFile(const std::string &filePath) = 0;
   virtual ClientError<QSError> WriteDirectory(const std::string &dirPath) = 0;
 
+  // Get object meta data
+  //
+  // @param  : file path, modifiedSince, *modified(output)
+  // @return : ClientError
+  //
+  // Using modifiedSince to match if the object modified since then.
+  // Using modifiedSince = 0 to always get object meta data, this is default.
+  // Using modified to gain output of object modified status since given time.
+  //
+  // Stat will update the dir tree if the node is modified
   virtual ClientError<QSError> Stat(const std::string &path,
                                     time_t modifiedSince = 0,
                                     bool *modified = nullptr) = 0;
+
+  // Get information about mounted bucket
+  //
+  // @param  : stvfs(output)
+  // @return : ClientError
   virtual ClientError<QSError> Statvfs(struct statvfs *stvfs) = 0;
 
  public:
