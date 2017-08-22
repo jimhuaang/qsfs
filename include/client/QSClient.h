@@ -47,11 +47,14 @@ class QSClient : public Client {
 
   ClientError<QSError> DeleteFile(const std::string &filePath) override;
   ClientError<QSError> DeleteDirectory(const std::string &dirPath) override;
+  
   ClientError<QSError> MakeFile(const std::string &filePath) override;
   ClientError<QSError> MakeDirectory(const std::string &dirPath) override;
+
   //
   ClientError<QSError> RenameFile(const std::string &filePath,
                                   const std::string &newFilePath) override;
+
   ClientError<QSError> RenameDirectory(const std::string &dirPath) override;
 
   ClientError<QSError> DownloadFile(const std::string &filePath) override;

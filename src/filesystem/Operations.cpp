@@ -77,7 +77,7 @@ gid_t GetFuseContextGID() {
   return fuseCtx->gid;
 }
 
-void CheckParentDir(const string& path, int amode, int* ret) {
+shared_ptr<Node> CheckParentDir(const string& path, int amode, int* ret) {
   // Check parent with invoking asynchronizely update
   string dirName = GetDirName(path);
   auto& drive = Drive::Instance();
@@ -101,6 +101,8 @@ void CheckParentDir(const string& path, int amode, int* ret) {
     throw QSException("No permission (" + AccessMaskToString(amode) +
                       ") for directory" + FormatArg(dirName));
   }
+
+  return parent;
 }
 
 void FillStat(const struct stat& source, struct stat* target) {
@@ -169,14 +171,14 @@ void InitializeFUSECallbacks(struct fuse_operations* fuseOps) {
   fuseOps->read = qsfs_read;
   fuseOps->write = qsfs_write;
   fuseOps->statfs = qsfs_statfs;
-  fuseOps->flush = NULL;  // s3fs
+  fuseOps->flush = NULL;  // TODO
   fuseOps->release = qsfs_release;
-  fuseOps->fsync = NULL;        // s3fs
-  fuseOps->setxattr = NULL;     // s3fs
-  fuseOps->getxattr = NULL;     // s3fs
-  fuseOps->listxattr = NULL;    // s3fs
-  fuseOps->removexattr = NULL;  // s3fs
-  fuseOps->opendir = NULL;      // s3fs
+  fuseOps->fsync = NULL;        // TODO
+  fuseOps->setxattr = NULL;     // TODO
+  fuseOps->getxattr = NULL;     // TODO
+  fuseOps->listxattr = NULL;    // TODO
+  fuseOps->removexattr = NULL;  // TODO
+  fuseOps->opendir = NULL;      // TODO
   fuseOps->readdir = qsfs_readdir;
   fuseOps->releasedir = NULL;
   fuseOps->fsyncdir = NULL;
@@ -277,7 +279,6 @@ int qsfs_readlink(const char* path, char* link, size_t size) {
     }
 
     // Read the link
-    // TODO(jim): should we store symblic in string
     auto symlink = Trim(node->GetSymbolicLink(), ' ');
     size_t size_ = symlink.size();
     if (size <= size_) {
@@ -327,20 +328,12 @@ int qsfs_mknod(const char* path, mode_t mode, dev_t dev) {
     // Check whether path exists
     auto res = drive.GetNode(path, false);
     auto node = res.first.lock();
-    if (node) {
+    if (node && *node) {
       ret = -EEXIST;  // File exist
       throw QSException("File already exists " + FormatArg(path));
     }
 
     // Create the new node
-    // TODO(jim):
-    // This is called for creation of all non-directory, non-symlink nodes.
-    // If the filesystem defines a crete() method, then for regular files that
-    // will be called instead.
-    // maybe if mode & S_ISREG call MakeRegularFile else
-    // call MakeNoDirRegSymFile which just insert a Node in dir tree as gdfs
-    // do
-    // or maybe drive.MakeFile(path, fileType, mode, dev);
     drive.MakeFile(path, mode | GetDefineFileMode(), dev);
 
   } catch (const QSException& err) {
@@ -694,7 +687,7 @@ int qsfs_link(const char* path, const char* linkpath) {
                         FormatArg(linkpath_));
     }
 
-    // Do hard link
+    // Create hard link
     drive.Link(path, linkpath_);
 
   } catch (const QSException& err) {
@@ -1121,6 +1114,9 @@ int qsfs_release(const char* path, struct fuse_file_info* fi) {
     if (node->IsNeedUpload()) {
       try {
         Drive::Instance().UploadFile(path_);
+        // TODO(jim):
+        // set needUpload = false;
+        // fileOpen = false;
       } catch (const QSException& err) {
         Error(err.get());
         return -EAGAIN;  // Try again
@@ -1350,12 +1346,6 @@ int qsfs_create(const char* path, mode_t mode, struct fuse_file_info* fi) {
     }
 
     // Create the new node
-    // TODO(jim):
-    // This is called for creation of all non-directory, non-symlink nodes.
-    // If the filesystem defines a crete() method, then for regular files that
-    // will be called instead.
-    // what is open do?
-    // maybe MakeFile(path, FileType::File, mode);
     drive.MakeFile(path, mode);
 
   } catch (const QSException& err) {

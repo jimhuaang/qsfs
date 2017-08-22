@@ -67,10 +67,26 @@ Entry::Entry(std::shared_ptr<FileMetaData> &&fileMetaData)
 }
 
 // --------------------------------------------------------------------------
+Node::Node(Entry &&entry, const shared_ptr<Node> &parent)
+    : m_entry(std::move(entry)), m_parent(parent) {
+  m_children.clear();
+}
+
+// --------------------------------------------------------------------------
+Node::Node(Entry &&entry, const shared_ptr<Node> &parent,
+           const string &symbolicLink)
+    : Node(std::move(entry), parent) {
+  // must use m_entry instead of entry which is moved to m_entry now
+  if (m_entry && m_entry.GetFileSize() <= symbolicLink.size()) {
+    m_symbolicLink = std::string(symbolicLink, 0, m_entry.GetFileSize());
+  }
+}
+
+// --------------------------------------------------------------------------
 Node::~Node() {
   if (!m_entry) return;
 
-  if (IsDirectory()) {
+  if (IsDirectory() || IsHardLink()) {
     auto parent = m_parent.lock();
     if (parent) {
       parent->GetEntry().DecreaseNumLink();
@@ -220,7 +236,7 @@ ChildrenMultiMapConstIterator DirectoryTree::CEndParentToChildrenMap() const {
 }
 
 // --------------------------------------------------------------------------
-void DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
+shared_ptr<Node> DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
   lock_guard<recursive_mutex> lock(m_mutex);
   string filePath = fileMeta->GetFilePath();
 
@@ -260,8 +276,9 @@ void DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
     // record parent to children map
     m_parentToChildrenMap.emplace(dirName, node);
   }
-
   m_currentNode = node;
+
+  return node;
 }
 
 // --------------------------------------------------------------------------
@@ -273,11 +290,11 @@ void DirectoryTree::Grow(vector<shared_ptr<FileMetaData>> &&fileMetas) {
 }
 
 // --------------------------------------------------------------------------
-void DirectoryTree::UpdateDiretory(
+shared_ptr<Node> DirectoryTree::UpdateDiretory(
     const string &dirPath, vector<shared_ptr<FileMetaData>> &&childrenMetas) {
   if (dirPath.empty()) {
     DebugWarning("Null dir path");
-    return;
+    return shared_ptr<Node>(nullptr);
   }
 
   lock_guard<recursive_mutex> lock(m_mutex);
@@ -302,12 +319,12 @@ void DirectoryTree::UpdateDiretory(
 
   auto node = Find(path).lock();
   if (!node) {  // directory not existing
-    Grow(std::move(BuildDefaultDirectoryMeta(path)));
+    node = Grow(std::move(BuildDefaultDirectoryMeta(path)));
     Grow(std::move(newChildrenMetas));
   } else {
     if (!node->IsDirectory()) {
       DebugError("Found Node is not a directory for path " + path);
-      return;
+      return shared_ptr<Node>(nullptr);
     }
 
     // Do deleting
@@ -334,21 +351,22 @@ void DirectoryTree::UpdateDiretory(
 
     // Do updating
     Grow(std::move(newChildrenMetas));
-    m_currentNode = node;
   }
+  m_currentNode = node;
+  return node;
 }
 
 // --------------------------------------------------------------------------
-void DirectoryTree::Rename(const string &oldFilePath,
+shared_ptr<Node> DirectoryTree::Rename(const string &oldFilePath,
                            const string &newFilePath) {
   if (oldFilePath.empty() || newFilePath.empty()) {
     DebugWarning("Null input parameter [old file: " + oldFilePath +
                  ", new file: " + newFilePath + "]");
-    return;
+    return shared_ptr<Node>(nullptr);
   }
   if (IsRootDirectory(oldFilePath)) {
     DebugError("Unable to rename root");
-    return;
+    return shared_ptr<Node>(nullptr);
   }
 
   lock_guard<recursive_mutex> lock(m_mutex);
@@ -358,11 +376,11 @@ void DirectoryTree::Rename(const string &oldFilePath,
     if (Find(newFilePath).lock()) {
       DebugWarning("Cannot renameing, Node is existing for new file path " +
                    newFilePath);
-      return;
+      return node;
     }
     if (!(*node)) {
       DebugError("Node is not operable for file path " + oldFilePath);
-      return;
+      return node;
     }
 
     // Do Renaming
@@ -386,6 +404,38 @@ void DirectoryTree::Rename(const string &oldFilePath,
   else {
     DebugWarning("Node is not existing for " + oldFilePath);
   }
+
+  return node;
+}
+
+// --------------------------------------------------------------------------
+shared_ptr<Node> DirectoryTree::HardLink(const string &filePath,
+                                         const string &hardlinkPath) {
+  lock_guard<recursive_mutex> lock(m_mutex);
+  auto node = Find(filePath).lock();
+  if (!(node && *node)) {
+    DebugError("No such file " + filePath);
+    return shared_ptr<Node>(nullptr);
+  }
+  if (node->IsDirectory()) {
+    DebugError("Unable to hard link to a directory [path=" + filePath +
+               ", link=" + hardlinkPath);
+    return shared_ptr<Node>(nullptr);
+  }
+
+  auto lnkNode = make_shared<Node>(Entry(node->GetEntry()), node, "h");
+  if(!(lnkNode && *lnkNode)){
+    DebugError("Fail to create a hard link [path=" + filePath +
+    ", link=" + hardlinkPath);
+    return shared_ptr<Node>(nullptr);
+  }
+  lnkNode->SetHardLink(true);
+  node->Insert(lnkNode);
+  node->IncreaseNumLink();
+  m_map.emplace(hardlinkPath, lnkNode);
+  m_parentToChildrenMap.emplace(node->GetFilePath(), lnkNode);
+  m_currentNode = lnkNode;
+  return lnkNode;
 }
 
 // --------------------------------------------------------------------------

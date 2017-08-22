@@ -30,25 +30,39 @@ namespace Client {
 
 namespace Utils {
 
-static const char *CONTENT_TYPE_STREAM1 = "application/octet-stream";
-static const char *CONTENT_TYPE_STREAM2 = "binary/octet-stream";
-static const char *CONTENT_TYPE_DIR = "application/x-directory";
-static const char *CONTENT_TYPE_TXT = "text/plain";
 // TODO(jim): refer s3fs::get_mode, content-type to file type
 
 // Build request header of 'Range'
-// format of "bytes=start_offset-stop_offset"
+//
+// @param : start, size
+// @return: string with format of "bytes=start_offset-stop_offset"
 std::string BuildRequestRange(off_t start, size_t size);
-// format of "bytes=start_offset-"
+
+// Build request header of 'Range'
+//
+// @param : start
+// @return: string with format of "bytes=start_offset-"
 std::string BuildRequestRangeStart(off_t start);
-// format of "bytes=-suffix_length"
+
+// Build request header of 'Range'
+//
+// @param : suffix length
+// @return: string with format of "bytes=-suffix_length"
 std::string BuildRequestRangeEnd(off_t suffixLen);
 
-// Parse response header of 'Content-Range' or 'Content-Copy-Range'
-// which has format of "bytes start_offset-stop_offset/file_size"
-// Return start, body length(stop - start + 1), total file_size
+// Parse response header
+//
+// @param : 'Content-Range' or 'Content-Copy-Range'
+//          which has format of "bytes start_offset-stop_offset/file_size"
+// @return: start, body length(stop - start + 1), total file_size
 std::tuple<off_t, size_t, size_t> ParseResponseContentRange(
     const std::string &range);
+
+// Look up the mime type from the file path
+//
+// @param : e.g., "index.html"
+// @return: e.g., "text/html"
+std::string LookupMimeType(const std::string &path);
 
 }  // namespace Utils
 }  // namespace Client

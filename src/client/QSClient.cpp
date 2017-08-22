@@ -42,6 +42,7 @@
 #include "client/QSClientUtils.h"
 #include "client/QSError.h"
 #include "client/URI.h"
+#include "client/Utils.h"
 #include "data/Cache.h"
 #include "data/Directory.h"
 #include "data/FileMetaData.h"
@@ -59,6 +60,7 @@ using QingStor::PutObjectInput;
 using QingStor::QingStorService;
 using QingStor::QsConfig;  // sdk config
 
+using QS::Client::Utils::LookupMimeType;
 using QS::FileSystem::Drive;
 using QS::StringUtils::LTrim;
 using QS::TimeUtils::SecondsToRFC822GMT;
@@ -157,7 +159,36 @@ ClientError<QSError> QSClient::DeleteDirectory(const string &dirPath) {
 
 // --------------------------------------------------------------------------
 ClientError<QSError> QSClient::MakeFile(const string &filePath) {
-  return ClientError<QSError>(QSError::GOOD, false);
+  PutObjectInput input;
+  input.SetContentLength(0);  // create empty file
+  input.SetContentType(LookupMimeType(filePath));
+
+  auto outcome = GetQSClientImpl()->PutObject(filePath, &input);
+  unsigned attemptedRetries = 0;
+  while (!outcome.IsSuccess() &&
+         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+    int32_t sleepMilliseconds =
+        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                         attemptedRetries);
+    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+    outcome = GetQSClientImpl()->PutObject(filePath, &input);
+    ++attemptedRetries;
+  }
+
+  if (outcome.IsSuccess()) {
+    // As sdk doesn't return the created file meta data in PutObjectOutput,
+    // So we cannot grow the directory tree here, instead we need to call
+    // Stat to head the object again in Drive::MakeFile;
+    //
+    // auto &drive = Drive::Instance();
+    // auto &dirTree = Drive::Instance().GetDirectoryTree();
+    // if (dirTree) {
+    //   dirTree->Grow(PutObjectOutputToFileMeta());  // no implementation
+    // }
+    return ClientError<QSError>(QSError::GOOD, false);
+  } else {
+    return outcome.GetError();
+  }
 }
 
 // --------------------------------------------------------------------------

@@ -30,10 +30,11 @@ namespace Configure {
 
 using std::string;
 
-const char* const PROGRAM_NAME = "qsfs";
-const char* const VERSION = "1.0.0";
-const char* const QSFS_DEFAULT_CREDENTIALS = "/opt/qsfs/qsfs.cred";
-const char* const QSFS_DEFAULT_LOG_DIR = "/opt/qsfs/qsfs.log/";  // log dir
+static const char* const PROGRAM_NAME = "qsfs";
+static const char* const VERSION = "1.0.0";
+static const char* const QSFS_DEFAULT_CREDENTIALS = "/opt/qsfs/qsfs.cred";
+static const char* const QSFS_DEFAULT_LOG_DIR = "/opt/qsfs/qsfs.log/";  // log dir
+static const char* const QSFS_MIME_FILE = "/etc/mime.types";
 
 const char* GetProgramName() { return PROGRAM_NAME; }
 const char* GetQSFSVersion() { return VERSION; }
@@ -52,6 +53,8 @@ string GetLogDirectory() {
   auto customLogDir = QS::FileSystem::Options::Instance().GetLogDirectory();
   return customLogDir.empty() ? QSFS_DEFAULT_LOG_DIR : customLogDir;
 }
+
+string GetMimeFile() { return QSFS_MIME_FILE; }
 
 uint16_t GetPathMaxLen() { return 4096; }
 uint16_t GetNameMaxLen() { return 255; }

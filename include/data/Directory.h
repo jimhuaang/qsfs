@@ -40,6 +40,10 @@ namespace Client {
 class QSClient;
 }  // namespace Client
 
+namespace FileSystem {
+class Drive;
+}  // namespace FileSystem
+
 namespace Data {
 
 class Cache;
@@ -142,24 +146,21 @@ class Entry {
  */
 class Node {
  public:
-  Node(Entry &&entry,
-       const std::shared_ptr<Node> &parent = std::make_shared<Node>())
-      : m_entry(std::move(entry)), m_parent(parent) {
-    m_children.clear();
-  }
-
   // Ctor for root node which has no parent,
   // or for some case the parent is cleared or still not set at the time
-  Node() : Node(Entry(), std::shared_ptr<Node>(nullptr)) {}
+  Node() : m_entry(Entry()), m_parent(std::shared_ptr<Node>(nullptr)) {}
+
+  Node(Entry &&entry,
+       const std::shared_ptr<Node> &parent = std::make_shared<Node>());
 
   Node(Entry &&entry, const std::shared_ptr<Node> &parent,
-       const std::string &symbolicLink)
-      : Node(std::move(entry), parent) {
-    // must use m_entry instead of entry which is moved to m_entry now
-    if (m_entry && m_entry.GetFileSize() <= symbolicLink.size()) {
-      m_symbolicLink = std::string(symbolicLink, 0, m_entry.GetFileSize());
-    }
-  }
+       const std::string &symbolicLink);
+
+  // Not subclassing from enabled_shared_from_this, as cannot use
+  // shared_from_this in ctors.
+  // Node(Entry &&entry, std::shared_ptr<Node> &parent);
+  // Node(Entry &&entry, std::shared_ptr<Node> &parent,
+  //      const std::string &symbolicLink);
 
   Node(Node &&) = default;
   Node(const Node &) = delete;
@@ -168,12 +169,11 @@ class Node {
   ~Node();
 
  public:
-  virtual operator bool() const {
-    return m_entry ? m_entry.operator bool() : false;
-  }
+  operator bool() const { return m_entry ? m_entry.operator bool() : false; }
 
   bool IsDirectory() const { return m_entry && m_entry.IsDirectory(); }
   bool IsSymLink() const { return m_entry && m_entry.IsSymLink(); }
+  bool IsHardLink() const { return m_hardLink; }
 
  public:
   bool IsEmpty() const { return m_children.empty(); }
@@ -229,15 +229,25 @@ class Node {
 
   void SetEntry(Entry &&entry) { m_entry = std::move(entry); }
   void SetParent(const std::shared_ptr<Node> &parent) { m_parent = parent; }
+  void SetSymbolicLink(const std::string &symLnk) { m_symbolicLink = symLnk; }
+  void SetHardLink(bool isHardLink) { m_hardLink = isHardLink; }
+
+  void IncreaseNumLink() {
+    if (m_entry) {
+      m_entry.IncreaseNumLink();
+    }
+  }
 
  private:
   Entry m_entry;
   std::weak_ptr<Node> m_parent;
   std::string m_symbolicLink;
+  bool m_hardLink = false;
   FilePathToNodeUnorderedMap m_children;
 
   friend class QS::Data::Cache;  // for GetEntry
   friend class QS::Data::DirectoryTree;
+  friend class QS::FileSystem::Drive;  // for SetSymbolicLink, IncreaseNumLink
 };
 
 /**
@@ -254,38 +264,80 @@ class DirectoryTree {
   ~DirectoryTree() { m_map.clear(); }
 
  public:
+  // Get root
   std::shared_ptr<Node> GetRoot() const;
+
+  // Get current node
   std::shared_ptr<Node> GetCurrentNode() const;
+
   // TODO(jim):
   // UpdateNode
-  // Find Node by file full path
+
+  // Find node
+  //
+  // @param  : file path (absolute path)
+  // @return : node
   std::weak_ptr<Node> Find(const std::string &filePath) const;
-  // Find children by dirname which should be ending with "/"
+
+  // Find children
+  //
+  // @param  : dir name which should be ending with "/"
+  // @return : a pair of iterator stands for the range of children node
   std::pair<ChildrenMultiMapConstIterator, ChildrenMultiMapConstIterator>
   FindChildren(const std::string &dirName) const;
 
+  // Const iterator point to begin of the parent to children map
   ChildrenMultiMapConstIterator CBeginParentToChildrenMap() const;
+
+  // Const iterator point to end of the parent to children map
   ChildrenMultiMapConstIterator CEndParentToChildrenMap() const;
 
  private:
-  // Grow the directory tree.
+  // Grow the directory tree
+  //
+  // @param  : file meta data
+  // @return : the Node referencing to the file meta data
+  //
   // If the node reference to the meta data already exist, update meta data;
   // otherwise add node to the tree and build up the references.
-  void Grow(std::shared_ptr<FileMetaData> &&fileMeta);  // add or update
+  std::shared_ptr<Node> Grow(std::shared_ptr<FileMetaData> &&fileMeta);
+
+  // Grow the directory tree
+  //
+  // @param  : file meta data list
+  // @return : void
+  //
+  // This will walk through the meta data list to Grow the dir tree.
   void Grow(std::vector<std::shared_ptr<FileMetaData>> &&fileMetas);
-  // Update a directory node in the directory tree.
-  void UpdateDiretory(
+
+  // Update a directory node in the directory tree
+  //
+  // @param  : dirpath, meta data of children
+  // @return : the node has been update or null if update doesn't happen
+  std::shared_ptr<Node> UpdateDiretory(
       const std::string &dirPath,
       std::vector<std::shared_ptr<FileMetaData>> &&childrenMetas);
 
-  // Rename
-  void Rename(const std::string &oldFilePath, const std::string &newFilePath);
+  // Rename node
+  //
+  // @param  : old file path, new file path (absolute path)
+  // @return : the node has been renamed or null if rename doesn't happen
+  std::shared_ptr<Node> Rename(const std::string &oldFilePath,
+                               const std::string &newFilePath);
+
+  // Creat a hard link to a file
+  //
+  // @param  : the file path, the hard link path
+  // @return : the node of hard link to the file or null if fail to link
+  std::shared_ptr<Node> HardLink(const std::string &filePath,
+                                 const std::string &hardlinkPath);
 
  private:
   std::shared_ptr<Node> m_root;
   std::shared_ptr<Node> m_currentNode;
   mutable std::recursive_mutex m_mutex;
   FilePathToWeakNodeUnorderedMap m_map;  // record all nodes map
+
   // As we grow directory tree gradually, that means the directory tree can
   // be a partial part of the entire tree, at some point some nodes haven't
   // built the reference to its parent or children because which have not been 
@@ -294,6 +346,7 @@ class DirectoryTree {
   ParentFilePathToChildrenMultiMap m_parentToChildrenMap;
 
   friend class QS::Client::QSClient;
+  friend class QS::FileSystem::Drive;
 };
 
 }  // namespace Data

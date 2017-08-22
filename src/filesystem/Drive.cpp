@@ -16,8 +16,10 @@
 
 #include "filesystem/Drive.h"
 
+#include <assert.h>
 #include <time.h>
 
+#include <sys/stat.h>
 #include <sys/types.h>
 
 #include <future>  // NOLINT
@@ -36,6 +38,7 @@
 #include "client/TransferManagerFactory.h"
 #include "data/Cache.h"
 #include "data/Directory.h"
+#include "data/FileMetaData.h"
 #include "filesystem/Configure.h"
 
 namespace QS {
@@ -54,7 +57,9 @@ using QS::Client::TransferManagerFactory;
 using QS::Data::Cache;
 using QS::Data::ChildrenMultiMapConstIterator;
 using QS::Data::DirectoryTree;
+using QS::Data::Entry;
 using QS::Data::FileMetaData;
+using QS::Data::FileType;
 using QS::Data::FilePathToNodeUnorderedMap;
 using QS::Data::Node;
 using QS::Exception::QSException;
@@ -63,6 +68,7 @@ using QS::Utils::GetDirName;
 using QS::Utils::GetProcessEffectiveUserID;
 using QS::Utils::GetProcessEffectiveGroupID;
 using QS::Utils::IsRootDirectory;
+using std::make_shared;
 using std::pair;
 using std::shared_ptr;
 using std::string;
@@ -237,25 +243,57 @@ void Drive::DeleteDir(const string &dirPath) {
 
 // --------------------------------------------------------------------------
 void Drive::Link(const string &filePath, const string &hardlinkPath) {
-  // gdfs_link: ++entry->ref_count; node->insert(newNode(..,'h')); // locally
-  //
+  assert(!filePath.empty() && !hardlinkPath.empty());
+  if (filePath.empty() || hardlinkPath.empty()) {
+    DebugWarning("Invalid empty parameter");
+    return;
+  }
+
+  m_directoryTree->HardLink(filePath, hardlinkPath);
 }
 
 // --------------------------------------------------------------------------
 void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
-  /*   if(mode & S_IRFEG){
-      // make regular file
-      // new a fileMeta, ignore dev
-    } else {
-      // make non-directory, non-symlink file
-      // new a fileMeta considering dev
-    }
-    else make symlink file
-    */
-  // call GetClient()->MakeFile(, mode_t mode, dev_t dev);
-  // which will call m_directoryTree->Grow(fileMeta);
-  // put object
-  // TODO(jim): store symbolic link to Node, refer gdfs_mkmod, gdfs_getattr
+  assert(!filePath.empty());
+  if (filePath.empty()) {
+    DebugWarning("Invalid empty file path");
+    return;
+  }
+
+  FileType type = FileType::File;
+  if (mode & S_IFREG) {
+    type = FileType::File;
+  } else if (mode & S_IFBLK) {
+    type = FileType::Block;
+  } else if (mode & S_IFCHR) {
+    type = FileType::Character;
+  } else if (mode & S_IFIFO) {
+    type = FileType::FIFO;
+  } else if (mode & S_IFSOCK) {
+    type = FileType::Socket;
+  } else {
+    DebugWarning(
+        "Try to make a directory or symbolic link, but MakeFile is only for "
+        "creation of non-directory and non-symlink nodes. ");
+    return;
+  }
+
+  if (type == FileType::File) {
+    GetClient()->MakeFile(filePath);
+    // QSClient::MakeFile doesn't update directory tree, (refer it for details)
+    // So we call Stat asynchronizely which will update dir tree.
+    auto receivedHandler = [](const ClientError<QSError> &err) {
+      DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+    };
+    GetClient()->GetExecutor()->SubmitAsyncPrioritized(
+        receivedHandler,
+        [this, filePath] { return GetClient()->Stat(filePath); });
+  } else {
+    time_t mtime = time(NULL);
+    m_directoryTree->Grow(make_shared<FileMetaData>(
+        filePath, 0, mtime, mtime, GetProcessEffectiveUserID(),
+        GetProcessEffectiveGroupID(), mode, type, "", "", false, dev));
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -353,10 +391,27 @@ void Drive::RenameFile(const string &filePath, const string &newFilePath) {
 }
 
 // --------------------------------------------------------------------------
+// Symbolic link is a file that contains a reference to another file or dir
+// in the form of an absolute path (in qsfs) or relative path and that affects
+// pathname resolution.
 void Drive::SymLink(const string &filePath, const string &linkPath) {
-  // create a new Node in local directory tree
-  // no need to put object
-  // refer gdfs_symlik gdfs_mknod
+  assert(!filePath.empty() && !linkPath.empty());
+  if (filePath.empty() || linkPath.empty()) {
+    DebugWarning("Invalid empty parameter");
+    return;
+  }
+
+  time_t mtime = time(NULL);
+  auto lnkNode = m_directoryTree->Grow(make_shared<FileMetaData>(
+      linkPath, filePath.size(), mtime, mtime, GetProcessEffectiveUserID(),
+      GetProcessEffectiveGroupID(), Configure::GetDefineFileMode(),
+      FileType::SymLink));
+  if (lnkNode && (lnkNode)) {
+    lnkNode->SetSymbolicLink(filePath);
+  } else {
+    DebugError("Fail to create a symbolic link [path=" + filePath +
+               ", link=" + linkPath);
+  }
 }
 
 // --------------------------------------------------------------------------

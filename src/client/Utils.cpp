@@ -23,6 +23,7 @@
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
+#include "filesystem/MimeTypes.h"
 
 namespace QS {
 
@@ -30,6 +31,7 @@ namespace Client {
 
 namespace Utils {
 
+using QS::FileSystem::MimeTypes;
 using std::istream;
 using std::make_tuple;
 using std::string;
@@ -47,6 +49,11 @@ istream &expect(istream &in) {
 }
 template istream &expect<'-'>(istream &in);
 template istream &expect<'/'>(istream &in);
+
+static const char *CONTENT_TYPE_STREAM1 = "application/octet-stream";
+static const char *CONTENT_TYPE_STREAM2 = "binary/octet-stream";
+static const char *CONTENT_TYPE_DIR = "application/x-directory";
+static const char *CONTENT_TYPE_TXT = "text/plain";
 
 // --------------------------------------------------------------------------
 std::string BuildRequestRange(off_t start, size_t size) {
@@ -110,6 +117,38 @@ tuple<off_t, size_t, size_t> ParseResponseContentRange(
   } else {
     return ErrOut();
   }
+}
+
+// --------------------------------------------------------------------------
+string LookupMimeType(const string &path) {
+  string defaultMimeType(CONTENT_TYPE_STREAM1);
+
+  string::size_type lastPos = path.find_last_of('.');
+  if (lastPos == string::npos) return defaultMimeType;
+
+  // Extract the last extension
+  string ext = path.substr(1 + lastPos);
+  // If the last extension matches a mime type, return it
+  auto mimeType = MimeTypes::Instance().Find(ext);
+  if (!mimeType.empty()) return mimeType;
+
+  // Extract the second to last file exstension
+  string::size_type firstPos = path.find_first_of('.');
+  if (firstPos == lastPos) return defaultMimeType;  // there isn't a 2nd ext
+  string ext2;
+  if (firstPos != string::npos && firstPos < lastPos) {
+    string prefix = path.substr(0, lastPos);
+    // Now get the second to last file extension
+    string::size_type nextPos = prefix.find_last_of('.');
+    if (nextPos != string::npos) {
+      ext2 = prefix.substr(1 + nextPos);
+    }
+  }
+  // If the second extension matches a mime type, return it
+  mimeType = MimeTypes::Instance().Find(ext2);
+  if (!mimeType.empty()) return mimeType;
+
+  return defaultMimeType;
 }
 
 }  // namespace Utils

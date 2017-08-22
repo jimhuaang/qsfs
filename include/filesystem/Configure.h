@@ -38,6 +38,7 @@ std::string GetDefaultCredentialsFile();
 std::string GetCredentialsFile();
 std::string GetDefaultLogDirectory();
 std::string GetLogDirectory();
+std::string GetMimeFile();
 
 uint16_t GetPathMaxLen();
 uint16_t GetNameMaxLen();

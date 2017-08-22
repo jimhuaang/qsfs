@@ -17,6 +17,7 @@
 #include <iostream>
 #include <memory>
 #include <sstream>
+#include <string>
 
 #include "base/Exception.h"
 #include "base/LogMacros.h"
@@ -26,6 +27,7 @@
 #include "client/Credentials.h"
 #include "filesystem/Configure.h"
 #include "filesystem/Initializer.h"
+#include "filesystem/MimeTypes.h"
 #include "filesystem/Options.h"
 
 using QS::Client::ClientConfiguration;
@@ -37,6 +39,7 @@ using QS::Client::InitializeCredentialsProvider;
 using QS::Exception::QSException;
 using QS::FileSystem::Configure::GetCredentialsFile;
 using QS::FileSystem::Configure::GetLogDirectory;
+using QS::FileSystem::Configure::GetMimeFile;
 using QS::FileSystem::Initializer;
 using QS::FileSystem::Priority;
 using QS::FileSystem::PriorityInitFuncPair;
@@ -45,6 +48,7 @@ using QS::Logging::DefaultLog;
 using QS::Logging::InitializeLogging;
 using QS::Logging::Log;
 using QS::Utils::FileExists;
+using std::string;
 using std::unique_ptr;
 
 void LoggingInitializer() {
@@ -81,6 +85,15 @@ void ClientConfigurationInitializer() {
   ClientConfiguration::Instance().InitializeByOptions();
 }
 
+void MimeTypesInitializer() {
+  string mimeFile = GetMimeFile();
+  if (!FileExists(mimeFile)) {
+    throw QSException(mimeFile + " does not exist");
+  } else {
+    QS::FileSystem::InitializeMimeTypes(mimeFile);
+  }
+}
+
 void PrintCommandLineOptions() {
   // Notice: this should only be invoked after logging initialization
   const auto &options = QS::FileSystem::Options::Instance();
@@ -100,8 +113,11 @@ static Initializer credentialsInitializer(
 static Initializer clientConfigInitializer(
     PriorityInitFuncPair(Priority::Third, ClientConfigurationInitializer));
 
+static Initializer mimeTypesInitializer(
+    PriorityInitFuncPair(Priority::Fourth, MimeTypesInitializer));
+
 // Priority must be lower than log initializer
 static Initializer printCommandLineOpts(
-    PriorityInitFuncPair(Priority::Fourth, PrintCommandLineOptions));
+    PriorityInitFuncPair(Priority::Fifth, PrintCommandLineOptions));
 
 }  // namespace
