@@ -42,11 +42,11 @@
 #include "client/QSClientUtils.h"
 #include "client/QSError.h"
 #include "client/URI.h"
-#include "client/Utils.h"
 #include "data/Cache.h"
 #include "data/Directory.h"
 #include "data/FileMetaData.h"
 #include "filesystem/Drive.h"
+#include "filesystem/MimeTypes.h"
 
 namespace QS {
 
@@ -60,8 +60,9 @@ using QingStor::PutObjectInput;
 using QingStor::QingStorService;
 using QingStor::QsConfig;  // sdk config
 
-using QS::Client::Utils::LookupMimeType;
 using QS::FileSystem::Drive;
+using QS::FileSystem::GetDirectoryMimeType;
+using QS::FileSystem::LookupMimeType;
 using QS::StringUtils::LTrim;
 using QS::TimeUtils::SecondsToRFC822GMT;
 using QS::Utils::AppendPathDelim;
@@ -193,7 +194,36 @@ ClientError<QSError> QSClient::MakeFile(const string &filePath) {
 
 // --------------------------------------------------------------------------
 ClientError<QSError> QSClient::MakeDirectory(const string &dirPath) {
-  return ClientError<QSError>(QSError::GOOD, false);
+  PutObjectInput input;
+  input.SetContentLength(0);  // directory has zero length
+  input.SetContentType(GetDirectoryMimeType());
+
+  auto outcome = GetQSClientImpl()->PutObject(dirPath, &input);
+  unsigned attemptedRetries = 0;
+  while (!outcome.IsSuccess() &&
+         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+    int32_t sleepMilliseconds =
+        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                         attemptedRetries);
+    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+    outcome = GetQSClientImpl()->PutObject(dirPath, &input);
+    ++attemptedRetries;
+  }
+
+  if (outcome.IsSuccess()) {
+    // As sdk doesn't return the created file meta data in PutObjectOutput,
+    // So we cannot grow the directory tree here, instead we need to call
+    // Stat to head the object again in Drive::MakeDir;
+    //
+    // auto &drive = Drive::Instance();
+    // auto &dirTree = Drive::Instance().GetDirectoryTree();
+    // if (dirTree) {
+    //   dirTree->Grow(PutObjectOutputToFileMeta());  // no implementation
+    // }
+    return ClientError<QSError>(QSError::GOOD, false);
+  } else {
+    return outcome.GetError();
+  }
 }
 
 // --------------------------------------------------------------------------

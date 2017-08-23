@@ -151,12 +151,6 @@ class Drive {
   // @return : void
   void OpenFile(const std::string &filePath);
 
-  // Open a directory
-  //
-  // @param  : dir path
-  // @return : void
-  void OpenDir(const std::string &dirPath);
-
   // Read data from a file
   //
   // @param  : file path to read data from, buf, size, offset
@@ -192,6 +186,12 @@ class Drive {
   // @param  : file path to upload to object storage
   // @return : void
   void UploadFile(const std::string &filePath);
+
+  // Change access and modification times of a file
+  //
+  // @param  : file path, mtime
+  // @return : void
+  void Utimens(const std::string &path, time_t mtime);
 
   // Write a file
   //

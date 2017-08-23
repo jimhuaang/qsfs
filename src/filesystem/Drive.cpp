@@ -298,9 +298,25 @@ void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
 
 // --------------------------------------------------------------------------
 void Drive::MakeDir(const string &dirPath, mode_t mode) {
-  // Call GetClient()->MakeDirectory();
-  // whicl will call putObject to create a dir
-  // and call m_directorytree->Grow(fileMata)
+  assert(!dirPath.empty());
+  if (dirPath.empty()) {
+    DebugWarning("Invalid empty dir path");
+    return;
+  }
+  if (!(mode & S_IFDIR)) {
+    DebugWarning("Try to make a non-directory file. ");
+    return;
+  }
+
+  string path = AppendPathDelim(dirPath);
+  GetClient()->MakeDirectory(path);
+  // QSClient::MakeDirectory doesn't update directory tree,
+  // So we call Stat asynchronizely which will update dir tree.
+  auto receivedHandler = [](const ClientError<QSError> &err) {
+    DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+  };
+  GetClient()->GetExecutor()->SubmitAsyncPrioritized(
+      receivedHandler, [this, path] { return GetClient()->Stat(path); });
 }
 
 // --------------------------------------------------------------------------
@@ -308,11 +324,6 @@ void Drive::OpenFile(const string &filePath) {
   // call GetClient->HeadFile
   // call call GetClient->GetObject asynchornizeing download object
   // call m_directoryTree->Open a file to set entry with fileOpen = true
-}
-
-// --------------------------------------------------------------------------
-void Drive::OpenDir(const string &dirPath) {
-  //
 }
 
 // --------------------------------------------------------------------------
@@ -444,6 +455,14 @@ void Drive::UploadFile(const string &filePath) {
   // node->SetNeedUpload(false);  // Done upload
 }
 
+// --------------------------------------------------------------------------
+void Drive::Utimens(const string &path, time_t mtime){
+// need to use sdk meta data api
+// x-qs-meta-mtime
+// x-qs-copy-source
+// x-qs-metadata-directive = REPLACE
+// or just do this locallay for now
+}
 // --------------------------------------------------------------------------
 void Drive::WriteFile(const string &filePath, const char *buf, size_t size,
                       off_t offset) {

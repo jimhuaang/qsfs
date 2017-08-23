@@ -423,7 +423,7 @@ shared_ptr<Node> DirectoryTree::HardLink(const string &filePath,
     return shared_ptr<Node>(nullptr);
   }
 
-  auto lnkNode = make_shared<Node>(Entry(node->GetEntry()), node, "h");
+  auto lnkNode = make_shared<Node>(Entry(node->GetEntry()), node);
   if(!(lnkNode && *lnkNode)){
     DebugError("Fail to create a hard link [path=" + filePath +
     ", link=" + hardlinkPath);

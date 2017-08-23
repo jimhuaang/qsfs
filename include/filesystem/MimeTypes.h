@@ -60,6 +60,24 @@ class MimeTypes {
   friend void InitializeMimeTypes(const std::string &mimeFile);
 };
 
+// Look up the mime type from the file path
+//
+// @param  : e.g., "index.html"
+// @return : e.g., "text/html"
+std::string LookupMimeType(const std::string &path);
+
+// Get mime type for directory
+//
+// @param  : void
+// @return : dir mime type
+std::string GetDirectoryMimeType();
+
+// Get mime type for text file
+//
+// @param  : void
+// @return : text mime type
+std::string GetTextMimeType();
+
 }  // namespace FileSystem
 }  // namespace QS
 

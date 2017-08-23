@@ -58,12 +58,6 @@ std::string BuildRequestRangeEnd(off_t suffixLen);
 std::tuple<off_t, size_t, size_t> ParseResponseContentRange(
     const std::string &range);
 
-// Look up the mime type from the file path
-//
-// @param  : e.g., "index.html"
-// @return : e.g., "text/html"
-std::string LookupMimeType(const std::string &path);
-
 }  // namespace Utils
 }  // namespace Client
 }  // namespace QS
