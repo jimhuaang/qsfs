@@ -38,6 +38,7 @@ namespace Client {
 class TransferManager;
 class TransferHandle;
 class Part;
+class QSTransferManager;
 
 using PartIdToPartMap = std::map<uint16_t, std::shared_ptr<Part> >;
 
@@ -64,9 +65,10 @@ class Part {
   std::shared_ptr<std::iostream> GetDownloadPartStream() const {
     return atomic_load(&m_downloadPartStream);
   }
-  std::shared_ptr<std::vector<char> > GetDownloadBuffer() const {
+
+/*   std::shared_ptr<std::vector<char> > GetDownloadBuffer() const {
     return atomic_load(&m_downloadBuffer);
-  }
+  } */
 
  private:
   void Reset() { m_currentProgress = 0; }
@@ -84,9 +86,10 @@ class Part {
       std::shared_ptr<std::iostream> downloadPartStream) {
     atomic_store(&m_downloadPartStream, downloadPartStream);
   }
-  void SetDownloadBuffer(std::shared_ptr<std::vector<char> > downloadBuffer) {
+
+/*   void SetDownloadBuffer(std::shared_ptr<std::vector<char> > downloadBuffer) {
     atomic_store(&m_downloadBuffer, downloadBuffer);
-  }
+  } */
 
  private:
   uint16_t m_partId;
@@ -97,13 +100,12 @@ class Part {
   size_t m_rangeBegin;
 
   // Notice: use atomic functions every time you touch the variable
-  std::shared_ptr<std::iostream> m_downloadPartStream;
+  std::shared_ptr<std::iostream> m_downloadPartStream;  // Qingstor do not use it
   // TODO(jim): condsider remove this
-  std::shared_ptr<std::vector<char> > m_downloadBuffer;
-  // std::atomic<std::iostream *> m_downloadPartStream;
-  // std::atomic<std::vector<unsigned char> *> m_downloadBuffer;
+  //std::shared_ptr<std::vector<char> > m_downloadBuffer;
 
   friend class TransferHandle;
+  friend class QSTransferManager;
 };
 
 enum class TransferStatus {
@@ -120,7 +122,14 @@ enum class TransferDirection { Upload, Download };
 
 class TransferHandle {
  public:
-  // TODO(jim): add custome ctors
+  // Ctor for Upload
+  TransferHandle(const std::string &bucket, const std::string &objKey,
+                 uint64_t totalUploadSize,
+                 const std::string &targetFilePath = std::string());
+  // Ctor for Download
+  TransferHandle(const std::string &bucket, const std::string &objKey,
+                 const std::string &targetFilePath = std::string());
+
   TransferHandle() = delete;
   TransferHandle(TransferHandle &&) = delete;
   TransferHandle(const TransferHandle &) = delete;
@@ -160,6 +169,9 @@ class TransferHandle {
 
   const ClientError<QSError> &GetError() const { return m_error; }
 
+public:
+  void WaitUntilFinished() const;
+
  private:
   void SetIsMultiPart(bool isMultipart) { m_isMultipart = isMultipart; }
   void SetMultipartId(const std::string &multipartId) {
@@ -180,11 +192,10 @@ class TransferHandle {
   // transfer manager
   void Restart() { m_cancel.store(false); }
   void UpdateStatus(TransferStatus status);
-  void WaitUntilFinished() const;
 
   void WritePartToDownloadStream(
       const std::shared_ptr<std::iostream> &partStream, size_t offset);
-  void SetDownloadStream(const std::shared_ptr<std::iostream> &downloadStream);
+  void SetDownloadStream(std::shared_ptr<std::iostream> downloadStream);
   void ReleaseDownloadStream();
   void SetTargetFilePath(const std::string &path) { m_targetFilePath = path; }
 
@@ -233,7 +244,7 @@ class TransferHandle {
 
   ClientError<QSError> m_error;
 
-  friend class TransferManager;
+  friend class QSTransferManager;
   friend class Part;
 };
 

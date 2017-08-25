@@ -35,12 +35,18 @@
 #include <utility>
 
 #include "base/HashUtils.h"
+#include "data/IOStream.h"
 
 namespace QS {
 
 namespace Client {
 class QSClient;
 }  // namespace Client
+
+namespace FileSystem {
+class Drive;
+}  // namespace FileSystem
+
 
 namespace Data {
 
@@ -86,23 +92,21 @@ class File {
     // Construct Page from a block of bytes.
     // From pointer of buffer, number of len bytes will be writen.
     // The owning file's offset is 'offset'.
-    Page(off_t offset, const char *buffer, size_t len,
-         std::shared_ptr<std::iostream> body =
-             std::make_shared<std::stringstream>());
+    Page(off_t offset, const char *buffer, size_t len );
 
     // Construct Page from a stream.
     // From stream, number of len bytes will be writen.
     // The owning file's offset is 'offset'.
-    Page(off_t offset, const std::shared_ptr<std::iostream> &stream, size_t len,
-         std::shared_ptr<std::iostream> body =
-             std::make_shared<std::stringstream>());
+    Page(off_t offset, const std::shared_ptr<std::iostream> &stream, size_t len );
 
    public:
     // Default Constructor and Constructors from stream
-    explicit Page(off_t offset = 0, size_t size = 0,
-                  std::shared_ptr<std::iostream> body =
-                      std::make_shared<std::stringstream>())
+    explicit Page(
+        off_t offset = 0, size_t size = 0,
+        std::shared_ptr<std::iostream> body = std::make_shared<IOStream>(0))
         : m_offset(offset), m_size(size), m_body(body) {}
+
+    Page(off_t offset, size_t len, std::shared_ptr<std::iostream> &&body);
 
     Page(Page &&) = default;
     Page(const Page &) = default;
@@ -187,7 +191,7 @@ class File {
   // LoadOutcome paie with first member denotes the size of bytes and the
   // second member pointing to the response stream.
   // This maybe need to change to handle multipule upload
-  using LoadOutcome = std::pair<size_t, std::shared_ptr<std::iostream>>;
+  using DownLoadOutcome = std::pair<size_t, std::shared_ptr<std::iostream>>;
 
  public:
   explicit File(time_t mtime = 0, size_t size = 0)
@@ -215,7 +219,8 @@ class File {
   // TODO(jim) : move to transfer, and fileId probably should be replaced
   // to what has stored on qingstor
   // This probobaly should be moved to transfer
-  LoadOutcome LoadFile(const std::string &fileId, off_t offset, size_t len);
+  DownLoadOutcome DownLoadFile(const Entry& entry, off_t offset,
+                               size_t len);
 
   // Write a block of bytes into pages.
   // From pointer of buffer, number of len bytes will be writen.
@@ -274,6 +279,7 @@ class File {
   friend class Cache;
 };
 
+
 class Cache {
  public:
   Cache() = default;
@@ -283,10 +289,38 @@ class Cache {
   Cache &operator=(const Cache &) = delete;
   ~Cache() = default;
 
+public:
+  // Has available free space
+  //
+  // @param  : need size
+  // @return : bool
+  //
+  // If cache files' size plus needSize surpass MaxCacheSize,
+  // then there is no avaiable needSize space.
+ bool HasFreeSpace(size_t needSize) const;  // size in byte
+
+ // Get cache size
+ size_t GetSize() const { return m_size; }
+
+ // Find the file
+ //
+ // @param  : file path (absolute path)
+ // @return : const iterator point to cache list
+ CacheListIterator Find(const std::string &filePath);
+
+ // Begin of cache list
+ CacheListIterator Begin();
+
+ // End of cache list
+ CacheListIterator End();
+
  private:
   // Read file cache into a buffer.
+  //
+  // @param  : file path, offset, buffer, len, node
+  // @return : size of bytes have been writen to buffer
+  //
   // If not found fileId in cache, create it in cache and load its pages.
-  // Number of len bytes will be writen to buffer.
   size_t Read(const std::string &fileId, off_t offset, char *buffer, size_t len,
               std::shared_ptr<Node> node);
 
@@ -304,13 +338,6 @@ class Cache {
   void Rename(const std::string &oldFileId, const std::string &newFileId);
   void SetTime(const std::string &fileId, time_t mtime);
   void Resize(const std::string &fileId, size_t newSize);
-
- public:
-  // If cache files' size plus needSize surpass MaxCacheSize,
-  // then there is no avaiable needSize space.
-  bool HasFreeSpace(size_t needSize) const;  // size in byte
-
-  size_t GetSize() const { return m_size; }
 
  private:
   // Create an empty File with fileId in cache, without checking input.
@@ -336,6 +363,7 @@ class Cache {
   FileIdToCacheListIteratorMap m_map;
 
   friend class QS::Client::QSClient;
+  friend class QS::FileSystem::Drive;
 };
 
 }  // namespace Data

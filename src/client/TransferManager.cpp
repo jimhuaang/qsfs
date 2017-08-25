@@ -16,10 +16,15 @@
 
 #include "client/TransferManager.h"
 
+#include <assert.h>
+
 #include <cmath>
 #include <memory>
+#include <mutex>  // NOLINT
 #include <utility>
+#include <vector>
 
+#include "base/LogMacros.h"
 #include "base/ThreadPool.h"
 #include "client/NullClient.h"
 #include "data/ResourceManager.h"
@@ -29,11 +34,16 @@ namespace QS {
 
 namespace Client {
 
+using QS::Data::Resource;
 using QS::Data::ResourceManager;
 using QS::Threading::ThreadPool;
 using std::make_shared;
 using std::unique_ptr;
+using std::vector;
 
+std::once_flag initOnceFlag;
+
+// --------------------------------------------------------------------------
 TransferManager::TransferManager(const TransferManagerConfigure &config)
     : m_configure(config), m_client(make_shared<NullClient>()) {
   if (GetBufferCount() > 0) {
@@ -45,6 +55,7 @@ TransferManager::TransferManager(const TransferManagerConfigure &config)
   }
 }
 
+// --------------------------------------------------------------------------
 TransferManager::~TransferManager() {
   if (!m_bufferManager) {
     return;
@@ -56,14 +67,33 @@ TransferManager::~TransferManager() {
   }
 }
 
+// --------------------------------------------------------------------------
 size_t TransferManager::GetBufferCount() const {
   return GetBufferSize() == 0 ? 0
                               : static_cast<size_t>(std::ceil(
                                     GetBufferMaxHeapSize() / GetBufferSize()));
 }
 
+// --------------------------------------------------------------------------
+void TransferManager::SetClient(const std::shared_ptr<Client> &client) {
+  assert(client);
+  if (client) {
+    m_client = client;
+    std::call_once(initOnceFlag, [this] { InitializeResources(); });
+  } else {
+    DebugError("Null client parameter");
+  }
+}
+
+// --------------------------------------------------------------------------
 void TransferManager::InitializeResources() {
-  // TODO(jim):
+  if(!m_bufferManager){
+    DebugError("Buffer Manager is null");
+    return;
+  }
+  for(uint64_t i = 0; i < GetBufferMaxHeapSize(); i += GetBufferSize()){
+    m_bufferManager->PutResource(Resource(new vector<char>(GetBufferSize())));
+  }
 }
 
 }  // namespace Client

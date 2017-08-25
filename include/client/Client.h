@@ -85,13 +85,13 @@ class Client {
 
   virtual ClientError<QSError> MakeDirectory(const std::string &dirPath) = 0;
 
-  // Rename file
+  // Move file
   //
   // @param  : file path, new file path
   // @return : ClientError
   //
-  // RenameFile will invoke dirTree and Cache renaming.
-  virtual ClientError<QSError> RenameFile(const std::string &filePath,
+  // MoveFile will invoke dirTree and Cache renaming.
+  virtual ClientError<QSError> MoveFile(const std::string &filePath,
                                           const std::string &newFilePath) = 0;
 
   virtual ClientError<QSError> RenameDirectory(const std::string &dirPath) = 0;

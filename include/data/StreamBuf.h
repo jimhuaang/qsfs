@@ -28,6 +28,8 @@ namespace QS {
 
 namespace Data {
 
+class IOSTream;
+
 using Buffer = std::unique_ptr<std::vector<char> >;
 
 /**
@@ -69,6 +71,7 @@ class StreamBuf : public std::streambuf {
   size_t m_lengthToRead;  // length in bytes to actually use in the buffer
                           // e.g. you have a 1kb buffer, but only want
                           // stream to see 500 b of it.
+  friend class IOStream;
 };
 
 }  // namespace Data

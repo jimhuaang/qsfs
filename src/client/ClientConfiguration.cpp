@@ -52,7 +52,7 @@ using std::string;
 using std::unique_ptr;
 using std::unordered_map;
 
-static const int CONNECTION_DEFAULT_RETRIES = 3;
+static const int CONNECTION_DEFAULT_RETRIES = 3;  // sdk parameter
 static const int CLIENT_DEFAULT_POOL_SIZE = 5;
 static const char *LOG_FILE_NAME = "sdk.log";
 

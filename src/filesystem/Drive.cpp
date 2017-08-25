@@ -34,6 +34,7 @@
 #include "client/ClientError.h"
 #include "client/ClientFactory.h"
 #include "client/QSError.h"
+#include "client/TransferHandle.h"
 #include "client/TransferManager.h"
 #include "client/TransferManagerFactory.h"
 #include "data/Cache.h"
@@ -51,6 +52,7 @@ using QS::Client::ClientFactory;
 using QS::Client::GetMessageForQSError;
 using QS::Client::IsGoodQSError;
 using QS::Client::QSError;
+using QS::Client::TransferHandle;
 using QS::Client::TransferManager;
 using QS::Client::TransferManagerConfigure;
 using QS::Client::TransferManagerFactory;
@@ -97,6 +99,8 @@ Drive::Drive()
 
   m_directoryTree = unique_ptr<DirectoryTree>(
       new DirectoryTree(time(NULL), uid, gid, Configure::GetRootMode()));
+  
+  m_transferManager->SetClient(m_client);
 }
 
 // --------------------------------------------------------------------------
@@ -217,16 +221,16 @@ Drive::GetChildren(const string &dirPath) {
 
 // --------------------------------------------------------------------------
 void Drive::Chmod(const std::string &filePath, mode_t mode) {
-  // TODO(jim): this need call sdk api of meta data
-  // change meta mode
-  // change ctime
+  // TODO(jim): wait for sdk api of meta data
+  // change meta mode: x-qs-meta-mode
+  // call Stat to update meta locally
 }
 
 // --------------------------------------------------------------------------
 void Drive::Chown(const std::string &filePath, uid_t uid, gid_t gid) {
-  // TODO(jim): this nedd call sdk api of meta
-  // change meta uid gid
-  // chang ctime
+  // TODO(jim): wait for sdk api of meta
+  // change meta uid gid; x-qs-meta-uid, x-qs-meta-gid
+  // call Stat to update meta locally
 }
 
 // --------------------------------------------------------------------------
@@ -329,14 +333,31 @@ void Drive::OpenFile(const string &filePath) {
 // --------------------------------------------------------------------------
 void Drive::ReadFile(const string &filePath, char *buf, size_t size,
                      off_t offset) {
-  // memset(buf, 0, size);
-  // call GetNode see if it changed
-  // store file to cache synchornizely
-  // call cache-Get()
-  // Should change access time and call GetClient->PutObject
-  // cal the size, use minmum
+  if (filePath.empty() || buf == nullptr) {
+    DebugWarning("Invalid input");
+    return;
+  }
 
-  // if node->IsEmpty(), return and debugInfo
+  // Check file
+  auto res = GetNode(filePath, false);
+  auto node = res.first.lock();
+  bool modified = res.second;
+  if (!(node && *node)) {
+    DebugError("No such file " + filePath);
+    return;
+  }
+
+  // Download file if not found in cache or if cache need update
+  auto it = m_cache->Find(filePath);
+  if (it == m_cache->End() || modified) {
+    auto handle =
+        m_transferManager->DownloadFile(node->GetEntry(), offset, size);
+    handle->WaitUntilFinished();
+    // if() check and retry
+  }
+
+  // Read from cache
+  m_cache->Read(filePath, offset, buf, size, node);
 }
 
 // --------------------------------------------------------------------------
@@ -384,7 +405,8 @@ void Drive::RenameFile(const string &filePath, const string &newFilePath) {
     }
 
     // Do Renaming
-    auto err = GetClient()->RenameFile(filePath, newPath);
+    auto err = GetClient()->MoveFile(filePath, newPath);
+
     // Update meta and invoking updating directory tree asynchronizely
     if (IsGoodQSError(err)) {
       res = GetNode(newPath, true);
@@ -431,8 +453,18 @@ void Drive::TruncateFile(const string &filePath, size_t newSize) {
   // TODO(jim): maybe we do not need this method, just call delete and write
   // node->SetNeedUpload(true);  // Mark upload
 
-  // if newSize = 0,
-  // if newSize > size, fill the hole
+  // if newSize = 0, empty file
+
+  // if newSize > size, fill the hole, Write file hole
+/*   start = newsize > entry->file_size ? entry->file_size : newsize - 1;
+  size = newsize > entry->file_size ? (newsize - entry->file_size) : (entry->file_size - newsize);
+  if (start > entry->file_size) {
+    buf = new char[size];
+    assert(buf != NULL);
+    memset(buf, 0, size);
+  } */
+
+
   // if newSize < size, resize it
 
   // update cached file
@@ -456,13 +488,16 @@ void Drive::UploadFile(const string &filePath) {
 }
 
 // --------------------------------------------------------------------------
-void Drive::Utimens(const string &path, time_t mtime){
-// need to use sdk meta data api
-// x-qs-meta-mtime
-// x-qs-copy-source
-// x-qs-metadata-directive = REPLACE
-// or just do this locallay for now
+void Drive::Utimens(const string &path, time_t mtime) {
+  // TODO(jim): wait for sdk meta data api
+  // x-qs-meta-mtime
+  // x-qs-copy-source
+  // x-qs-metadata-directive = REPLACE
+  // call Stat to update meta locally
+  // NOTE just do this with put object copy (this will delete orginal file
+  // then create a copy of it)
 }
+
 // --------------------------------------------------------------------------
 void Drive::WriteFile(const string &filePath, const char *buf, size_t size,
                       off_t offset) {

@@ -31,6 +31,7 @@ namespace QS {
 
 namespace Client {
 class Client;
+class File;
 class QSClient;
 class TransferManager;
 }
@@ -116,7 +117,7 @@ class Drive {
   // @return : void
   void DeleteFile(const std::string &filePath);
 
-  // Delete a empty directory
+  // Delete an empty directory
   //
   // @param  : dir path
   // @return : void
@@ -227,6 +228,7 @@ class Drive {
   std::unique_ptr<QS::Data::DirectoryTree> m_directoryTree;
 
   friend class QS::Client::QSClient;
+  friend class QS::Data::File;  // for transfer manager
 };
 
 }  // namespace FileSystem

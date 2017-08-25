@@ -26,8 +26,13 @@
 namespace QS {
 
 namespace Data {
+class Entry;
 class ResourceManager;
 }  // namespace Data
+
+namespace FileSystem {
+class Drive;
+}  // namespace FileSystem
 
 namespace Threading {
 class ThreadPool;
@@ -38,20 +43,27 @@ namespace Client {
 class Client;
 class TransferHandle;
 
+static const size_t DEFAULT_MAX_PARALLEL_TRANSFERS = 5;
+static const uint64_t DEFAULT_MAX_BUF_HEAP_SIZE = QS::Data::Size::MB50;
+static const uint64_t DEFAULT_MAX_BUF_SIZE = QS::Data::Size::MB5;
+
 struct TransferManagerConfigure {
   // Maximum size of the working buffers to use, default 50MB
-  uint64_t m_bufferMaxHeapSize;
+  uint64_t m_bufferMaxHeapSize = DEFAULT_MAX_BUF_HEAP_SIZE;
+
   // Memory size allocated for one transfer buffer, default 5MB
   // If you are uploading large files(e.g. larger than 50GB), this needs to be
   // specified to be a size larger than 5MB. And keeping in mind that you may
   // need to increase your max heap size if you plan on increasing buffer size.
-  uint64_t m_bufferSize;
-  // Maximum number of file transfers to run in parallel, deafult 1.
-  size_t m_maxParallelTransfers;
+  uint64_t m_bufferSize = DEFAULT_MAX_BUF_SIZE;
 
-  TransferManagerConfigure(uint64_t bufMaxHeapSize = QS::Data::Size::MB50,
-                           uint64_t bufSize = QS::Data::Size::MB5,
-                           size_t maxParallelTransfers = 1)
+  // Maximum number of file transfers to run in parallel, deafult 5.
+  size_t m_maxParallelTransfers = DEFAULT_MAX_PARALLEL_TRANSFERS;
+
+  TransferManagerConfigure(
+      uint64_t bufMaxHeapSize = DEFAULT_MAX_BUF_HEAP_SIZE,
+      uint64_t bufSize = DEFAULT_MAX_BUF_SIZE,
+      size_t maxParallelTransfers = DEFAULT_MAX_PARALLEL_TRANSFERS)
       : m_bufferMaxHeapSize(bufMaxHeapSize),
         m_bufferSize(bufSize),
         m_maxParallelTransfers(maxParallelTransfers) {}
@@ -71,7 +83,8 @@ class TransferManager {
   virtual std::shared_ptr<TransferHandle> RetryUpload() = 0;
   virtual void UploadDirectory(const std::string &directory) = 0;
 
-  virtual std::shared_ptr<TransferHandle> DownloadFile() = 0;
+  virtual std::shared_ptr<TransferHandle> DownloadFile(
+      const QS::Data::Entry& entry, off_t offset, size_t size) = 0;
   virtual std::shared_ptr<TransferHandle> RetryDownload() = 0;
   virtual void DownloadDirectory(const std::string &directory) = 0;
 
@@ -79,9 +92,13 @@ class TransferManager {
       const std::shared_ptr<TransferHandle> &handle) = 0;
 
  public:
-  uint64_t GetBufferMaxHeapSize() const { return m_configure.m_bufferMaxHeapSize; }
+  uint64_t GetBufferMaxHeapSize() const {
+    return m_configure.m_bufferMaxHeapSize;
+  }
   uint64_t GetBufferSize() const { return m_configure.m_bufferSize; }
-  size_t GetMaxParallelTransfers() const { return m_configure.m_maxParallelTransfers; }
+  size_t GetMaxParallelTransfers() const {
+    return m_configure.m_maxParallelTransfers;
+  }
   size_t GetBufferCount() const;
 
  protected:
@@ -92,6 +109,10 @@ class TransferManager {
   std::unique_ptr<QS::Data::ResourceManager> &GetBufferManager() {
     return m_bufferManager;
   }
+
+ private:
+  void SetClient(const std::shared_ptr<Client> &client);
+  friend class QS::FileSystem::Drive;
 
  private:
   void InitializeResources();

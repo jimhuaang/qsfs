@@ -24,6 +24,7 @@
 namespace QS {
 
 namespace Data {
+class Entry;
 class ResourceManager;
 }  // namespace Data
 
@@ -50,7 +51,11 @@ class NullTransferManager : public TransferManager {
   std::shared_ptr<TransferHandle> RetryUpload() override { return nullptr; }
   void UploadDirectory(const std::string &directory) override {}
 
-  std::shared_ptr<TransferHandle> DownloadFile() override { return nullptr; }
+  std::shared_ptr<TransferHandle> DownloadFile(const QS::Data::Entry& entry,
+                                               off_t offset,
+                                               size_t size) override {
+    return nullptr;
+  }
   std::shared_ptr<TransferHandle> RetryDownload() override { return nullptr; }
   void DownloadDirectory(const std::string &directory) override {}
 

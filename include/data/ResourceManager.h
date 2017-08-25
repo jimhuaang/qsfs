@@ -57,25 +57,46 @@ class ResourceManager {
 
  public:
   // Return whether or not resources are currently available for acquisition.
+  //
+  // @param  : void
+  // @return : bool
+  //
   // This is only a hint to denote the resource availability at this instant.
   // Return ture means some resource available though another thread may
   // grab them from under you.
   bool ResourcesAvailable();
 
  private:
-  // Put resouce to the pool.
+  // Put resouce to the pool
+  //
+  // @param  : resouce
+  // @return : void
+  //
   // Does not block or even touch the semaphore.
   void PutResource(Resource resource);
 
-  // Returns a resource with exclusive ownership.
+  // Returns a resource with exclusive ownership
+  //
+  // @param  : void
+  // @return : released resouce
+  //
   // You must call Release on the resource when you are finished
   // or other threads will block waiting to acquire it.
   Resource Acquire();
+
   // Release a resource back to the pool.
+  //
+  // @param  : resource
+  // @return : void
+  //
   // This will unblock one thread waiting Acquire call if any are waiting.
   void Release(Resource resource);
 
-  // Waits for all acquired resources to be released, then empty the queue.
+  // Waits for all acquired resources to be released, then empty the queue
+  //
+  // @param  : resource count
+  // @return : released resources
+  //
   // You must call ShutdownAndWait when finished with the resouce manager,
   // this will unblock the listening thread and give you a chance to
   // clean up the resouce if needed.

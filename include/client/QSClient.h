@@ -66,14 +66,14 @@ class QSClient : public Client {
 
   ClientError<QSError> MakeDirectory(const std::string &dirPath) override;
 
-  // Rename file
+  // Move file
   //
   // @param  : file path, new file path
   // @return : ClientError
   //
-  // RenameFile will invoke dirTree and Cache renaming.
-  ClientError<QSError> RenameFile(const std::string &filePath,
-                                  const std::string &newFilePath) override;
+  // MoveFile will invoke dirTree and Cache renaming.
+  ClientError<QSError> MoveFile(const std::string &sourcefilePath,
+                                const std::string &destFilePath) override;
 
   ClientError<QSError> RenameDirectory(const std::string &dirPath) override;
 

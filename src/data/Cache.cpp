@@ -24,8 +24,10 @@
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
+#include "client/TransferManager.h"
 #include "data/Directory.h"
 #include "filesystem/Configure.h"
+#include "filesystem/Drive.h"
 
 namespace QS {
 
@@ -75,9 +77,8 @@ string ToStringLine(off_t offset, size_t size) {
 }  // namespace
 
 // --------------------------------------------------------------------------
-File::Page::Page(off_t offset, const char *buffer, size_t len,
-                 shared_ptr<iostream> body)
-    : m_offset(offset), m_size(len), m_body(body) {
+File::Page::Page(off_t offset, const char *buffer, size_t len)
+    : m_offset(offset), m_size(len), m_body(make_shared<IOStream>(len)) {
   bool isValidInput = IsValidInput(offset, buffer, len);
   assert(isValidInput);
   if (!isValidInput) {
@@ -98,9 +99,8 @@ File::Page::Page(off_t offset, const char *buffer, size_t len,
 }
 
 // --------------------------------------------------------------------------
-File::Page::Page(off_t offset, const shared_ptr<iostream> &instream, size_t len,
-                 shared_ptr<iostream> body)
-    : m_offset(offset), m_size(len), m_body(body) {
+File::Page::Page(off_t offset, const shared_ptr<iostream> &instream, size_t len)
+    : m_offset(offset), m_size(len), m_body(make_shared<IOStream>(len)) {
   bool isValidInput = offset >= 0 && len > 0 && instream;
   assert(isValidInput);
   if (!isValidInput) {
@@ -121,6 +121,10 @@ File::Page::Page(off_t offset, const shared_ptr<iostream> &instream, size_t len,
   DebugErrorIf(m_body->fail(),
                "Fail to new a page from stream " + ToStringLine(offset, len));
 }
+
+// --------------------------------------------------------------------------
+File::Page::Page(off_t offset, size_t len, shared_ptr<iostream> &&body)
+    : m_offset(offset), m_size(len), m_body(std::move(body)) {}
 
 // --------------------------------------------------------------------------
 bool File::Page::Refresh(off_t offset, char *buffer, size_t len) {
@@ -184,19 +188,20 @@ size_t File::Page::UnguardedRead(off_t offset, char *buffer, size_t len) {
 // --------------------------------------------------------------------------
 File::ReadOutcome File::Read(off_t offset, size_t len,
                              Entry *entry) {
-  bool isValidInput = offset >= 0 && len > 0 && entry != nullptr && (*entry);
-  assert(isValidInput);
-  if (!isValidInput) {
-    DebugError("Fail to read file with invalid input " +
-               ToStringLine(offset, len));
-    return {0, list<shared_ptr<Page>>()};
-  }
+  // Cache already check input.
+  // bool isValidInput = offset >= 0 && len > 0 && entry != nullptr && (*entry);
+  // assert(isValidInput);
+  // if (!isValidInput) {
+  //   DebugError("Fail to read file with invalid input " +
+  //              ToStringLine(offset, len));
+  //   return {0, list<shared_ptr<Page>>()};
+  // }
 
   size_t outcomeSize = 0;
   list<shared_ptr<Page>> outcomePages;
   auto LoadFileAndAddPage = [this, &entry, &outcomeSize, &outcomePages](
       off_t offset, size_t len) {
-    auto outcome = LoadFile(entry->GetFilePath(), offset, len);
+    auto outcome = DownLoadFile(*entry, offset, len);
     if (outcome.first > 0 && outcome.second) {
       auto res = UnguardedAddPage(offset, outcome.second, outcome.first);
       if (res.second) {
@@ -279,24 +284,26 @@ File::ReadOutcome File::Read(off_t offset, size_t len,
 }
 
 // --------------------------------------------------------------------------
-File::LoadOutcome File::LoadFile(const std::string &fileId, off_t offset,
-                                 size_t len) {
+File::DownLoadOutcome File::DownLoadFile(const Entry &entry,
+                                         off_t offset, size_t len) {
   size_t size = 0;
   auto stream = make_shared<stringstream>();
-  // TODO(jim): wrapper sdk request
-  // And move this to transfer
+  // TODO(jim): 
+  QS::FileSystem::Drive::Instance().GetTransferManager()->DownloadFile(
+      entry, offset, len);
   return {size, stream};
 }
 
 // --------------------------------------------------------------------------
 bool File::Write(off_t offset, char *buffer, size_t len, time_t mtime) {
-  bool isValidInput = IsValidInput(offset, buffer, len);
-  assert(isValidInput);
-  if (!isValidInput) {
-    DebugError("Fail to write file with invalid input " +
-               ToStringLine(offset, buffer, len));
-    return false;
-  }
+  // Cache has checked input.
+  // bool isValidInput = IsValidInput(offset, buffer, len);
+  // assert(isValidInput);
+  // if (!isValidInput) {
+  //   DebugError("Fail to write file with invalid input " +
+  //              ToStringLine(offset, buffer, len));
+  //   return false;
+  // }
 
   auto AddPageAndUpdateTime = [this, mtime](off_t offset, char *buffer,
                                             size_t len) -> bool {
@@ -465,6 +472,23 @@ std::pair<File::PageSetConstIterator, bool> File::UnguardedAddPage(
   }
   return res;
 }
+
+// --------------------------------------------------------------------------
+bool Cache::HasFreeSpace(size_t size) const {
+  return GetSize() + size < QS::FileSystem::Configure::GetMaxFileCacheSize();
+}
+
+// --------------------------------------------------------------------------
+CacheListIterator Cache::Find(const string &filePath){
+  auto it = m_map.find(filePath);
+  return it != m_map.end() ? it->second : m_cache.end();
+}
+
+// --------------------------------------------------------------------------
+CacheListIterator Cache::Begin() { return m_cache.begin(); }
+
+// --------------------------------------------------------------------------
+CacheListIterator Cache::End() { return m_cache.end(); }
 
 // --------------------------------------------------------------------------
 size_t Cache::Read(const string &fileId, off_t offset, char *buffer, size_t len,
@@ -662,11 +686,6 @@ void Cache::Resize(const string &fileId, size_t newSize) {
   } else {
     DebugWarning("Try to resize file " + fileId + " which is not found. Go on");
   }
-}
-
-// --------------------------------------------------------------------------
-bool Cache::HasFreeSpace(size_t size) const {
-  return GetSize() + size < QS::FileSystem::Configure::GetMaxFileCacheSize();
 }
 
 // --------------------------------------------------------------------------
