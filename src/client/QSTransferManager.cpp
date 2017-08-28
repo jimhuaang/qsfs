@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 #include <memory>
 #include <string>
 
@@ -27,11 +28,13 @@
 #include "client/ClientConfiguration.h"
 #include "client/TransferHandle.h"
 #include "data/Directory.h"
+#include "data/IOStream.h"
 
 namespace QS {
 
 namespace Client {
 
+using std::iostream;
 using std::make_shared;
 using std::shared_ptr;
 using std::string;
@@ -43,7 +46,8 @@ void QSTransferManager::UploadDirectory(const std::string &directory) {}
 
 // --------------------------------------------------------------------------
 shared_ptr<TransferHandle> QSTransferManager::DownloadFile(
-    const QS::Data::Entry &entry, off_t offset, size_t size) {
+    const QS::Data::Entry &entry, off_t offset, size_t size,
+    shared_ptr<iostream> downloadStream) {
   // Check size
   string bucket = ClientConfiguration::Instance().GetBucket();
   string filePath = entry.GetFilePath();
@@ -61,15 +65,11 @@ shared_ptr<TransferHandle> QSTransferManager::DownloadFile(
 
   // Do download synchronizely for requested file part
   auto handle = PrepareDownload(bucket, filePath, downloadSize);
+  handle->SetDownloadStream(downloadStream);
   DoDownload(handle);
 
-  // Do download aysnchornizely for remaining file part
-  if (remainingSize > 0) {
-    // callback
-
-    auto handle = PrepareDownload(bucket, filePath, remainingSize);
-    DoDownload(handle);
-  }
+  // following the aws case to only set downloadstream for single case
+  // otherwise use the buffer, at the end combine them to download stream
 
   return handle;
 }

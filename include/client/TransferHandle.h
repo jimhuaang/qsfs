@@ -157,7 +157,6 @@ class TransferHandle {
   bool ShouldContinue() const { return !m_cancel.load(); }
   TransferStatus GetStatus() const;
 
-  size_t GetDownloadStreamOutputSize() const;
   const std::string &GetTargetFilePath() const { return m_targetFilePath; }
 
   const std::string &GetBucket() const { return m_bucket; }

@@ -19,6 +19,7 @@
 
 #include "data/ResourceManager.h"
 
+#include <iostream>
 #include <memory>
 
 #include "data/Size.h"
@@ -84,7 +85,8 @@ class TransferManager {
   virtual void UploadDirectory(const std::string &directory) = 0;
 
   virtual std::shared_ptr<TransferHandle> DownloadFile(
-      const QS::Data::Entry& entry, off_t offset, size_t size) = 0;
+      const QS::Data::Entry &entry, off_t offset, size_t size,
+      std::shared_ptr<std::iostream> downloadStream) = 0;
   virtual std::shared_ptr<TransferHandle> RetryDownload() = 0;
   virtual void DownloadDirectory(const std::string &directory) = 0;
 

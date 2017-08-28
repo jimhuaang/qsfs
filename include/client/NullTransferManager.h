@@ -48,15 +48,19 @@ class NullTransferManager : public TransferManager {
 
  public:
   std::shared_ptr<TransferHandle> UploadFile() override { return nullptr; }
+
   std::shared_ptr<TransferHandle> RetryUpload() override { return nullptr; }
+  
   void UploadDirectory(const std::string &directory) override {}
 
-  std::shared_ptr<TransferHandle> DownloadFile(const QS::Data::Entry& entry,
-                                               off_t offset,
-                                               size_t size) override {
+  std::shared_ptr<TransferHandle> DownloadFile(
+      const QS::Data::Entry &entry, off_t offset, size_t size,
+      std::shared_ptr<std::iostream> downStream) override {
     return nullptr;
   }
+
   std::shared_ptr<TransferHandle> RetryDownload() override { return nullptr; }
+
   void DownloadDirectory(const std::string &directory) override {}
 
   void AbortMultipartUpload(

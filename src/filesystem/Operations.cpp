@@ -993,45 +993,42 @@ int qsfs_read(const char* path, char* buf, size_t size, off_t offset,
     return -EINVAL;
   }
 
-  int ret = 0;
+  int readSize = 0;
   auto& drive = Drive::Instance();
   try {
     // Check if file exists
     auto node = drive.GetNode(path, false).first.lock();
     if (!(node && *node)) {
-      ret = -ENOENT;  // No such file or directory
+      //ret = -ENOENT;  // No such file or directory
       throw QSException("No such file " + FormatArg(path));
     }
 
     // Check if it is a directory
     if (node->IsDirectory()) {
-      ret = -EPERM;  // operation not permitted
+      //ret = -EPERM;  // operation not permitted
       throw QSException("Not a file, but a directory " + FormatArg(path));
     }
 
     // Check access permission
     if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), R_OK)) {
-      ret = -EACCES;  // Permission denied
+      //ret = -EACCES;  // Permission denied
       throw QSException("No read permission for path " + FormatArg(path));
     }
 
     // Do Read
     try {
-      drive.ReadFile(path, buf, size, offset);
+      readSize = drive.ReadFile(path, buf, size, offset);
     } catch (const QSException& err) {
-      ret = -EAGAIN;  // try again
+      // readSize = -EAGAIN;  // try again
       throw;          // rethrow
     }
 
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
-      ret = -errno;
-    }
-    return ret;
+    return readSize;
   }
 
-  return ret;
+  return readSize;
 }
 
 // --------------------------------------------------------------------------

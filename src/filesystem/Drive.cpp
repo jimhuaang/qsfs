@@ -40,6 +40,7 @@
 #include "data/Cache.h"
 #include "data/Directory.h"
 #include "data/FileMetaData.h"
+#include "data/IOStream.h"
 #include "filesystem/Configure.h"
 
 namespace QS {
@@ -63,8 +64,10 @@ using QS::Data::Entry;
 using QS::Data::FileMetaData;
 using QS::Data::FileType;
 using QS::Data::FilePathToNodeUnorderedMap;
+using QS::Data::IOStream;
 using QS::Data::Node;
 using QS::Exception::QSException;
+using QS::FileSystem::Configure::GetMaxFileCacheSize;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::GetDirName;
 using QS::Utils::GetProcessEffectiveUserID;
@@ -74,6 +77,7 @@ using std::make_shared;
 using std::pair;
 using std::shared_ptr;
 using std::string;
+using std::to_string;
 using std::unique_ptr;
 using std::vector;
 using std::weak_ptr;
@@ -331,33 +335,77 @@ void Drive::OpenFile(const string &filePath) {
 }
 
 // --------------------------------------------------------------------------
-void Drive::ReadFile(const string &filePath, char *buf, size_t size,
-                     off_t offset) {
+size_t Drive::ReadFile(const string &filePath, char *buf, size_t size,
+                       off_t offset) {
   if (filePath.empty() || buf == nullptr) {
     DebugWarning("Invalid input");
-    return;
+    return 0;
   }
 
+  if (size > GetMaxFileCacheSize()){
+    DebugError("Input size surpass max file cache size");
+    return 0;
+  }
+  
   // Check file
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();
   bool modified = res.second;
   if (!(node && *node)) {
     DebugError("No such file " + filePath);
-    return;
+    return 0;
+  }
+
+  size_t downloadSize = size;
+  size_t remainingSize = 0;
+  auto fileSize = node->GetFileSize();
+  if (offset + size > fileSize) {
+    DebugWarning("Input overflow [file:offset:size:totalsize = " + filePath +
+                 ":" + to_string(offset) + ":" + to_string(size) + ":" +
+                 to_string(fileSize) + "]. Ajust it");
+    downloadSize = fileSize - offset;
+  } else {
+    remainingSize = fileSize - (offset + size);
   }
 
   // Download file if not found in cache or if cache need update
   auto it = m_cache->Find(filePath);
   if (it == m_cache->End() || modified) {
-    auto handle =
-        m_transferManager->DownloadFile(node->GetEntry(), offset, size);
+    // download synchronizely for request file part
+    auto stream = make_shared<IOStream>(downloadSize);
+    auto handle = m_transferManager->DownloadFile(node->GetEntry(), offset,
+                                                  downloadSize, stream);
+
+    // download aysnchornizely for partial remaining file part
+    if (remainingSize > 0) {
+      // adjust the size
+      auto downloadSize_ = 2 * downloadSize < GetMaxFileCacheSize()
+                               ? downloadSize
+                               : GetMaxFileCacheSize() - downloadSize;
+      off_t offset_ = offset + downloadSize;
+      auto stream_ = make_shared<IOStream>(remainingSize);
+      time_t mtime = node->GetMTime();
+
+      auto callback = [this, filePath, offset_, stream_,
+                       mtime](const shared_ptr<TransferHandle> &handle) {
+        handle->WaitUntilFinished();
+        m_cache->Write(filePath, offset_, std::move(stream_), mtime);
+      };
+
+      GetClient()->GetExecutor()->SubmitAsync(
+          callback, [this, node, offset_, downloadSize_, stream_]() {
+            return m_transferManager->DownloadFile(node->GetEntry(), offset_,
+                                                   downloadSize_, stream_);
+          });
+    }
+
+    // waiting for download to finish for request file part
     handle->WaitUntilFinished();
-    // if() check and retry
+    m_cache->Write(filePath, offset, std::move(stream), node->GetMTime());
   }
 
   // Read from cache
-  m_cache->Read(filePath, offset, buf, size, node);
+  return m_cache->Read(filePath, offset, downloadSize, buf, node);
 }
 
 // --------------------------------------------------------------------------

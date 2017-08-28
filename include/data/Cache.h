@@ -47,7 +47,6 @@ namespace FileSystem {
 class Drive;
 }  // namespace FileSystem
 
-
 namespace Data {
 
 class Entry;
@@ -89,25 +88,30 @@ class File {
     bool m_loaded = false;  // denote if the page has been loaded TODO(jim):
     std::shared_ptr<std::iostream> m_body;  // stream storing the bytes
 
-    // Construct Page from a block of bytes.
+   public:
+    // Construct Page from a block of bytes
+    //
+    // @param  : file offset, len of bytes, buffer
+    // @return :
+    //
     // From pointer of buffer, number of len bytes will be writen.
     // The owning file's offset is 'offset'.
-    Page(off_t offset, const char *buffer, size_t len );
+    Page(off_t offset, size_t len, const char *buffer);
 
-    // Construct Page from a stream.
+    // Construct Page from a stream
+    //
+    // @param  : file offset, len of bytes, stream
+    // @return :
+    //
     // From stream, number of len bytes will be writen.
     // The owning file's offset is 'offset'.
-    Page(off_t offset, const std::shared_ptr<std::iostream> &stream, size_t len );
-
-   public:
-    // Default Constructor and Constructors from stream
-    explicit Page(
-        off_t offset = 0, size_t size = 0,
-        std::shared_ptr<std::iostream> body = std::make_shared<IOStream>(0))
-        : m_offset(offset), m_size(size), m_body(body) {}
+    Page(off_t offset, size_t len,
+         const std::shared_ptr<std::iostream> &stream);
 
     Page(off_t offset, size_t len, std::shared_ptr<std::iostream> &&body);
 
+   public:
+    Page() = delete;
     Page(Page &&) = default;
     Page(const Page &) = default;
     Page &operator=(Page &&) = default;
@@ -120,54 +124,74 @@ class File {
     // Return the offset of the next successive page.
     off_t Next() const { return m_offset + m_size; }
 
-    // Refresh the page's partial content starting from 'offset - m_offset'
-    // with size of 'len'.
-    // May enlarge the page's size depended on 'len'.
-    bool Refresh(off_t offset, char *buffer, size_t len);
+    // Return the size
+    size_t Size() const { return m_size; }
 
-    // Read the page's partial content starting from 'offset - m_offset'
-    // with size of 'len', with checking.
-    size_t Read(off_t offset, char *buffer, size_t len);
+    // Return the offset
+    off_t Offset() const { return m_offset; }
+
+    // Refresh the page's partial content
+    //
+    // @param  : file offset, len of bytes to update, buffer poiner
+    // @return : bool
+    //
+    // May enlarge the page's size depended on 'len'.
+    bool Refresh(off_t offset, size_t len, char *buffer);
+
+    // Read the page's content
+    //
+    // @param  : file offset, len of bytes to read, buffer
+    // @return : size of readed bytes
+    size_t Read(off_t offset, size_t len, char *buffer);
 
    private:
-    // Refreseh the page's partial content starting from 'offset - m_offset'
-    // with size of 'len', without checking.
-    bool UnguardedRefresh(off_t offset, char *buffer, size_t len);
+    // Set stream
+    void SetStream(std::shared_ptr<std::iostream> && stream);
 
-    // Refresh the page's partial content staring from 'offset - m_offset'
-    // with page's remaining size, without checking.
+    // Refreseh the page's partial content without checking.
+    // Starting from file offset, len of bytes will be updated.
+    // For internal use only.
+    bool UnguardedRefresh(off_t offset, size_t len, char *buffer);
+
+    // Refresh the page's partial content without checking.
+    // Starting from file offset, all the page's remaining size will be updated.
+    // For internal use only.
     bool UnguardedRefresh(off_t offset, char *buffer) {
-      return UnguardedRefresh(offset, buffer, Next() - offset);
+      return UnguardedRefresh(offset, Next() - offset, buffer);
     }
 
     // Refresh the page's entire content with bytes from buffer,
     // without checking.
+    // For internal use only.
     bool UnguardedRefresh(char *buffer) {
-      return UnguardedRefresh(m_offset, buffer, m_size);
+      return UnguardedRefresh(m_offset, m_size, buffer);
     }
 
     // Do a lazy resize for page.
     void Resize(size_t smallerSize);
 
-    // Read the page's partial content starting from 'offset - m_offset'
-    // with size of 'len', without checking.
-    size_t UnguardedRead(off_t offset, char *buffer, size_t len);
+    // Read the page's partial content without checking
+    // Starting from file offset, len of bytes will be read.
+    // For internal use only.
+    size_t UnguardedRead(off_t offset, size_t len, char *buffer);
 
-    // Read the page's partial content starting from 'offset - m_offset'
-    // with page's remaining size, without checking.
+    // Read the page's partial content without checking
+    // Starting from file offset, all the page's remaining size will be read.
+    // For internal use only.
     size_t UnguardedRead(off_t offset, char *buffer) {
-      return UnguardedRead(offset, buffer, Next() - offset);
+      return UnguardedRead(offset, Next() - offset, buffer);
     }
 
-    // Read the page's partial content starting from 'm_offset'
-    // with size of 'len', without checking.
-    size_t UnguardedRead(char *buffer, size_t len) {
-      return UnguardedRead(m_offset, buffer, len);
+    // Read the page's partial content without checking
+    // For internal use only.
+    size_t UnguardedRead(size_t len, char *buffer) {
+      return UnguardedRead(m_offset, len, buffer);
     }
 
     // Read the page's entire content to buffer.
+    // For internal use only.
     size_t UnguardedRead(char *buffer) {
-      return UnguardedRead(m_offset, buffer, m_size);
+      return UnguardedRead(m_offset, m_size, buffer);
     }
 
     friend class File;
@@ -207,10 +231,16 @@ class File {
   size_t GetSize() const { return m_size.load(); }
 
  private:
-  // Read from the cache (file pages), given a file offset and len of bytes.
-  // If any bytes is not present, load it as a new page.
+  // Read from the cache (file pages)
+  //
+  // @param  : file offset, len of bytes, entry(meta data of file)
+  // @return : a pair of {read size, page list containing data}
+  //
+  // If the file mtime is newer than m_mtime, clear cache and download file.
+  // If any bytes is not present, download it as a new page.
   // Pagelist of outcome is sorted by page offset.
-  // Notes the pagelist of outcome could containing more bytes than given
+  //
+  // Notes: the pagelist of outcome could containing more bytes than given
   // input asking for, for example, the 1st page of outcome could has a
   // offset which is ahead of input 'offset'.
   ReadOutcome Read(off_t offset, size_t len, Entry *entry);
@@ -219,13 +249,26 @@ class File {
   // TODO(jim) : move to transfer, and fileId probably should be replaced
   // to what has stored on qingstor
   // This probobaly should be moved to transfer
-  DownLoadOutcome DownLoadFile(const Entry& entry, off_t offset,
-                               size_t len);
+  DownLoadOutcome DownLoadFile(const Entry &entry, off_t offset, size_t len);
 
-  // Write a block of bytes into pages.
+  // Write a block of bytes into pages
+  //
+  // @param  : file offset, len, buffer, modification time
+  // @return : bool
+  //
   // From pointer of buffer, number of len bytes will be writen.
-  // The owning file's offset is 'offset'.
-  bool Write(off_t offset, char *buffer, size_t len, time_t mtime);
+  // The owning file's offset is set with 'offset'.
+  bool Write(off_t offset, size_t len, char *buffer, time_t mtime);
+
+  // Write stream into pages
+  //
+  // @param  : file offset, len of stream, stream, modification time
+  // @return : bool
+  //
+  // The stream will be moved to the pages.
+  // The owning file's offset is set with 'offset'.
+  bool Write(off_t offset, size_t len, std::shared_ptr<std::iostream> &&stream,
+             time_t mtime);
 
   // Resize the total pages' size to a smaller size.
   void Resize(size_t smallerSize);
@@ -233,6 +276,7 @@ class File {
   // Clear pages and reset attributes.
   void Clear();
 
+  // Set modification time
   void SetTime(time_t mtime) { m_mtime.store(mtime); }
 
   // Returns an iterator pointing to the first Page that is not ahead of offset.
@@ -264,10 +308,13 @@ class File {
   // Add a new page from a block of character without checking input.
   // Not-Synchronized
   std::pair<PageSetConstIterator, bool> UnguardedAddPage(off_t offset,
-                                                         char *buffer,
-                                                         size_t len);
+                                                         size_t len,
+                                                         char *buffer);
   std::pair<PageSetConstIterator, bool> UnguardedAddPage(
-      off_t offset, const std::shared_ptr<std::iostream> &stream, size_t len);
+      off_t offset, size_t len, const std::shared_ptr<std::iostream> &stream);
+
+  std::pair<PageSetConstIterator, bool> UnguardedAddPage(
+      off_t offset, size_t len, std::shared_ptr<std::iostream> &&stream);
 
  private:
   std::atomic<time_t> m_mtime;  // time of last modification
@@ -279,7 +326,6 @@ class File {
   friend class Cache;
 };
 
-
 class Cache {
  public:
   Cache() = default;
@@ -289,7 +335,7 @@ class Cache {
   Cache &operator=(const Cache &) = delete;
   ~Cache() = default;
 
-public:
+ public:
   // Has available free space
   //
   // @param  : need size
@@ -297,39 +343,58 @@ public:
   //
   // If cache files' size plus needSize surpass MaxCacheSize,
   // then there is no avaiable needSize space.
- bool HasFreeSpace(size_t needSize) const;  // size in byte
+  bool HasFreeSpace(size_t needSize) const;  // size in byte
 
- // Get cache size
- size_t GetSize() const { return m_size; }
+  // Get cache size
+  size_t GetSize() const { return m_size; }
 
- // Find the file
- //
- // @param  : file path (absolute path)
- // @return : const iterator point to cache list
- CacheListIterator Find(const std::string &filePath);
+  // Find the file
+  //
+  // @param  : file path (absolute path)
+  // @return : const iterator point to cache list
+  CacheListIterator Find(const std::string &filePath);
 
- // Begin of cache list
- CacheListIterator Begin();
+  // Begin of cache list
+  CacheListIterator Begin();
 
- // End of cache list
- CacheListIterator End();
+  // End of cache list
+  CacheListIterator End();
 
  private:
-  // Read file cache into a buffer.
+  // Read file cache into a buffer
   //
-  // @param  : file path, offset, buffer, len, node
+  // @param  : file path, offset, len, buffer, node
   // @return : size of bytes have been writen to buffer
   //
   // If not found fileId in cache, create it in cache and load its pages.
-  size_t Read(const std::string &fileId, off_t offset, char *buffer, size_t len,
+  size_t Read(const std::string &fileId, off_t offset, size_t len, char *buffer,
               std::shared_ptr<Node> node);
 
-  // Write a block of bytes into cache File with offset of 'offset'.
+  // Write a block of bytes into file cache
+  //
+  // @param  : file path, file offset, len, buffer, modification time
+  // @return : bool
+  //
   // If File of fileId doesn't exist, create one.
   // From pointer of buffer, number of len bytes will be writen.
-  bool Write(const std::string &fileId, off_t offset, char *buffer, size_t len,
+  bool Write(const std::string &fileId, off_t offset, size_t len, char *buffer,
              time_t mtime);
 
+  // Write stream into file cache
+  //
+  // @param  : file path, file offset, stream, modification time
+  // @return : bool
+  //
+  // If File of fileId doesn't exist, create one.
+  // Stream will be moved to cache.
+  bool Write(const std::string &fileId, off_t offset,
+             std::shared_ptr<std::iostream> &&stream, time_t mtime);
+
+  // Free cache space
+  //
+  // @param  : size need to be freed
+  // @return : bool
+  //
   // Discard the least recently used File to make sure
   // there will be number of size avaiable cache space.
   bool Free(size_t size);  // size in byte

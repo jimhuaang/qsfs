@@ -50,34 +50,6 @@ bool AllowTransition(TransferStatus current, TransferStatus next) {
   return true;
 }
 
-size_t GetStreamOutputSize(const shared_ptr<iostream> &stream) {
-  size_t sz = 0;
-  assert(stream);
-  if (stream) {
-    auto curPos = stream->tellp();
-    stream->seekp(0, std::ios_base::end);
-    sz = static_cast<size_t>(stream->tellp() - curPos);
-    stream->seekp(curPos);
-  } else {
-    DebugWarning("Try to lookup the size of a null output stream");
-  }
-  return sz;
-}
-
-size_t GetStreamInputSize(const shared_ptr<iostream> &stream) {
-  size_t sz = 0;
-  assert(stream);
-  if (stream) {
-    auto curPos = stream->tellg();
-    stream->seekg(0, std::ios_base::end);
-    sz = static_cast<size_t>(stream->tellg() - curPos);
-    stream->seekg(curPos);
-  } else {
-    DebugWarning("Try to lookup the size of a null input stream");
-  }
-  return sz;
-}
-
 }  // namespace
 
 // --------------------------------------------------------------------------
@@ -269,12 +241,6 @@ void TransferHandle::WaitUntilFinished() const {
   m_waitUntilFinishSignal.wait(lock, [this] {
     return IsFinishedStatus(m_status) && !HasPendingParts();
   });
-}
-
-// --------------------------------------------------------------------------
-size_t TransferHandle::GetDownloadStreamOutputSize() const {
-  lock_guard<recursive_mutex> lock(m_downloadStreamLock);
-  return GetStreamOutputSize(m_downloadStream);
 }
 
 // --------------------------------------------------------------------------

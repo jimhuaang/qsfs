@@ -43,9 +43,9 @@ class QSTransferManager : public TransferManager {
   std::shared_ptr<TransferHandle> RetryUpload() override;
   void UploadDirectory(const std::string &directory) override;
 
-  std::shared_ptr<TransferHandle> DownloadFile(const QS::Data::Entry& entry,
-                                               off_t offset,
-                                               size_t size) override;
+  std::shared_ptr<TransferHandle> DownloadFile(
+      const QS::Data::Entry &entry, off_t offset, size_t size,
+      std::shared_ptr<std::iostream> downloadStream) override;
   std::shared_ptr<TransferHandle> RetryDownload() override;
   void DownloadDirectory(const std::string &directory) override;
 

@@ -155,9 +155,14 @@ class Drive {
   // Read data from a file
   //
   // @param  : file path to read data from, buf, size, offset
-  // @return : void
-  void ReadFile(const std::string &filePath, char *buf, size_t size,
-                off_t offset);
+  // @return : number of bytes has been read
+  //
+  // If cannot find or file need update, download it, otherwise read from cache.
+  // For download, if besides the size need to be download for this time, the file
+  // has more data need to be download, in this case, an asynchronize task will
+  // be submit to download extra partial data of the file.
+  size_t ReadFile(const std::string &filePath, char *buf, size_t size,
+                  off_t offset);
 
   // Rename a file
   //

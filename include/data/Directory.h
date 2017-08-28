@@ -197,7 +197,10 @@ class Node {
     return m_entry ? m_entry.GetFilePath() : std::string();
   }
 
+  uint64_t GetFileSize() const { return m_entry ? m_entry.GetFileSize() : 0; }
+
   mode_t GetFileMode() const { return m_entry ? m_entry.GetFileMode() : 0; }
+  time_t GetMTime() const { return m_entry ? m_entry.GetMTime() : 0; }
   uid_t GetUID() const { return m_entry ? m_entry.GetUID() : -1; }
   bool IsNeedUpload() const { return m_entry ? m_entry.IsNeedUpload() : false; }
 
