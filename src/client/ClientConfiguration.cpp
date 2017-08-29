@@ -43,8 +43,11 @@ namespace QS {
 namespace Client {
 
 using QS::Exception::QSException;
+using QS::FileSystem::Configure::GetClientDefaultPoolSize;
 using QS::FileSystem::Configure::GetDefaultLogDirectory;
 using QS::FileSystem::Configure::GetDefineFileMode;
+using QS::FileSystem::Configure::GetQSConnectionDefaultRetries;
+using QS::FileSystem::Configure::GetQSLogFileName;
 using QS::HashUtils::EnumHash;
 using QS::HashUtils::StringHash;
 using std::call_once;
@@ -52,9 +55,6 @@ using std::string;
 using std::unique_ptr;
 using std::unordered_map;
 
-static const int CONNECTION_DEFAULT_RETRIES = 3;  // sdk parameter
-static const int CLIENT_DEFAULT_POOL_SIZE = 5;
-static const char *LOG_FILE_NAME = "sdk.log";
 
 const string &GetClientLogLevelName(ClientLogLevel level) {
   static unordered_map<ClientLogLevel, string, EnumHash> logLevelNames = {
@@ -116,12 +116,12 @@ ClientConfiguration::ClientConfiguration(const Credentials &credentials)
       m_host(Http::GetDefaultHost()),
       m_protocol(QS::Client::Http::GetDefaultProtocol()),
       m_port(Http::GetDefaultPort(m_protocol)),
-      m_connectionRetries(CONNECTION_DEFAULT_RETRIES),
+      m_connectionRetries(GetQSConnectionDefaultRetries()),
       m_additionalUserAgent(std::string()),
       m_logLevel(ClientLogLevel::Warn),
-      m_logFile(GetDefaultLogDirectory() + LOG_FILE_NAME),
+      m_logFile(GetDefaultLogDirectory() + GetQSLogFileName()),
       m_transactionRetries(Retry::DefaultMaxRetries),
-      m_clientPoolSize(CLIENT_DEFAULT_POOL_SIZE) {}
+      m_clientPoolSize(GetClientDefaultPoolSize()) {}
 
 ClientConfiguration::ClientConfiguration(const CredentialsProvider &provider)
     : ClientConfiguration(provider.GetCredentials()) {}
@@ -139,7 +139,7 @@ void ClientConfiguration::InitializeByOptions() {
     m_logLevel = ClientLogLevel::Debug;
   }
 
-  m_logFile = options.GetLogDirectory() + LOG_FILE_NAME;
+  m_logFile = options.GetLogDirectory() + GetQSLogFileName();
   FILE *log = nullptr;
   if (options.IsClearLogDir()) {
     log = fopen(m_logFile.c_str(), "wb");

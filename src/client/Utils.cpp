@@ -20,6 +20,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <utility>
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
@@ -34,6 +35,7 @@ namespace Utils {
 using QS::FileSystem::MimeTypes;
 using std::istream;
 using std::make_tuple;
+using std::pair;
 using std::string;
 using std::to_string;
 using std::tuple;
@@ -109,6 +111,38 @@ tuple<off_t, size_t, size_t> ParseResponseContentRange(
       return ErrOut();
     }
     return make_tuple(start, stop - start + 1, size);
+  } else {
+    return ErrOut();
+  }
+}
+
+// --------------------------------------------------------------------------
+pair<off_t, size_t> ParseRequestContentRange(const string &requestRange) {
+  string cpy(QS::StringUtils::Trim(requestRange, ' '));
+  assert(!cpy.empty());
+  if (cpy.empty()) {
+    DebugWarning("Invalid input with empty content range");
+    return {0, 0};
+  }
+
+  auto ErrOut = [&cpy]() -> pair<off_t, size_t> {
+    DebugWarning("Invalid input: " + cpy);
+    return {0, 0};
+  };
+
+  // format: "bytes=start_offset-stop_offset"
+  if (cpy.find("bytes=") == string::npos || cpy.find("-") == string::npos) {
+    return ErrOut();
+  }
+  cpy = cpy.substr(6);  // remove leading "bytes="
+  off_t start = 0;
+  off_t stop = 0;
+  std::istringstream in(cpy);
+  if (in >> start >> expect<'-'> >> stop) {
+    if (!(start >= 0 && stop >= start)) {
+      return ErrOut();
+    }
+    return {start, stop - start + 1};
   } else {
     return ErrOut();
   }

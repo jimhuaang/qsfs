@@ -17,6 +17,7 @@
 #include "filesystem/Drive.h"
 
 #include <assert.h>
+#include <stdint.h>
 #include <time.h>
 
 #include <sys/stat.h>
@@ -103,7 +104,7 @@ Drive::Drive()
 
   m_directoryTree = unique_ptr<DirectoryTree>(
       new DirectoryTree(time(NULL), uid, gid, Configure::GetRootMode()));
-  
+
   m_transferManager->SetClient(m_client);
 }
 
@@ -342,11 +343,11 @@ size_t Drive::ReadFile(const string &filePath, char *buf, size_t size,
     return 0;
   }
 
-  if (size > GetMaxFileCacheSize()){
+  if (size > GetMaxFileCacheSize()) {
     DebugError("Input size surpass max file cache size");
     return 0;
   }
-  
+
   // Check file
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();
@@ -356,8 +357,9 @@ size_t Drive::ReadFile(const string &filePath, char *buf, size_t size,
     return 0;
   }
 
+  // Ajust size or calculate remaining size
   size_t downloadSize = size;
-  size_t remainingSize = 0;
+  int64_t remainingSize = 0;
   auto fileSize = node->GetFileSize();
   if (offset + size > fileSize) {
     DebugWarning("Input overflow [file:offset:size:totalsize = " + filePath +
@@ -370,38 +372,53 @@ size_t Drive::ReadFile(const string &filePath, char *buf, size_t size,
 
   // Download file if not found in cache or if cache need update
   auto it = m_cache->Find(filePath);
+  auto entry = node->GetEntry();
+  time_t mtime = node->GetMTime();
   if (it == m_cache->End() || modified) {
     // download synchronizely for request file part
     auto stream = make_shared<IOStream>(downloadSize);
-    auto handle = m_transferManager->DownloadFile(node->GetEntry(), offset,
-                                                  downloadSize, stream);
+    auto handle =
+        m_transferManager->DownloadFile(entry, offset, downloadSize, stream);
 
-    // download aysnchornizely for partial remaining file part
-    if (remainingSize > 0) {
-      // adjust the size
-      auto downloadSize_ = 2 * downloadSize < GetMaxFileCacheSize()
-                               ? downloadSize
-                               : GetMaxFileCacheSize() - downloadSize;
-      off_t offset_ = offset + downloadSize;
-      auto stream_ = make_shared<IOStream>(remainingSize);
-      time_t mtime = node->GetMTime();
+    // download aysnchornizely for (partial) remaining file part (not overflow)
+    size_t downloadedSize = size;
+    size_t count = QS::FileSystem::Configure::GetDefaultMaxParallelTransfers();
+    while (remainingSize > 0 && count > 0) {
+      off_t offset_ = offset + downloadedSize;
+      size_t downloadSize_ = downloadedSize + size < GetMaxFileCacheSize()
+                                 ? size
+                                 : GetMaxFileCacheSize() - downloadedSize;
+      auto stream_ = make_shared<IOStream>(downloadSize_);
 
-      auto callback = [this, filePath, offset_, stream_,
+      auto callback = [this, filePath, offset_, downloadSize_, stream_,
                        mtime](const shared_ptr<TransferHandle> &handle) {
         handle->WaitUntilFinished();
-        m_cache->Write(filePath, offset_, std::move(stream_), mtime);
+        bool success = m_cache->Write(filePath, offset_, downloadSize_,
+                                      std::move(stream_), mtime);
+        DebugErrorIf(!success,
+                     "Fail to write cache [file:offset:len=" + filePath + ":" +
+                         to_string(offset_) + ":" + to_string(downloadSize_) +
+                         "]");
       };
 
-      GetClient()->GetExecutor()->SubmitAsync(
-          callback, [this, node, offset_, downloadSize_, stream_]() {
-            return m_transferManager->DownloadFile(node->GetEntry(), offset_,
+      GetTransferManager()->GetExecutor()->SubmitAsync(
+          callback, [this, entry, offset_, downloadSize_, stream_]() {
+            return m_transferManager->DownloadFile(entry, offset_,
                                                    downloadSize_, stream_);
           });
+
+      downloadedSize += downloadSize_;
+      remainingSize -= downloadSize_;
+      --count;
     }
 
     // waiting for download to finish for request file part
     handle->WaitUntilFinished();
-    m_cache->Write(filePath, offset, std::move(stream), node->GetMTime());
+    bool success = m_cache->Write(filePath, offset, downloadSize,
+                                  std::move(stream), mtime);
+    DebugErrorIf(!success,
+                 "Fail to write cache [file:offset:len=" + filePath + ":" +
+                     to_string(offset) + ":" + to_string(downloadSize) + "]");
   }
 
   // Read from cache
@@ -504,14 +521,14 @@ void Drive::TruncateFile(const string &filePath, size_t newSize) {
   // if newSize = 0, empty file
 
   // if newSize > size, fill the hole, Write file hole
-/*   start = newsize > entry->file_size ? entry->file_size : newsize - 1;
-  size = newsize > entry->file_size ? (newsize - entry->file_size) : (entry->file_size - newsize);
-  if (start > entry->file_size) {
-    buf = new char[size];
-    assert(buf != NULL);
-    memset(buf, 0, size);
-  } */
-
+  /*   start = newsize > entry->file_size ? entry->file_size : newsize - 1;
+    size = newsize > entry->file_size ? (newsize - entry->file_size) :
+    (entry->file_size - newsize);
+    if (start > entry->file_size) {
+      buf = new char[size];
+      assert(buf != NULL);
+      memset(buf, 0, size);
+    } */
 
   // if newSize < size, resize it
 

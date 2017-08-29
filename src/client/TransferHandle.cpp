@@ -263,11 +263,11 @@ void TransferHandle::WritePartToDownloadStream(
   m_downloadStream->flush();
 }
 
-// --------------------------------------------------------------------------
+/* // --------------------------------------------------------------------------
 void TransferHandle::SetDownloadStream(shared_ptr<iostream> downloadStream) {
   lock_guard<recursive_mutex> lock(m_downloadStreamLock);
   m_downloadStream = downloadStream;
-}
+} */
 
 // --------------------------------------------------------------------------
 void TransferHandle::ReleaseDownloadStream() {

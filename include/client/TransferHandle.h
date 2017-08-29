@@ -194,7 +194,14 @@ public:
 
   void WritePartToDownloadStream(
       const std::shared_ptr<std::iostream> &partStream, size_t offset);
-  void SetDownloadStream(std::shared_ptr<std::iostream> downloadStream);
+
+  void SetDownloadStream(std::shared_ptr<std::iostream> downloadStream) {
+    atomic_store(&m_downloadStream, downloadStream);
+  }
+  std::shared_ptr<std::iostream> GetDownloadStream() const {
+    return atomic_load(&m_downloadStream);
+  }
+
   void ReleaseDownloadStream();
   void SetTargetFilePath(const std::string &path) { m_targetFilePath = path; }
 

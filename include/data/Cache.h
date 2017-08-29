@@ -387,7 +387,7 @@ class Cache {
   //
   // If File of fileId doesn't exist, create one.
   // Stream will be moved to cache.
-  bool Write(const std::string &fileId, off_t offset,
+  bool Write(const std::string &fileId, off_t offset, size_t len,
              std::shared_ptr<std::iostream> &&stream, time_t mtime);
 
   // Free cache space

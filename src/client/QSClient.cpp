@@ -20,6 +20,7 @@
 #include <stdint.h>  // for uint64_t
 
 #include <chrono>
+#include <iostream>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -53,6 +54,7 @@ namespace QS {
 namespace Client {
 
 using QingStor::Bucket;
+using QingStor::GetObjectInput;
 using QingStor::HeadObjectInput;
 using QingStor::Http::HttpResponseCode;
 using QingStor::ListObjectsInput;
@@ -67,6 +69,7 @@ using QS::StringUtils::LTrim;
 using QS::TimeUtils::SecondsToRFC822GMT;
 using QS::Utils::AppendPathDelim;
 using std::chrono::milliseconds;
+using std::iostream;
 using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
@@ -268,8 +271,39 @@ ClientError<QSError> QSClient::RenameDirectory(const string &dirPath) {
 }
 
 // --------------------------------------------------------------------------
-ClientError<QSError> QSClient::DownloadFile(const string &filePath) {
-  return ClientError<QSError>(QSError::GOOD, false);
+ClientError<QSError> QSClient::DownloadFile(const string &filePath,
+                                            const string &range,
+                                            shared_ptr<iostream> buffer, string *eTag) {
+  GetObjectInput input;
+  if(!range.empty()){
+    input.SetRange(range);
+  }
+
+  auto outcome = GetQSClientImpl()->GetObject(filePath, &input);
+  unsigned attemptedRetries = 0;
+  while (!outcome.IsSuccess() &&
+         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+    int32_t sleepMilliseconds =
+        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                         attemptedRetries);
+    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+    outcome = GetQSClientImpl()->GetObject(filePath, &input);
+    ++attemptedRetries;
+  }
+
+  if(outcome.IsSuccess()){
+    auto res = outcome.GetResult();
+    auto bodyStream = res.GetBody();
+    bodyStream->seekg(0, std::ios_base::beg);
+    buffer->seekp(0, std::ios_base::beg);
+    (*buffer) << bodyStream->rdbuf();
+    if(eTag != nullptr){
+      *eTag = res.GetETag();
+    }
+    return ClientError<QSError>(QSError::GOOD, false);
+  } else {
+    return outcome.GetError();
+  }
 }
 
 // --------------------------------------------------------------------------

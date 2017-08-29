@@ -19,10 +19,11 @@
 
 #include <stddef.h>  // for size_t
 
+#include <sys/types.h>  // for off_t
+
 #include <string>
 #include <tuple>
-
-#include <sys/types.h>  // for off_t
+#include <utility>
 
 namespace QS {
 
@@ -50,13 +51,20 @@ std::string BuildRequestRangeStart(off_t start);
 // @return : string with format of "bytes=-suffix_length"
 std::string BuildRequestRangeEnd(off_t suffixLen);
 
-// Parse response header
+// Parse response header of 'Range'
 //
 // @param  : 'Content-Range' or 'Content-Copy-Range'
 //          which has format of "bytes start_offset-stop_offset/file_size"
 // @return : start, body length(stop - start + 1), total file_size
 std::tuple<off_t, size_t, size_t> ParseResponseContentRange(
-    const std::string &range);
+    const std::string &responseRange);
+
+// Parse request header of 'Range'
+//
+// @param  : request range with format of "bytes=start_offset-stop_offset"
+// @return : start, size(stop - start + 1)
+std::pair<off_t, size_t> ParseRequestContentRange(
+    const std::string &requestRange);
 
 }  // namespace Utils
 }  // namespace Client

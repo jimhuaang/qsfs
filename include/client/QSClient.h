@@ -64,6 +64,13 @@ class QSClient : public Client {
   // Stat to head the object again in Drive::MakeFile;
   ClientError<QSError> MakeFile(const std::string &filePath) override;
 
+  // Create a directory
+  //
+  // @param  : dir path
+  // @return : ClientError
+  // As qs sdk doesn't return the created dir meta data in PutObjectOutput,
+  // So we cannot grow the directory tree here, instead we need to call
+  // Stat to head the object again in Drive::MakeDirectory;
   ClientError<QSError> MakeDirectory(const std::string &dirPath) override;
 
   // Move file
@@ -77,7 +84,17 @@ class QSClient : public Client {
 
   ClientError<QSError> RenameDirectory(const std::string &dirPath) override;
 
-  ClientError<QSError> DownloadFile(const std::string &filePath) override;
+  // Download file
+  //
+  // @param  : file path, contenct range, buffer(input), eTag (input)
+  // @return : ClinetError
+  //
+  // If range is empty, then the whole file will be downloaded.
+  // The file data will be written to buffer.
+  ClientError<QSError> DownloadFile(
+      const std::string &filePath, const std::string &range,
+      std::shared_ptr<std::iostream> buffer, std::string *eTag) override;
+
   ClientError<QSError> DownloadDirectory(const std::string &dirPath) override;
   ClientError<QSError> UploadFile(const std::string &filePath) override;
   ClientError<QSError> UploadDirectory(const std::string &dirPath) override;

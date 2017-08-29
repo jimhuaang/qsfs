@@ -123,11 +123,22 @@ File::Page::Page(off_t offset, size_t len, const shared_ptr<iostream> &instream)
     DebugError("Try to new a page with a null stream body");
   }
 
-  stringstream ss;
+  size_t instreamLen = GetStreamSize(instream);
+
+  if(instreamLen < len){
+    DebugWarning("Input stream buffer len is less than parameter 'len', Ajust it");
+    len = instreamLen;
+  }
+  
   instream->seekg(0, std::ios_base::beg);
-  ss << instream->rdbuf();
   m_body->seekp(0, std::ios_base::beg);
-  m_body->write(ss.str().c_str(), len);
+  if(len == instreamLen){
+    (*m_body) << instream->rdbuf();
+  } else { // len > instreamLen
+    stringstream ss;
+    ss << instream->rdbuf();
+    m_body->write(ss.str().c_str(), len);
+  }
   DebugErrorIf(m_body->fail(),
                "Fail to new a page from stream " + ToStringLine(offset, len));
 }
@@ -404,7 +415,6 @@ bool File::Write(off_t offset, size_t len, shared_ptr<iostream> &&stream,
         SetTime(mtime);
         return true;
       } else {
-        assert(len == GetStreamSize(stream));
         auto buf = unique_ptr<vector<char>>(new vector<char>(len));
         stream->seekg(0, std::ios_base::beg);
         stream->read(&(*buf)[0], len);
@@ -650,7 +660,7 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len, char *buffer,
 }
 
 // --------------------------------------------------------------------------
-bool Cache::Write(const string &fileId, off_t offset,
+bool Cache::Write(const string &fileId, off_t offset, size_t len,
                   shared_ptr<iostream> &&stream, time_t mtime) {
   bool isValidInput = IsValidInput(fileId, offset, stream);
   assert(isValidInput);
@@ -660,7 +670,16 @@ bool Cache::Write(const string &fileId, off_t offset,
     return false;
   }
 
-  size_t len = GetStreamSize(stream);
+  size_t streamsize = GetStreamSize(stream);
+  assert (len <= streamsize);
+  if (!(len <= streamsize)){
+    DebugError(
+        "Invalid input, stream buffer size is less than input 'len' parameter. "
+        "[file:len=" +
+        fileId + ":" + to_string(len) + "]");
+    return false;
+  }
+
   if (!HasFreeSpace(len)) {
     auto success = Free(len);
     if (!success) return false;

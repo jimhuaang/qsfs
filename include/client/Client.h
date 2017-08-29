@@ -21,6 +21,7 @@
 
 #include <chrono>
 #include <condition_variable>  // NOLINT
+#include <iostream>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -83,6 +84,10 @@ class Client {
   // @return : ClientError
   virtual ClientError<QSError> MakeFile(const std::string &filePath) = 0;
 
+  // Create a directory
+  //
+  // @param  : dir path
+  // @return : ClientError
   virtual ClientError<QSError> MakeDirectory(const std::string &dirPath) = 0;
 
   // Move file
@@ -96,7 +101,17 @@ class Client {
 
   virtual ClientError<QSError> RenameDirectory(const std::string &dirPath) = 0;
 
-  virtual ClientError<QSError> DownloadFile(const std::string &filePath) = 0;
+  // Download file
+  //
+  // @param  : file path, contenct range, buffer(input), *eTag
+  // @return : ClinetError
+  //
+  // If range is empty, then the whole file will be downloaded.
+  // The file data will be written to buffer.
+  virtual ClientError<QSError> DownloadFile(
+      const std::string &filePath, const std::string &range,
+      std::shared_ptr<std::iostream> buffer, std::string *eTag) = 0;
+
   virtual ClientError<QSError> DownloadDirectory(const std::string &dirPath) = 0;
   virtual ClientError<QSError> UploadFile(const std::string &filePath) = 0;
   virtual ClientError<QSError> UploadDirectory(const std::string &dirPath) = 0;

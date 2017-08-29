@@ -34,6 +34,7 @@
 #include "client/ClientConfiguration.h"
 #include "client/QSClient.h"
 #include "client/QSError.h"
+#include "client/Utils.h"
 
 namespace QS {
 
@@ -70,6 +71,8 @@ using QingStor::PutObjectOutput;
 using QingStor::QsOutput;
 using QingStor::UploadMultipartInput;
 using QingStor::UploadMultipartOutput;
+using QS::Client::Utils::ParseRequestContentRange;
+using QS::Client::Utils::ParseResponseContentRange;
 using std::string;
 using std::unique_ptr;
 using std::vector;
@@ -276,14 +279,24 @@ GetObjectOutcome QSClientImpl::GetObject(const std::string &objKey,
         ClientError<QSError>(QSError::PARAMETER_MISSING, exceptionName,
                              "Empty ObjectKey or Null GetObjectInput", false));
   }
+  bool askPartialContent = !input->GetRange().empty();
   GetObjectOutput output;
   auto sdkErr = m_bucket->getObject(objKey, *input, output);
   auto responseCode = output.GetResponseCode();
   if (SDKResponseSuccess(sdkErr, responseCode)) {
-    // TODO(jim): check if get all content of object, otherwise set input status
-    if (!input->GetRange().empty()) {
-      if (output.GetResponseCode() == HttpResponseCode::PARTIAL_CONTENT) {
-        // set input range
+    if (askPartialContent) {
+      // qs sdk specification: if request set with range parameter, then 
+      // response successful with code 206 (Partial Content)
+      if (output.GetResponseCode() != HttpResponseCode::PARTIAL_CONTENT) {
+        return GetObjectOutcome(
+            std::move(BuildQSError(sdkErr, exceptionName, output, true)));
+      } else {
+        size_t reqLen = ParseRequestContentRange(input->GetRange()).second;
+        //auto rspRes = ParseResponseContentRange(output.GetContentRange());
+        size_t rspLen = output.GetContentLength();
+        DebugWarningIf(rspLen < reqLen,
+                       "[content range request:response=" + input->GetRange() +
+                           ":" + output.GetContentRange() + "]");
       }
     }
     return GetObjectOutcome(std::move(output));

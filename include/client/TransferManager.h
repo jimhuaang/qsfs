@@ -22,7 +22,7 @@
 #include <iostream>
 #include <memory>
 
-#include "data/Size.h"
+#include "filesystem/Configure.h"
 
 namespace QS {
 
@@ -44,27 +44,29 @@ namespace Client {
 class Client;
 class TransferHandle;
 
-static const size_t DEFAULT_MAX_PARALLEL_TRANSFERS = 5;
-static const uint64_t DEFAULT_MAX_BUF_HEAP_SIZE = QS::Data::Size::MB50;
-static const uint64_t DEFAULT_MAX_BUF_SIZE = QS::Data::Size::MB5;
-
 struct TransferManagerConfigure {
   // Maximum size of the working buffers to use, default 50MB
-  uint64_t m_bufferMaxHeapSize = DEFAULT_MAX_BUF_HEAP_SIZE;
+  uint64_t m_bufferMaxHeapSize =
+      QS::FileSystem::Configure::GetDefaultTransferMaxBufHeapSize();
 
   // Memory size allocated for one transfer buffer, default 5MB
   // If you are uploading large files(e.g. larger than 50GB), this needs to be
   // specified to be a size larger than 5MB. And keeping in mind that you may
   // need to increase your max heap size if you plan on increasing buffer size.
-  uint64_t m_bufferSize = DEFAULT_MAX_BUF_SIZE;
+  uint64_t m_bufferSize =
+      QS::FileSystem::Configure::GetDefaultTransferMaxBufSize();
 
   // Maximum number of file transfers to run in parallel, deafult 5.
-  size_t m_maxParallelTransfers = DEFAULT_MAX_PARALLEL_TRANSFERS;
+  size_t m_maxParallelTransfers =
+      QS::FileSystem::Configure::GetDefaultMaxParallelTransfers();
 
   TransferManagerConfigure(
-      uint64_t bufMaxHeapSize = DEFAULT_MAX_BUF_HEAP_SIZE,
-      uint64_t bufSize = DEFAULT_MAX_BUF_SIZE,
-      size_t maxParallelTransfers = DEFAULT_MAX_PARALLEL_TRANSFERS)
+      uint64_t bufMaxHeapSize =
+          QS::FileSystem::Configure::GetDefaultTransferMaxBufHeapSize(),
+      uint64_t bufSize =
+          QS::FileSystem::Configure::GetDefaultTransferMaxBufSize(),
+      size_t maxParallelTransfers =
+          QS::FileSystem::Configure::GetDefaultMaxParallelTransfers())
       : m_bufferMaxHeapSize(bufMaxHeapSize),
         m_bufferSize(bufSize),
         m_maxParallelTransfers(maxParallelTransfers) {}
@@ -114,7 +116,6 @@ class TransferManager {
 
  private:
   void SetClient(const std::shared_ptr<Client> &client);
-  friend class QS::FileSystem::Drive;
 
  private:
   void InitializeResources();
@@ -126,6 +127,8 @@ class TransferManager {
   // This executor is used in a different context with the client used one.
   std::unique_ptr<QS::Threading::ThreadPool> m_executor;
   std::shared_ptr<Client> m_client;
+
+  friend class QS::FileSystem::Drive;
 };
 
 }  // namespace Client

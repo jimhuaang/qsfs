@@ -86,6 +86,41 @@ bool IsSafeDiskSpace() {
   return true;
 }
 
+
+static const int CLIENT_DEFAULT_POOL_SIZE = 5;
+static const int QS_CONNECTION_DEFAULT_RETRIES = 3;  // qs sdk parameter
+static const char *QS_LOG_FILE_NAME = "qs_sdk.log";  // qs sdk log
+
+int GetClientDefaultPoolSize(){
+  return CLIENT_DEFAULT_POOL_SIZE;
+}
+
+int GetQSConnectionDefaultRetries(){
+  return QS_CONNECTION_DEFAULT_RETRIES;
+}
+
+
+const char* GetQSLogFileName(){
+  return QS_LOG_FILE_NAME;
+}
+
+
+static const size_t DEFAULT_MAX_PARALLEL_TRANSFERS = 10;
+static const uint64_t DEFAULT_MAX_BUF_HEAP_SIZE = QS::Data::Size::MB50;
+static const uint64_t DEFAULT_MAX_BUF_SIZE = QS::Data::Size::MB5;
+
+size_t GetDefaultMaxParallelTransfers(){
+  return DEFAULT_MAX_PARALLEL_TRANSFERS;
+}
+
+uint64_t GetDefaultTransferMaxBufHeapSize(){
+  return DEFAULT_MAX_BUF_HEAP_SIZE;
+}
+
+uint64_t GetDefaultTransferMaxBufSize() {
+  return DEFAULT_MAX_BUF_SIZE;
+}
+
 }  // namespace Configure
 }  // namespace FileSystem
 }  // namespace QS

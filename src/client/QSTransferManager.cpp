@@ -25,8 +25,10 @@
 #include <string>
 
 #include "base/LogMacros.h"
+#include "client/Client.h"
 #include "client/ClientConfiguration.h"
 #include "client/TransferHandle.h"
+#include "client/Utils.h"
 #include "data/Directory.h"
 #include "data/IOStream.h"
 
@@ -34,6 +36,7 @@ namespace QS {
 
 namespace Client {
 
+using QS::Client::Utils::BuildRequestRange;
 using std::iostream;
 using std::make_shared;
 using std::shared_ptr;
@@ -51,20 +54,19 @@ shared_ptr<TransferHandle> QSTransferManager::DownloadFile(
   // Check size
   string bucket = ClientConfiguration::Instance().GetBucket();
   string filePath = entry.GetFilePath();
-  auto fileSize = entry.GetFileSize();
-  size_t downloadSize = size;
-  size_t remainingSize = 0;
-  if (offset + size > fileSize) {
-    DebugWarning("Input overflow [file:offset:size:totalsize = " + filePath +
-                 ":" + to_string(offset) + ":" + to_string(size) + ":" +
-                 to_string(fileSize) + "]. Ajust it");
-    downloadSize = fileSize - offset;
-  } else {
-    remainingSize = fileSize - (offset + size);
-  }
+
+  // Drive::ReadFile has already ajust the download size 
+  // auto fileSize = entry.GetFileSize();
+  // size_t downloadSize = size;
+  // if (offset + size > fileSize) {
+  //   DebugWarning("Input overflow [file:offset:size:totalsize = " + filePath +
+  //                ":" + to_string(offset) + ":" + to_string(size) + ":" +
+  //                to_string(fileSize) + "]. Ajust it");
+  //   downloadSize = fileSize - offset;
+  // }
 
   // Do download synchronizely for requested file part
-  auto handle = PrepareDownload(bucket, filePath, downloadSize);
+  auto handle = PrepareDownload(bucket, filePath, size);
   handle->SetDownloadStream(downloadStream);
   DoDownload(handle);
 
@@ -88,6 +90,7 @@ void QSTransferManager::AbortMultipartUpload(
 // --------------------------------------------------------------------------
 shared_ptr<TransferHandle> QSTransferManager::PrepareDownload(
     const string &bucket, const string &objKey, size_t downloadSize) {
+  // Drive::DownloadFile has checked the object existence, so no check here.
   auto handle = std::make_shared<TransferHandle>(bucket, objKey);
   // prepare part and add it into queue
   assert(GetBufferSize() > 0);
@@ -108,7 +111,25 @@ shared_ptr<TransferHandle> QSTransferManager::PrepareDownload(
 // --------------------------------------------------------------------------
 void QSTransferManager::DoSinglePartDownload(
     const shared_ptr<TransferHandle> &handle) {
-  //
+  auto queuedParts = handle->GetQueuedParts();
+  assert(queuedParts.size() == 1);
+
+  auto part = queuedParts.begin()->second;
+  string eTag;
+  auto err = GetClient()->DownloadFile(
+      handle->GetObjectKey(),
+      BuildRequestRange(part->GetRangeBegin(), part->GetSize()),
+      handle->GetDownloadStream(), &eTag);
+
+  if(IsGoodQSError(err)){
+    handle->ChangePartToCompleted(part, eTag);
+    handle->UpdateStatus(TransferStatus::Completed);
+  } else {
+    DebugError(GetMessageForQSError(err));
+    handle->ChangePartToFailed(part);
+    handle->UpdateStatus(TransferStatus::Failed);
+    handle->SetError(err);
+  }
 }
 
 // --------------------------------------------------------------------------

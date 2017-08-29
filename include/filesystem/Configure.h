@@ -56,6 +56,14 @@ size_t GetMaxFileMetaDataCount();  // File meta data max count
 
 bool IsSafeDiskSpace();
 
+int GetQSConnectionDefaultRetries();
+int GetClientDefaultPoolSize();
+const char* GetQSLogFileName();
+
+size_t GetDefaultMaxParallelTransfers();
+uint64_t GetDefaultTransferMaxBufHeapSize();
+uint64_t GetDefaultTransferMaxBufSize();
+
 }  // namespace Configure
 }  // namespace FileSystem
 }  // namespace QS
