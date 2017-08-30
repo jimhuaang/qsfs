@@ -22,6 +22,8 @@
 #include <iostream>
 #include <string>  // for std::char_traits
 
+#include "data/StreamBuf.h"
+
 namespace QS {
 
 namespace Data {
@@ -35,6 +37,8 @@ class IOStream : public std::basic_iostream<char, std::char_traits<char> > {
 
  public:
   explicit IOStream(size_t bufSize);
+  IOStream(Buffer buf, size_t lengthToRead);
+
   IOStream(IOStream &&) = default;
   IOStream(const IOStream &) = delete;
   IOStream &operator=(IOStream &&) = default;

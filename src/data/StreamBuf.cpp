@@ -87,7 +87,13 @@ StreamBuf::pos_type StreamBuf::seekpos(pos_type pos,
   return pos;
 }
 
-Buffer StreamBuf::ReleaseBuffer() { return std::move(m_buffer); }
+Buffer StreamBuf::ReleaseBuffer() {
+  if (m_buffer) {
+    return std::move(m_buffer);
+  } else {
+    return nullptr;
+  }
+}
 
 }  // namespace Data
 }  // namespace QS

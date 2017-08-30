@@ -48,7 +48,7 @@ class NullClient : public Client {
 
   ClientError<QSError> DownloadFile(
       const std::string &filePath, const std::string &range,
-      std::shared_ptr<std::iostream> buffer, std::string *eTag) override;
+      const std::shared_ptr<std::iostream> &buffer, std::string *eTag) override;
   
   ClientError<QSError> DownloadDirectory(const std::string &dirPath) override;
   ClientError<QSError> UploadFile(const std::string &filePath) override;

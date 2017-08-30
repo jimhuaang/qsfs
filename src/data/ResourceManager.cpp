@@ -37,7 +37,9 @@ bool ResourceManager::ResourcesAvailable() {
 }
 
 void ResourceManager::PutResource(Resource resource) {
-  m_resources.emplace_back(std::move(resource));
+  if(resource){
+    m_resources.emplace_back(std::move(resource));
+  }
 }
 
 Resource ResourceManager::Acquire() {
@@ -58,7 +60,9 @@ Resource ResourceManager::Acquire() {
 
 void ResourceManager::Release(Resource resource) {
   unique_lock<mutex> lock(m_queueLock);
-  m_resources.emplace_back(std::move(resource));
+  if(resource){
+    m_resources.emplace_back(std::move(resource));
+  }
   lock.unlock();
   m_semaphore.notify_one();
 }

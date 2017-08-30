@@ -211,12 +211,6 @@ class File {
   // second member pointing to the pages containing the bytes.
   using ReadOutcome = std::pair<size_t, std::list<std::shared_ptr<Page>>>;
 
-  // TODO(jim): move to transfer
-  // LoadOutcome paie with first member denotes the size of bytes and the
-  // second member pointing to the response stream.
-  // This maybe need to change to handle multipule upload
-  using DownLoadOutcome = std::pair<size_t, std::shared_ptr<std::iostream>>;
-
  public:
   explicit File(time_t mtime = 0, size_t size = 0)
       : m_mtime(mtime), m_size(size) {}
@@ -244,12 +238,6 @@ class File {
   // input asking for, for example, the 1st page of outcome could has a
   // offset which is ahead of input 'offset'.
   ReadOutcome Read(off_t offset, size_t len, Entry *entry);
-
-  // Load from local file cache or send request to sdk
-  // TODO(jim) : move to transfer, and fileId probably should be replaced
-  // to what has stored on qingstor
-  // This probobaly should be moved to transfer
-  DownLoadOutcome DownLoadFile(const Entry &entry, off_t offset, size_t len);
 
   // Write a block of bytes into pages
   //

@@ -26,6 +26,10 @@
 
 namespace QS {
 
+namespace Client {
+class QSTransferManager;
+}  // namespace Client
+
 namespace Data {
 
 class IOSTream;
@@ -72,6 +76,7 @@ class StreamBuf : public std::streambuf {
                           // e.g. you have a 1kb buffer, but only want
                           // stream to see 500 b of it.
   friend class IOStream;
+  friend class QS::Client::QSTransferManager;
 };
 
 }  // namespace Data

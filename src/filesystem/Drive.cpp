@@ -372,13 +372,12 @@ size_t Drive::ReadFile(const string &filePath, char *buf, size_t size,
 
   // Download file if not found in cache or if cache need update
   auto it = m_cache->Find(filePath);
-  auto entry = node->GetEntry();
   time_t mtime = node->GetMTime();
   if (it == m_cache->End() || modified) {
     // download synchronizely for request file part
     auto stream = make_shared<IOStream>(downloadSize);
     auto handle =
-        m_transferManager->DownloadFile(entry, offset, downloadSize, stream);
+        m_transferManager->DownloadFile(filePath, offset, downloadSize, stream);
 
     // download aysnchornizely for (partial) remaining file part (not overflow)
     size_t downloadedSize = size;
@@ -392,18 +391,20 @@ size_t Drive::ReadFile(const string &filePath, char *buf, size_t size,
 
       auto callback = [this, filePath, offset_, downloadSize_, stream_,
                        mtime](const shared_ptr<TransferHandle> &handle) {
-        handle->WaitUntilFinished();
-        bool success = m_cache->Write(filePath, offset_, downloadSize_,
-                                      std::move(stream_), mtime);
-        DebugErrorIf(!success,
-                     "Fail to write cache [file:offset:len=" + filePath + ":" +
-                         to_string(offset_) + ":" + to_string(downloadSize_) +
-                         "]");
+        if (handle) {
+          handle->WaitUntilFinished();
+          bool success = m_cache->Write(filePath, offset_, downloadSize_,
+                                        std::move(stream_), mtime);
+          DebugErrorIf(!success,
+                       "Fail to write cache [file:offset:len=" + filePath +
+                           ":" + to_string(offset_) + ":" +
+                           to_string(downloadSize_) + "]");
+        }
       };
 
       GetTransferManager()->GetExecutor()->SubmitAsync(
-          callback, [this, entry, offset_, downloadSize_, stream_]() {
-            return m_transferManager->DownloadFile(entry, offset_,
+          callback, [this, filePath, offset_, downloadSize_, stream_]() {
+            return m_transferManager->DownloadFile(filePath, offset_,
                                                    downloadSize_, stream_);
           });
 
@@ -413,12 +414,14 @@ size_t Drive::ReadFile(const string &filePath, char *buf, size_t size,
     }
 
     // waiting for download to finish for request file part
-    handle->WaitUntilFinished();
-    bool success = m_cache->Write(filePath, offset, downloadSize,
-                                  std::move(stream), mtime);
-    DebugErrorIf(!success,
-                 "Fail to write cache [file:offset:len=" + filePath + ":" +
-                     to_string(offset) + ":" + to_string(downloadSize) + "]");
+    if (handle) {
+      handle->WaitUntilFinished();
+      bool success = m_cache->Write(filePath, offset, downloadSize,
+                                    std::move(stream), mtime);
+      DebugErrorIf(!success,
+                   "Fail to write cache [file:offset:len=" + filePath + ":" +
+                       to_string(offset) + ":" + to_string(downloadSize) + "]");
+    }
   }
 
   // Read from cache

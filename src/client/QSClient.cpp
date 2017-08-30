@@ -273,9 +273,10 @@ ClientError<QSError> QSClient::RenameDirectory(const string &dirPath) {
 // --------------------------------------------------------------------------
 ClientError<QSError> QSClient::DownloadFile(const string &filePath,
                                             const string &range,
-                                            shared_ptr<iostream> buffer, string *eTag) {
+                                            const shared_ptr<iostream> &buffer,
+                                            string *eTag) {
   GetObjectInput input;
-  if(!range.empty()){
+  if (!range.empty()) {
     input.SetRange(range);
   }
 
@@ -291,13 +292,13 @@ ClientError<QSError> QSClient::DownloadFile(const string &filePath,
     ++attemptedRetries;
   }
 
-  if(outcome.IsSuccess()){
+  if (outcome.IsSuccess()) {
     auto res = outcome.GetResult();
     auto bodyStream = res.GetBody();
     bodyStream->seekg(0, std::ios_base::beg);
     buffer->seekp(0, std::ios_base::beg);
     (*buffer) << bodyStream->rdbuf();
-    if(eTag != nullptr){
+    if (eTag != nullptr) {
       *eTag = res.GetETag();
     }
     return ClientError<QSError>(QSError::GOOD, false);

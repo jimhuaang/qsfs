@@ -58,7 +58,7 @@ ClientError<QSError> NullClient::RenameDirectory(const std::string &dirPath) {
 
 ClientError<QSError> NullClient::DownloadFile(
     const std::string &filePath, const std::string &range,
-    std::shared_ptr<std::iostream> buffer, std::string *eTag) {
+    const std::shared_ptr<std::iostream> &buffer, std::string *eTag) {
   return GoodState();
 }
 

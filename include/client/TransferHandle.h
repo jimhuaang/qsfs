@@ -44,8 +44,9 @@ using PartIdToPartMap = std::map<uint16_t, std::shared_ptr<Part> >;
 
 class Part {
  public:
-  Part(uint16_t partId, size_t bestProgressInBytes, size_t sizeInBytes);
-  Part() : Part(0, 0, 0) {}
+  Part(uint16_t partId, size_t bestProgressInBytes, size_t sizeInBytes,
+       size_t rangeBegin);
+  Part() : Part(0, 0, 0, 0) {}
 
   Part(Part &&) = default;
   Part(const Part &) = default;
@@ -100,7 +101,7 @@ class Part {
   size_t m_rangeBegin;
 
   // Notice: use atomic functions every time you touch the variable
-  std::shared_ptr<std::iostream> m_downloadPartStream;  // Qingstor do not use it
+  std::shared_ptr<std::iostream> m_downloadPartStream;
   // TODO(jim): condsider remove this
   //std::shared_ptr<std::vector<char> > m_downloadBuffer;
 
@@ -122,12 +123,10 @@ enum class TransferDirection { Upload, Download };
 
 class TransferHandle {
  public:
-  // Ctor for Upload
+  // Ctor
   TransferHandle(const std::string &bucket, const std::string &objKey,
-                 uint64_t totalUploadSize,
-                 const std::string &targetFilePath = std::string());
-  // Ctor for Download
-  TransferHandle(const std::string &bucket, const std::string &objKey,
+                 size_t contentRangeBegin, uint64_t totalTransferSize,
+                 TransferDirection direction,
                  const std::string &targetFilePath = std::string());
 
   TransferHandle() = delete;
@@ -152,7 +151,7 @@ class TransferHandle {
 
   // TODO(jim): notes the transfer progress 's two invariants (aws)
   uint64_t GetBytesTransferred() const { return m_bytesTransferred.load(); }
-  uint64_t GetBytesTotalSize() const { return m_bytesTotalSize; }
+  uint64_t GetBytesTotalSize() const { return m_bytesTotalSize.load(); }
   TransferDirection GetDirection() const { return m_direction; }
   bool ShouldContinue() const { return !m_cancel.load(); }
   TransferStatus GetStatus() const;
@@ -161,6 +160,7 @@ class TransferHandle {
 
   const std::string &GetBucket() const { return m_bucket; }
   const std::string &GetObjectKey() const { return m_objectKey; }
+  size_t GetContentRangeBegin() const { return m_contentRangeBegin; }
   const std::string &GetContentType() const { return m_contentType; }
   const std::map<std::string, std::string> &GetMetadata() const {
     return m_metadata;
@@ -170,6 +170,7 @@ class TransferHandle {
 
 public:
   void WaitUntilFinished() const;
+  bool DoneTransfer() const;
 
  private:
   void SetIsMultiPart(bool isMultipart) { m_isMultipart = isMultipart; }
@@ -207,6 +208,9 @@ public:
 
   void SetBucket(const std::string &bucket) { m_bucket = bucket; }
   void SetObjectKey(const std::string &key) { m_objectKey = key; }
+  void SetContentRangeBegin(size_t rangeBegin) {
+    m_contentRangeBegin = rangeBegin;
+  }
   void SetContentType(const std::string &contentType) {
     m_contentType = contentType;
   }
@@ -225,8 +229,9 @@ public:
   PartIdToPartMap m_completedParts;
   mutable std::mutex m_partsLock;
 
-  std::atomic<uint64_t> m_bytesTransferred;
-  uint64_t m_bytesTotalSize;
+  std::atomic<uint64_t> m_bytesTransferred;  // size have been transferred
+  std::atomic<uint64_t> m_bytesTotalSize;    // the total size need 
+                                             // to be transferred
   TransferDirection m_direction;
   std::atomic<bool> m_cancel;
   TransferStatus m_status;
@@ -242,6 +247,7 @@ public:
 
   std::string m_bucket;
   std::string m_objectKey;
+  size_t m_contentRangeBegin;
   // content type of object being transferred
   std::string m_contentType;
   // In case of an upload, this is the metadata that was placed on the object.

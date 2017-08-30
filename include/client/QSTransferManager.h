@@ -29,7 +29,6 @@ class TransferHandle;
 
 class QSTransferManager : public TransferManager {
  public:
-  // TODO(jim):
   QSTransferManager(const TransferManagerConfigure &config)
       : TransferManager(config) {}
   QSTransferManager(QSTransferManager &&) = delete;
@@ -43,11 +42,21 @@ class QSTransferManager : public TransferManager {
   std::shared_ptr<TransferHandle> RetryUpload() override;
   void UploadDirectory(const std::string &directory) override;
 
+  // Download a file
+  //
+  // @param  : file path, file offset, size, bufStream
+  // @return : transfer handle
   std::shared_ptr<TransferHandle> DownloadFile(
-      const QS::Data::Entry &entry, off_t offset, size_t size,
-      std::shared_ptr<std::iostream> downloadStream) override;
+      const std::string &filePath, off_t offset, size_t size,
+      std::shared_ptr<std::iostream> bufStream) override;
 
-  std::shared_ptr<TransferHandle> RetryDownload() override;
+  // Retry a failed download
+  //
+  // @param  : transfer handle to retry
+  // @return : transfer handle after been retried
+  std::shared_ptr<TransferHandle> RetryDownload(
+      const std::shared_ptr<TransferHandle> &handle,
+      std::shared_ptr<std::iostream> bufStream) override;
 
   void DownloadDirectory(const std::string &directory) override;
 
@@ -55,9 +64,7 @@ class QSTransferManager : public TransferManager {
       const std::shared_ptr<TransferHandle> &handle) override;
 
  private:
-  std::shared_ptr<TransferHandle> PrepareDownload(const std::string &bucket,
-                                                  const std::string &objKey,
-                                                  size_t downloadSize);
+  bool PrepareDownload(const std::shared_ptr<TransferHandle> &handle);
   void DoSinglePartDownload(const std::shared_ptr<TransferHandle> &handle);
   void DoMultiPartDownload(const std::shared_ptr<TransferHandle> &handle);
   void DoDownload(const std::shared_ptr<TransferHandle> &handle);

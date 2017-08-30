@@ -45,7 +45,7 @@ namespace Client {
 
 class ClientImpl;
 class RetryStrategy;
-class TransferHandle;
+class QSTransferManager;
 
 class Client {
  public:
@@ -110,7 +110,7 @@ class Client {
   // The file data will be written to buffer.
   virtual ClientError<QSError> DownloadFile(
       const std::string &filePath, const std::string &range,
-      std::shared_ptr<std::iostream> buffer, std::string *eTag) = 0;
+      const std::shared_ptr<std::iostream> &buffer, std::string *eTag) = 0;
 
   virtual ClientError<QSError> DownloadDirectory(const std::string &dirPath) = 0;
   virtual ClientError<QSError> UploadFile(const std::string &filePath) = 0;
@@ -172,6 +172,7 @@ class Client {
   mutable std::condition_variable m_retrySignal;
 
   friend class QS::FileSystem::Drive;
+  friend class QS::Client::QSTransferManager;
 };
 
 }  // namespace Client

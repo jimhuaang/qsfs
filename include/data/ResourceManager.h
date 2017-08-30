@@ -27,8 +27,9 @@
 
 namespace QS {
 
-namespace  Client {
+namespace Client {
 class TransferManager;
+class QSTransferManager;
 }  // namespace  Client
 
 namespace Data {
@@ -110,6 +111,7 @@ class ResourceManager {
   std::atomic<bool> m_shutdown;
 
   friend class QS::Client::TransferManager;
+  friend class QS::Client::QSTransferManager;
 };
 
 }  // namespace Data

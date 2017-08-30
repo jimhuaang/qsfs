@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <vector>
+#include <utility>
 
 #include "data/StreamBuf.h"
 
@@ -30,9 +31,15 @@ using std::vector;
 IOStream::IOStream(size_t bufSize)
     : Base(new StreamBuf(Buffer(new vector<char>(bufSize)), bufSize)) {}
 
+IOStream::IOStream(Buffer buf, size_t lengthToRead)
+    : Base(new StreamBuf(std::move(buf), lengthToRead)) {}
+
 IOStream::~IOStream() {
   if (rdbuf()) {
-    dynamic_cast<StreamBuf*>(rdbuf())->ReleaseBuffer().reset();
+    auto buf = dynamic_cast<StreamBuf*>(rdbuf())->ReleaseBuffer();
+    if (buf) {
+      buf.reset();
+    }
   }
 }
 

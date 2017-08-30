@@ -58,7 +58,7 @@ using std::vector;
 namespace {
 bool IsValidInput(const string &fileId, off_t offset, size_t len,
                   const char *buffer) {
-  return !fileId.empty() && offset >= 0  && len >= 0 && buffer != NULL;
+  return !fileId.empty() && offset >= 0 && len >= 0 && buffer != NULL;
 }
 
 bool IsValidInput(const string &fileId, off_t offset,
@@ -67,7 +67,7 @@ bool IsValidInput(const string &fileId, off_t offset,
 }
 
 bool IsValidInput(off_t offset, size_t len, const char *buffer) {
-  return offset >= 0  && len >= 0 && buffer != NULL;
+  return offset >= 0 && len >= 0 && buffer != NULL;
 }
 
 string ToStringLine(const string &fileId, off_t offset, size_t len,
@@ -125,16 +125,17 @@ File::Page::Page(off_t offset, size_t len, const shared_ptr<iostream> &instream)
 
   size_t instreamLen = GetStreamSize(instream);
 
-  if(instreamLen < len){
-    DebugWarning("Input stream buffer len is less than parameter 'len', Ajust it");
+  if (instreamLen < len) {
+    DebugWarning(
+        "Input stream buffer len is less than parameter 'len', Ajust it");
     len = instreamLen;
   }
-  
+
   instream->seekg(0, std::ios_base::beg);
   m_body->seekp(0, std::ios_base::beg);
-  if(len == instreamLen){
+  if (len == instreamLen) {
     (*m_body) << instream->rdbuf();
-  } else { // len > instreamLen
+  } else {  // len > instreamLen
     stringstream ss;
     ss << instream->rdbuf();
     m_body->write(ss.str().c_str(), len);
@@ -148,7 +149,7 @@ File::Page::Page(off_t offset, size_t len, shared_ptr<iostream> &&body)
     : m_offset(offset), m_size(len), m_body(std::move(body)) {}
 
 // --------------------------------------------------------------------------
-void File::Page::SetStream(shared_ptr<iostream> && stream){
+void File::Page::SetStream(shared_ptr<iostream> &&stream) {
   m_body = std::move(stream);
 }
 
@@ -222,26 +223,34 @@ File::ReadOutcome File::Read(off_t offset, size_t len, Entry *entry) {
   //   return {0, list<shared_ptr<Page>>()};
   // }
 
+  time_t mtime = entry->GetMTime();
+  string filePath = entry->GetFilePath();
   size_t outcomeSize = 0;
   list<shared_ptr<Page>> outcomePages;
-  auto LoadFileAndAddPage = [this, &entry, &outcomeSize, &outcomePages](
-      off_t offset, size_t len) {
-    auto outcome = DownLoadFile(*entry, offset, len);
-    if (outcome.first > 0 && outcome.second) {
-      auto res = UnguardedAddPage(offset, outcome.first, outcome.second);
+  auto LoadFileAndAddPage = [this, mtime, filePath, &outcomeSize,
+                             &outcomePages](off_t offset, size_t len) {
+    auto stream = make_shared<IOStream>(len);
+    auto handle =
+        QS::FileSystem::Drive::Instance().GetTransferManager()->DownloadFile(
+            filePath, offset, len, stream);
+
+    if (handle) {
+      handle->WaitUntilFinished();
+
+      auto res = UnguardedAddPage(offset, len, stream);
       if (res.second) {
-        SetTime(entry->GetMTime());
+        SetTime(mtime);
         outcomePages.emplace_back(*(res.first));
         outcomeSize += (*(res.first))->m_size;
       }
     }
   };
 
-  if (entry->GetMTime() > 0) {
+  if (mtime > 0) {
     // File is just created, update mtime.
     if (m_mtime == 0) {
-      SetTime(entry->GetMTime());
-    } else if (entry->GetMTime() > m_mtime) {
+      SetTime(mtime);
+    } else if (mtime > m_mtime) {
       // Detected modification in the file, clear file.
       Clear();
       entry->SetFileSize(0);
@@ -305,20 +314,6 @@ File::ReadOutcome File::Read(off_t offset, size_t len, Entry *entry) {
   }  // end of lock_guard
 
   return {outcomeSize, outcomePages};
-}
-
-// --------------------------------------------------------------------------
-File::DownLoadOutcome File::DownLoadFile(const Entry &entry, off_t offset,
-                                         size_t len) {
-  size_t size = 0;
-  auto stream = make_shared<IOStream>(len);
-  // TODO(jim):
-  auto handle =
-      QS::FileSystem::Drive::Instance().GetTransferManager()->DownloadFile(
-          entry, offset, len, stream);
-  handle->WaitUntilFinished();
-
-  return {size, stream};
 }
 
 // --------------------------------------------------------------------------
@@ -401,26 +396,25 @@ bool File::Write(off_t offset, size_t len, shared_ptr<iostream> &&stream,
     return res.second;
   };
 
-  if(m_pages.empty())
-  {
+  if (m_pages.empty()) {
     return AddPageAndUpdateTime(offset, len, std::move(stream));
   } else {
-      auto it = LowerBoundPage(offset);
-      auto &page = *it;
-      if(it == m_pages.end()){
-        return AddPageAndUpdateTime(offset, len, std::move(stream));
-      } else if(page->Offset() == offset && page->Size() == len) {
-        // replace old stream
-        page->SetStream(std::move(stream));
-        SetTime(mtime);
-        return true;
-      } else {
-        auto buf = unique_ptr<vector<char>>(new vector<char>(len));
-        stream->seekg(0, std::ios_base::beg);
-        stream->read(&(*buf)[0], len);
+    auto it = LowerBoundPage(offset);
+    auto &page = *it;
+    if (it == m_pages.end()) {
+      return AddPageAndUpdateTime(offset, len, std::move(stream));
+    } else if (page->Offset() == offset && page->Size() == len) {
+      // replace old stream
+      page->SetStream(std::move(stream));
+      SetTime(mtime);
+      return true;
+    } else {
+      auto buf = unique_ptr<vector<char>>(new vector<char>(len));
+      stream->seekg(0, std::ios_base::beg);
+      stream->read(&(*buf)[0], len);
 
-        return Write(offset, len, &(*buf)[0], mtime);
-      }
+      return Write(offset, len, &(*buf)[0], mtime);
+    }
   }
   return false;
 }
@@ -671,8 +665,8 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
   }
 
   size_t streamsize = GetStreamSize(stream);
-  assert (len <= streamsize);
-  if (!(len <= streamsize)){
+  assert(len <= streamsize);
+  if (!(len <= streamsize)) {
     DebugError(
         "Invalid input, stream buffer size is less than input 'len' parameter. "
         "[file:len=" +

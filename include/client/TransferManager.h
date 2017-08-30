@@ -27,7 +27,6 @@
 namespace QS {
 
 namespace Data {
-class Entry;
 class ResourceManager;
 }  // namespace Data
 
@@ -86,10 +85,22 @@ class TransferManager {
   virtual std::shared_ptr<TransferHandle> RetryUpload() = 0;
   virtual void UploadDirectory(const std::string &directory) = 0;
 
+  // Download a file
+  //
+  // @param  : file path, file offset, size, bufStream
+  // @return : transfer handle
   virtual std::shared_ptr<TransferHandle> DownloadFile(
-      const QS::Data::Entry &entry, off_t offset, size_t size,
-      std::shared_ptr<std::iostream> downloadStream) = 0;
-  virtual std::shared_ptr<TransferHandle> RetryDownload() = 0;
+      const std::string &filePath, off_t offset, size_t size,
+      std::shared_ptr<std::iostream> bufStream) = 0;
+
+  // Retry a failed download
+  //
+  // @param  : transfer handle to retry, bufStream
+  // @return : transfer handle after been retried
+  virtual std::shared_ptr<TransferHandle> RetryDownload(
+      const std::shared_ptr<TransferHandle> &handle,
+      std::shared_ptr<std::iostream> bufStream) = 0;
+
   virtual void DownloadDirectory(const std::string &directory) = 0;
 
   virtual void AbortMultipartUpload(

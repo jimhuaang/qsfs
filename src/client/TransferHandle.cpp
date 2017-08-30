@@ -53,15 +53,15 @@ bool AllowTransition(TransferStatus current, TransferStatus next) {
 }  // namespace
 
 // --------------------------------------------------------------------------
-Part::Part(uint16_t partId, size_t bestProgressInBytes, size_t sizeInBytes)
+Part::Part(uint16_t partId, size_t bestProgressInBytes, size_t sizeInBytes,
+           size_t rangeBegin)
     : m_partId(partId),
       m_eTag(""),
       m_currentProgress(0),
       m_bestProgress(bestProgressInBytes),
       m_size(sizeInBytes),
-      m_rangeBegin(0),
+      m_rangeBegin(rangeBegin),
       m_downloadPartStream(nullptr) {}
-      //m_downloadBuffer(nullptr) 
 
 string Part::ToString() const {
   return "[part id: " + to_string(m_partId) + ", etag: " + m_eTag +
@@ -83,35 +83,22 @@ void Part::OnDataTransferred(uint64_t amount,
 
 // --------------------------------------------------------------------------
 TransferHandle::TransferHandle(const string &bucket, const string &objKey,
-                               uint64_t totalUploadSize,
+                               size_t contentRangeBegin,
+                               uint64_t totalTransferSize,
+                               TransferDirection direction,
                                const string &targetFilePath)
     : m_isMultipart(false),
       m_multipartId(),
       m_bytesTransferred(0),
-      m_bytesTotalSize(totalUploadSize),
-      m_direction(TransferDirection::Upload),
+      m_bytesTotalSize(totalTransferSize),
+      m_direction(direction),
       m_cancel(false),
       m_status(TransferStatus::NotStarted),
       m_downloadStream(nullptr),
       m_targetFilePath(targetFilePath),
       m_bucket(bucket),
       m_objectKey(objKey),
-      m_contentType() {}
-
-// --------------------------------------------------------------------------
-TransferHandle::TransferHandle(const string &bucket, const string &objKey,
-                               const string &targetFilePath)
-    : m_isMultipart(false),
-      m_multipartId(),
-      m_bytesTransferred(0),
-      m_bytesTotalSize(0),
-      m_direction(TransferDirection::Download),
-      m_cancel(false),
-      m_status(TransferStatus::NotStarted),
-      m_downloadStream(nullptr),
-      m_targetFilePath(targetFilePath),
-      m_bucket(bucket),
-      m_objectKey(objKey),
+      m_contentRangeBegin(contentRangeBegin),
       m_contentType() {}
 
 // --------------------------------------------------------------------------
@@ -169,6 +156,10 @@ TransferStatus TransferHandle::GetStatus() const {
   return m_status;
 }
 
+// --------------------------------------------------------------------------
+bool TransferHandle::DoneTransfer() const{
+  return m_bytesTransferred == m_bytesTotalSize;
+}
 // --------------------------------------------------------------------------
 void TransferHandle::AddQueuePart(const shared_ptr<Part> &part) {
   lock_guard<mutex> lock(m_partsLock);
@@ -263,20 +254,14 @@ void TransferHandle::WritePartToDownloadStream(
   m_downloadStream->flush();
 }
 
-/* // --------------------------------------------------------------------------
-void TransferHandle::SetDownloadStream(shared_ptr<iostream> downloadStream) {
-  lock_guard<recursive_mutex> lock(m_downloadStreamLock);
-  m_downloadStream = downloadStream;
-} */
-
 // --------------------------------------------------------------------------
 void TransferHandle::ReleaseDownloadStream() {
   lock_guard<recursive_mutex> lock(m_downloadStreamLock);
   if (m_downloadStream) {
     m_downloadStream->flush();
-    m_downloadStream.reset();
+    m_downloadStream = nullptr;
   }
-}
+} 
 
 }  // namespace Client
 }  // namespace QS

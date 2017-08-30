@@ -77,8 +77,6 @@ using std::string;
 using std::unique_ptr;
 using std::vector;
 
-// TODO(jim): handle retryable
-
 namespace {
 
 ClientError<QSError> BuildQSError(QsError sdkErr, const char *exceptionName,
