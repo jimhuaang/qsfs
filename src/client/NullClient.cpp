@@ -35,7 +35,8 @@ ClientError<QSError> NullClient::DeleteFile(const string &filePath) {
   return GoodState();
 }
 
-ClientError<QSError> NullClient::DeleteDirectory(const string &dirPath) {
+ClientError<QSError> NullClient::DeleteDirectory(const string &dirPath,
+                                                 bool recursive) {
   return GoodState();
 }
 

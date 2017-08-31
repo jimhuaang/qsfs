@@ -23,6 +23,7 @@
 #include <iostream>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <queue>
 #include <string>
 #include <utility>
 
@@ -62,6 +63,7 @@ using QingStor::PutObjectInput;
 using QingStor::QingStorService;
 using QingStor::QsConfig;  // sdk config
 
+using QS::Data::Node;
 using QS::FileSystem::Drive;
 using QS::FileSystem::GetDirectoryMimeType;
 using QS::FileSystem::LookupMimeType;
@@ -146,19 +148,84 @@ bool QSClient::DisConnect() {
 }
 
 // --------------------------------------------------------------------------
+// DeleteFile is used to delete a file or an empty directory.
 ClientError<QSError> QSClient::DeleteFile(const string &filePath) {
-  // TODO(jim):
-  return ClientError<QSError>(QSError::GOOD, false);
+  auto &drive = Drive::Instance();
+  auto &dirTree = drive.GetDirectoryTree();
+  assert(dirTree);
+  auto node = dirTree->Find(filePath).lock();
+  if(!(node && *node)){
+    DebugWarning("No such file or directory " + filePath);
+    return ClientError<QSError>(QSError::KEY_NOT_EXIST, false);
+  }
+
+  // In case of hard links, multiple node have the same file, do not delete the
+  // file for a hard link.
+  if (node->IsHardLink() || (!node->IsDirectory() && node->GetNumLink() >= 2)) {
+    dirTree->Remove(filePath);
+    return ClientError<QSError>(QSError::GOOD, false);
+  }
+
+  auto outcome = GetQSClientImpl()->DeleteObject(filePath);
+  unsigned attemptedRetries = 0;
+  while (!outcome.IsSuccess() &&
+         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+    int32_t sleepMilliseconds =
+        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                         attemptedRetries);
+    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+    outcome = GetQSClientImpl()->DeleteObject(filePath);
+    ++attemptedRetries;
+  }
+
+  if(outcome.IsSuccess()){
+    dirTree->Remove(filePath);
+    
+    auto &cache = drive.GetCache();
+    if (cache && !node->IsDirectory()) {
+      cache->Erase(filePath);
+    }
+    return ClientError<QSError>(QSError::GOOD, false);
+  } else {
+    return outcome.GetError();
+  }
 }
 
 // --------------------------------------------------------------------------
-ClientError<QSError> QSClient::DeleteDirectory(const string &dirPath) {
-  // TODO(jim):
-  // call list object
-  // and recursive delete all object under
-  // can we use delete multiple objects
-  // maybe can call deleteMultipleObjects
-  return ClientError<QSError>(QSError::GOOD, false);
+ClientError<QSError> QSClient::DeleteDirectory(const string &dirPath,
+                                               bool recursive) {
+  string dir = AppendPathDelim(dirPath);
+  ListDirectory(dir);  // will update directory tree
+
+  auto &drive = Drive::Instance();
+  auto &dirTree = drive.GetDirectoryTree();
+  auto node = dirTree->Find(dir).lock();
+  if (!(node && *node)) {
+    return ClientError<QSError>(QSError::GOOD, false);
+  }
+  if (!node->IsDirectory()) {
+    return ClientError<QSError>(QSError::ACTION_INVALID, false);
+  }
+
+  if(node->IsEmpty()){
+    return DeleteFile(dirPath);
+  }
+
+  auto err = ClientError<QSError>(QSError::GOOD, false);
+  if(recursive){
+    // collect all object keys recursively
+    auto objKeys = node->GetChildrenIdsRecursively();
+    while(!objKeys.empty()){
+      auto objKey = objKeys.front();
+      objKeys.pop();
+      err = DeleteFile(objKey);
+      if(!IsGoodQSError(err)){
+        break;
+      }
+    }
+  }
+  
+  return err;
 }
 
 // --------------------------------------------------------------------------
@@ -430,6 +497,15 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
       if (dirTree) {
         dirTree->Grow(std::move(fileMetaData));  // add Node to dir tree
       }
+    } else if(res.GetResponseCode() == HttpResponseCode::NOT_FOUND){
+      // As for object storage, there is no concept of directory.
+      // For some case, such as 
+      //   an object of "/abc/tst.txt" can exist without existing 
+      //   object of "/abc/"
+      // In this case, headobject with objKey of "/abc/" will not get response.
+      // So, we need to use listobject with prefix of "/abc/" to confirm a
+      // directory is actually needed.
+      ListDirectory(path);
     }
     return ClientError<QSError>(QSError::GOOD, false);
   } else {

@@ -387,9 +387,29 @@ class Cache {
   // there will be number of size avaiable cache space.
   bool Free(size_t size);  // size in byte
 
+  // Remove file from cache
+  //
+  // @param  : file id
+  // @return : iterator pointing to next file in cache list if remove sucessfully,
+  //           otherwise return past-the-end iterator.
   CacheListIterator Erase(const std::string &fildId);
+
+  // Rename a file
+  //
+  // @param  : file id, new file id
+  // @return : void
   void Rename(const std::string &oldFileId, const std::string &newFileId);
+
+  // Change file mtime
+  //
+  // @param  : file id, mtime
+  // @return : void
   void SetTime(const std::string &fileId, time_t mtime);
+
+  // Resize a file
+  //
+  // @param  : file id, new file size
+  // @return : void
   void Resize(const std::string &fileId, size_t newSize);
 
  private:

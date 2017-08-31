@@ -239,19 +239,71 @@ void Drive::Chown(const std::string &filePath, uid_t uid, gid_t gid) {
 }
 
 // --------------------------------------------------------------------------
-void Drive::DeleteFile(const string &filePath) {
-  // Delete a file.
-  // first check if file exist in dir
-  // call QSClient to delete which will update cache and dir
+void Drive::DeleteFile(const string &filePath, bool doCheck) {
+  if (filePath.empty()) {
+    DebugWarning("Null file path");
+    return;
+  }
+
+  auto res = GetNode(filePath, false);
+  auto node = res.first.lock();
+  if (doCheck) {
+    if (!(node && *node)) {
+      DebugWarning("No such file " + filePath);
+      return;
+    }
+    if (node->IsDirectory()) {
+      DebugWarning("Target file is a directory " + filePath);
+      return;
+    }
+  }
+
+  // delete file asynchronizely
+  auto receivedHandler = [](const ClientError<QSError> &err) {
+    DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+  };
+  GetClient()->GetExecutor()->SubmitAsyncPrioritized(
+      receivedHandler,
+      [this, filePath] { return GetClient()->DeleteFile(filePath); });
 }
 
 // --------------------------------------------------------------------------
-void Drive::DeleteDir(const string &dirPath) {
-  // Delete a emptyr diectory
+void Drive::DeleteDir(const string &dirPath, bool recursive, bool doCheck) {
+  if (dirPath.empty()) {
+    DebugWarning("Null dir path");
+    return;
+  }
+
+  string path = AppendPathDelim(dirPath);
+  if (doCheck) {
+    auto res = GetNode(path, true);  // invoking update directory
+    auto node = res.first.lock();
+    if (!(node && *node)) {
+      DebugWarning("No such file or directory" + path);
+      return;
+    }
+    if (!node->IsDirectory()) {
+      DebugWarning("Not a directory " + path);
+      return;
+    }
+    if (!node->IsEmpty()) {
+      DebugWarning("Unable to remove, directory is not empty " + path);
+      return;
+    }
+  }
+
+  // delete empty dir asynchronizely
+  auto receivedHandler = [](const ClientError<QSError> &err) {
+    DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+  };
+  GetClient()->GetExecutor()->SubmitAsyncPrioritized(
+      receivedHandler, [this, path, recursive] {
+        return GetClient()->DeleteDirectory(path, recursive);
+      });
 }
 
 // --------------------------------------------------------------------------
-void Drive::Link(const string &filePath, const string &hardlinkPath) {
+void Drive::HardLink(const string &filePath, const string &hardlinkPath) {
   assert(!filePath.empty() && !hardlinkPath.empty());
   if (filePath.empty() || hardlinkPath.empty()) {
     DebugWarning("Invalid empty parameter");
@@ -337,7 +389,7 @@ void Drive::OpenFile(const string &filePath) {
 
 // --------------------------------------------------------------------------
 size_t Drive::ReadFile(const string &filePath, char *buf, size_t size,
-                       off_t offset) {
+                       off_t offset, bool doCheck) {
   if (filePath.empty() || buf == nullptr) {
     DebugWarning("Invalid input");
     return 0;
@@ -348,13 +400,20 @@ size_t Drive::ReadFile(const string &filePath, char *buf, size_t size,
     return 0;
   }
 
-  // Check file
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();
   bool modified = res.second;
-  if (!(node && *node)) {
-    DebugError("No such file " + filePath);
-    return 0;
+
+  // Check file
+  if (doCheck) {
+    if (!(node && *node)) {
+      DebugError("No such file " + filePath);
+      return 0;
+    }
+    if (node->IsDirectory()) {
+      DebugError("Not a file but a directory " + filePath);
+      return 0;
+    }
   }
 
   // Ajust size or calculate remaining size

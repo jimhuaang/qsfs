@@ -52,9 +52,28 @@ class QSClient : public Client {
 
   bool DisConnect() override;
 
+  // Delete a file
+  //
+  // @param  : file path
+  // @return : ClientError
+  //
+  // DeleteFile is used to delete a file or an empty directory.
+  // As object storage has no concept of file type (such as directory),
+  // you can call DeleteFile to delete any object. But if the object is
+  // a nonempty directory, DeleteFile will not delete its contents (including
+  // files or subdirectories belongs to it).
   ClientError<QSError> DeleteFile(const std::string &filePath) override;
-  ClientError<QSError> DeleteDirectory(const std::string &dirPath) override;
-  
+
+  // Delete a directory
+  //
+  // @param  : dir path, flag recursively to remove its contents
+  // @return : ClientError
+  //
+  // DeleteDirectory is used to delete a directory and its contents recursively.
+  // Current no implementation.
+  ClientError<QSError> DeleteDirectory(const std::string &dirPath,
+                                       bool recursive) override;
+
   // Create an empty file
   //
   // @param  : file path

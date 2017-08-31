@@ -26,9 +26,12 @@
 
 #include <sys/stat.h>  // for mode_t
 
+#include "qingstor-sdk-cpp/HttpCommon.h"
+
 #include "base/TimeUtils.h"
 #include "base/Utils.h"
 #include "filesystem/Configure.h"
+#include "filesystem/MimeTypes.h"
 
 namespace QS {
 
@@ -38,6 +41,7 @@ namespace QSClientUtils {
 
 using QingStor::GetBucketStatisticsOutput;
 using QingStor::HeadObjectOutput;
+using QingStor::Http::HttpResponseCode;
 using QingStor::ListObjectsOutput;
 using QS::Data::FileMetaData;
 using QS::Data::FileType;
@@ -46,6 +50,7 @@ using QS::FileSystem::Configure::GetDefineFileMode;
 using QS::FileSystem::Configure::GetDefineDirMode;
 using QS::FileSystem::Configure::GetFragmentSize;
 using QS::FileSystem::Configure::GetNameMaxLen;
+using QS::FileSystem::GetDirectoryMimeType;
 using QS::TimeUtils::RFC822GMTToSeconds;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::GetProcessEffectiveUserID;
@@ -80,10 +85,16 @@ void GetBucketStatisticsOutputToStatvfs(
 shared_ptr<FileMetaData> HeadObjectOutputToFileMetaData(
     const string &objKey, const HeadObjectOutput &headObjOutput) {
   auto output = const_cast<HeadObjectOutput &>(headObjOutput);
-  // TODO(jim): confirm the mode and type definition
+  if (output.GetResponseCode() == HttpResponseCode::NOT_FOUND) {
+    return nullptr;
+  }
+
   auto size = static_cast<uint64_t>(output.GetContentLength());
+  // TODO(jim): mode should do with meta when skd support this
   mode_t mode = size == 0 ? GetDefineDirMode() : GetDefineFileMode();
-  FileType type = size == 0 ? FileType::Directory : FileType::File;
+  // TODO(jim): type definition may need to consider list object
+  bool isDir = output.GetContentType() == GetDirectoryMimeType();
+  FileType type = isDir ? FileType::Directory : FileType::File;
   time_t mtime = RFC822GMTToSeconds(output.GetLastModified());
   bool encrypted = !output.GetXQSEncryptionCustomerAlgorithm().empty();
   return make_shared<FileMetaData>(
@@ -94,12 +105,13 @@ shared_ptr<FileMetaData> HeadObjectOutputToFileMetaData(
 
 // --------------------------------------------------------------------------
 shared_ptr<FileMetaData> ObjectKeyToFileMetaData(const KeyType &objectKey,
-                                                 const string &prefix) {
+                                                 const string &dirPath,
+                                                 time_t atime) {
   // Do const cast as sdk does not provide const-qualified accessors
   KeyType &key = const_cast<KeyType &>(objectKey);
   return make_shared<FileMetaData>(
-      AppendPathDelim("/" + prefix) + key.GetKey(),  // build full path
-      static_cast<uint64_t>(key.GetSize()), time(NULL),
+      dirPath + key.GetKey(),  // build full path
+      static_cast<uint64_t>(key.GetSize()), atime,
       static_cast<time_t>(key.GetModified()), GetProcessEffectiveUserID(),
       GetProcessEffectiveGroupID(), GetDefineFileMode(), FileType::File,
       key.GetMimeType(), key.GetEtag(), key.GetEncrypted());
@@ -107,10 +119,9 @@ shared_ptr<FileMetaData> ObjectKeyToFileMetaData(const KeyType &objectKey,
 
 // --------------------------------------------------------------------------
 shared_ptr<FileMetaData> CommonPrefixToFileMetaData(const string &commonPrefix,
-                                                    const string &prefix) {
-  time_t atime = time(NULL);
-  auto fullPath =
-      AppendPathDelim(AppendPathDelim("/" + prefix) + commonPrefix);
+                                                    const string &dirPath,
+                                                    time_t atime) {
+  auto fullPath = AppendPathDelim(dirPath + commonPrefix);
   return make_shared<FileMetaData>(
       fullPath, 0, atime, atime, GetProcessEffectiveUserID(),
       GetProcessEffectiveGroupID(), GetDefineDirMode(),
@@ -123,13 +134,24 @@ vector<shared_ptr<FileMetaData>> ListObjectsOutputToFileMetaDatas(
   // Do const cast as sdk does not provide const-qualified accessors
   ListObjectsOutput &output = const_cast<ListObjectsOutput &>(listObjsOutput);
   vector<shared_ptr<FileMetaData>> metas;
-  for (const auto &key : output.GetKeys()) {
-    metas.push_back(
-        std::move(ObjectKeyToFileMetaData(key, output.GetPrefix())));
+  if (output.GetResponseCode() == HttpResponseCode::NOT_FOUND) {
+    return metas;
   }
+
+  time_t atime = time(NULL);
+  // Add dir itself
+  auto dirPath = AppendPathDelim("/" + output.GetPrefix());
+  metas.push_back(make_shared<FileMetaData>(
+      dirPath, 0, atime, atime, GetProcessEffectiveUserID(),
+      GetProcessEffectiveGroupID(), GetDefineDirMode(), FileType::Directory));
+  // Add files
+  for (const auto &key : output.GetKeys()) {
+    metas.push_back(std::move(ObjectKeyToFileMetaData(key, dirPath, atime)));
+  }
+  // Add subdirs
   for (const auto &commonPrefix : output.GetCommonPrefixes()) {
-    metas.push_back(std::move(
-        CommonPrefixToFileMetaData(commonPrefix, output.GetPrefix())));
+    metas.push_back(
+        std::move(CommonPrefixToFileMetaData(commonPrefix, dirPath, atime)));
   }
   return metas;
 }

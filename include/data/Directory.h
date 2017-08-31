@@ -25,6 +25,7 @@
 
 #include <memory>
 #include <mutex>  // NOLINT
+#include <queue>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -181,6 +182,12 @@ class Node {
   std::shared_ptr<Node> Find(const std::string &childFilePath) const;
   const FilePathToNodeUnorderedMap &GetChildren() const;
   std::set<std::string> GetChildrenIds() const;
+  // Get the children file names recursively
+  //
+  // @param  : void
+  // @return : a list of all children's file names and chilren's chidlren's ones
+  //           in a recursively way
+  std::queue<std::string> GetChildrenIdsRecursively() const;
 
   std::shared_ptr<Node> Insert(const std::shared_ptr<Node> &child);
   void Remove(const std::shared_ptr<Node> &child);
@@ -198,6 +205,7 @@ class Node {
   }
 
   uint64_t GetFileSize() const { return m_entry ? m_entry.GetFileSize() : 0; }
+  int GetNumLink() const { return m_entry ? m_entry.GetNumLink() : 0; }
 
   mode_t GetFileMode() const { return m_entry ? m_entry.GetFileMode() : 0; }
   time_t GetMTime() const { return m_entry ? m_entry.GetMTime() : 0; }
@@ -246,6 +254,8 @@ class Node {
   std::weak_ptr<Node> m_parent;
   std::string m_symbolicLink;
   bool m_hardLink = false;
+  // Node will control the life of its children, so only Node hold a shared_ptr
+  // to its children, others should use weak_ptr instead
   FilePathToNodeUnorderedMap m_children;
 
   friend class QS::Data::Cache;  // for GetEntry
@@ -327,6 +337,12 @@ class DirectoryTree {
   // @return : the node has been renamed or null if rename doesn't happen
   std::shared_ptr<Node> Rename(const std::string &oldFilePath,
                                const std::string &newFilePath);
+
+  // Remove node
+  //
+  // @param  : path
+  // @return : void
+  void Remove(const std::string &path);
 
   // Creat a hard link to a file
   //

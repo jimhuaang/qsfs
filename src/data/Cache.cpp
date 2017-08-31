@@ -426,6 +426,7 @@ void File::Resize(size_t smallerSize) {
     DebugWarning("File size: " + to_string(curSize) +
                  ", target size: " + to_string(smallerSize) +
                  ". Try to resize File to a larger or same size. Go on");
+    // TODO(jim): add a new page with zero data to fill the hole
     return;
   }
 
@@ -739,7 +740,7 @@ CacheListIterator Cache::Erase(const string &fileId) {
   if (it != m_map.end()) {
     return UnguardedErase(it);
   } else {
-    DebugWarning("Try to remove file " + fileId + " which is not found. Go on");
+    DebugInfo("Try to remove file " + fileId + " which is not found. Go on");
     return m_cache.end();
   }
 }

@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <iterator>
 #include <memory>
+#include <queue>
 #include <set>
 #include <string>
 
@@ -38,6 +39,7 @@ using QS::Utils::AppendPathDelim;
 using QS::Utils::IsRootDirectory;
 using std::lock_guard;
 using std::make_shared;
+using std::queue;
 using std::recursive_mutex;
 using std::set;
 using std::string;
@@ -93,7 +95,8 @@ Node::~Node() {
     }
   }
 
-  if (m_entry.GetNumLink() == 0 ||
+  GetEntry().DecreaseNumLink();
+  if (m_entry.GetNumLink() <= 0 ||
       (m_entry.GetNumLink() <= 1 && m_entry.IsDirectory())) {
     FileMetaDataManager::Instance().Erase(GetFilePath());
   }
@@ -128,6 +131,31 @@ set<string> Node::GetChildrenIds() const {
 }
 
 // --------------------------------------------------------------------------
+queue<string> Node::GetChildrenIdsRecursively() const {
+  queue<string> ids;
+  queue<shared_ptr<Node>> childs;
+
+  for (const auto &pair : m_children) {
+    ids.emplace(pair.first);
+    childs.push(pair.second);
+  }
+
+  while (!childs.empty()) {
+    auto child = childs.front();
+    childs.pop();
+
+    if (child->IsDirectory()) {
+      for (const auto &pair : child->GetChildren()) {
+        ids.emplace(pair.first);
+        childs.push(pair.second);
+      }
+    }
+  }
+
+  return ids;
+}
+
+// --------------------------------------------------------------------------
 shared_ptr<Node> Node::Insert(const shared_ptr<Node> &child) {
   assert(IsDirectory());
   if (child) {
@@ -149,16 +177,7 @@ shared_ptr<Node> Node::Insert(const shared_ptr<Node> &child) {
 // --------------------------------------------------------------------------
 void Node::Remove(const shared_ptr<Node> &child) {
   if (child) {
-    bool reset = m_children.size() == 1 ? true : false;
-
-    auto it = m_children.find(child->GetFilePath());
-    if (it != m_children.end()) {
-      m_children.erase(it);
-      if (reset) m_children.clear();
-    } else {
-      DebugWarning("Try to remove Node " + child->GetFilePath() +
-                   " which is not found. Go on");
-    }
+    Remove(child->GetFilePath());
   } else {
     DebugWarning("Try to remove null Node. Go on")
   }
@@ -167,7 +186,16 @@ void Node::Remove(const shared_ptr<Node> &child) {
 // --------------------------------------------------------------------------
 void Node::Remove(const std::string &childFilePath) {
   if (childFilePath.empty()) return;
-  Remove(Find(childFilePath));
+
+  bool reset = m_children.size() == 1 ? true : false;
+  auto it = m_children.find(childFilePath);
+  if (it != m_children.end()) {
+    m_children.erase(it);
+    if (reset) m_children.clear();
+  } else {
+    DebugWarning("Try to remove Node " + childFilePath +
+                 " which is not found. Go on");
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -358,7 +386,7 @@ shared_ptr<Node> DirectoryTree::UpdateDiretory(
 
 // --------------------------------------------------------------------------
 shared_ptr<Node> DirectoryTree::Rename(const string &oldFilePath,
-                           const string &newFilePath) {
+                                       const string &newFilePath) {
   if (oldFilePath.empty() || newFilePath.empty()) {
     DebugWarning("Null input parameter [old file: " + oldFilePath +
                  ", new file: " + newFilePath + "]");
@@ -400,12 +428,60 @@ shared_ptr<Node> DirectoryTree::Rename(const string &oldFilePath,
       }
     }
     m_currentNode = node;
-  }
-  else {
+  } else {
     DebugWarning("Node is not existing for " + oldFilePath);
   }
 
   return node;
+}
+
+// --------------------------------------------------------------------------
+void DirectoryTree::Remove(const string &path) {
+  if (IsRootDirectory(path)) {
+    DebugError("Unable to remove root");
+    return;
+  }
+  auto node = Find(path).lock();
+  if (!(node && *node)) {
+    DebugWarning("No such file or directory " + path);
+    return;
+  }
+
+  auto parent = node->GetParent();
+  if (parent) {
+    parent->Remove(path);
+  }
+  m_map.erase(path);
+  m_parentToChildrenMap.erase(path);
+
+  if(!node->IsDirectory()){
+    node.reset();
+    return;
+  }
+  
+  std::queue<shared_ptr<Node>> deleteNodes;
+  for (auto &pair : node->GetChildren()) {
+    deleteNodes.push(std::move(pair.second));
+  }
+  // recursively remove all children references
+  while(!deleteNodes.empty()){
+    auto node_ = deleteNodes.front();
+    deleteNodes.pop();
+
+    auto path_ = node_->GetFilePath();
+    m_map.erase(path_);
+    m_parentToChildrenMap.erase(path_);
+
+    if(node->IsDirectory()){
+      for(auto &pair : node_->GetChildren()){
+        deleteNodes.push(std::move(pair.second));
+      }
+    }
+  }
+
+  // if path is a directory, when go out of this function, destructor
+  // will recursively delete all its children, as there is no references
+  // to the node now.
 }
 
 // --------------------------------------------------------------------------
@@ -424,9 +500,9 @@ shared_ptr<Node> DirectoryTree::HardLink(const string &filePath,
   }
 
   auto lnkNode = make_shared<Node>(Entry(node->GetEntry()), node);
-  if(!(lnkNode && *lnkNode)){
+  if (!(lnkNode && *lnkNode)) {
     DebugError("Fail to create a hard link [path=" + filePath +
-    ", link=" + hardlinkPath);
+               ", link=" + hardlinkPath);
     return shared_ptr<Node>(nullptr);
   }
   lnkNode->SetHardLink(true);

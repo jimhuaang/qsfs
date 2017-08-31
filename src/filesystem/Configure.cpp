@@ -56,7 +56,7 @@ string GetLogDirectory() {
 
 string GetMimeFile() { return QSFS_MIME_FILE; }
 
-uint16_t GetPathMaxLen() { return 4096; }
+uint16_t GetPathMaxLen() { return 4096; }  // TODO(jim): should be 1023?
 uint16_t GetNameMaxLen() { return 255; }
 
 mode_t GetRootMode() { return (S_IRWXU | S_IRWXG | S_IRWXO); }

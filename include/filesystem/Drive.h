@@ -113,15 +113,24 @@ class Drive {
 
   // Delete a file
   //
-  // @param  : file path
+  // @param  : file path, flag to do check
   // @return : void
-  void DeleteFile(const std::string &filePath);
-
-  // Delete an empty directory
   //
-  // @param  : dir path
+  // flag doCheck control whether to check the node existence
+  // and its file type.
+  void DeleteFile(const std::string &filePath, bool doCheck = true);
+
+  // Delete a directory
+  //
+  // @param  : dir path, flag recursive, flag to do check
   // @return : void
-  void DeleteDir(const std::string &dirPath);
+  //
+  // flag recursive control whether to delete the directory recursively.
+  // If set recursive = false, DeleteDir can only delete an empty dir.
+  // flag doCheck control whether to check the node existence, file type,
+  // and if it's empty
+  void DeleteDir(const std::string &dirPath, bool recursive,
+                 bool doCheck = true);
 
   // Create a hard link to a file
   //
@@ -130,7 +139,7 @@ class Drive {
   //
   // Notes: hard link is only cached in local not in object storage,
   // So it could be removed, e.g. when updating its parent dir.
-  void Link(const std::string &filePath, const std::string &hardlinkPath);
+  void HardLink(const std::string &filePath, const std::string &hardlinkPath);
 
   // Create a file
   //
@@ -154,15 +163,17 @@ class Drive {
 
   // Read data from a file
   //
-  // @param  : file path to read data from, buf, size, offset
+  // @param  : file path to read data from, buf, size, offset, flag doCheck
   // @return : number of bytes has been read
   //
   // If cannot find or file need update, download it, otherwise read from cache.
   // For download, if besides the size need to be download for this time, the file
   // has more data need to be download, in this case, an asynchronize task will
   // be submit to download extra partial data of the file.
+  //
+  // Flag doCheck control whether to check the file existence and file type.
   size_t ReadFile(const std::string &filePath, char *buf, size_t size,
-                  off_t offset);
+                  off_t offset, bool doCheck = true);
 
   // Rename a file
   //

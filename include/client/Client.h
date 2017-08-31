@@ -75,8 +75,26 @@ class Client {
 
   virtual bool DisConnect() = 0;
 
+  // Delete a file
+  //
+  // @param  : file path
+  // @return : ClientError
+  //
+  // DeleteFile is used to delete a file or an empty directory.
+  // As object storage has no concept of file type (such as directory),
+  // you can call DeleteFile to delete any object. But if the object is
+  // a nonempty directory, DeleteFile will not delete its contents (including
+  // files or subdirectories belongs to it).
   virtual ClientError<QSError> DeleteFile(const std::string &filePath) = 0;
-  virtual ClientError<QSError> DeleteDirectory(const std::string &dirPath) = 0;
+
+  // Delete a directory
+  //
+  // @param  : dir path, flag recursively to remove its contents
+  // @return : ClientError
+  //
+  // DeleteDirectory is used to delete a directory and its contents recursively.
+  virtual ClientError<QSError> DeleteDirectory(const std::string &dirPath,
+                                               bool recursive) = 0;
 
   // Create an empty file
   //
