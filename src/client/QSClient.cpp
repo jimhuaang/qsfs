@@ -20,10 +20,10 @@
 #include <stdint.h>  // for uint64_t
 
 #include <chrono>
+#include <deque>
 #include <iostream>
 #include <memory>
 #include <mutex>  // NOLINT
-#include <queue>
 #include <string>
 #include <utility>
 
@@ -70,8 +70,10 @@ using QS::FileSystem::LookupMimeType;
 using QS::StringUtils::LTrim;
 using QS::TimeUtils::SecondsToRFC822GMT;
 using QS::Utils::AppendPathDelim;
+using QS::Utils::GetBaseName;
 using std::chrono::milliseconds;
 using std::iostream;
+using std::deque;
 using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
@@ -154,16 +156,13 @@ ClientError<QSError> QSClient::DeleteFile(const string &filePath) {
   auto &dirTree = drive.GetDirectoryTree();
   assert(dirTree);
   auto node = dirTree->Find(filePath).lock();
-  if(!(node && *node)){
-    DebugWarning("No such file or directory " + filePath);
-    return ClientError<QSError>(QSError::KEY_NOT_EXIST, false);
-  }
-
-  // In case of hard links, multiple node have the same file, do not delete the
-  // file for a hard link.
-  if (node->IsHardLink() || (!node->IsDirectory() && node->GetNumLink() >= 2)) {
-    dirTree->Remove(filePath);
-    return ClientError<QSError>(QSError::GOOD, false);
+  if(node && *node){
+    // In case of hard links, multiple node have the same file, do not delete the
+    // file for a hard link.
+    if (node->IsHardLink() || (!node->IsDirectory() && node->GetNumLink() >= 2)) {
+      dirTree->Remove(filePath);
+      return ClientError<QSError>(QSError::GOOD, false);
+    }
   }
 
   auto outcome = GetQSClientImpl()->DeleteObject(filePath);
@@ -213,11 +212,10 @@ ClientError<QSError> QSClient::DeleteDirectory(const string &dirPath,
 
   auto err = ClientError<QSError>(QSError::GOOD, false);
   if(recursive){
-    // collect all object keys recursively
     auto objKeys = node->GetChildrenIdsRecursively();
     while(!objKeys.empty()){
       auto objKey = objKeys.front();
-      objKeys.pop();
+      objKeys.pop_front();
       err = DeleteFile(objKey);
       if(!IsGoodQSError(err)){
         break;
@@ -302,7 +300,7 @@ ClientError<QSError> QSClient::MoveFile(const string &sourceFilePath,
   // TODO(jim):
   PutObjectInput input;
   input.SetXQSMoveSource(BuildXQSSourceString(sourceFilePath));
-  input.SetContentType(LookupMimeType(destFilePath));
+  //input.SetContentType(LookupMimeType(destFilePath));
 
   auto outcome = GetQSClientImpl()->PutObject(destFilePath, &input);
   unsigned attemptedRetries = 0;
@@ -333,8 +331,52 @@ ClientError<QSError> QSClient::MoveFile(const string &sourceFilePath,
 }
 
 // --------------------------------------------------------------------------
-ClientError<QSError> QSClient::RenameDirectory(const string &dirPath) {
-  return ClientError<QSError>(QSError::GOOD, false);
+ClientError<QSError> QSClient::MoveDirectory(const string &sourceDirPath,
+                                             const string &targetDirPath) {
+  string sourceDir = AppendPathDelim(sourceDirPath);
+  ListDirectory(sourceDir);  // will update directory tree
+
+  auto &drive = Drive::Instance();
+  auto &dirTree = drive.GetDirectoryTree();
+  auto node = dirTree->Find(sourceDir).lock();
+  if (!(node && *node)) {
+    return ClientError<QSError>(QSError::GOOD, false);
+  }
+  if (!node->IsDirectory()) {
+    return ClientError<QSError>(QSError::ACTION_INVALID, false);
+  }
+
+  auto childPaths = node->GetChildrenIdsRecursively();
+  size_t len = sourceDir.size();
+  string targetDir = AppendPathDelim(targetDirPath);
+  deque<string> childTargetPaths;
+  for (auto &path : childPaths) {
+    if (path.substr(0, len) != sourceDir) {
+      DebugError("Directory " + sourceDir + " has an invalid child file " +
+                 path);
+      return ClientError<QSError>(QSError::PARAMETER_VALUE_INAVLID, false);
+    }
+    childTargetPaths.emplace_back(targetDir + path.substr(len));
+  }
+
+  // Move children
+  auto err = ClientError<QSError>(QSError::GOOD, false);
+  while (!childPaths.empty() && !childTargetPaths.empty()) {
+    auto source = childPaths.back();
+    childPaths.pop_back();
+    auto target = childTargetPaths.back();
+    childTargetPaths.pop_back();
+
+    err = MoveFile(source, target);
+    if (!IsGoodQSError(err)) {
+      break;
+    }
+  }
+
+  // Move dir itself
+  err = MoveFile(sourceDir, targetDir);
+
+  return err;
 }
 
 // --------------------------------------------------------------------------
@@ -376,6 +418,7 @@ ClientError<QSError> QSClient::DownloadFile(const string &filePath,
 
 // --------------------------------------------------------------------------
 ClientError<QSError> QSClient::DownloadDirectory(const string &dirPath) {
+  // TODO(jim): remove
   return ClientError<QSError>(QSError::GOOD, false);
 }
 
@@ -392,6 +435,7 @@ ClientError<QSError> QSClient::UploadDirectory(const string &dirPath) {
 
 // --------------------------------------------------------------------------
 ClientError<QSError> QSClient::ReadFile(const string &filePath) {
+  // TODO(jim): remove
   return ClientError<QSError>(QSError::GOOD, false);
 }
 

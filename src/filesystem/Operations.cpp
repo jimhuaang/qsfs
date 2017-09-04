@@ -213,7 +213,7 @@ void InitializeFUSECallbacks(struct fuse_operations* fuseOps) {
   fuseOps->getxattr = NULL;     // TODO
   fuseOps->listxattr = NULL;    // TODO
   fuseOps->removexattr = NULL;  // TODO
-  fuseOps->opendir = NULL;      // TODO
+  fuseOps->opendir = qsfs_opendir;
   fuseOps->readdir = qsfs_readdir;
   fuseOps->releasedir = NULL;
   fuseOps->fsyncdir = NULL;
@@ -665,7 +665,11 @@ int qsfs_rename(const char* path, const char* newpath) {
     }
 
     // Do Renaming
-    Drive::Instance().RenameFile(path_, newpath_);
+    if(node->IsDirectory()){
+      Drive::Instance().RenameDir(path_, newpath_, false);
+    } else {
+      Drive::Instance().RenameFile(path_, newpath_, false);
+    }
 
   } catch (const QSException& err) {
     Error(err.get());
@@ -965,7 +969,7 @@ int qsfs_open(const char* path, struct fuse_file_info* fi) {
     }
 
     // Do Open
-    drive.OpenFile(path);
+    drive.OpenFile(path, false);
 
   } catch (const QSException& err) {
     Error(err.get());
@@ -1138,7 +1142,7 @@ int qsfs_statfs(const char* path, struct statvfs* statv) {
 // NOT equivalent to fsync().
 //
 // Flush is called on each close() of a file descriptor. So if a filesystem
-// wants to return write errors in close() and the file ahs cached dirty data,
+// wants to return write errors in close() and the file has cached dirty data,
 // this is a good place to write back data and return any errors. Since many
 // applications ignore close() errors this is not always useful.
 //
@@ -1194,6 +1198,8 @@ int qsfs_release(const char* path, struct fuse_file_info* fi) {
         // TODO(jim):
         // set needUpload = false;
         // fileOpen = false;
+        //node->SetNeedUpload(false);
+        //node->SetFileOpen(false);
       } catch (const QSException& err) {
         Error(err.get());
         return -EAGAIN;  // Try again
@@ -1257,11 +1263,50 @@ int qsfs_removexattr(const char* path, const char* name) {
 // Unless the 'default_permissions' mount option is given, this method should
 // check if opendir is permitted for this directory. Optionally opendir may also
 // return an arbitrary file handle in the fuse_file_info structure, which will
-// be
-// passed to readdir, closedir and fsyncdir.
+// be passed to readdir, closedir and fsyncdir.
 int qsfs_opendir(const char* path, struct fuse_file_info* fi) {
-  // Currently no implementation.
-  return 0;
+  if (!IsValidPath(path)) {
+    Error("Null path parameter from fuse");
+    return -EINVAL;  // invalid argument
+  }
+
+  int mask = (O_RDONLY != (fi->flags & O_ACCMODE) ? W_OK : R_OK) | X_OK;
+
+  int ret = 0;
+  auto& drive = Drive::Instance();
+  auto dirPath = AppendPathDelim(path);
+  try {
+    // Check parent permission
+    CheckParentDir(path, mask, &ret);
+
+    // Check if file exists
+    auto res = drive.GetNode(dirPath);
+    auto node = res.first.lock();
+    if (!(node && *node)) {
+      ret = -ENOENT;  // No such file or directory
+      throw QSException("No such directory " + FormatArg(path));
+    }
+
+    // Check if file is dir
+    if (!node->IsDirectory()) {
+      ret = -ENOTDIR;  // Not a directory
+      throw QSException("Not a directory " + FormatArg(dirPath));
+    }
+
+    // Check access permission
+    if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), mask)) {
+      ret = -EACCES;  // Permission denied
+      throw QSException("No read permission " + FormatArg(dirPath));
+    }
+  } catch (const QSException& err) {
+    Error(err.get());
+    if (ret == 0) {  // catch exception from lower level
+      ret = -errno;
+    }
+    return ret;
+  }
+
+  return ret;
 }
 
 // --------------------------------------------------------------------------

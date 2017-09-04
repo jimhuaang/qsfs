@@ -23,9 +23,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <deque>
 #include <memory>
 #include <mutex>  // NOLINT
-#include <queue>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -111,6 +111,7 @@ class Entry {
   time_t GetMTime() const { return m_metaData.lock()->m_mtime; }
   uid_t GetUID() const { return m_metaData.lock()->m_uid; }
   bool IsNeedUpload() const { return m_metaData.lock()->m_needUpload; }
+  bool IsFileOpen() const { return m_metaData.lock()->m_fileOpen; }
 
   std::string MyDirName() const { return m_metaData.lock()->MyDirName(); }
   std::string MyBaseName() const { return m_metaData.lock()->MyBaseName(); }
@@ -133,6 +134,7 @@ class Entry {
   void SetNeedUpload(bool needUpload) {
     m_metaData.lock()->m_needUpload = needUpload;
   }
+  void SetFileOpen(bool fileOpen) { m_metaData.lock()->m_fileOpen = fileOpen; }
 
  private:
   // Using weak_ptr as FileMetaDataManger will control file mete data life cycle
@@ -180,14 +182,20 @@ class Node {
   bool IsEmpty() const { return m_children.empty(); }
   bool HaveChild(const std::string &childFilePath) const;
   std::shared_ptr<Node> Find(const std::string &childFilePath) const;
-  const FilePathToNodeUnorderedMap &GetChildren() const;
+
+  // Get Children
+  const FilePathToNodeUnorderedMap &GetChildren()
+      const;  // DO NOT store the map
+
+  // Get the children's id (one level)
   std::set<std::string> GetChildrenIds() const;
+
   // Get the children file names recursively
   //
   // @param  : void
   // @return : a list of all children's file names and chilren's chidlren's ones
-  //           in a recursively way
-  std::queue<std::string> GetChildrenIdsRecursively() const;
+  //           in a recursively way. The nearest child is put at front.
+  std::deque<std::string> GetChildrenIdsRecursively() const;
 
   std::shared_ptr<Node> Insert(const std::shared_ptr<Node> &child);
   void Remove(const std::shared_ptr<Node> &child);
@@ -211,6 +219,7 @@ class Node {
   time_t GetMTime() const { return m_entry ? m_entry.GetMTime() : 0; }
   uid_t GetUID() const { return m_entry ? m_entry.GetUID() : -1; }
   bool IsNeedUpload() const { return m_entry ? m_entry.IsNeedUpload() : false; }
+  bool IsFileOpen() const { return m_entry ? m_entry.IsFileOpen() : false; }
 
   std::string MyDirName() const {
     return m_entry ? m_entry.MyDirName() : std::string();
@@ -232,9 +241,14 @@ class Node {
     }
   }
 
-  void SetNeedUpload (bool needUpload){
-    if(m_entry){
+  void SetNeedUpload(bool needUpload) {
+    if (m_entry) {
       m_entry.SetNeedUpload(needUpload);
+    }
+  }
+  void SetFileOpen(bool fileOpen) {
+    if (m_entry) {
+      m_entry.SetFileOpen(fileOpen);
     }
   }
 
@@ -342,6 +356,8 @@ class DirectoryTree {
   //
   // @param  : path
   // @return : void
+  //
+  // This will remove node and all its childrens (recursively)
   void Remove(const std::string &path);
 
   // Creat a hard link to a file
@@ -359,7 +375,7 @@ class DirectoryTree {
 
   // As we grow directory tree gradually, that means the directory tree can
   // be a partial part of the entire tree, at some point some nodes haven't
-  // built the reference to its parent or children because which have not been 
+  // built the reference to its parent or children because which have not been
   // added to the tree yet.
   // So, the dirName to children map which will help to update these references.
   ParentFilePathToChildrenMultiMap m_parentToChildrenMap;

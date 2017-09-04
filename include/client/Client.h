@@ -115,9 +115,16 @@ class Client {
   //
   // MoveFile will invoke dirTree and Cache renaming.
   virtual ClientError<QSError> MoveFile(const std::string &filePath,
-                                          const std::string &newFilePath) = 0;
+                                        const std::string &newFilePath) = 0;
 
-  virtual ClientError<QSError> RenameDirectory(const std::string &dirPath) = 0;
+  // Move directory
+  //
+  // @param  : source path, target path
+  // @return : ClientError
+  //
+  // MoveDirectory will invoke dirTree and Cache renaming
+  virtual ClientError<QSError> MoveDirectory(
+      const std::string &sourceDirPath, const std::string &targetDirPath) = 0;
 
   // Download file
   //
@@ -130,7 +137,8 @@ class Client {
       const std::string &filePath, const std::string &range,
       const std::shared_ptr<std::iostream> &buffer, std::string *eTag) = 0;
 
-  virtual ClientError<QSError> DownloadDirectory(const std::string &dirPath) = 0;
+  virtual ClientError<QSError> DownloadDirectory(
+      const std::string &dirPath) = 0;
   virtual ClientError<QSError> UploadFile(const std::string &filePath) = 0;
   virtual ClientError<QSError> UploadDirectory(const std::string &dirPath) = 0;
 

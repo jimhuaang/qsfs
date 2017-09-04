@@ -157,9 +157,9 @@ class Drive {
 
   // Open a file
   //
-  // @param  : file path
+  // @param  : file path, flag to do check
   // @return : void
-  void OpenFile(const std::string &filePath);
+  void OpenFile(const std::string &filePath, bool doCheck = true);
 
   // Read data from a file
   //
@@ -177,9 +177,17 @@ class Drive {
 
   // Rename a file
   //
-  // @param  : file path, new file path
+  // @param  : file path, new file path, flag to do check
   // @return : void
-  void RenameFile(const std::string &filePath, const std::string &newFilePath);
+  void RenameFile(const std::string &filePath, const std::string &newFilePath,
+                  bool doCheck = true);
+
+  // Rename a directory
+  //
+  // @param  : dir path, new dir path, flag to do check
+  // @return : void
+  void RenameDir(const std::string &dirPath, const std::string &newDirPath,
+                 bool doCheck = true);
 
   // Create a symbolic link to a file
   //

@@ -64,6 +64,11 @@ size_t GetDefaultMaxParallelTransfers();
 uint64_t GetDefaultTransferMaxBufHeapSize();
 uint64_t GetDefaultTransferMaxBufSize();
 
+uint64_t GetUploadMultipartDefaultPartSize();
+uint64_t GetUploadMultipartMinPartSize();
+uint64_t GetUploadMultipartMaxPartSize();
+uint64_t GetUploadMultipartThresholdSize();
+
 }  // namespace Configure
 }  // namespace FileSystem
 }  // namespace QS

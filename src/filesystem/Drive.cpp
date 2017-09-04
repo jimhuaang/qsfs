@@ -69,6 +69,8 @@ using QS::Data::IOStream;
 using QS::Data::Node;
 using QS::Exception::QSException;
 using QS::FileSystem::Configure::GetMaxFileCacheSize;
+using QS::FileSystem::Configure::GetDefaultTransferMaxBufSize;
+using QS::FileSystem::Configure::GetDefaultMaxParallelTransfers;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::GetDirName;
 using QS::Utils::GetProcessEffectiveUserID;
@@ -381,10 +383,75 @@ void Drive::MakeDir(const string &dirPath, mode_t mode) {
 }
 
 // --------------------------------------------------------------------------
-void Drive::OpenFile(const string &filePath) {
-  // call GetClient->HeadFile
-  // call call GetClient->GetObject asynchornizeing download object
-  // call m_directoryTree->Open a file to set entry with fileOpen = true
+void Drive::OpenFile(const string &filePath, bool doCheck) {
+  if (doCheck) {
+    if (filePath.empty()) {
+      DebugWarning("Invalid input");
+      return;
+    }
+  }
+
+  auto res = GetNode(filePath, true);
+  auto node = res.first.lock();
+  bool modified = res.second;
+  if (doCheck) {
+    if (!(node && *node)) {
+      DebugError("No such file or directory " + filePath);
+      return;
+    }
+    if (node->IsDirectory()) {
+      DebugError("Not a file but a directory " + filePath);
+      return;
+    }
+  }
+
+  // Download (partial) file if not found in cache or if cache need update
+  auto it = m_cache->Find(filePath);
+  time_t mtime = node->GetMTime();
+  if (it == m_cache->End() || modified) {
+    // download aysnchornizely (partial) file  (not overflow)
+    auto remainingSize = node->GetFileSize();
+    size_t downloadedSize = 0;
+    size_t size = GetDefaultTransferMaxBufSize();
+    off_t offset = 0;
+    size_t count = GetDefaultMaxParallelTransfers();
+    while (remainingSize > 0 && count > 0) {
+      off_t offset_ = offset + downloadedSize;
+      size_t downloadSize_ = downloadedSize + size < GetMaxFileCacheSize()
+                                 ? size
+                                 : GetMaxFileCacheSize() - downloadedSize;
+      if (downloadSize_ == 0) {
+        break;
+      }
+
+      auto stream_ = make_shared<IOStream>(downloadSize_);
+
+      auto callback = [this, filePath, offset_, downloadSize_, stream_,
+                       mtime](const shared_ptr<TransferHandle> &handle) {
+        if (handle) {
+          handle->WaitUntilFinished();
+          bool success = m_cache->Write(filePath, offset_, downloadSize_,
+                                        std::move(stream_), mtime);
+          DebugErrorIf(!success,
+                       "Fail to write cache [file:offset:len=" + filePath +
+                           ":" + to_string(offset_) + ":" +
+                           to_string(downloadSize_) + "]");
+        }
+      };
+
+      GetTransferManager()->GetExecutor()->SubmitAsync(
+          callback, [this, filePath, offset_, downloadSize_, stream_]() {
+            return m_transferManager->DownloadFile(filePath, offset_,
+                                                   downloadSize_, stream_);
+          });
+
+      downloadedSize += downloadSize_;
+      remainingSize -= downloadSize_;
+      --count;
+    }
+  }
+
+  node->SetFileOpen(true);
 }
 
 // --------------------------------------------------------------------------
@@ -440,12 +507,15 @@ size_t Drive::ReadFile(const string &filePath, char *buf, size_t size,
 
     // download aysnchornizely for (partial) remaining file part (not overflow)
     size_t downloadedSize = size;
-    size_t count = QS::FileSystem::Configure::GetDefaultMaxParallelTransfers();
+    size_t count = GetDefaultMaxParallelTransfers();
     while (remainingSize > 0 && count > 0) {
       off_t offset_ = offset + downloadedSize;
       size_t downloadSize_ = downloadedSize + size < GetMaxFileCacheSize()
                                  ? size
                                  : GetMaxFileCacheSize() - downloadedSize;
+      if (downloadSize_ == 0) {
+        break;
+      }
       auto stream_ = make_shared<IOStream>(downloadSize_);
 
       auto callback = [this, filePath, offset_, downloadSize_, stream_,
@@ -488,64 +558,91 @@ size_t Drive::ReadFile(const string &filePath, char *buf, size_t size,
 }
 
 // --------------------------------------------------------------------------
-void Drive::RenameFile(const string &filePath, const string &newFilePath) {
-  if (filePath.empty() || newFilePath.empty()) {
-    DebugWarning("Invalid empty parameter");
-    return;
-  }
-  if (IsRootDirectory(filePath)) {
-    DebugError("Unable to rename root");
-    return;
-  }
-  auto oldDir = GetDirName(filePath);
-  auto newDir = GetDirName(newFilePath);
-  if (oldDir.empty() || newDir.empty()) {
-    DebugError("Input file paths have invalid dir path");
-    return;
-  }
-  if (oldDir != newDir) {
-    DebugError("Input file paths have different dir path [old file: " +
-               filePath + ", new file: " + newFilePath + "]");
-    return;
-  }
-
-  auto res = GetNode(filePath, false);  // Do not invoke updating dirctory
-                                        // as we are changing it
-  auto node = res.first.lock();
-  if (node) {
-    // Check parameter
-    auto newPath = newFilePath;
-    bool isDir = node->IsDirectory();
-    if (isDir) {
-      if (newFilePath.back() != '/') {
-        DebugWarning(
-            "New file path is not ending with '/' for a directory, appending "
-            "it");
-        newPath = AppendPathDelim(newFilePath);
-      }
-    } else {
-      if (newFilePath.back() == '/') {
-        DebugWarning(
-            "New file path ending with '/' for a non directory, cut it");
-        newPath.pop_back();
-      }
-    }
-
-    // Do Renaming
-    auto err = GetClient()->MoveFile(filePath, newPath);
-
-    // Update meta and invoking updating directory tree asynchronizely
-    if (IsGoodQSError(err)) {
-      res = GetNode(newPath, true);
-      node = res.first.lock();
-      DebugErrorIf(!node, "Fail to rename file for " + filePath);
-      return;
-    } else {
-      DebugError(GetMessageForQSError(err));
+void Drive::RenameFile(const string &filePath, const string &newFilePath,
+                       bool doCheck) {
+  if (doCheck) {
+    if (filePath.empty() || newFilePath.empty()) {
+      DebugWarning("Invalid empty parameter");
       return;
     }
+    if (IsRootDirectory(filePath)) {
+      DebugError("Unable to rename root");
+      return;
+    }
+
+    auto res = GetNode(filePath, false);  // Do not invoke updating dirctory
+                                          // as we are changing it
+    auto node = res.first.lock();
+    if (!(node && *node)) {
+      DebugInfo("No such file " + filePath);
+      return;
+    }
+    if (node->IsDirectory()) {
+      DebugError("Not a file but a directory " + filePath);
+      return;
+    }
+  }
+
+  // Do Renaming
+  auto err = GetClient()->MoveFile(filePath, newFilePath);
+
+  // Call GetNode to update meta(such as mtime, .etc)
+  if (IsGoodQSError(err)) {
+    auto res = GetNode(newFilePath, true);
+    auto node = res.first.lock();
+    DebugErrorIf(!node, "Fail to rename file for " + filePath);
+    return;
   } else {
-    DebugInfo("File is not existing for " + filePath);
+    DebugError(GetMessageForQSError(err));
+    return;
+  }
+}
+
+// --------------------------------------------------------------------------
+void Drive::RenameDir(const string &dirPath, const string &newDirPath,
+                      bool doCheck) {
+  if (doCheck) {
+    if (dirPath.empty() || newDirPath.empty()) {
+      DebugWarning("Invalid empty parameter");
+      return;
+    }
+    if (IsRootDirectory(dirPath)) {
+      DebugError("Unable to rename root");
+      return;
+    }
+
+    auto res = GetNode(dirPath, false);  // Do not invoke updating dirctory
+                                         // as we are changing it
+    auto node = res.first.lock();
+    if (!(node && *node)) {
+      DebugInfo("No such file or directory " + dirPath);
+      return;
+    }
+    if (!node->IsDirectory()) {
+      DebugError("Not a directory but a file " + dirPath);
+      return;
+    }
+  }
+
+  auto newPath = newDirPath;
+  if (newDirPath.back() != '/') {
+    DebugWarning(
+        "New file path is not ending with '/' for a directory, appending "
+        "it");
+    newPath = AppendPathDelim(newDirPath);
+  }
+
+  // Do Renaming
+  auto err = GetClient()->MoveDirectory(dirPath, newPath);
+
+  // Call GetNode to update meta(such as mtime, .etc)
+  if (IsGoodQSError(err)) {
+    auto res = GetNode(newPath, true);
+    auto node = res.first.lock();
+    DebugErrorIf(!node, "Fail to rename dir for " + dirPath);
+    return;
+  } else {
+    DebugError(GetMessageForQSError(err));
     return;
   }
 }
@@ -582,7 +679,7 @@ void Drive::TruncateFile(const string &filePath, size_t newSize) {
 
   // if newSize = 0, empty file
 
-  // if newSize > size, fill the hole, Write file hole
+  // if newSize > size, fill the hole, Write file hole 
   /*   start = newsize > entry->file_size ? entry->file_size : newsize - 1;
     size = newsize > entry->file_size ? (newsize - entry->file_size) :
     (entry->file_size - newsize);
@@ -591,6 +688,8 @@ void Drive::TruncateFile(const string &filePath, size_t newSize) {
       assert(buf != NULL);
       memset(buf, 0, size);
     } */
+
+  // Fill hole when Resize File(Cache, Page)
 
   // if newSize < size, resize it
 
@@ -612,6 +711,8 @@ void Drive::UploadFile(const string &filePath) {
 
   // at last entry->write = fasle; // should do this in drive::
   // node->SetNeedUpload(false);  // Done upload
+  // node->SetNeedUpload(false);
+  // node->SetFileOpen(false);
 }
 
 // --------------------------------------------------------------------------

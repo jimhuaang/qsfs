@@ -45,12 +45,13 @@ class NullClient : public Client {
   ClientError<QSError> MakeDirectory(const std::string &dirPath) override;
   ClientError<QSError> MoveFile(const std::string &filePath,
                                 const std::string &newFilePath) override;
-  ClientError<QSError> RenameDirectory(const std::string &dirPath) override;
+  ClientError<QSError> MoveDirectory(const std::string &sourceDirPath,
+                                     const std::string &targetDirPath) override;
 
   ClientError<QSError> DownloadFile(
       const std::string &filePath, const std::string &range,
       const std::shared_ptr<std::iostream> &buffer, std::string *eTag) override;
-  
+
   ClientError<QSError> DownloadDirectory(const std::string &dirPath) override;
   ClientError<QSError> UploadFile(const std::string &filePath) override;
   ClientError<QSError> UploadDirectory(const std::string &dirPath) override;

@@ -16,6 +16,8 @@
 
 #include "filesystem/Configure.h"
 
+#include <algorithm>
+
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -99,26 +101,36 @@ int GetQSConnectionDefaultRetries(){
   return QS_CONNECTION_DEFAULT_RETRIES;
 }
 
-
 const char* GetQSLogFileName(){
   return QS_LOG_FILE_NAME;
 }
 
-
-static const size_t DEFAULT_MAX_PARALLEL_TRANSFERS = 10;
-static const uint64_t DEFAULT_MAX_BUF_HEAP_SIZE = QS::Data::Size::MB50;
-static const uint64_t DEFAULT_MAX_BUF_SIZE = QS::Data::Size::MB5;
-
 size_t GetDefaultMaxParallelTransfers(){
-  return DEFAULT_MAX_PARALLEL_TRANSFERS;
+  return 10;
 }
 
 uint64_t GetDefaultTransferMaxBufHeapSize(){
-  return DEFAULT_MAX_BUF_HEAP_SIZE;
+  return QS::Data::Size::MB50;
 }
 
 uint64_t GetDefaultTransferMaxBufSize() {
-  return DEFAULT_MAX_BUF_SIZE;
+  return QS::Data::Size::MB5;
+}
+
+uint64_t GetUploadMultipartDefaultPartSize(){
+  return QS::Data::Size::MB10;
+}
+
+uint64_t GetUploadMultipartMinPartSize(){
+  return QS::Data::Size::MB5;
+}
+
+uint64_t GetUploadMultipartMaxPartSize(){
+  return std::min(QS::Data::Size::GB1, GetMaxFileCacheSize());
+}
+
+uint64_t GetUploadMultipartThresholdSize(){
+  return QS::Data::Size::MB20;
 }
 
 }  // namespace Configure

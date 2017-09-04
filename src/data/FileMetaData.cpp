@@ -83,11 +83,8 @@ FileMetaData::FileMetaData(const string &filePath, uint64_t fileSize,
       m_eTag(eTag),
       m_encrypted(encrypted),
       m_dev(dev),
-      m_dirty(false),
-      m_write(false),
-      m_fileOpen(false),
-      m_pendingGet(false),
-      m_pendingCreate(false) {
+      m_needUpload(false),
+      m_fileOpen(false) {
   m_numLink = fileType == FileType::Directory ? 2 : 1;
   if (fileType == FileType::Directory) {
     m_filePath = AppendPathDelim(m_filePath);

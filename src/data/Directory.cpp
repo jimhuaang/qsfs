@@ -19,6 +19,7 @@
 #include <cassert>
 
 #include <algorithm>
+#include <deque>
 #include <iterator>
 #include <memory>
 #include <queue>
@@ -37,6 +38,7 @@ namespace Data {
 
 using QS::Utils::AppendPathDelim;
 using QS::Utils::IsRootDirectory;
+using std::deque;
 using std::lock_guard;
 using std::make_shared;
 using std::queue;
@@ -131,23 +133,23 @@ set<string> Node::GetChildrenIds() const {
 }
 
 // --------------------------------------------------------------------------
-queue<string> Node::GetChildrenIdsRecursively() const {
-  queue<string> ids;
-  queue<shared_ptr<Node>> childs;
+deque<string> Node::GetChildrenIdsRecursively() const {
+  deque<string> ids;
+  deque<shared_ptr<Node>> childs;
 
   for (const auto &pair : m_children) {
-    ids.emplace(pair.first);
-    childs.push(pair.second);
+    ids.emplace_back(pair.first);
+    childs.push_back(pair.second);
   }
 
   while (!childs.empty()) {
     auto child = childs.front();
-    childs.pop();
+    childs.pop_front();
 
     if (child->IsDirectory()) {
       for (const auto &pair : child->GetChildren()) {
-        ids.emplace(pair.first);
-        childs.push(pair.second);
+        ids.emplace_back(pair.first);
+        childs.push_back(pair.second);
       }
     }
   }
@@ -443,7 +445,7 @@ void DirectoryTree::Remove(const string &path) {
   }
   auto node = Find(path).lock();
   if (!(node && *node)) {
-    DebugWarning("No such file or directory " + path);
+    DebugInfo("No such file or directory " + path);
     return;
   }
 

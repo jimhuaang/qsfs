@@ -101,7 +101,14 @@ class QSClient : public Client {
   ClientError<QSError> MoveFile(const std::string &sourcefilePath,
                                 const std::string &destFilePath) override;
 
-  ClientError<QSError> RenameDirectory(const std::string &dirPath) override;
+  // Move directory
+  //
+  // @param  : source path, target path
+  // @return : ClientError
+  //
+  // MoveDirectory will invoke dirTree and Cache renaming
+  ClientError<QSError> MoveDirectory(const std::string &sourceDirPath,
+                                     const std::string &targetDirPath) override;
 
   // Download file
   //

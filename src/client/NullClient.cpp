@@ -53,7 +53,8 @@ ClientError<QSError> NullClient::MoveFile(const std::string &filePath,
   return GoodState();
 }
 
-ClientError<QSError> NullClient::RenameDirectory(const std::string &dirPath) {
+ClientError<QSError> NullClient::MoveDirectory(const string &sourceDirPath,
+                                               const string &targetDirPath) {
   return GoodState();
 }
 

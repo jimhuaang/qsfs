@@ -25,6 +25,7 @@
 #include <unistd.h>
 
 #include <memory>
+#include <mutex>  // NOLINT
 #include <string>
 
 namespace QS {
@@ -99,12 +100,8 @@ public:
   bool m_encrypted = false;
   dev_t m_dev = 0;  // device number (file system)
   int m_numLink = 1;
-  bool m_dirty = false;
-  bool m_write = false;  // TODO(jim): replaced by m_needUpload
-  bool m_fileOpen = false;  // TODO(jim): consider use atomic
-  bool m_pendingGet = false;
-  bool m_pendingCreate = false;
-  bool m_needUpload = false;  // TODO(jim): consider use atomic
+  bool m_needUpload = false;
+  bool m_fileOpen = false;
 
   friend class Entry;
 };
