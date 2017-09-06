@@ -112,7 +112,7 @@ class QSClient : public Client {
 
   // Download file
   //
-  // @param  : file path, contenct range, buffer(input), eTag (input)
+  // @param  : file path, contenct range, buffer(input), eTag (output)
   // @return : ClinetError
   //
   // If range is empty, then the whole file will be downloaded.
@@ -121,11 +121,38 @@ class QSClient : public Client {
       const std::string &filePath, const std::string &range,
       const std::shared_ptr<std::iostream> &buffer, std::string *eTag) override;
 
-  ClientError<QSError> DownloadDirectory(const std::string &dirPath) override;
-  ClientError<QSError> UploadFile(const std::string &filePath) override;
-  ClientError<QSError> UploadDirectory(const std::string &dirPath) override;
+  // Initiate multipart upload id
+  //
+  // @param  : file path, upload id (output)
+  // @return : ClientError
+  ClientError<QSError> InitiateMultipartUpload(const std::string &filePath,
+                                               std::string *uploadId) override;
 
-  ClientError<QSError> ReadFile(const std::string &filePath) override;
+  // Upload multipart
+  //
+  // @param  : file path, upload id, part number, content len, buffer
+  // @return : ClientError
+  ClientError<QSError> UploadMultipart(
+      const std::string &filePath, const std::string &uploadId, int partNumber,
+      uint64_t contentLength,
+      const std::shared_ptr<std::iostream> &buffer) override;
+
+  // Complete multipart upload
+  //
+  // @param  : file path, upload id, first part no, last part no (included)
+  // @return : ClientError
+  ClientError<QSError> CompleteMultipartUpload(const std::string &filePath,
+                                               const std::string &uploadId,
+                                               int firstPartNum,
+                                               int lastPartNum) override;
+
+  // Upload file using PutObject
+  //
+  // @param  : file path, file size, buffer
+  // @return : ClientError
+  ClientError<QSError> UploadFile(
+      const std::string &filePath, uint64_t fileSize,
+      const std::shared_ptr<std::iostream> &buffer) override;
 
   // List directory
   //
@@ -137,10 +164,6 @@ class QSClient : public Client {
   //
   // Notice the dirPath should end with delimiter.
   ClientError<QSError> ListDirectory(const std::string &dirPath) override;
-
-  //
-  ClientError<QSError> WriteFile(const std::string &filePath) override;
-  ClientError<QSError> WriteDirectory(const std::string &dirPath) override;
 
   // Get object meta data
   //

@@ -934,6 +934,30 @@ int qsfs_open(const char* path, struct fuse_file_info* fi) {
     return -EINVAL;  // invalid argument
   }
 
+
+  // TODO(jim):
+/*   if((unsigned int)fi->flags & O_TRUNC){
+    if(0 != st.st_size){
+      st.st_size = 0;
+      needs_flush = true; 
+      //Call TruncateFile(path, 0);
+    }
+  } */
+
+/*   int mask = (O_RDONLY != (fi->flags & O_ACCMODE) ? W_OK : R_OK);
+  if(0 != (result = check_parent_object_access(path, X_OK))){
+    return result;
+  }
+
+  result = check_object_access(path, mask, &st);
+  if(-ENOENT == result){
+    if(0 != (result = check_parent_object_access(path, W_OK))){
+      return result;
+    }
+  }else if(0 != result){
+    return result;
+  } */
+
   int ret = 0;
   auto& drive = Drive::Instance();
   try {
@@ -994,11 +1018,13 @@ int qsfs_read(const char* path, char* buf, size_t size, off_t offset,
               struct fuse_file_info* fi) {
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    errno = EINVAL;  // invalid argument
+    return 0;
   }
   if (buf == nullptr) {
     Error("Null buf parameter from fuse");
-    return -EINVAL;
+    errno = EINVAL;
+    return 0;
   }
 
   int readSize = 0;
@@ -1007,28 +1033,28 @@ int qsfs_read(const char* path, char* buf, size_t size, off_t offset,
     // Check if file exists
     auto node = drive.GetNode(path, false).first.lock();
     if (!(node && *node)) {
-      //ret = -ENOENT;  // No such file or directory
+      errno = ENOENT;  // No such file or directory
       throw QSException("No such file " + FormatArg(path));
     }
 
     // Check if it is a directory
     if (node->IsDirectory()) {
-      //ret = -EPERM;  // operation not permitted
+      errno = EPERM;  // operation not permitted
       throw QSException("Not a file, but a directory " + FormatArg(path));
     }
 
     // Check access permission
     if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), R_OK)) {
-      //ret = -EACCES;  // Permission denied
+      errno = EACCES;  // Permission denied
       throw QSException("No read permission for path " + FormatArg(path));
     }
 
     // Do Read
     try {
-      readSize = drive.ReadFile(path, buf, size, offset, false);
+      readSize = drive.ReadFile(path, offset, size, buf, false);
     } catch (const QSException& err) {
-      // readSize = -EAGAIN;  // try again
-      throw;          // rethrow
+      errno = EAGAIN;  // try again
+      throw;           // rethrow
     }
 
   } catch (const QSException& err) {
@@ -1049,52 +1075,51 @@ int qsfs_write(const char* path, const char* buf, size_t size, off_t offset,
                struct fuse_file_info* fi) {
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    errno = EINVAL;
+    return 0;  // invalid argument
   }
   if (buf == nullptr) {
     Error("Null buf parameter from fuse");
-    return -EINVAL;
+    errno = EINVAL;
+    return 0;
   }
 
-  int ret = 0;
+  int writeSize = 0;
   auto& drive = Drive::Instance();
   try {
     // Check if file exists
     auto node = drive.GetNode(path, false).first.lock();
     if (!(node && *node)) {
-      ret = -ENOENT;  // No such file or directory
+      errno = ENOENT;  // No such file or directory
       throw QSException("No such file " + FormatArg(path));
     }
 
     // Check if it is a directory
     if (node->IsDirectory()) {
-      ret = -EPERM;  // operation not permitted
+      errno = EPERM;  // operation not permitted
       throw QSException("Not a file, but a directory " + FormatArg(path));
     }
 
     // Check access permission
     if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), W_OK)) {
-      ret = -EACCES;  // Permission denied
+      errno = EACCES;  // Permission denied
       throw QSException("No write permission for path " + FormatArg(path));
     }
 
     // Do Write
     try {
-      drive.WriteFile(path, buf, size, offset);
+      writeSize = drive.WriteFile(path, offset, size, buf, false);
     } catch (const QSException& err) {
-      ret = -EAGAIN;  // try again
+      errno = EAGAIN;  // try again
       throw;          // rethrow
     }
 
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
-      ret = -errno;
-    }
-    return ret;
+    return writeSize;
   }
 
-  return ret;
+  return writeSize;
 }
 
 // --------------------------------------------------------------------------
@@ -1194,7 +1219,7 @@ int qsfs_release(const char* path, struct fuse_file_info* fi) {
     // Write the file to object storage
     if (node->IsNeedUpload()) {
       try {
-        Drive::Instance().UploadFile(path_);
+        Drive::Instance().UploadFile(path_, false);
         // TODO(jim):
         // set needUpload = false;
         // fileOpen = false;

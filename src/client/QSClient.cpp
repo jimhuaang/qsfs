@@ -26,11 +26,13 @@
 #include <mutex>  // NOLINT
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "qingstor-sdk-cpp/Bucket.h"
 #include "qingstor-sdk-cpp/HttpCommon.h"
 #include "qingstor-sdk-cpp/QingStor.h"
 #include "qingstor-sdk-cpp/QsConfig.h"
+#include "qingstor-sdk-cpp/types/ObjectPartType.h"
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
@@ -55,13 +57,16 @@ namespace QS {
 namespace Client {
 
 using QingStor::Bucket;
+using QingStor::CompleteMultipartUploadInput;
 using QingStor::GetObjectInput;
 using QingStor::HeadObjectInput;
 using QingStor::Http::HttpResponseCode;
+using QingStor::InitiateMultipartUploadInput;
 using QingStor::ListObjectsInput;
 using QingStor::PutObjectInput;
 using QingStor::QingStorService;
 using QingStor::QsConfig;  // sdk config
+using QingStor::UploadMultipartInput;
 
 using QS::Data::Node;
 using QS::FileSystem::Drive;
@@ -417,26 +422,121 @@ ClientError<QSError> QSClient::DownloadFile(const string &filePath,
 }
 
 // --------------------------------------------------------------------------
-ClientError<QSError> QSClient::DownloadDirectory(const string &dirPath) {
-  // TODO(jim): remove
-  return ClientError<QSError>(QSError::GOOD, false);
+ClientError<QSError> QSClient::InitiateMultipartUpload(const string &filePath,
+                                                       string *uploadId) {
+  InitiateMultipartUploadInput input;
+  input.SetContentType(LookupMimeType(filePath));
+
+  auto outcome = GetQSClientImpl()->InitiateMultipartUpload(filePath, &input);
+  unsigned attemptedRetries = 0;
+  while (!outcome.IsSuccess() &&
+         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+    int32_t sleepMilliseconds =
+        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                         attemptedRetries);
+    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+    outcome = GetQSClientImpl()->InitiateMultipartUpload(filePath, &input);
+    ++attemptedRetries;
+  }
+
+  if (outcome.IsSuccess()) {
+    auto res = outcome.GetResult();
+    if (uploadId != nullptr) {
+      *uploadId = res.GetUploadID();
+    }
+    return ClientError<QSError>(QSError::GOOD, false);
+  } else {
+    return outcome.GetError();
+  }
 }
 
 // --------------------------------------------------------------------------
-ClientError<QSError> QSClient::UploadFile(const string &filePath) {
-  
-  return ClientError<QSError>(QSError::GOOD, false);
+ClientError<QSError> QSClient::UploadMultipart(
+    const std::string &filePath, const std::string &uploadId, int partNumber,
+    uint64_t contentLength, const std::shared_ptr<std::iostream> &buffer) {
+  UploadMultipartInput input;
+  input.SetUploadID(uploadId);
+  input.SetPartNumber(partNumber);
+  input.SetContentLength(contentLength);
+  input.SetBody(buffer);
+
+  auto outcome = GetQSClientImpl()->UploadMultipart(filePath, &input);
+  unsigned attemptedRetries = 0;
+  while (!outcome.IsSuccess() &&
+         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+    int32_t sleepMilliseconds =
+        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                         attemptedRetries);
+    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+    outcome = GetQSClientImpl()->UploadMultipart(filePath, &input);
+    ++attemptedRetries;
+  }
+
+  if (outcome.IsSuccess()) {
+    return ClientError<QSError>(QSError::GOOD, false);
+  } else {
+    return outcome.GetError();
+  }
 }
 
 // --------------------------------------------------------------------------
-ClientError<QSError> QSClient::UploadDirectory(const string &dirPath) {
-  return ClientError<QSError>(QSError::GOOD, false);
+ClientError<QSError> QSClient::CompleteMultipartUpload(
+    const std::string &filePath, const std::string &uploadId, int firstPartNum,
+    int lastPartNum) {
+  CompleteMultipartUploadInput input;
+  input.SetUploadID(uploadId);
+  std::vector<ObjectPartType> objParts;
+  for (int i = firstPartNum; i <= lastPartNum; ++i) {
+    ObjectPartType part;
+    part.SetPartNumber(i);
+    objParts.push_back(std::move(part));
+  }
+  input.SetObjectParts(std::move(objParts));
+
+  auto outcome = GetQSClientImpl()->CompleteMultipartUpload(filePath, &input);
+
+  if(outcome.IsSuccess()){
+    return ClientError<QSError>(QSError::GOOD, false);
+  } else {
+    return outcome.GetError();
+  }
 }
 
 // --------------------------------------------------------------------------
-ClientError<QSError> QSClient::ReadFile(const string &filePath) {
-  // TODO(jim): remove
-  return ClientError<QSError>(QSError::GOOD, false);
+ClientError<QSError> QSClient::UploadFile(const string &filePath,
+                                          uint64_t fileSize,
+                                          const shared_ptr<iostream> &buffer) {
+  PutObjectInput input;
+  input.SetContentLength(fileSize);
+  input.SetContentType(LookupMimeType(filePath));
+  input.SetBody(buffer);
+
+  auto outcome = GetQSClientImpl()->PutObject(filePath, &input);
+  unsigned attemptedRetries = 0;
+  while (!outcome.IsSuccess() &&
+         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+    int32_t sleepMilliseconds =
+        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                         attemptedRetries);
+    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+    outcome = GetQSClientImpl()->PutObject(filePath, &input);
+    ++attemptedRetries;
+  }
+
+  if (outcome.IsSuccess()) {
+    // As sdk doesn't return the created file meta data in PutObjectOutput,
+    // So we cannot grow the directory tree here, instead we need to call
+    // Stat to head the object again in Drive::MakeFile;
+    //
+    // auto &drive = Drive::Instance();
+    // auto &dirTree = Drive::Instance().GetDirectoryTree();
+    // if (dirTree) {
+    //   dirTree->Grow(PutObjectOutputToFileMeta());  // no implementation
+    // }
+    return ClientError<QSError>(QSError::GOOD, false);
+  } else {
+    return outcome.GetError();
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -492,17 +592,6 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
       return outcome.GetError();
     }
   } while (resultTruncated);
-  return ClientError<QSError>(QSError::GOOD, false);
-}
-
-// --------------------------------------------------------------------------
-ClientError<QSError> QSClient::WriteFile(const string &filePath) {
-  // PutObject
-  return ClientError<QSError>(QSError::GOOD, false);
-}
-
-// --------------------------------------------------------------------------
-ClientError<QSError> QSClient::WriteDirectory(const string &dirPath) {
   return ClientError<QSError>(QSError::GOOD, false);
 }
 

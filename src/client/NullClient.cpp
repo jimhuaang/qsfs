@@ -64,31 +64,31 @@ ClientError<QSError> NullClient::DownloadFile(
   return GoodState();
 }
 
-ClientError<QSError> NullClient::DownloadDirectory(const std::string &dirPath) {
+ClientError<QSError> NullClient::InitiateMultipartUpload(
+    const std::string &filePath, std::string *uploadId) {
   return GoodState();
 }
 
-ClientError<QSError> NullClient::UploadFile(const std::string &filePath) {
+ClientError<QSError> NullClient::UploadMultipart(
+    const std::string &filePath, const std::string &uploadId, int partNumber,
+    uint64_t contentLength, const std::shared_ptr<std::iostream> &buffer) {
   return GoodState();
 }
 
-ClientError<QSError> NullClient::UploadDirectory(const std::string &dirPath) {
+ClientError<QSError> NullClient::CompleteMultipartUpload(
+    const std::string &filePath, const std::string &uploadId, int firstPartNum,
+    int lastPartNum) {
   return GoodState();
 }
 
-ClientError<QSError> NullClient::ReadFile(const std::string &filePath) {
+
+ClientError<QSError> NullClient::UploadFile(
+    const std::string &filePath, uint64_t fileSize,
+    const std::shared_ptr<std::iostream> &buffer) {
   return GoodState();
 }
 
 ClientError<QSError> NullClient::ListDirectory(const std::string &dirPath) {
-  return GoodState();
-}
-
-ClientError<QSError> NullClient::WriteFile(const std::string &filePath) {
-  return GoodState();
-}
-
-ClientError<QSError> NullClient::WriteDirectory(const std::string &dirPath) {
   return GoodState();
 }
 
@@ -97,7 +97,9 @@ ClientError<QSError> NullClient::Stat(const std::string &path,
   return GoodState();
 }
 
-ClientError<QSError> NullClient::Statvfs(struct statvfs *stvfs) { return GoodState(); }
+ClientError<QSError> NullClient::Statvfs(struct statvfs *stvfs) {
+  return GoodState();
+}
 
 }  // namespace Client
 }  // namespace QS

@@ -251,6 +251,11 @@ class Node {
       m_entry.SetFileOpen(fileOpen);
     }
   }
+  void SetFileSize(size_t sz){
+    if(m_entry){
+      m_entry.SetFileSize(sz);
+    }
+  }
 
   void SetEntry(Entry &&entry) { m_entry = std::move(entry); }
   void SetParent(const std::shared_ptr<Node> &parent) { m_parent = parent; }

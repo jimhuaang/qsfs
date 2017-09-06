@@ -106,7 +106,7 @@ const char* GetQSLogFileName(){
 }
 
 size_t GetDefaultMaxParallelTransfers(){
-  return 10;
+  return 5;
 }
 
 uint64_t GetDefaultTransferMaxBufHeapSize(){
@@ -114,7 +114,7 @@ uint64_t GetDefaultTransferMaxBufHeapSize(){
 }
 
 uint64_t GetDefaultTransferMaxBufSize() {
-  return QS::Data::Size::MB5;
+  return QS::Data::Size::MB10;
 }
 
 uint64_t GetUploadMultipartDefaultPartSize(){

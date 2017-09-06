@@ -52,14 +52,24 @@ class NullClient : public Client {
       const std::string &filePath, const std::string &range,
       const std::shared_ptr<std::iostream> &buffer, std::string *eTag) override;
 
-  ClientError<QSError> DownloadDirectory(const std::string &dirPath) override;
-  ClientError<QSError> UploadFile(const std::string &filePath) override;
-  ClientError<QSError> UploadDirectory(const std::string &dirPath) override;
+  ClientError<QSError> InitiateMultipartUpload(const std::string &filePath,
+                                               std::string *uploadId) override;
 
-  ClientError<QSError> ReadFile(const std::string &filePath) override;
+  ClientError<QSError> UploadMultipart(
+      const std::string &filePath, const std::string &uploadId, int partNumber,
+      uint64_t contentLength,
+      const std::shared_ptr<std::iostream> &buffer) override;
+
+  ClientError<QSError> CompleteMultipartUpload(const std::string &filePath,
+                                               const std::string &uploadId,
+                                               int firstPartNum,
+                                               int lastPartNum) override;
+
+  ClientError<QSError> UploadFile(
+      const std::string &filePath, uint64_t fileSize,
+      const std::shared_ptr<std::iostream> &buffer) override;
+
   ClientError<QSError> ListDirectory(const std::string &dirPath) override;
-  ClientError<QSError> WriteFile(const std::string &filePath) override;
-  ClientError<QSError> WriteDirectory(const std::string &dirPath) override;
 
   ClientError<QSError> Stat(const std::string &path, time_t modifiedSince = 0,
                             bool *modified = nullptr) override;

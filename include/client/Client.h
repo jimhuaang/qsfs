@@ -137,12 +137,36 @@ class Client {
       const std::string &filePath, const std::string &range,
       const std::shared_ptr<std::iostream> &buffer, std::string *eTag) = 0;
 
-  virtual ClientError<QSError> DownloadDirectory(
-      const std::string &dirPath) = 0;
-  virtual ClientError<QSError> UploadFile(const std::string &filePath) = 0;
-  virtual ClientError<QSError> UploadDirectory(const std::string &dirPath) = 0;
+  // Initiate multipart upload id
+  //
+  // @param  : file path, upload id (output)
+  // @return : ClientEror
+  virtual ClientError<QSError> InitiateMultipartUpload(
+      const std::string &filePath, std::string *uploadId) = 0;
 
-  virtual ClientError<QSError> ReadFile(const std::string &filePath) = 0;
+  // Upload multipart
+  //
+  // @param  : file path, upload id, part number, content len, buffer
+  // @return : ClientError
+  virtual ClientError<QSError> UploadMultipart(
+      const std::string &filePath, const std::string &uploadId, int partNumber,
+      uint64_t contentLength, const std::shared_ptr<std::iostream> &buffer) = 0;
+
+  // Complete multipart upload
+  //
+  // @param  : file path, upload id, last part number
+  // @return : ClientError
+  virtual ClientError<QSError> CompleteMultipartUpload(
+      const std::string &filePath, const std::string &uploadId,
+      int firstPartNum, int lastPartNum) = 0;
+
+  // Upload file using PutObject
+  //
+  // @param  : file path, file size, buffer
+  // @return : ClientError
+  virtual ClientError<QSError> UploadFile(
+      const std::string &filePath, uint64_t fileSize,
+      const std::shared_ptr<std::iostream> &buffer) = 0;
 
   // List directory
   //
@@ -154,9 +178,6 @@ class Client {
   //
   // Notice the dirPath should end with delimiter.
   virtual ClientError<QSError> ListDirectory(const std::string &dirPath) = 0;
-
-  virtual ClientError<QSError> WriteFile(const std::string &filePath) = 0;
-  virtual ClientError<QSError> WriteDirectory(const std::string &dirPath) = 0;
 
   // Get object meta data
   //

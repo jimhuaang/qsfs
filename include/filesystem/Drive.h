@@ -34,6 +34,7 @@ class Client;
 class File;
 class QSClient;
 class TransferManager;
+class TransferHandle;
 }
 
 namespace Data {
@@ -163,7 +164,7 @@ class Drive {
 
   // Read data from a file
   //
-  // @param  : file path to read data from, buf, size, offset, flag doCheck
+  // @param  : file path to read data from, offset, size, buf, flag doCheck
   // @return : number of bytes has been read
   //
   // If cannot find or file need update, download it, otherwise read from cache.
@@ -172,8 +173,8 @@ class Drive {
   // be submit to download extra partial data of the file.
   //
   // Flag doCheck control whether to check the file existence and file type.
-  size_t ReadFile(const std::string &filePath, char *buf, size_t size,
-                  off_t offset, bool doCheck = true);
+  size_t ReadFile(const std::string &filePath, off_t offset, size_t size,
+                  char *buf, bool doCheck = true);
 
   // Rename a file
   //
@@ -208,9 +209,9 @@ class Drive {
 
   // Upload a file
   //
-  // @param  : file path to upload to object storage
+  // @param  : file path to upload to object storage, flag doCheck
   // @return : void
-  void UploadFile(const std::string &filePath);
+  void UploadFile(const std::string &filePath, bool doCheck = true);
 
   // Change access and modification times of a file
   //
@@ -221,9 +222,9 @@ class Drive {
   // Write a file
   //
   // @param  : file path to write data to, buf containing data, size, offset
-  // @return : void
-  void WriteFile(const std::string &filePath, const char *buf, size_t size,
-                 off_t offset);
+  // @return : number of bytes has been wrote
+  int WriteFile(const std::string &filePath, off_t offset, size_t size,
+                const char *buf, bool doCheck = true);
 
  private:
   std::shared_ptr<QS::Client::Client> &GetClient() { return m_client; }
@@ -251,8 +252,12 @@ class Drive {
   std::unique_ptr<QS::Data::Cache> m_cache;
   std::unique_ptr<QS::Data::DirectoryTree> m_directoryTree;
 
+  std::unordered_map<std::string, std::shared_ptr<QS::Client::TransferHandle>>
+      m_multipartUploads;
+
   friend class QS::Client::QSClient;
-  friend class QS::Data::File;  // for transfer manager
+  friend class QS::Data::Cache;  // for directory
+  friend class QS::Data::File;   // for transfer manager
 };
 
 }  // namespace FileSystem

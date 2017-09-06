@@ -50,9 +50,15 @@ using std::shared_ptr;
 using std::string;
 using std::to_string;
 
-shared_ptr<TransferHandle> QSTransferManager::UploadFile() { return nullptr; }
+// --------------------------------------------------------------------------
+shared_ptr<TransferHandle> QSTransferManager::UploadFile(
+    const string &filePath) {
+  
+  return nullptr;
+}
+
+// --------------------------------------------------------------------------
 shared_ptr<TransferHandle> QSTransferManager::RetryUpload() { return nullptr; }
-void QSTransferManager::UploadDirectory(const std::string &directory) {}
 
 // --------------------------------------------------------------------------
 shared_ptr<TransferHandle> QSTransferManager::DownloadFile(
@@ -96,8 +102,6 @@ shared_ptr<TransferHandle> QSTransferManager::RetryDownload(
 }
 
 // --------------------------------------------------------------------------
-void QSTransferManager::DownloadDirectory(const std::string &directory) {}
-
 void QSTransferManager::AbortMultipartUpload(
     const shared_ptr<TransferHandle> &handle) {}
 
@@ -257,6 +261,51 @@ void QSTransferManager::DoDownload(const shared_ptr<TransferHandle> &handle) {
     DoMultiPartDownload(handle);
   } else {
     DoSinglePartDownload(handle);
+  }
+}
+
+// --------------------------------------------------------------------------
+bool QSTransferManager::PrepareUpload(
+    const shared_ptr<TransferHandle> &handle) {
+  //
+}
+
+// --------------------------------------------------------------------------
+void QSTransferManager::DoSinglePartUpload(
+    const shared_ptr<TransferHandle> &handle) {
+  // call put object
+}
+
+// --------------------------------------------------------------------------
+void QSTransferManager::InitiateMultiPartUpload(
+    const shared_ptr<TransferHandle> &handle) {
+  // initiate
+  handle->SetMultipartId("");
+}
+
+// --------------------------------------------------------------------------
+void QSTransferManager::DoMultiPartUpload(
+    const shared_ptr<TransferHandle> &handle) {
+  // call multipart
+}
+
+// --------------------------------------------------------------------------
+void QSTransferManager::CompleteMultiPartUpload(
+    const shared_ptr<TransferHandle> &handle) {
+  // call multipart
+}
+
+// --------------------------------------------------------------------------
+void QSTransferManager::DoUpload(const shared_ptr<TransferHandle> &handle) {
+  handle->UpdateStatus(TransferStatus::InProgress);
+  if (!PrepareUpload(handle)) {
+    return;
+  }
+  if (handle->IsMultipart()) {
+    InitiateMultiPartUpload(handle);
+    DoMultiPartUpload(handle);
+  } else {
+    DoSinglePartUpload(handle);
   }
 }
 

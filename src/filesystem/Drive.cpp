@@ -455,9 +455,9 @@ void Drive::OpenFile(const string &filePath, bool doCheck) {
 }
 
 // --------------------------------------------------------------------------
-size_t Drive::ReadFile(const string &filePath, char *buf, size_t size,
-                       off_t offset, bool doCheck) {
-  if (filePath.empty() || buf == nullptr) {
+size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
+                       char *buf, bool doCheck) {
+  if (doCheck && (filePath.empty() || buf == nullptr)) {
     DebugWarning("Invalid input");
     return 0;
   }
@@ -679,7 +679,7 @@ void Drive::TruncateFile(const string &filePath, size_t newSize) {
 
   // if newSize = 0, empty file
 
-  // if newSize > size, fill the hole, Write file hole 
+  // if newSize > size, fill the hole, Write file hole
   /*   start = newsize > entry->file_size ? entry->file_size : newsize - 1;
     size = newsize > entry->file_size ? (newsize - entry->file_size) :
     (entry->file_size - newsize);
@@ -700,7 +700,7 @@ void Drive::TruncateFile(const string &filePath, size_t newSize) {
 }
 
 // --------------------------------------------------------------------------
-void Drive::UploadFile(const string &filePath) {
+void Drive::UploadFile(const string &filePath, bool doCheck) {
   //
   // if file size > 20M call tranfser to upload multipart
   // need a mechnasim to handle the memory insufficient situation
@@ -709,10 +709,56 @@ void Drive::UploadFile(const string &filePath) {
   // or invoke multipart upload (first two step) transfer manager
   // and at end invoke complete mulitpart upload
 
-  // at last entry->write = fasle; // should do this in drive::
-  // node->SetNeedUpload(false);  // Done upload
-  // node->SetNeedUpload(false);
-  // node->SetFileOpen(false);
+  if (doCheck && filePath.empty()) {
+    DebugWarning("Invalid input");
+    return;
+  }
+
+  auto res = GetNode(filePath, false);
+  auto node = res.first.lock();
+
+  // Check file
+  if (doCheck) {
+    if (!(node && *node)) {
+      DebugError("No such file " + filePath);
+      return;
+    }
+    if (node->IsDirectory()) {
+      DebugError("Not a file but a directory " + filePath);
+      return;
+    }
+  }
+
+    // TODO(jim):
+  // check if [0, offset] is already existing in cache
+  // if not, l
+
+  auto callback = [this, filePath](const shared_ptr<TransferHandle> &handle){
+    if (handle) {
+      handle->WaitUntilFinished();
+      //m_cache->Erase(filePath);  // TODO erase if cache is full
+      // maybe wait for a scond;
+      m_multipartUploads.erase(filePath);
+    }
+  };
+
+  // always upload from cache, no retry
+
+  GetTransferManager()->GetExecutor()->SubmitAsync(callback, [this, filePath](){
+    auto it = m_multipartUploads.find(filePath);
+    if(it != m_multipartUploads.end()){
+      auto handle = it->second;
+      // TODO(jim)
+      // do sth to update handle
+      // handle->AddPendingPart();
+      return m_transferManager->RetryUpload();
+    } else {
+      return m_transferManager->UploadFile(filePath);
+    }
+  });
+
+  node->SetNeedUpload(false);
+  node->SetFileOpen(false);
 }
 
 // --------------------------------------------------------------------------
@@ -727,8 +773,48 @@ void Drive::Utimens(const string &path, time_t mtime) {
 }
 
 // --------------------------------------------------------------------------
-void Drive::WriteFile(const string &filePath, const char *buf, size_t size,
-                      off_t offset) {
+int Drive::WriteFile(const string &filePath, off_t offset, size_t size,
+                     const char *buf, bool doCheck) {
+  if (doCheck && (filePath.empty() || buf == nullptr)) {
+    DebugWarning("Invalid input");
+    return 0;
+  }
+
+  if (size > GetMaxFileCacheSize()) {
+    DebugError("Input size surpass max file cache size");
+    return 0;
+  }
+
+  auto res = GetNode(filePath, false);
+  auto node = res.first.lock();
+
+  // Check file
+  if (doCheck) {
+    if (!(node && *node)) {
+      DebugError("No such file " + filePath);
+      return 0;
+    }
+    if (node->IsDirectory()) {
+      DebugError("Not a file but a directory " + filePath);
+      return 0;
+    }
+  }
+
+  if (!node->IsFileOpen()) {
+    DebugError("File is not open " + filePath);
+    return 0;
+  }
+
+  bool success = m_cache->Write(filePath, offset, size, buf, time(NULL));
+  if(success){
+    node->SetNeedUpload(true);
+    if(offset + size > node->GetFileSize()){
+      node->SetFileSize(offset + size);
+    }  
+  }
+
+  return success ? size : 0;
+
   // if entry->file size < size + offset, update the entry size with max one
   // Call Cache->Put to store fiel into cache and when overpass max size,
   // invoke multipart upload (first two step)
@@ -738,6 +824,19 @@ void Drive::WriteFile(const string &filePath, const char *buf, size_t size,
 
   // create a write buffer if necceaary
   // handle hole if file
+
+  // stat(filePath) to get file size to determine if trigger multiple upload
+  //
+  // if cache enough, load (0 to offset + size) and write to cache, mark need
+  // upload
+  // else NoCacheLoadAndPost
+  // every time when the cache file is a candidate to invoke multiupload, do it
+  // async
+
+  // For a random write case, when there is no enough cache, need to
+
+  // need to write to a temp cache file in local
+  // when inconsecutive large file
 }
 
 }  // namespace FileSystem

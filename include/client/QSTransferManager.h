@@ -38,9 +38,8 @@ class QSTransferManager : public TransferManager {
   ~QSTransferManager() = default;
 
  public:
-  std::shared_ptr<TransferHandle> UploadFile() override;
+  std::shared_ptr<TransferHandle> UploadFile(const std::string &filePath) override;
   std::shared_ptr<TransferHandle> RetryUpload() override;
-  void UploadDirectory(const std::string &directory) override;
 
   // Download a file
   //
@@ -58,8 +57,6 @@ class QSTransferManager : public TransferManager {
       const std::shared_ptr<TransferHandle> &handle,
       std::shared_ptr<std::iostream> bufStream) override;
 
-  void DownloadDirectory(const std::string &directory) override;
-
   void AbortMultipartUpload(
       const std::shared_ptr<TransferHandle> &handle) override;
 
@@ -68,6 +65,13 @@ class QSTransferManager : public TransferManager {
   void DoSinglePartDownload(const std::shared_ptr<TransferHandle> &handle);
   void DoMultiPartDownload(const std::shared_ptr<TransferHandle> &handle);
   void DoDownload(const std::shared_ptr<TransferHandle> &handle);
+
+  bool PrepareUpload(const std::shared_ptr<TransferHandle> &handle);
+  void DoSinglePartUpload(const std::shared_ptr<TransferHandle> &handle);
+  void InitiateMultiPartUpload(const std::shared_ptr<TransferHandle> &handle);
+  void DoMultiPartUpload(const std::shared_ptr<TransferHandle> &handle);
+  void CompleteMultiPartUpload(const std::shared_ptr<TransferHandle> &handle);
+  void DoUpload(const std::shared_ptr<TransferHandle> &handle);
 };
 
 }  // namespace Client
