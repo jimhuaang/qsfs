@@ -59,6 +59,7 @@ using QS::Client::TransferManager;
 using QS::Client::TransferManagerConfigure;
 using QS::Client::TransferManagerFactory;
 using QS::Data::Cache;
+using QS::Data::ContentRangeDeque;
 using QS::Data::ChildrenMultiMapConstIterator;
 using QS::Data::DirectoryTree;
 using QS::Data::Entry;
@@ -69,8 +70,8 @@ using QS::Data::IOStream;
 using QS::Data::Node;
 using QS::Exception::QSException;
 using QS::FileSystem::Configure::GetMaxFileCacheSize;
-using QS::FileSystem::Configure::GetDefaultTransferMaxBufSize;
 using QS::FileSystem::Configure::GetDefaultMaxParallelTransfers;
+using QS::FileSystem::Configure::GetDefaultTransferMaxBufSize;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::GetDirName;
 using QS::Utils::GetProcessEffectiveUserID;
@@ -405,50 +406,11 @@ void Drive::OpenFile(const string &filePath, bool doCheck) {
     }
   }
 
-  // Download (partial) file if not found in cache or if cache need update
-  auto it = m_cache->Find(filePath);
+  auto ranges = m_cache->GetUnloadedRanges(filePath);
   time_t mtime = node->GetMTime();
-  if (it == m_cache->End() || modified) {
-    // download aysnchornizely (partial) file  (not overflow)
-    auto remainingSize = node->GetFileSize();
-    size_t downloadedSize = 0;
-    size_t size = GetDefaultTransferMaxBufSize();
-    off_t offset = 0;
-    size_t count = GetDefaultMaxParallelTransfers();
-    while (remainingSize > 0 && count > 0) {
-      off_t offset_ = offset + downloadedSize;
-      size_t downloadSize_ = downloadedSize + size < GetMaxFileCacheSize()
-                                 ? size
-                                 : GetMaxFileCacheSize() - downloadedSize;
-      if (downloadSize_ == 0) {
-        break;
-      }
-
-      auto stream_ = make_shared<IOStream>(downloadSize_);
-
-      auto callback = [this, filePath, offset_, downloadSize_, stream_,
-                       mtime](const shared_ptr<TransferHandle> &handle) {
-        if (handle) {
-          handle->WaitUntilFinished();
-          bool success = m_cache->Write(filePath, offset_, downloadSize_,
-                                        std::move(stream_), mtime);
-          DebugErrorIf(!success,
-                       "Fail to write cache [file:offset:len=" + filePath +
-                           ":" + to_string(offset_) + ":" +
-                           to_string(downloadSize_) + "]");
-        }
-      };
-
-      GetTransferManager()->GetExecutor()->SubmitAsync(
-          callback, [this, filePath, offset_, downloadSize_, stream_]() {
-            return m_transferManager->DownloadFile(filePath, offset_,
-                                                   downloadSize_, stream_);
-          });
-
-      downloadedSize += downloadSize_;
-      remainingSize -= downloadSize_;
-      --count;
-    }
+  bool fileContentExist = m_cache->HasFileData(0, node->GetFileSize());
+  if (!fileContentExist || modified) {
+    DownloadFileContentRanges(filePath, ranges, mtime, true);
   }
 
   node->SetFileOpen(true);
@@ -484,7 +446,7 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
   }
 
   // Ajust size or calculate remaining size
-  size_t downloadSize = size;
+  uint64_t downloadSize = size;
   int64_t remainingSize = 0;
   auto fileSize = node->GetFileSize();
   if (offset + size > fileSize) {
@@ -497,50 +459,13 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
   }
 
   // Download file if not found in cache or if cache need update
-  auto it = m_cache->Find(filePath);
+  bool fileContentExist = m_cache->HasFileData(offset, size);
   time_t mtime = node->GetMTime();
-  if (it == m_cache->End() || modified) {
+  if (!fileContentExist|| modified) {
     // download synchronizely for request file part
     auto stream = make_shared<IOStream>(downloadSize);
     auto handle =
         m_transferManager->DownloadFile(filePath, offset, downloadSize, stream);
-
-    // download aysnchornizely for (partial) remaining file part (not overflow)
-    size_t downloadedSize = size;
-    size_t count = GetDefaultMaxParallelTransfers();
-    while (remainingSize > 0 && count > 0) {
-      off_t offset_ = offset + downloadedSize;
-      size_t downloadSize_ = downloadedSize + size < GetMaxFileCacheSize()
-                                 ? size
-                                 : GetMaxFileCacheSize() - downloadedSize;
-      if (downloadSize_ == 0) {
-        break;
-      }
-      auto stream_ = make_shared<IOStream>(downloadSize_);
-
-      auto callback = [this, filePath, offset_, downloadSize_, stream_,
-                       mtime](const shared_ptr<TransferHandle> &handle) {
-        if (handle) {
-          handle->WaitUntilFinished();
-          bool success = m_cache->Write(filePath, offset_, downloadSize_,
-                                        std::move(stream_), mtime);
-          DebugErrorIf(!success,
-                       "Fail to write cache [file:offset:len=" + filePath +
-                           ":" + to_string(offset_) + ":" +
-                           to_string(downloadSize_) + "]");
-        }
-      };
-
-      GetTransferManager()->GetExecutor()->SubmitAsync(
-          callback, [this, filePath, offset_, downloadSize_, stream_]() {
-            return m_transferManager->DownloadFile(filePath, offset_,
-                                                   downloadSize_, stream_);
-          });
-
-      downloadedSize += downloadSize_;
-      remainingSize -= downloadSize_;
-      --count;
-    }
 
     // waiting for download to finish for request file part
     if (handle) {
@@ -551,6 +476,12 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
                    "Fail to write cache [file:offset:len=" + filePath + ":" +
                        to_string(offset) + ":" + to_string(downloadSize) + "]");
     }
+  }
+
+  // download asynchronizely for unloaded part
+  if(remainingSize > 0){
+    auto ranges = m_cache->GetUnloadedRanges(filePath);
+    DownloadFileContentRanges(filePath, ranges, mtime, true);
   }
 
   // Read from cache
@@ -727,38 +658,30 @@ void Drive::UploadFile(const string &filePath, bool doCheck) {
       DebugError("Not a file but a directory " + filePath);
       return;
     }
+    if(!node->IsNeedUpload()){
+      DebugError("File not need upload " + filePath);
+      return;
+    }
   }
 
-    // TODO(jim):
-  // check if [0, offset] is already existing in cache
-  // if not, l
-
-  auto callback = [this, filePath](const shared_ptr<TransferHandle> &handle){
+  auto callback = [this, node](const shared_ptr<TransferHandle> &handle) {
     if (handle) {
       handle->WaitUntilFinished();
-      //m_cache->Erase(filePath);  // TODO erase if cache is full
+      node->SetNeedUpload(false);
+      node->SetFileOpen(false);
+      // m_cache->Erase(filePath);  // TODO erase if cache is full
       // maybe wait for a scond;
-      m_multipartUploads.erase(filePath);
     }
   };
 
-  // always upload from cache, no retry
-
-  GetTransferManager()->GetExecutor()->SubmitAsync(callback, [this, filePath](){
-    auto it = m_multipartUploads.find(filePath);
-    if(it != m_multipartUploads.end()){
-      auto handle = it->second;
-      // TODO(jim)
-      // do sth to update handle
-      // handle->AddPendingPart();
-      return m_transferManager->RetryUpload();
-    } else {
-      return m_transferManager->UploadFile(filePath);
-    }
-  });
-
-  node->SetNeedUpload(false);
-  node->SetFileOpen(false);
+  auto fileSize = node->GetFileSize();
+  auto ranges = m_cache->GetUnloadedRanges(filePath);
+  time_t mtime = node->GetMTime();
+  GetTransferManager()->GetExecutor()->SubmitAsync(
+      callback, [this, filePath, fileSize, ranges, mtime]() {
+        DownloadFileContentRanges(filePath, ranges, mtime, false);
+        return m_transferManager->UploadFile(filePath, fileSize);
+      });
 }
 
 // --------------------------------------------------------------------------
@@ -837,6 +760,67 @@ int Drive::WriteFile(const string &filePath, off_t offset, size_t size,
 
   // need to write to a temp cache file in local
   // when inconsecutive large file
+}
+
+// --------------------------------------------------------------------------
+void Drive::DownloadFileContentRanges(const string &filePath,
+                                      const ContentRangeDeque &ranges,
+                                      time_t mtime,
+                                      bool async) {
+  auto DownloadRange = [this, filePath, async,
+                        mtime](const pair<off_t, size_t> &range) {
+    off_t offset = range.first;
+    size_t size = range.second;
+    // Download file if not found in cache or if cache need update
+    bool fileContentExist = m_cache->HasFileData(offset, size);
+    if (!fileContentExist) {
+      auto bufSize = GetDefaultTransferMaxBufSize();
+      auto remainingSize = size;
+      uint64_t downloadedSize = 0;
+
+      while (remainingSize > 0) {
+        off_t offset_ = offset + downloadedSize;
+        int64_t downloadSize_ =
+            remainingSize > bufSize ? bufSize : remainingSize;
+        if (downloadSize_ <= 0) {
+          break;
+        }
+
+        auto stream_ = make_shared<IOStream>(downloadSize_);
+        auto callback = [this, filePath, offset_, downloadSize_, stream_,
+                         mtime](const shared_ptr<TransferHandle> &handle) {
+          if (handle) {
+            handle->WaitUntilFinished();
+            bool success = m_cache->Write(filePath, offset_, downloadSize_,
+                                          std::move(stream_), mtime);
+            DebugErrorIf(!success,
+                         "Fail to write cache [file:offset:len=" + filePath +
+                             ":" + to_string(offset_) + ":" +
+                             to_string(downloadSize_) + "]");
+          }
+        };
+
+        if (async) {
+          GetTransferManager()->GetExecutor()->SubmitAsync(
+              callback, [this, filePath, offset_, downloadSize_, stream_]() {
+                return m_transferManager->DownloadFile(filePath, offset_,
+                                                       downloadSize_, stream_);
+              });
+        } else {
+          auto handle = m_transferManager->DownloadFile(filePath, offset_,
+                                                        downloadSize_, stream_);
+          callback(handle);
+        }
+
+        downloadedSize += downloadSize_;
+        remainingSize -= downloadSize_;
+      }
+    }
+  };
+
+  for (auto &range : ranges) {
+    DownloadRange(range);
+  }
 }
 
 }  // namespace FileSystem

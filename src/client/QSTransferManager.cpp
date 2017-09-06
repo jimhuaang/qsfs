@@ -22,8 +22,10 @@
 #include <cmath>
 #include <iostream>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/LogMacros.h"
 #include "client/Client.h"
@@ -35,34 +37,29 @@
 #include "data/Directory.h"
 #include "data/IOStream.h"
 #include "data/StreamBuf.h"
+#include "filesystem/Configure.h"
 
 namespace QS {
 
 namespace Client {
 
 using QS::Client::Utils::BuildRequestRange;
+using QS::Data::Buffer;
 using QS::Data::IOStream;
 using QS::Data::StreamBuf;
+using QS::FileSystem::Configure::GetUploadMultipartMinPartSize;
+using QS::FileSystem::Configure::GetUploadMultipartThresholdSize;
 using std::iostream;
 using std::make_shared;
 using std::pair;
 using std::shared_ptr;
 using std::string;
 using std::to_string;
-
-// --------------------------------------------------------------------------
-shared_ptr<TransferHandle> QSTransferManager::UploadFile(
-    const string &filePath) {
-  
-  return nullptr;
-}
-
-// --------------------------------------------------------------------------
-shared_ptr<TransferHandle> QSTransferManager::RetryUpload() { return nullptr; }
+using std::vector;
 
 // --------------------------------------------------------------------------
 shared_ptr<TransferHandle> QSTransferManager::DownloadFile(
-    const string &filePath, off_t offset, size_t size,
+    const string &filePath, off_t offset, uint64_t size,
     shared_ptr<iostream> bufStream) {
   // Drive::ReadFile has checked the object existence, so no check here.
   // Drive::ReadFile has already ajust the download size, so no ajust here.
@@ -102,8 +99,57 @@ shared_ptr<TransferHandle> QSTransferManager::RetryDownload(
 }
 
 // --------------------------------------------------------------------------
+shared_ptr<TransferHandle> QSTransferManager::UploadFile(const string &filePath,
+                                                         uint64_t fileSize) {
+  string bucket = ClientConfiguration::Instance().GetBucket();
+  auto handle = std::make_shared<TransferHandle>(bucket, filePath, 0, fileSize,
+                                                 TransferDirection::Upload);
+  DoUpload(handle);
+
+  return handle;
+}
+
+// --------------------------------------------------------------------------
+shared_ptr<TransferHandle> QSTransferManager::RetryUpload(
+    const shared_ptr<TransferHandle> &handle) {
+  if (handle->GetStatus() == TransferStatus::InProgress ||
+      handle->GetStatus() == TransferStatus::Completed ||
+      handle->GetStatus() == TransferStatus::NotStarted) {
+    DebugWarning("Input handle is not avaialbe to retry");
+    return handle;
+  }
+
+  if (handle->GetStatus() == TransferStatus::Aborted) {
+    return UploadFile(handle->GetObjectKey(), handle->GetBytesTotalSize());
+  } else {
+    handle->UpdateStatus(TransferStatus::NotStarted);
+    handle->Restart();
+    DoUpload(handle);
+    return handle;
+  }
+}
+
+// --------------------------------------------------------------------------
 void QSTransferManager::AbortMultipartUpload(
-    const shared_ptr<TransferHandle> &handle) {}
+    const shared_ptr<TransferHandle> &handle) {
+  if (!handle->IsMultipart()) {
+    DebugWarning("Unable to abort a non multipart upload");
+    return;
+  }
+
+  handle->Cancle();
+  handle->WaitUntilFinished();
+  if (handle->GetStatus() == TransferStatus::Cancelled) {
+    auto err = GetClient()->AbortMultipartUpload(handle->GetObjectKey(),
+                                                 handle->GetMultiPartId());
+    if (IsGoodQSError(err)) {
+      handle->UpdateStatus(TransferStatus::Aborted);
+    } else {
+      handle->SetError(err);
+      DebugError(GetMessageForQSError(err));
+    }
+  }
+}
 
 // --------------------------------------------------------------------------
 bool QSTransferManager::PrepareDownload(
@@ -145,6 +191,7 @@ void QSTransferManager::DoSinglePartDownload(
   assert(queuedParts.size() == 1);
 
   const auto &part = queuedParts.begin()->second;
+  handle->AddPendingPart(part);
   auto receivedHandler =
       [this, handle, part](const pair<ClientError<QSError>, string> &outcome) {
         auto &err = outcome.first;
@@ -177,13 +224,13 @@ void QSTransferManager::DoMultiPartDownload(
     const shared_ptr<TransferHandle> &handle) {
   auto queuedParts = handle->GetQueuedParts();
   auto ipart = queuedParts.begin();
+
   for (; ipart != queuedParts.end() && handle->ShouldContinue(); ++ipart) {
     auto buffer = GetBufferManager()->Acquire();
     if (!buffer) {
       DebugWarning("Unable to acquire resource, stop download");
       break;
     }
-
     const auto &part = ipart->second;
     if (handle->ShouldContinue()) {
       part->SetDownloadPartStream(
@@ -267,32 +314,190 @@ void QSTransferManager::DoDownload(const shared_ptr<TransferHandle> &handle) {
 // --------------------------------------------------------------------------
 bool QSTransferManager::PrepareUpload(
     const shared_ptr<TransferHandle> &handle) {
-  //
+  assert(GetBufferSize() > 0);
+  if (!(GetBufferSize() > 0)) {
+    DebugError("Buffer size is less than 0");
+    return false;
+  }
+
+  bool isRetry = handle->HasParts();
+  if (isRetry) {
+    for (auto part : handle->GetFailedParts()) {
+      handle->AddQueuePart(part.second);
+    }
+  } else {
+    auto totalTransferSize = handle->GetBytesTotalSize();
+    if (totalTransferSize >=
+        GetUploadMultipartThresholdSize()) {  // multiple upload
+      handle->SetIsMultiPart(true);
+
+      bool initSuccess = false;
+      string uploadId;
+      auto err = GetClient()->InitiateMultipartUpload(handle->GetObjectKey(),
+                                                      &uploadId);
+      if (IsGoodQSError(err)) {
+        handle->SetMultipartId(uploadId);
+        initSuccess = true;
+      } else {
+        handle->SetError(err);
+        handle->UpdateStatus(TransferStatus::Failed);
+        DebugError(GetMessageForQSError(err));
+        initSuccess = false;
+      }
+      if (!initSuccess) {
+        return false;
+      }
+
+      size_t partCount = std::ceil(totalTransferSize / GetBufferSize());
+      size_t lastCuttingSize =
+          totalTransferSize - (partCount - 1) * GetBufferSize();
+      bool needAverageLastTwoPart =
+          lastCuttingSize < GetUploadMultipartMinPartSize();
+
+      auto count = needAverageLastTwoPart ? partCount - 1 : partCount;
+      for (size_t i = 1; i < count; ++i) {
+        // part id, best progress in bytes, part size, range begin
+        handle->AddQueuePart(make_shared<Part>(
+            i, 0, GetBufferSize(),
+            handle->GetContentRangeBegin() + (i - 1) * GetBufferSize()));
+      }
+
+      size_t sz = needAverageLastTwoPart
+                      ? (lastCuttingSize + GetBufferSize()) / 2
+                      : lastCuttingSize;
+      for (size_t i = count; i <= partCount; ++i) {
+        handle->AddQueuePart(make_shared<Part>(
+            i, 0, sz,
+            handle->GetContentRangeBegin() + (count - 1) * GetBufferSize() +
+                (i - count) * sz));
+      }
+    } else {  // single upload
+      handle->SetIsMultiPart(false);
+      handle->AddQueuePart(make_shared<Part>(1, 0, totalTransferSize,
+                                             handle->GetContentRangeBegin()));
+    }
+  }
+  return true;
 }
 
 // --------------------------------------------------------------------------
 void QSTransferManager::DoSinglePartUpload(
     const shared_ptr<TransferHandle> &handle) {
-  // call put object
-}
+  auto queuedParts = handle->GetQueuedParts();
+  assert(queuedParts.size() == 1);
 
-// --------------------------------------------------------------------------
-void QSTransferManager::InitiateMultiPartUpload(
-    const shared_ptr<TransferHandle> &handle) {
-  // initiate
-  handle->SetMultipartId("");
+  const auto &part = queuedParts.begin()->second;
+  handle->AddPendingPart(part);
+
+  auto bufSize = handle->GetBytesTotalSize();
+  auto buf = Buffer(new vector<char>(bufSize));
+  // m_cahce.read (TODO(jim)) read cache to buffer
+  auto stream = make_shared<IOStream>(std::move(buf), bufSize);
+
+  auto receivedHandler = [this, handle, part, stream](const ClientError<QSError> &err){
+    if(IsGoodQSError(err)){
+      handle->ChangePartToCompleted(part);  // without eTag, as sdk
+                                            // PutObjectOutput not return etag
+      handle->UpdateStatus(TransferStatus::Completed);
+      auto streamBuf = dynamic_cast<StreamBuf *>(stream->rdbuf());
+      if(streamBuf){
+        auto buf = streamBuf->ReleaseBuffer();
+        if(buf){
+          buf.reset();
+        }
+      }
+    } else {
+      handle->ChangePartToFailed(part);
+      handle->UpdateStatus(TransferStatus::Failed);
+      handle->SetError(err);
+      DebugError(GetMessageForQSError(err));
+    }
+  };
+
+  string objKey = handle->GetObjectKey();
+  GetClient()->GetExecutor()->SubmitAsyncPrioritized(
+      receivedHandler, [this, objKey, bufSize, stream]() {
+        return GetClient()->UploadFile(objKey, bufSize, stream);
+      });
 }
 
 // --------------------------------------------------------------------------
 void QSTransferManager::DoMultiPartUpload(
     const shared_ptr<TransferHandle> &handle) {
-  // call multipart
-}
+  auto queuedParts = handle->GetQueuedParts();
+  auto ipart = queuedParts.begin();
+  for (; ipart != queuedParts.end() && handle->ShouldContinue(); ++ipart) {
+    auto buffer = GetBufferManager()->Acquire();
+    if (!buffer) {
+      DebugWarning("Unable to acquire resource, stop download");
+      break;
+    }
+    const auto &part = ipart->second;
+    if (handle->ShouldContinue()) {
+      // m_cache.read(&(*buffer)[0])  TODO(jim):
+      auto stream = make_shared<IOStream>(std::move(buffer), GetBufferSize());
+      handle->AddPendingPart(part);
 
-// --------------------------------------------------------------------------
-void QSTransferManager::CompleteMultiPartUpload(
-    const shared_ptr<TransferHandle> &handle) {
-  // call multipart
+      auto receivedHandler = [this, handle, part,
+                              stream](const ClientError<QSError> &err) {
+        if (IsGoodQSError(err)) {
+          handle->ChangePartToCompleted(part);
+        } else {
+          handle->ChangePartToFailed(part);
+          handle->SetError(err);
+          DebugError(GetMessageForQSError(err));
+        }
+
+        // release part buffer backe to resouce manager
+        auto partStreamBuf = dynamic_cast<StreamBuf *>(stream->rdbuf());
+        if (partStreamBuf) {
+          GetBufferManager()->Release(partStreamBuf->ReleaseBuffer());
+        }
+
+        // update status
+        if (!handle->HasPendingParts() && !handle->HasQueuedParts()) {
+          if (!handle->HasFailedParts() && handle->DoneTransfer()) {
+            // complete multipart upload
+            std::set<int> partIds;
+            for (auto &idToPart : handle->GetCompletedParts()) {
+              partIds.emplace(idToPart.second->GetPartId());
+            }
+            vector<int> completedPartIds(partIds.begin(), partIds.end());
+            auto err = GetClient()->CompleteMultipartUpload(
+                handle->GetObjectKey(), handle->GetMultiPartId(),
+                completedPartIds);
+            if (IsGoodQSError(err)) {
+              handle->UpdateStatus(TransferStatus::Completed);
+            } else {
+              handle->UpdateStatus(TransferStatus::Failed);
+              handle->SetError(err);
+              DebugError(GetMessageForQSError(err));
+            }
+          } else {
+            handle->UpdateStatus(TransferStatus::Failed);
+          }
+        }
+      };
+
+      string objKey = handle->GetObjectKey();
+      string uploadId = handle->GetMultiPartId();
+      auto partId = part->GetPartId();
+      auto contentLen = GetBufferSize();
+      GetClient()->GetExecutor()->SubmitAsync(
+          receivedHandler,
+          [this, objKey, uploadId, partId, contentLen, stream]() {
+            return GetClient()->UploadMultipart(objKey, uploadId, partId,
+                                                contentLen, stream);
+          });
+
+    } else {
+      GetBufferManager()->Release(std::move(buffer));
+    }
+
+    for (; ipart != queuedParts.end(); ++ipart) {
+      handle->ChangePartToFailed(ipart->second);
+    }
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -302,7 +507,6 @@ void QSTransferManager::DoUpload(const shared_ptr<TransferHandle> &handle) {
     return;
   }
   if (handle->IsMultipart()) {
-    InitiateMultiPartUpload(handle);
     DoMultiPartUpload(handle);
   } else {
     DoSinglePartUpload(handle);

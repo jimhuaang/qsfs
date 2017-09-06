@@ -76,11 +76,15 @@ ClientError<QSError> NullClient::UploadMultipart(
 }
 
 ClientError<QSError> NullClient::CompleteMultipartUpload(
-    const std::string &filePath, const std::string &uploadId, int firstPartNum,
-    int lastPartNum) {
+    const std::string &filePath, const std::string &uploadId,
+    const std::vector<int> &sortedPartIds) {
   return GoodState();
 }
 
+ClientError<QSError> NullClient::AbortMultipartUpload(
+    const std::string &filePath, const std::string &uploadId) {
+  return GoodState();
+}
 
 ClientError<QSError> NullClient::UploadFile(
     const std::string &filePath, uint64_t fileSize,

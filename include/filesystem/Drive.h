@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 
+#include "data/Cache.h"
 #include "data/Directory.h"
 
 namespace QS {
@@ -34,7 +35,6 @@ class Client;
 class File;
 class QSClient;
 class TransferManager;
-class TransferHandle;
 }
 
 namespace Data {
@@ -227,6 +227,16 @@ class Drive {
                 const char *buf, bool doCheck = true);
 
  private:
+  // Download file contents
+  //
+  // @param  : file path, file content ranges, asynchronizely or synchronizely
+  // @return : void
+  void DownloadFileContentRanges(const std::string &filePath,
+                                 const QS::Data::ContentRangeDeque &ranges,
+                                 time_t mtime,
+                                 bool async);
+
+ private:
   std::shared_ptr<QS::Client::Client> &GetClient() { return m_client; }
   std::unique_ptr<QS::Client::TransferManager> &GetTransferManager() {
     return m_transferManager;
@@ -251,9 +261,6 @@ class Drive {
   std::unique_ptr<QS::Client::TransferManager> m_transferManager;
   std::unique_ptr<QS::Data::Cache> m_cache;
   std::unique_ptr<QS::Data::DirectoryTree> m_directoryTree;
-
-  std::unordered_map<std::string, std::shared_ptr<QS::Client::TransferHandle>>
-      m_multipartUploads;
 
   friend class QS::Client::QSClient;
   friend class QS::Data::Cache;  // for directory

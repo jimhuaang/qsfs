@@ -114,15 +114,12 @@ uint64_t GetDefaultTransferMaxBufHeapSize(){
 }
 
 uint64_t GetDefaultTransferMaxBufSize() {
-  return QS::Data::Size::MB10;
-}
-
-uint64_t GetUploadMultipartDefaultPartSize(){
+  // should be larger than 2 * MB4 (min part size)
   return QS::Data::Size::MB10;
 }
 
 uint64_t GetUploadMultipartMinPartSize(){
-  return QS::Data::Size::MB5;
+  return QS::Data::Size::MB4;
 }
 
 uint64_t GetUploadMultipartMaxPartSize(){

@@ -203,7 +203,9 @@ void TransferHandle::ChangePartToCompleted(const shared_ptr<Part> &part,
   if (m_pendingParts.erase(partId) == 0) {
     m_failedParts.erase(partId);
   }
-  part->SetETag(eTag);
+  if (!eTag.empty()) {
+    part->SetETag(eTag);
+  }
   auto res = m_completedParts.emplace(partId, part);
   if (!res.second) {
     DebugWarning("Fail to change part state to completed with part " +

@@ -94,7 +94,7 @@ class Part {
 
  private:
   uint16_t m_partId;
-  std::string m_eTag;
+  std::string m_eTag;        // could be empty
   size_t m_currentProgress;  // in bytes
   size_t m_bestProgress;     // in bytes
   size_t m_size;             // in bytes
@@ -181,7 +181,7 @@ public:
   void AddPendingPart(const std::shared_ptr<Part> &part);
   void ChangePartToFailed(const std::shared_ptr<Part> &part);
   void ChangePartToCompleted(const std::shared_ptr<Part> &part,
-                             const std::string &eTag);
+                             const std::string &eTag = std::string());
   void UpdateBytesTransferred(uint64_t amount) { m_bytesTransferred += amount; }
   void SetBytesTotalSize(uint64_t totalSize) { m_bytesTotalSize = totalSize; }
 
@@ -222,7 +222,7 @@ public:
 
  private:
   bool m_isMultipart;
-  std::string m_multipartId;
+  std::string m_multipartId;  // mulitpart upload id
   PartIdToPartMap m_queuedParts;
   PartIdToPartMap m_pendingParts;
   PartIdToPartMap m_failedParts;

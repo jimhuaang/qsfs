@@ -47,15 +47,8 @@ class NullTransferManager : public TransferManager {
   ~NullTransferManager() = default;
 
  public:
-  std::shared_ptr<TransferHandle> UploadFile(
-      const std::string &filePath) override {
-    return nullptr;
-  }
-
-  std::shared_ptr<TransferHandle> RetryUpload() override { return nullptr; }
-
   std::shared_ptr<TransferHandle> DownloadFile(
-      const std::string &filePath, off_t offset, size_t size,
+      const std::string &filePath, off_t offset, uint64_t size,
       std::shared_ptr<std::iostream> downStream) override {
     return nullptr;
   }
@@ -63,6 +56,16 @@ class NullTransferManager : public TransferManager {
   std::shared_ptr<TransferHandle> RetryDownload(
       const std::shared_ptr<TransferHandle> &handle,
       std::shared_ptr<std::iostream> bufStream) override {
+    return nullptr;
+  }
+
+  std::shared_ptr<TransferHandle> UploadFile(const std::string &filePath,
+                                             uint64_t fileSize) override {
+    return nullptr;
+  }
+
+  std::shared_ptr<TransferHandle> RetryUpload(
+      const std::shared_ptr<TransferHandle> &handle) override {
     return nullptr;
   }
 

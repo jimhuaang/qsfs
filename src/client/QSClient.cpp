@@ -56,6 +56,7 @@ namespace QS {
 
 namespace Client {
 
+using QingStor::AbortMultipartUploadInput;
 using QingStor::Bucket;
 using QingStor::CompleteMultipartUploadInput;
 using QingStor::GetObjectInput;
@@ -481,21 +482,56 @@ ClientError<QSError> QSClient::UploadMultipart(
 
 // --------------------------------------------------------------------------
 ClientError<QSError> QSClient::CompleteMultipartUpload(
-    const std::string &filePath, const std::string &uploadId, int firstPartNum,
-    int lastPartNum) {
+    const std::string &filePath, const std::string &uploadId,
+    const std::vector<int> &sortedPartIds) {
   CompleteMultipartUploadInput input;
   input.SetUploadID(uploadId);
   std::vector<ObjectPartType> objParts;
-  for (int i = firstPartNum; i <= lastPartNum; ++i) {
+  for (auto partId : sortedPartIds) {
     ObjectPartType part;
-    part.SetPartNumber(i);
+    part.SetPartNumber(partId);
     objParts.push_back(std::move(part));
   }
   input.SetObjectParts(std::move(objParts));
 
   auto outcome = GetQSClientImpl()->CompleteMultipartUpload(filePath, &input);
+  unsigned attemptedRetries = 0;
+  while (!outcome.IsSuccess() &&
+         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+    int32_t sleepMilliseconds =
+        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                         attemptedRetries);
+    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+    outcome = GetQSClientImpl()->CompleteMultipartUpload(filePath, &input);
+    ++attemptedRetries;
+  }
 
-  if(outcome.IsSuccess()){
+  if (outcome.IsSuccess()) {
+    return ClientError<QSError>(QSError::GOOD, false);
+  } else {
+    return outcome.GetError();
+  }
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::AbortMultipartUpload(const string &filePath,
+                                                    const string &uploadId) {
+  AbortMultipartUploadInput input;
+  input.SetUploadID(uploadId);
+
+  auto outcome = GetQSClientImpl()->AbortMultipartUpload(filePath, &input);
+  unsigned attemptedRetries = 0;
+  while (!outcome.IsSuccess() &&
+         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+    int32_t sleepMilliseconds =
+        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                         attemptedRetries);
+    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+    outcome = GetQSClientImpl()->AbortMultipartUpload(filePath, &input);
+    ++attemptedRetries;
+  }
+
+  if (outcome.IsSuccess()) {
     return ClientError<QSError>(QSError::GOOD, false);
   } else {
     return outcome.GetError();

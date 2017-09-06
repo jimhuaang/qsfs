@@ -60,10 +60,12 @@ class NullClient : public Client {
       uint64_t contentLength,
       const std::shared_ptr<std::iostream> &buffer) override;
 
-  ClientError<QSError> CompleteMultipartUpload(const std::string &filePath,
-                                               const std::string &uploadId,
-                                               int firstPartNum,
-                                               int lastPartNum) override;
+  ClientError<QSError> CompleteMultipartUpload(
+      const std::string &filePath, const std::string &uploadId,
+      const std::vector<int> &sortedPartIds) override;
+
+  ClientError<QSError> AbortMultipartUpload(
+      const std::string &filePath, const std::string &uploadId) override;
 
   ClientError<QSError> UploadFile(
       const std::string &filePath, uint64_t fileSize,

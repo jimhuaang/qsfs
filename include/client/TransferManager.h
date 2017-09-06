@@ -17,6 +17,7 @@
 #ifndef _QSFS_FUSE_INCLUDED_CLIENT_TRANSFERMANAGER_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_CLIENT_TRANSFERMANAGER_H_  // NOLINT
 
+#include <stdint.h>
 #include "data/ResourceManager.h"
 
 #include <iostream>
@@ -81,16 +82,12 @@ class TransferManager {
   virtual ~TransferManager();
 
  public:
-  virtual std::shared_ptr<TransferHandle> UploadFile(
-      const std::string &filePath) = 0;
-  virtual std::shared_ptr<TransferHandle> RetryUpload() = 0;
-
   // Download a file
   //
   // @param  : file path, file offset, size, bufStream
   // @return : transfer handle
   virtual std::shared_ptr<TransferHandle> DownloadFile(
-      const std::string &filePath, off_t offset, size_t size,
+      const std::string &filePath, off_t offset, uint64_t size,
       std::shared_ptr<std::iostream> bufStream) = 0;
 
   // Retry a failed download
@@ -101,6 +98,24 @@ class TransferManager {
       const std::shared_ptr<TransferHandle> &handle,
       std::shared_ptr<std::iostream> bufStream) = 0;
 
+  // Upload a file
+  //
+  // @param  : file path, file size
+  // @return : transfer handle
+  virtual std::shared_ptr<TransferHandle> UploadFile(
+      const std::string &filePath, uint64_t fileSize) = 0;
+
+  // Retry a failed upload
+  //
+  // @param  : tranfser handle to retry
+  // @return : transfer handle after been retried
+  virtual std::shared_ptr<TransferHandle> RetryUpload(
+      const std::shared_ptr<TransferHandle> &handle) = 0;
+
+  // Abort a multipart upload
+  //
+  // @param  : tranfer handle to abort
+  // @return : void
   virtual void AbortMultipartUpload(
       const std::shared_ptr<TransferHandle> &handle) = 0;
 

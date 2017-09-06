@@ -22,6 +22,7 @@
 
 #include <sys/types.h>  // for off_t
 
+#include <deque>
 #include <iostream>
 #include <list>
 #include <memory>
@@ -52,6 +53,7 @@ using CacheListIterator = CacheList::iterator;
 using CacheListConstIterator = CacheList::const_iterator;
 using FileIdToCacheListIteratorMap =
     std::unordered_map<std::string, CacheListIterator, HashUtils::StringHash>;
+using ContentRangeDeque = std::deque<std::pair<off_t, size_t>>;
 
 class Cache {
  public:
@@ -82,11 +84,24 @@ class Cache {
   // from back, so IsLastFileOpen can be used as a condition when freeing cache.
   bool IsLastFileOpen() const;
 
+
+  // Whether the file content existing
+  //
+  // @param  : content range start, content range size
+  // @return : bool
+  bool HasFileData(off_t start, size_t size);
+
   // Whether a file exists in cache
   //
   // @param  : file path
   // @return : bool
   bool HasFile(const std::string &filePath) const;
+
+  // Return the unexisting content ranges for a given file
+  //
+  // @param  : file path
+  // @return : a list of {range start, range size}
+  ContentRangeDeque GetUnloadedRanges(const std::string &filePath) const;
 
   // Return the number of files in cache
   int GetNumFile() const;

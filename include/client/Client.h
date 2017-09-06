@@ -25,6 +25,7 @@
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
+#include <vector>
 
 #include <sys/statvfs.h>
 
@@ -154,11 +155,18 @@ class Client {
 
   // Complete multipart upload
   //
-  // @param  : file path, upload id, last part number
+  // @param  : file path, upload id, sorted part ids
   // @return : ClientError
   virtual ClientError<QSError> CompleteMultipartUpload(
       const std::string &filePath, const std::string &uploadId,
-      int firstPartNum, int lastPartNum) = 0;
+      const std::vector<int> &sortedPartIds) = 0;
+
+  // Abort mulitpart upload
+  //
+  // @param  : file path, upload id
+  // @return : ClientError
+  virtual ClientError<QSError> AbortMultipartUpload(
+      const std::string &filePath, const std::string &uploadId) = 0;
 
   // Upload file using PutObject
   //

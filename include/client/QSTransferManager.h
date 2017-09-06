@@ -38,15 +38,12 @@ class QSTransferManager : public TransferManager {
   ~QSTransferManager() = default;
 
  public:
-  std::shared_ptr<TransferHandle> UploadFile(const std::string &filePath) override;
-  std::shared_ptr<TransferHandle> RetryUpload() override;
-
   // Download a file
   //
   // @param  : file path, file offset, size, bufStream
   // @return : transfer handle
   std::shared_ptr<TransferHandle> DownloadFile(
-      const std::string &filePath, off_t offset, size_t size,
+      const std::string &filePath, off_t offset, uint64_t size,
       std::shared_ptr<std::iostream> bufStream) override;
 
   // Retry a failed download
@@ -57,6 +54,24 @@ class QSTransferManager : public TransferManager {
       const std::shared_ptr<TransferHandle> &handle,
       std::shared_ptr<std::iostream> bufStream) override;
 
+  // Upload a file
+  //
+  // @param  : file path, file size
+  // @return : transfer handle
+  std::shared_ptr<TransferHandle> UploadFile(const std::string &filePath,
+                                             uint64_t fileSize) override;
+
+  // Retry a failed upload
+  //
+  // @param  : tranfser handle to retry
+  // @return : transfer handle after been retried
+  std::shared_ptr<TransferHandle> RetryUpload(
+      const std::shared_ptr<TransferHandle> &handle) override;
+
+  // Abort a multipart upload
+  //
+  // @param  : tranfer handle to abort
+  // @return : void
   void AbortMultipartUpload(
       const std::shared_ptr<TransferHandle> &handle) override;
 
@@ -68,9 +83,7 @@ class QSTransferManager : public TransferManager {
 
   bool PrepareUpload(const std::shared_ptr<TransferHandle> &handle);
   void DoSinglePartUpload(const std::shared_ptr<TransferHandle> &handle);
-  void InitiateMultiPartUpload(const std::shared_ptr<TransferHandle> &handle);
   void DoMultiPartUpload(const std::shared_ptr<TransferHandle> &handle);
-  void CompleteMultiPartUpload(const std::shared_ptr<TransferHandle> &handle);
   void DoUpload(const std::shared_ptr<TransferHandle> &handle);
 };
 

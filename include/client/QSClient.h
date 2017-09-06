@@ -139,12 +139,18 @@ class QSClient : public Client {
 
   // Complete multipart upload
   //
-  // @param  : file path, upload id, first part no, last part no (included)
+  // @param  : file path, upload id, sorted part ids
   // @return : ClientError
-  ClientError<QSError> CompleteMultipartUpload(const std::string &filePath,
-                                               const std::string &uploadId,
-                                               int firstPartNum,
-                                               int lastPartNum) override;
+  ClientError<QSError> CompleteMultipartUpload(
+      const std::string &filePath, const std::string &uploadId,
+      const std::vector<int> &sortedPartIds) override;
+
+  // Abort mulitpart upload
+  //
+  // @param  : file path, upload id
+  // @return : ClientError
+  ClientError<QSError> AbortMultipartUpload(
+      const std::string &filePath, const std::string &uploadId) override;
 
   // Upload file using PutObject
   //

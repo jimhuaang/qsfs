@@ -36,8 +36,10 @@ namespace Data {
 using QS::Data::Node;
 using QS::Data::StreamUtils::GetStreamSize;
 using QS::StringUtils::PointerAddress;
+using std::deque;
 using std::iostream;
 using std::make_shared;
+using std::pair;
 using std::shared_ptr;
 using std::string;
 using std::to_string;
@@ -62,6 +64,21 @@ bool Cache::IsLastFileOpen() const{
     return false;
   }
   return node->IsFileOpen();
+}
+
+// --------------------------------------------------------------------------
+bool Cache::HasFileData(off_t start, size_t size){
+  // TODO(jim):
+  return true;
+}
+
+// --------------------------------------------------------------------------
+ContentRangeDeque Cache::GetUnloadedRanges(const string &filePath) const {
+  ContentRangeDeque ranges;
+
+  // TODO(jim):
+
+  return ranges;
 }
 
 // --------------------------------------------------------------------------
