@@ -54,8 +54,11 @@ namespace Data {
 
    off_t m_offset = 0;     // offset from the begin of owning File
    size_t m_size = 0;      // size of bytes this page contains
-   bool m_loaded = false;  // denote if the page has been loaded TODO(jim):
    std::shared_ptr<std::iostream> m_body;  // stream storing the bytes
+   std::string m_tmpFile;  // tmp file is used when qsfs cache is not enough
+                           // it is an absolute file path starting with '/tmp/'
+                           // the file name format: /tmp/basename1024_4096
+                           // 1024 is offset, 4096 is size in bytes
 
   public:
    // Construct Page from a block of bytes
@@ -85,7 +88,7 @@ namespace Data {
    Page(const Page &) = default;
    Page &operator=(Page &&) = default;
    Page &operator=(const Page &) = default;
-   ~Page() = default;
+   ~Page();
 
    // Return the stop position.
    off_t Stop() const { return 0 < m_size ? m_offset + m_size - 1 : 0; }
@@ -116,6 +119,17 @@ namespace Data {
   private:
    // Set stream
    void SetStream(std::shared_ptr<std::iostream> && stream);
+
+   // Set tmp file name
+   void SetTempFile(const std::string &tmpfile) { m_tmpFile = tmpfile; }
+
+   // Remove tmp file from disk
+   void RemoveTempFileFromDiskIfExists() const;
+
+   // Setup tmp file on disk
+   // - open the tmp file
+   // - set stream to fstream assocating with tmp file
+   void SetupTempFile();
 
    // Refreseh the page's partial content without checking.
    // Starting from file offset, len of bytes will be updated.

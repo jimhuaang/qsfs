@@ -88,10 +88,6 @@ class Part {
     atomic_store(&m_downloadPartStream, downloadPartStream);
   }
 
-/*   void SetDownloadBuffer(std::shared_ptr<std::vector<char> > downloadBuffer) {
-    atomic_store(&m_downloadBuffer, downloadBuffer);
-  } */
-
  private:
   uint16_t m_partId;
   std::string m_eTag;        // could be empty
@@ -102,8 +98,6 @@ class Part {
 
   // Notice: use atomic functions every time you touch the variable
   std::shared_ptr<std::iostream> m_downloadPartStream;
-  // TODO(jim): condsider remove this
-  //std::shared_ptr<std::vector<char> > m_downloadBuffer;
 
   friend class TransferHandle;
   friend class QSTransferManager;

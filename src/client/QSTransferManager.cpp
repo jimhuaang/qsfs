@@ -38,6 +38,7 @@
 #include "data/IOStream.h"
 #include "data/StreamBuf.h"
 #include "filesystem/Configure.h"
+#include "filesystem/Drive.h"
 
 namespace QS {
 
@@ -63,7 +64,7 @@ shared_ptr<TransferHandle> QSTransferManager::DownloadFile(
     shared_ptr<iostream> bufStream) {
   // Drive::ReadFile has checked the object existence, so no check here.
   // Drive::ReadFile has already ajust the download size, so no ajust here.
-  if(!bufStream){
+  if (!bufStream) {
     DebugError("Null buffer stream parameter");
     return nullptr;
   }
@@ -389,20 +390,31 @@ void QSTransferManager::DoSinglePartUpload(
   const auto &part = queuedParts.begin()->second;
   handle->AddPendingPart(part);
 
-  auto bufSize = handle->GetBytesTotalSize();
-  auto buf = Buffer(new vector<char>(bufSize));
-  // m_cahce.read (TODO(jim)) read cache to buffer
-  auto stream = make_shared<IOStream>(std::move(buf), bufSize);
+  auto fileSize = handle->GetBytesTotalSize();
+  auto buf = Buffer(new vector<char>(fileSize));
+  string objKey = handle->GetObjectKey();
+  auto &drive = QS::FileSystem::Drive::Instance();
+  auto &cache = drive.GetCache();
+  auto &dirTree = drive.GetDirectoryTree();
+  auto node = dirTree->Find(objKey).lock();
+  assert(node && *node);
+  bool success = cache->Read(objKey, 0, fileSize, &(*buf)[0], node);
+  if (!success) {
+    DebugError("Fail to read cache [file = " + objKey + "], stop upload");
+    return;
+  }
 
-  auto receivedHandler = [this, handle, part, stream](const ClientError<QSError> &err){
-    if(IsGoodQSError(err)){
+  auto stream = make_shared<IOStream>(std::move(buf), fileSize);
+  auto receivedHandler = [this, handle, part,
+                          stream](const ClientError<QSError> &err) {
+    if (IsGoodQSError(err)) {
       handle->ChangePartToCompleted(part);  // without eTag, as sdk
                                             // PutObjectOutput not return etag
       handle->UpdateStatus(TransferStatus::Completed);
       auto streamBuf = dynamic_cast<StreamBuf *>(stream->rdbuf());
-      if(streamBuf){
+      if (streamBuf) {
         auto buf = streamBuf->ReleaseBuffer();
-        if(buf){
+        if (buf) {
           buf.reset();
         }
       }
@@ -414,10 +426,9 @@ void QSTransferManager::DoSinglePartUpload(
     }
   };
 
-  string objKey = handle->GetObjectKey();
   GetClient()->GetExecutor()->SubmitAsyncPrioritized(
-      receivedHandler, [this, objKey, bufSize, stream]() {
-        return GetClient()->UploadFile(objKey, bufSize, stream);
+      receivedHandler, [this, objKey, fileSize, stream]() {
+        return GetClient()->UploadFile(objKey, fileSize, stream);
       });
 }
 
@@ -425,16 +436,34 @@ void QSTransferManager::DoSinglePartUpload(
 void QSTransferManager::DoMultiPartUpload(
     const shared_ptr<TransferHandle> &handle) {
   auto queuedParts = handle->GetQueuedParts();
+  string objKey = handle->GetObjectKey();
+  auto &drive = QS::FileSystem::Drive::Instance();
+  auto &cache = drive.GetCache();
+  auto &dirTree = drive.GetDirectoryTree();
+  auto node = dirTree->Find(objKey).lock();
+  assert(node && *node);
+
   auto ipart = queuedParts.begin();
   for (; ipart != queuedParts.end() && handle->ShouldContinue(); ++ipart) {
     auto buffer = GetBufferManager()->Acquire();
     if (!buffer) {
-      DebugWarning("Unable to acquire resource, stop download");
+      DebugWarning("Unable to acquire resource, stop upload");
       break;
     }
+
     const auto &part = ipart->second;
+    bool success = cache->Read(objKey, part->GetRangeBegin(), GetBufferSize(),
+                               &(*buffer)[0], node);
+    if (!success) {
+      DebugError("Fail to read cache [file:offset:len = " + objKey + ":" +
+                 to_string(part->GetRangeBegin()) + ":" +
+                 to_string(GetBufferSize()) + "], stop upload");
+
+      GetBufferManager()->Release(std::move(buffer));
+      break;
+    }
+
     if (handle->ShouldContinue()) {
-      // m_cache.read(&(*buffer)[0])  TODO(jim):
       auto stream = make_shared<IOStream>(std::move(buffer), GetBufferSize());
       handle->AddPendingPart(part);
 
@@ -479,7 +508,6 @@ void QSTransferManager::DoMultiPartUpload(
         }
       };
 
-      string objKey = handle->GetObjectKey();
       string uploadId = handle->GetMultiPartId();
       auto partId = part->GetPartId();
       auto contentLen = GetBufferSize();
@@ -493,10 +521,10 @@ void QSTransferManager::DoMultiPartUpload(
     } else {
       GetBufferManager()->Release(std::move(buffer));
     }
+  }
 
-    for (; ipart != queuedParts.end(); ++ipart) {
-      handle->ChangePartToFailed(ipart->second);
-    }
+  for (; ipart != queuedParts.end(); ++ipart) {
+    handle->ChangePartToFailed(ipart->second);
   }
 }
 

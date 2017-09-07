@@ -302,9 +302,6 @@ class DirectoryTree {
   // Get current node
   std::shared_ptr<Node> GetCurrentNode() const;
 
-  // TODO(jim):
-  // UpdateNode
-
   // Find node
   //
   // @param  : file path (absolute path)

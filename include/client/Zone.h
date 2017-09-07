@@ -33,7 +33,6 @@ static const char *const GD_2A = "gd2a";
 static const char *const SH_1A = "sh1a";
 }  // namespace Zone
 
-// TODO(jim): probably not needed
 std::string FromEndPoint(const std::string &zoneName);
 
 const char *GetDefaultZone();

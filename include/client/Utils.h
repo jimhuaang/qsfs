@@ -31,7 +31,8 @@ namespace Client {
 
 namespace Utils {
 
-// TODO(jim): refer s3fs::get_mode, content-type to file type
+// TODO(jim): when sdk support meta data
+// refer s3fs::get_mode to add utils
 
 // Build request header of 'Range'
 //

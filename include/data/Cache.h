@@ -22,7 +22,6 @@
 
 #include <sys/types.h>  // for off_t
 
-#include <deque>
 #include <iostream>
 #include <list>
 #include <memory>
@@ -53,7 +52,6 @@ using CacheListIterator = CacheList::iterator;
 using CacheListConstIterator = CacheList::const_iterator;
 using FileIdToCacheListIteratorMap =
     std::unordered_map<std::string, CacheListIterator, HashUtils::StringHash>;
-using ContentRangeDeque = std::deque<std::pair<off_t, size_t>>;
 
 class Cache {
  public:
@@ -84,12 +82,11 @@ class Cache {
   // from back, so IsLastFileOpen can be used as a condition when freeing cache.
   bool IsLastFileOpen() const;
 
-
   // Whether the file content existing
   //
-  // @param  : content range start, content range size
+  // @param  : file path, content range start, content range size
   // @return : bool
-  bool HasFileData(off_t start, size_t size);
+  bool HasFileData(const std::string &filePath, off_t start, size_t size) const;
 
   // Whether a file exists in cache
   //
@@ -99,9 +96,10 @@ class Cache {
 
   // Return the unexisting content ranges for a given file
   //
-  // @param  : file path
+  // @param  : file path, file total size
   // @return : a list of {range start, range size}
-  ContentRangeDeque GetUnloadedRanges(const std::string &filePath) const;
+  ContentRangeDeque GetUnloadedRanges(const std::string &filePath,
+                                      uint64_t fileTotalSize) const;
 
   // Return the number of files in cache
   int GetNumFile() const;
@@ -124,7 +122,6 @@ class Cache {
   // End of cache list
   CacheListIterator End();
 
- private:
   // Read file cache into a buffer
   //
   // @param  : file path, offset, len, buffer, node
@@ -133,6 +130,7 @@ class Cache {
   // If not found fileId in cache, create it in cache and load its pages.
   size_t Read(const std::string &fileId, off_t offset, size_t len, char *buffer,
               std::shared_ptr<Node> node);
+ private:
 
   // Write a block of bytes into file cache
   //

@@ -46,7 +46,17 @@ std::string LTrim(const std::string &str, unsigned char c);
 std::string RTrim(const std::string &str, unsigned char c);
 std::string Trim(const std::string &str, unsigned char c);
 
+// Convert access mode to string
+//
+// @param  : access mode
+// @return : string of a combination of {R_OK, W_OK, X_OK}, e.g. "R_OK&W_OK"
+std::string AccessMaskToString(int amode);
 
+// Convert file mode to string
+//
+// @param  : file mode
+// @return : string in form of [rwxXst]
+std::string ModeToString(mode_t mode);
 
 }  // namespace StringUtils
 }  // namespace QS

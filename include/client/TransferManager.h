@@ -116,6 +116,11 @@ class TransferManager {
   //
   // @param  : tranfer handle to abort
   // @return : void
+  //
+  // By default, multipart upload will remain in a Failed state if they fail,
+  // or a Cancelled state if they were cancelled. Leaving failed state around
+  // still costs the owner of the bucket money. If you know you will not going
+  // to retry it, abort the multipart upload request after cancelled or failed.
   virtual void AbortMultipartUpload(
       const std::shared_ptr<TransferHandle> &handle) = 0;
 

@@ -22,6 +22,7 @@
 
 #include "base/HashUtils.h"
 #include "base/LogMacros.h"
+#include "base/StringUtils.h"
 #include "base/Utils.h"
 #include "filesystem/Configure.h"
 
@@ -31,8 +32,8 @@ namespace Data {
 
 using QS::FileSystem::Configure::GetDefineDirMode;
 using QS::HashUtils::EnumHash;
+using QS::StringUtils::AccessMaskToString;
 using QS::Utils::AppendPathDelim;
-using QS::Utils::AccessMaskToString;
 using QS::Utils::GetProcessEffectiveUserID;
 using QS::Utils::GetProcessEffectiveGroupID;
 using QS::Utils::IsRootDirectory;

@@ -47,9 +47,10 @@ using QS::FileSystem::Configure::GetNameMaxLen;
 using QS::FileSystem::Configure::GetPathMaxLen;
 using QS::FileSystem::Configure::GetDefineFileMode;
 using QS::FileSystem::Drive;
+using QS::StringUtils::AccessMaskToString;
+using QS::StringUtils::ModeToString;
 using QS::StringUtils::Trim;
 using QS::Utils::AppendPathDelim;
-using QS::Utils::AccessMaskToString;
 using QS::Utils::GetBaseName;
 using QS::Utils::GetDirName;
 using QS::Utils::IsRootDirectory;
@@ -757,7 +758,7 @@ int qsfs_link(const char* path, const char* linkpath) {
 // --------------------------------------------------------------------------
 // Change the permission bits of a file
 int qsfs_chmod(const char* path, mode_t mode) {
-  DebugInfo("Trying to change permisions to " + QS::Utils::ModeToString(mode) +
+  DebugInfo("Trying to change permisions to " + ModeToString(mode) +
             " for path" + FormatArg(path));
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
@@ -1220,11 +1221,6 @@ int qsfs_release(const char* path, struct fuse_file_info* fi) {
     if (node->IsNeedUpload()) {
       try {
         Drive::Instance().UploadFile(path_, false);
-        // TODO(jim):
-        // set needUpload = false;
-        // fileOpen = false;
-        //node->SetNeedUpload(false);
-        //node->SetFileOpen(false);
       } catch (const QSException& err) {
         Error(err.get());
         return -EAGAIN;  // Try again

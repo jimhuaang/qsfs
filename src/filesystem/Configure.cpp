@@ -35,8 +35,9 @@ using std::string;
 static const char* const PROGRAM_NAME = "qsfs";
 static const char* const VERSION = "1.0.0";
 static const char* const QSFS_DEFAULT_CREDENTIALS = "/opt/qsfs/qsfs.cred";
-static const char* const QSFS_DEFAULT_LOG_DIR = "/opt/qsfs/qsfs.log/";  // log dir
+static const char* const QSFS_DEFAULT_LOG_DIR = "/opt/qsfs/qsfs_log/";  // log dir
 static const char* const QSFS_MIME_FILE = "/etc/mime.types";
+static const char* const QSFS_TMP_DIR = "/tmp/qsfs_cache/";  // tmp cache dir
 
 const char* GetProgramName() { return PROGRAM_NAME; }
 const char* GetQSFSVersion() { return VERSION; }
@@ -57,6 +58,7 @@ string GetLogDirectory() {
 }
 
 string GetMimeFile() { return QSFS_MIME_FILE; }
+string GetCacheTemporaryDirectory() { return QSFS_TMP_DIR; }
 
 uint16_t GetPathMaxLen() { return 4096; }  // TODO(jim): should be 1023?
 uint16_t GetNameMaxLen() { return 255; }
@@ -83,12 +85,6 @@ size_t GetMaxFileMetaDataCount() {
   return QS::Data::Size::K10;  // default value
 }
 
-bool IsSafeDiskSpace() {
-  // TODO(jim) :
-  return true;
-}
-
-
 static const int CLIENT_DEFAULT_POOL_SIZE = 5;
 static const int QS_CONNECTION_DEFAULT_RETRIES = 3;  // qs sdk parameter
 static const char *QS_LOG_FILE_NAME = "qs_sdk.log";  // qs sdk log
@@ -114,11 +110,14 @@ uint64_t GetDefaultTransferMaxBufHeapSize(){
 }
 
 uint64_t GetDefaultTransferMaxBufSize() {
-  // should be larger than 2 * MB4 (min part size)
+  // should be larger than 2 * MB4 (min part size),
+  // as QSTransferManager count on it to average the last two
+  // multiparts size when do multipart upload
   return QS::Data::Size::MB10;
 }
 
 uint64_t GetUploadMultipartMinPartSize(){
+  // qs qingstor sepcific
   return QS::Data::Size::MB4;
 }
 

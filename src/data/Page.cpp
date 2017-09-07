@@ -18,20 +18,29 @@
 
 #include <assert.h>
 
+#include <fstream>
 #include <sstream>
 #include <string>
 
 #include "base/LogMacros.h"
-#include "base/StringUtils.h"  //
+#include "base/StringUtils.h"
+#include "base/Utils.h"
 #include "data/IOStream.h"
 #include "data/StreamUtils.h"
+#include "filesystem/Configure.h"
 
 namespace QS {
 
 namespace Data {
 
 using QS::Data::IOStream;
+using QS::FileSystem::Configure::GetCacheTemporaryDirectory;
 using QS::StringUtils::PointerAddress;
+using QS::Utils::CreateDirectoryIfNotExists;
+using QS::Utils::FileExists;
+using QS::Utils::GetDirName;
+using QS::Utils::RemoveFileIfExists;
+using std::fstream;
 using std::make_shared;
 using std::iostream;
 using std::shared_ptr;
@@ -102,8 +111,34 @@ Page::Page(off_t offset, size_t len, shared_ptr<iostream> &&body)
     : m_offset(offset), m_size(len), m_body(std::move(body)) {}
 
 // --------------------------------------------------------------------------
+Page::~Page(){
+  RemoveTempFileFromDiskIfExists();
+}
+
+// --------------------------------------------------------------------------
 void Page::SetStream(shared_ptr<iostream> &&stream) {
   m_body = std::move(stream);
+}
+
+// --------------------------------------------------------------------------
+void Page::RemoveTempFileFromDiskIfExists() const {
+  if (!m_tmpFile.empty() && FileExists(m_tmpFile)) {
+    RemoveFileIfExists(m_tmpFile);
+  }
+}
+
+// --------------------------------------------------------------------------
+void Page::SetupTempFile() {
+  CreateDirectoryIfNotExists(GetCacheTemporaryDirectory());
+  if (GetDirName(m_tmpFile) != "/tmp/") {
+    DebugError("tmp file " + m_tmpFile +
+               " is not locating under tmp folder, but still use it");
+  }
+
+  auto file = make_shared<fstream>(m_tmpFile);
+  if (file && *file) {
+    SetStream(std::move(file));
+  }
 }
 
 // --------------------------------------------------------------------------

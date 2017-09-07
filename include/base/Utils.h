@@ -147,17 +147,17 @@ gid_t GetProcessEffectiveGroupID();
 bool HavePermission(struct stat *st, bool logOn);
 bool HavePermission(const std::string &path, bool logOn);
 
-// Convert access mode to string
+// Get the disk free space
 //
-// @param  : access mode
-// @return : string of a combination of {R_OK, W_OK, X_OK}, e.g. "R_OK&W_OK"
-std::string AccessMaskToString(int amode);
+// @param  : absolute path
+// @return : uint64_t
+uint64_t GetFreeDiskSpace(const std::string &absolutePath);
 
-// Convert file mode to string
+// Check if disk has available free space
 //
-// @param  : file mode
-// @return : string in form of [rwxXst]
-std::string ModeToString(mode_t mode);
+// @param  : absolute path, free space needed
+// @return : bool
+bool IsSafeDiskSpace(const std::string& absolutePath, uint64_t freeSpace);
 
 }  // namespace Utils
 }  // namespace QS

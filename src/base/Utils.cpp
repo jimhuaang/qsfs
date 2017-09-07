@@ -18,14 +18,16 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <stdint.h>
 #include <string.h>  // for strerror
 
 #include <dirent.h>  // for opendir readdir
 #include <grp.h>
 #include <pwd.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/types.h>
-#include <unistd.h>  // for access, R_OK
+#include <unistd.h>  // for access
 
 #include <exception>
 #include <iostream>
@@ -101,7 +103,7 @@ bool RemoveFileIfExistsNoLog(const string &path) {
 
 // --------------------------------------------------------------------------
 bool RemoveFileIfExists(const string &path) {
-  Info("Creating file " + path);
+  Info("Removing file " + path);
   bool success = RemoveFileIfExistsNoLog(path);
   DebugErrorIf(!success, "Fail to deleting file " + PostErrMsg(path));
   return success;
@@ -440,46 +442,21 @@ bool HavePermission(const std::string &path, bool logOn) {
 }
 
 // --------------------------------------------------------------------------
-string AccessMaskToString(int amode) {
-  string ret;
-  if(amode & R_OK){
-    ret.append("R_OK ");
+uint64_t GetFreeDiskSpace(const string& absolutePath) {
+  struct statvfs vfsbuf;
+  int ret = statvfs(absolutePath.c_str(), &vfsbuf);
+  if (ret != 0) {
+    DebugError("Fail to get free disk space for " + absolutePath + " : " +
+               strerror(errno));
+    return 0;
   }
-  if(amode & W_OK){
-    ret.append("W_OK ");
-  }
-  if(amode & X_OK){
-    ret.append("X_OK");
-  }
-  ret = QS::StringUtils::RTrim(ret,' ');
-  string::size_type pos = 0;
-  while((pos = ret.find(' ')) != string::npos){
-    ret.replace(pos, 1, "&");
-  }
-  return ret;
+  return (vfsbuf.f_bavail * vfsbuf.f_bsize);
 }
 
 // --------------------------------------------------------------------------
-std::string ModeToString(mode_t mode) {
-  // access MODE bits          000    001    010    011
-  //                           100    101    110    111
-  static const char *rwx[] = {"---", "--x", "-w-", "-wx",
-                              "r--", "r-x", "rw-", "rwx"};
-  string modeStr;
-  modeStr.append(rwx[(mode >> 6) & 7]);  // user
-  modeStr.append(rwx[(mode >> 3) & 7]);  // group
-  modeStr.append(rwx[(mode & 7)]);
-
-  if (mode & S_ISUID) {
-    modeStr[2] = (mode & S_IXUSR) ? 's' : 'S';
-  }
-  if (mode & S_ISGID) {
-    modeStr[5] = (mode & S_IXGRP) ? 's' : 'l';
-  }
-  if (mode & S_ISVTX) {
-    modeStr[8] = (mode & S_IXUSR) ? 't' : 'T';
-  }
-  return modeStr;
+bool IsSafeDiskSpace(const string& absolutePath, uint64_t freeSpace){
+  uint64_t totalFreeSpace = GetFreeDiskSpace(absolutePath);
+  return totalFreeSpace > freeSpace;
 }
 
 }  // namespace Utils

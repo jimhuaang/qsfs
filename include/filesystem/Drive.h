@@ -20,11 +20,13 @@
 #include <atomic>  // NOLINT
 #include <memory>
 #include <utility>
+#include <unordered_map>
 #include <vector>
 
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 
+#include "base/HashUtils.h"
 #include "data/Cache.h"
 #include "data/Directory.h"
 
@@ -34,6 +36,8 @@ namespace Client {
 class Client;
 class File;
 class QSClient;
+class QSTransferManager;
+class TransferHandle;
 class TransferManager;
 }
 
@@ -52,7 +56,7 @@ class Drive {
   Drive(const Drive &) = delete;
   Drive &operator=(Drive &&) = delete;
   Drive &operator=(const Drive &) = delete;
-  ~Drive() = default;
+  ~Drive();
 
  public:
   static Drive &Instance();
@@ -254,15 +258,17 @@ class Drive {
 
  private:
   Drive();
-  // TODO(jim):
-  // SetTransferManager();
   mutable std::atomic<bool> m_mountable;
   std::shared_ptr<QS::Client::Client> m_client;
   std::unique_ptr<QS::Client::TransferManager> m_transferManager;
   std::unique_ptr<QS::Data::Cache> m_cache;
   std::unique_ptr<QS::Data::DirectoryTree> m_directoryTree;
+  std::unordered_map<std::string, std::shared_ptr<QS::Client::TransferHandle>,
+                     HashUtils::StringHash>
+      m_unfinishedMultipartUploadHandles;
 
   friend class QS::Client::QSClient;
+  friend class QS::Client::QSTransferManager;  // for cache
   friend class QS::Data::Cache;  // for directory
   friend class QS::Data::File;   // for transfer manager
 };

@@ -15,6 +15,7 @@
 // +-------------------------------------------------------------------------
 
 #include "data/File.h"
+#include <stdio.h>  // for pclose
 
 #include <iterator>
 #include <list>
@@ -55,12 +56,52 @@ pair<PageSetConstIterator, PageSetConstIterator> File::ConsecutivePagesAtFront()
   auto cur = m_pages.begin();
   auto next = m_pages.begin();
   while (++next != m_pages.end()) {
-    if ((*cur)->Next() != (*next)->Offset()) {
+    if ((*cur)->Next() < (*next)->Offset()) {
       break;
     }
     ++cur;
   }
   return {m_pages.begin(), next};
+}
+
+// --------------------------------------------------------------------------
+bool File::HasData(off_t start, size_t size) const {
+  auto stop = static_cast<off_t>(start + size);
+  auto range = IntesectingRange(start, stop);
+  // find the consecutive pages at front [beg to cur]
+  auto beg = range.first;
+  auto cur = beg;
+  auto next = beg;
+  while (++next != range.second) {
+    if ((*cur)->Next() < (*next)->Offset()) {
+      break;
+    }
+    ++cur;
+  }
+
+  return ((*beg)->Offset() <= start && stop <= (*cur)->Next());
+}
+
+// --------------------------------------------------------------------------
+ContentRangeDeque File::GetUnloadedRanges(uint64_t fileTotalSize) const {
+  ContentRangeDeque ranges;
+  auto cur = m_pages.begin();
+  auto next = m_pages.begin();
+  while (++next != m_pages.end()) {
+    if ((*cur)->Next() < (*next)->Offset()) {
+      off_t off = (*cur)->Next();
+      size_t size = static_cast<size_t>((*next)->Offset() - off);
+      ranges.emplace_back(off, size);
+    }
+  }
+
+  if (static_cast<size_t>((*cur)->Next()) < fileTotalSize) {
+    off_t off = (*cur)->Next();
+    size_t size = static_cast<size_t>(fileTotalSize - off);
+    ranges.emplace_back(off, size);
+  }
+
+  return ranges;
 }
 
 // --------------------------------------------------------------------------

@@ -24,6 +24,7 @@
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
+#include "base/Utils.h"
 #include "data/Directory.h"
 #include "data/StreamUtils.h"
 #include "filesystem/Configure.h"
@@ -36,6 +37,7 @@ namespace Data {
 using QS::Data::Node;
 using QS::Data::StreamUtils::GetStreamSize;
 using QS::StringUtils::PointerAddress;
+using QS::Utils::GetBaseName;
 using std::deque;
 using std::iostream;
 using std::make_shared;
@@ -67,18 +69,26 @@ bool Cache::IsLastFileOpen() const{
 }
 
 // --------------------------------------------------------------------------
-bool Cache::HasFileData(off_t start, size_t size){
-  // TODO(jim):
-  return true;
+bool Cache::HasFileData(const string &filePath, off_t start,
+                        size_t size) const {
+  if (!HasFile(filePath)) {
+    return false;
+  }
+  auto it = m_map.find(filePath);
+  auto &file = it->second->second;
+  return file->HasData(start, size);
 }
 
 // --------------------------------------------------------------------------
-ContentRangeDeque Cache::GetUnloadedRanges(const string &filePath) const {
-  ContentRangeDeque ranges;
+ContentRangeDeque Cache::GetUnloadedRanges(const string &filePath,
+                                           uint64_t fileTotalSize) const {
+  if (!HasFile(filePath)) {
+    return ContentRangeDeque();
+  }
+  auto it = m_map.find(filePath);
+  auto &file = it->second->second;
 
-  // TODO(jim):
-
-  return ranges;
+  return file->GetUnloadedRanges(fileTotalSize);
 }
 
 // --------------------------------------------------------------------------
@@ -115,12 +125,16 @@ CacheListIterator Cache::End() { return m_cache.end(); }
 // --------------------------------------------------------------------------
 size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
                    shared_ptr<Node> node) {
-  bool validInput = !fileId.empty() && offset >= 0 && len >= 0 &&
-                    buffer != NULL && (node) && (*node);
+  bool validInput =
+      !fileId.empty() && offset >= 0 && len >= 0 && buffer != NULL;
   assert(validInput);
   if (!validInput) {
     DebugError("Try to read cache with invalid input " +
                ToStringLine(fileId, offset, len, buffer));
+    return 0;
+  }
+  if (!(node && *node)) {
+    DebugError("Null input node parameter");
     return 0;
   }
 
@@ -372,7 +386,8 @@ void Cache::Resize(const string &fileId, size_t newSize) {
 
 // --------------------------------------------------------------------------
 CacheListIterator Cache::UnguardedNewEmptyFile(const string &fileId) {
-  m_cache.emplace_front(fileId, unique_ptr<File>(new File));
+  m_cache.emplace_front(fileId,
+                        unique_ptr<File>(new File(GetBaseName(fileId))));
   if (m_cache.begin()->first == fileId) {  // insert to cache sucessfully
     m_map.emplace(fileId, m_cache.begin());
     return m_cache.begin();
@@ -385,8 +400,11 @@ CacheListIterator Cache::UnguardedNewEmptyFile(const string &fileId) {
 // --------------------------------------------------------------------------
 CacheListIterator Cache::UnguardedErase(
     FileIdToCacheListIteratorMap::iterator pos) {
-  m_size -= pos->second->second->GetSize();
-  auto next = m_cache.erase(pos->second);
+  auto cachePos = pos->second;
+  auto &file = cachePos->second;
+  m_size -= file->GetSize();
+  file->Clear();
+  auto next = m_cache.erase(cachePos);
   m_map.erase(pos);
   return next;
 }

@@ -21,6 +21,7 @@
 #include <time.h>
 
 #include <atomic>  // NOLINT
+#include <deque>
 #include <iostream>
 #include <list>
 #include <memory>
@@ -34,10 +35,12 @@ namespace Data {
 class Cache;
 class Entry;
 
+using ContentRangeDeque = std::deque<std::pair<off_t, size_t>>;
+
 class File {
  public:
-  explicit File(time_t mtime = 0, size_t size = 0)
-      : m_mtime(mtime), m_size(size) {}
+  explicit File(const std::string &baseName, time_t mtime = 0, size_t size = 0)
+      : m_baseName(baseName), m_mtime(mtime), m_size(size) {}
 
   File(File &&) = delete;
   File(const File &) = delete;
@@ -56,6 +59,18 @@ class File {
   // @return : pair
   std::pair<PageSetConstIterator, PageSetConstIterator>
   ConsecutivePagesAtFront() const;
+
+  // Whether the file containing the content
+  //
+  // @param  : content range start, content range size
+  // @return : bool
+  bool HasData(off_t start, size_t size) const;
+
+  // Return the unexisting content ranges
+  //
+  // @param  : file total size
+  // @return : a list of pair {range start, range size}
+  ContentRangeDeque GetUnloadedRanges(uint64_t fileTotalSize) const;
 
  private:
   // Read from the cache (file pages)
@@ -92,9 +107,7 @@ class File {
   // The owning file's offset is set with 'offset'.
   bool Write(off_t offset, size_t len, std::shared_ptr<std::iostream> &&stream,
              time_t mtime);
-
   
-
   // Resize the total pages' size to a smaller size.
   void Resize(size_t smallerSize);
 
@@ -142,11 +155,11 @@ class File {
       off_t offset, size_t len, std::shared_ptr<std::iostream> &&stream);
 
  private:
+  std::string m_baseName;       // file base name
   std::atomic<time_t> m_mtime;  // time of last modification
   std::atomic<size_t> m_size;   // record sum of all pages' size
   std::recursive_mutex m_mutex;
-
-  PageSet m_pages;  // a set of pages suppose to be successive
+  PageSet m_pages;              // a set of pages suppose to be successive
 
   friend class Cache;
 };

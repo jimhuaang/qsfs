@@ -112,6 +112,15 @@ Drive::Drive()
 }
 
 // --------------------------------------------------------------------------
+Drive::~Drive() {
+  if (!m_unfinishedMultipartUploadHandles.empty()) {
+    for (auto &fileToHandle : m_unfinishedMultipartUploadHandles) {
+      m_transferManager->AbortMultipartUpload(fileToHandle.second);
+    }
+  }
+}
+
+// --------------------------------------------------------------------------
 void Drive::SetClient(shared_ptr<Client> client) { m_client = client; }
 
 // --------------------------------------------------------------------------
@@ -406,9 +415,10 @@ void Drive::OpenFile(const string &filePath, bool doCheck) {
     }
   }
 
-  auto ranges = m_cache->GetUnloadedRanges(filePath);
+  auto ranges = m_cache->GetUnloadedRanges(filePath, node->GetFileSize());
   time_t mtime = node->GetMTime();
-  bool fileContentExist = m_cache->HasFileData(0, node->GetFileSize());
+  bool fileContentExist =
+      m_cache->HasFileData(filePath, 0, node->GetFileSize());
   if (!fileContentExist || modified) {
     DownloadFileContentRanges(filePath, ranges, mtime, true);
   }
@@ -459,9 +469,9 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
   }
 
   // Download file if not found in cache or if cache need update
-  bool fileContentExist = m_cache->HasFileData(offset, size);
+  bool fileContentExist = m_cache->HasFileData(filePath, offset, size);
   time_t mtime = node->GetMTime();
-  if (!fileContentExist|| modified) {
+  if (!fileContentExist || modified) {
     // download synchronizely for request file part
     auto stream = make_shared<IOStream>(downloadSize);
     auto handle =
@@ -479,8 +489,8 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
   }
 
   // download asynchronizely for unloaded part
-  if(remainingSize > 0){
-    auto ranges = m_cache->GetUnloadedRanges(filePath);
+  if (remainingSize > 0) {
+    auto ranges = m_cache->GetUnloadedRanges(filePath, fileSize);
     DownloadFileContentRanges(filePath, ranges, mtime, true);
   }
 
@@ -626,20 +636,12 @@ void Drive::TruncateFile(const string &filePath, size_t newSize) {
 
   // update cached file
   // set entry->write = true; should do this in Drive
-  // TODO(jim): any modification on diretory tree should be synchronized by its
+  // any modification on diretory tree should be synchronized by its
   // api
 }
 
 // --------------------------------------------------------------------------
 void Drive::UploadFile(const string &filePath, bool doCheck) {
-  //
-  // if file size > 20M call tranfser to upload multipart
-  // need a mechnasim to handle the memory insufficient situation
-  // // set entry->write = fasle; // should do this in drive::
-  // invoke putobject
-  // or invoke multipart upload (first two step) transfer manager
-  // and at end invoke complete mulitpart upload
-
   if (doCheck && filePath.empty()) {
     DebugWarning("Invalid input");
     return;
@@ -658,7 +660,7 @@ void Drive::UploadFile(const string &filePath, bool doCheck) {
       DebugError("Not a file but a directory " + filePath);
       return;
     }
-    if(!node->IsNeedUpload()){
+    if (!node->IsNeedUpload()) {
       DebugError("File not need upload " + filePath);
       return;
     }
@@ -666,20 +668,28 @@ void Drive::UploadFile(const string &filePath, bool doCheck) {
 
   auto callback = [this, node](const shared_ptr<TransferHandle> &handle) {
     if (handle) {
-      handle->WaitUntilFinished();
       node->SetNeedUpload(false);
       node->SetFileOpen(false);
-      // m_cache->Erase(filePath);  // TODO erase if cache is full
-      // maybe wait for a scond;
+      if (handle->IsMultipart()) {
+        m_unfinishedMultipartUploadHandles.emplace(handle->GetObjectKey(),
+                                                   handle);
+      }
+      handle->WaitUntilFinished();
+      m_unfinishedMultipartUploadHandles.erase(handle->GetObjectKey());
+      // erase it after finish upload, as upload will change file meta mtime
+      // so when you try to access it again, qsfs will download it
+      m_cache->Erase(handle->GetObjectKey());
     }
   };
 
   auto fileSize = node->GetFileSize();
-  auto ranges = m_cache->GetUnloadedRanges(filePath);
+  auto ranges = m_cache->GetUnloadedRanges(filePath, fileSize);
   time_t mtime = node->GetMTime();
   GetTransferManager()->GetExecutor()->SubmitAsync(
       callback, [this, filePath, fileSize, ranges, mtime]() {
+        // download unloaded pages for file
         DownloadFileContentRanges(filePath, ranges, mtime, false);
+        // upload the completed file
         return m_transferManager->UploadFile(filePath, fileSize);
       });
 }
@@ -729,11 +739,11 @@ int Drive::WriteFile(const string &filePath, off_t offset, size_t size,
   }
 
   bool success = m_cache->Write(filePath, offset, size, buf, time(NULL));
-  if(success){
+  if (success) {
     node->SetNeedUpload(true);
-    if(offset + size > node->GetFileSize()){
+    if (offset + size > node->GetFileSize()) {
       node->SetFileSize(offset + size);
-    }  
+    }
   }
 
   return success ? size : 0;
@@ -765,14 +775,13 @@ int Drive::WriteFile(const string &filePath, off_t offset, size_t size,
 // --------------------------------------------------------------------------
 void Drive::DownloadFileContentRanges(const string &filePath,
                                       const ContentRangeDeque &ranges,
-                                      time_t mtime,
-                                      bool async) {
+                                      time_t mtime, bool async) {
   auto DownloadRange = [this, filePath, async,
                         mtime](const pair<off_t, size_t> &range) {
     off_t offset = range.first;
     size_t size = range.second;
     // Download file if not found in cache or if cache need update
-    bool fileContentExist = m_cache->HasFileData(offset, size);
+    bool fileContentExist = m_cache->HasFileData(filePath, offset, size);
     if (!fileContentExist) {
       auto bufSize = GetDefaultTransferMaxBufSize();
       auto remainingSize = size;

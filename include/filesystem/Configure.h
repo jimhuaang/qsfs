@@ -39,6 +39,7 @@ std::string GetCredentialsFile();
 std::string GetDefaultLogDirectory();
 std::string GetLogDirectory();
 std::string GetMimeFile();
+std::string GetCacheTemporaryDirectory();
 
 uint16_t GetPathMaxLen();
 uint16_t GetNameMaxLen();
@@ -53,8 +54,6 @@ blkcnt_t GetBlocks(off_t size);  // Number of 512B blocks allocated
 
 uint64_t GetMaxFileCacheSize();  // File cache size in bytes
 size_t GetMaxFileMetaDataCount();  // File meta data max count
-
-bool IsSafeDiskSpace();
 
 int GetQSConnectionDefaultRetries();
 int GetClientDefaultPoolSize();
