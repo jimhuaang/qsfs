@@ -210,6 +210,9 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
     if (!success) return false;
     // TODO(jim):
     // when !success
+    // file SetUseTempFile(true);
+    // QS::Utils::IsSafeDiskSpace(GetCacheTemporaryDirectory(), len);
+    // raise(QSException("tmp folder has no available free space to cache file " + filePath));
     // write to tmp file
     // if tmp file not enough, raise exception
   }

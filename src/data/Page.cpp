@@ -34,6 +34,7 @@ namespace QS {
 namespace Data {
 
 using QS::Data::IOStream;
+using QS::Data::StreamUtils::GetStreamSize;
 using QS::FileSystem::Configure::GetCacheTemporaryDirectory;
 using QS::StringUtils::PointerAddress;
 using QS::Utils::CreateDirectoryIfNotExists;
@@ -48,6 +49,13 @@ using std::stringstream;
 using std::string;
 using std::to_string;
 
+namespace {
+bool IsTempFile( const string & tmpfilePath){
+  return GetDirName(tmpfilePath) == "/tmp/";
+}
+}  // namespace
+
+
 // --------------------------------------------------------------------------
 Page::Page(off_t offset, size_t len, const char *buffer)
     : m_offset(offset), m_size(len), m_body(make_shared<IOStream>(len)) {
@@ -58,16 +66,24 @@ Page::Page(off_t offset, size_t len, const char *buffer)
                ToStringLine(offset, len, buffer));
     return;
   }
-  assert(m_body);
-  if (!m_body) {
-    DebugError("Try to new a page with a null stream body");
+
+  UnguardedPutToBody(offset, len, buffer);
+}
+
+// --------------------------------------------------------------------------
+Page::Page(off_t offset, size_t len, const char *buffer, const string &tmpfile)
+: m_offset(offset), m_size(len), m_tmpFile(tmpfile) {
+  bool isValidInput = offset >= 0 && len >= 0 && buffer != NULL;
+  assert(isValidInput);
+  if (!isValidInput) {
+    DebugError("Try to new a page with invalid input " +
+               ToStringLine(offset, len, buffer));
+    return;
   }
 
-  m_body->seekp(0, std::ios_base::beg);
-  m_body->write(buffer, len);
-  DebugErrorIf(
-      m_body->fail(),
-      "Fail to new a page from buffer " + ToStringLine(offset, len, buffer));
+  if (SetupTempFile()){
+    UnguardedPutToBody(offset, len, buffer);
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -80,17 +96,60 @@ Page::Page(off_t offset, size_t len, const shared_ptr<iostream> &instream)
                ToStringLine(offset, len));
     return;
   }
-  assert(m_body);
-  if (!m_body) {
-    DebugError("Try to new a page with a null stream body");
+
+  UnguardedPutToBody(offset, len, instream);
+}
+
+// --------------------------------------------------------------------------
+Page::Page(off_t offset, size_t len, const shared_ptr<iostream> &instream,
+           const string &tmpfile)
+    : m_offset(offset), m_size(len), m_tmpFile(tmpfile) {
+  bool isValidInput = offset >= 0 && len > 0 && instream;
+  assert(isValidInput);
+  if (!isValidInput) {
+    DebugError("Try to new a page with invalid input " +
+               ToStringLine(offset, len));
+    return;
   }
 
-  size_t instreamLen = QS::Data::StreamUtils::GetStreamSize(instream);
+  if (SetupTempFile()) {
+    UnguardedPutToBody(offset, len, instream);
+  };
+}
 
+// --------------------------------------------------------------------------
+Page::Page(off_t offset, size_t len, shared_ptr<iostream> &&body)
+    : m_offset(offset), m_size(len), m_body(std::move(body)) {
+  size_t streamlen = GetStreamSize(m_body);
+  if (streamlen < len) {
+    DebugWarning(
+        "Input stream buffer len is less than parameter 'len', Ajust it");
+    m_size = streamlen;
+  }
+}
+
+// --------------------------------------------------------------------------
+Page::~Page(){
+  RemoveTempFileFromDiskIfExists();
+}
+
+// --------------------------------------------------------------------------
+void Page::UnguardedPutToBody(off_t offset, size_t len, const char *buffer){
+  m_body->seekp(0, std::ios_base::beg);
+  m_body->write(buffer, len);
+  DebugErrorIf(m_body->fail(),
+               "Fail to write buffer " + ToStringLine(offset, len, buffer));
+}
+
+// --------------------------------------------------------------------------
+void Page::UnguardedPutToBody(off_t offset, size_t len,
+                              const shared_ptr<iostream> &instream) {
+  size_t instreamLen = GetStreamSize(instream);
   if (instreamLen < len) {
     DebugWarning(
         "Input stream buffer len is less than parameter 'len', Ajust it");
     len = instreamLen;
+    m_size = instreamLen;
   }
 
   instream->seekg(0, std::ios_base::beg);
@@ -103,16 +162,7 @@ Page::Page(off_t offset, size_t len, const shared_ptr<iostream> &instream)
     m_body->write(ss.str().c_str(), len);
   }
   DebugErrorIf(m_body->fail(),
-               "Fail to new a page from stream " + ToStringLine(offset, len));
-}
-
-// --------------------------------------------------------------------------
-Page::Page(off_t offset, size_t len, shared_ptr<iostream> &&body)
-    : m_offset(offset), m_size(len), m_body(std::move(body)) {}
-
-// --------------------------------------------------------------------------
-Page::~Page(){
-  RemoveTempFileFromDiskIfExists();
+               "Fail to write buffer " + ToStringLine(offset, len));
 }
 
 // --------------------------------------------------------------------------
@@ -128,17 +178,30 @@ void Page::RemoveTempFileFromDiskIfExists() const {
 }
 
 // --------------------------------------------------------------------------
-void Page::SetupTempFile() {
+bool Page::SetupTempFile() {
   CreateDirectoryIfNotExists(GetCacheTemporaryDirectory());
-  if (GetDirName(m_tmpFile) != "/tmp/") {
-    DebugError("tmp file " + m_tmpFile +
-               " is not locating under tmp folder, but still use it");
+  if (!IsTempFile(m_tmpFile)) {
+    DebugError("tmp file " + m_tmpFile + " is not locating under tmp folder");
+    return false;
   }
 
   auto file = make_shared<fstream>(m_tmpFile);
   if (file && *file) {
     SetStream(std::move(file));
+    return true;
+  } else {
+    return false;
   }
+}
+
+// --------------------------------------------------------------------------
+void Page::Resize(size_t smallerSize) {
+  // Do a lazy resize:
+  // 1. Change size to 'samllerSize'.
+  // 2. Set output position indicator to 'samllerSize'.
+  assert(0 <= smallerSize && smallerSize <= m_size);
+  m_size = smallerSize;
+  m_body->seekp(smallerSize, std::ios_base::beg);
 }
 
 // --------------------------------------------------------------------------
@@ -167,16 +230,6 @@ bool Page::UnguardedRefresh(off_t offset, size_t len, const char *buffer) {
                "Fail to refresh page(" + ToStringLine(m_offset, m_size) +
                    ") with input " + ToStringLine(offset, len, buffer));
   return success;
-}
-
-// --------------------------------------------------------------------------
-void Page::Resize(size_t smallerSize) {
-  // Do a lazy resize:
-  // 1. Change size to 'samllerSize'.
-  // 2. Set output position indicator to 'samllerSize'.
-  assert(0 <= smallerSize && smallerSize <= m_size);
-  m_size = smallerSize;
-  m_body->seekp(smallerSize, std::ios_base::beg);
 }
 
 // --------------------------------------------------------------------------

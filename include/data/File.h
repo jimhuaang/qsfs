@@ -40,7 +40,10 @@ using ContentRangeDeque = std::deque<std::pair<off_t, size_t>>;
 class File {
  public:
   explicit File(const std::string &baseName, time_t mtime = 0, size_t size = 0)
-      : m_baseName(baseName), m_mtime(mtime), m_size(size) {}
+      : m_baseName(baseName),
+        m_mtime(mtime),
+        m_size(size),
+        m_useTempFile(false) {}
 
   File(File &&) = delete;
   File(const File &) = delete;
@@ -49,8 +52,10 @@ class File {
   ~File() = default;
 
  public:
+  std::string GetBaseName() const { return m_baseName; }
   size_t GetSize() const { return m_size.load(); }
   time_t GetTime() const { return m_mtime.load(); }
+  bool UseTempFile() const { return m_useTempFile.load(); }
 
   // Return a pair of iterators pointing to the range of consecutive pages
   // at the front of cache list
@@ -117,6 +122,9 @@ class File {
   // Set modification time
   void SetTime(time_t mtime) { m_mtime.store(mtime); }
 
+  // Set flag to use temp file
+  void SetUseTempFile(bool useTempFile) { m_useTempFile.store(useTempFile); }
+
   // Returns an iterator pointing to the first Page that is not ahead of offset.
   // If no such Page is found, a past-the-end iterator is returned.
   // Not-Synchronized
@@ -155,10 +163,11 @@ class File {
       off_t offset, size_t len, std::shared_ptr<std::iostream> &&stream);
 
  private:
-  std::string m_baseName;       // file base name
-  std::atomic<time_t> m_mtime;  // time of last modification
-  std::atomic<size_t> m_size;   // record sum of all pages' size
-  std::recursive_mutex m_mutex;
+  std::string m_baseName;           // file base name
+  std::atomic<time_t> m_mtime;      // time of last modification
+  std::atomic<size_t> m_size;       // record sum of all pages' size stored in cache //TODO(jim): rename to m_cacheSize
+  std::atomic<bool> m_useTempFile;  // use tmp file when no free cache space
+  mutable std::recursive_mutex m_mutex;
   PageSet m_pages;              // a set of pages suppose to be successive
 
   friend class Cache;

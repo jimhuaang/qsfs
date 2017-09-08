@@ -69,10 +69,14 @@ using QS::Data::FilePathToNodeUnorderedMap;
 using QS::Data::IOStream;
 using QS::Data::Node;
 using QS::Exception::QSException;
-using QS::FileSystem::Configure::GetMaxFileCacheSize;
+using QS::FileSystem::Configure::GetCacheTemporaryDirectory;
 using QS::FileSystem::Configure::GetDefaultMaxParallelTransfers;
 using QS::FileSystem::Configure::GetDefaultTransferMaxBufSize;
+using QS::FileSystem::Configure::GetMaxFileCacheSize;
 using QS::Utils::AppendPathDelim;
+using QS::Utils::DeleteFilesInDirectory;
+using QS::Utils::FileExists;
+using QS::Utils::IsDirectory;
 using QS::Utils::GetDirName;
 using QS::Utils::GetProcessEffectiveUserID;
 using QS::Utils::GetProcessEffectiveGroupID;
@@ -113,10 +117,16 @@ Drive::Drive()
 
 // --------------------------------------------------------------------------
 Drive::~Drive() {
+  // abort unfinished multipart uploads
   if (!m_unfinishedMultipartUploadHandles.empty()) {
     for (auto &fileToHandle : m_unfinishedMultipartUploadHandles) {
       m_transferManager->AbortMultipartUpload(fileToHandle.second);
     }
+  }
+  // remove temp folder if existing
+  auto tmpfolder = GetCacheTemporaryDirectory();
+  if(FileExists(tmpfolder) && IsDirectory(tmpfolder)){
+    DeleteFilesInDirectory(tmpfolder, true);  // delete folder itself
   }
 }
 

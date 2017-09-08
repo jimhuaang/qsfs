@@ -57,7 +57,7 @@ namespace Data {
    std::shared_ptr<std::iostream> m_body;  // stream storing the bytes
    std::string m_tmpFile;  // tmp file is used when qsfs cache is not enough
                            // it is an absolute file path starting with '/tmp/'
-                           // the file name format: /tmp/basename1024_4096
+                           // file format, e.g: /tmp/basename1024_4096
                            // 1024 is offset, 4096 is size in bytes
 
   public:
@@ -70,6 +70,13 @@ namespace Data {
    // The owning file's offset is 'offset'.
    Page(off_t offset, size_t len, const char *buffer);
 
+   // Construct Page from a block of bytes (store it in tmp file)
+   //
+   // @param  : file offset, len, buffer, tmp file path
+   // @return : 
+   Page(off_t offset, size_t len, const char *buffer,
+        const std::string &tmpfile);
+
    // Construct Page from a stream
    //
    // @param  : file offset, len of bytes, stream
@@ -77,9 +84,19 @@ namespace Data {
    //
    // From stream, number of len bytes will be writen.
    // The owning file's offset is 'offset'.
-   Page(off_t offset, size_t len,
-        const std::shared_ptr<std::iostream> &stream);
+   Page(off_t offset, size_t len, const std::shared_ptr<std::iostream> &stream);
 
+   // Construct Page from a stream (store it in tmp file)
+   //
+   // @param  : file offset, len of bytes, stream, tmp file
+   // @return :
+   Page(off_t offset, size_t len, const std::shared_ptr<std::iostream> &stream,
+        const std::string &tmpfile);
+
+   // Construct Page from a stream by moving
+   //
+   // @param  : file offset, file len, stream to moving
+   // @return : 
    Page(off_t offset, size_t len, std::shared_ptr<std::iostream> &&body);
 
   public:
@@ -120,16 +137,22 @@ namespace Data {
    // Set stream
    void SetStream(std::shared_ptr<std::iostream> && stream);
 
-   // Set tmp file name
-   void SetTempFile(const std::string &tmpfile) { m_tmpFile = tmpfile; }
-
    // Remove tmp file from disk
    void RemoveTempFileFromDiskIfExists() const;
 
    // Setup tmp file on disk
    // - open the tmp file
    // - set stream to fstream assocating with tmp file
-   void SetupTempFile();
+   bool SetupTempFile();
+
+   // Do a lazy resize for page.
+   void Resize(size_t smallerSize);
+
+   // Put data to body
+   // For internal use only
+   void UnguardedPutToBody(off_t offset, size_t len, const char *buffer);
+   void UnguardedPutToBody(off_t offset, size_t len,
+                           const std::shared_ptr<std::iostream> &stream);
 
    // Refreseh the page's partial content without checking.
    // Starting from file offset, len of bytes will be updated.
@@ -149,9 +172,6 @@ namespace Data {
    bool UnguardedRefresh(const char *buffer) {
      return UnguardedRefresh(m_offset, m_size, buffer);
    }
-
-   // Do a lazy resize for page.
-   void Resize(size_t smallerSize);
 
    // Read the page's partial content without checking
    // Starting from file offset, len of bytes will be read.

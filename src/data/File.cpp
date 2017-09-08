@@ -29,6 +29,7 @@
 #include "client/TransferManager.h"
 #include "data/Directory.h"
 #include "data/IOStream.h"
+#include "filesystem/Configure.h"
 #include "filesystem/Drive.h"
 
 namespace QS {
@@ -36,6 +37,7 @@ namespace QS {
 namespace Data {
 
 using QS::Data::Entry;
+using QS::FileSystem::Configure::GetCacheTemporaryDirectory;
 using QS::StringUtils::PointerAddress;
 using std::iostream;
 using std::list;
@@ -50,9 +52,28 @@ using std::to_string;
 using std::unique_ptr;
 using std::vector;
 
+namespace {
+
+// Build a tmp file absolute path
+//
+// @param  : file base name, file offset, file page size
+// @return : string
+//
+// Notes: tmp file path format as following,
+//        e.g: /tmp/basename1024_4096
+//             1024 is offset, 4096 is size in bytes
+string BuildTempFilePath(const string &basename, off_t offset, size_t size){
+  string qsfsTmpDir = GetCacheTemporaryDirectory();
+  return qsfsTmpDir + basename + to_string(offset) + "_" + to_string(size);
+}
+
+}  // namespace
+
+
 // --------------------------------------------------------------------------
 pair<PageSetConstIterator, PageSetConstIterator> File::ConsecutivePagesAtFront()
     const {
+  lock_guard<recursive_mutex> lock(m_mutex);
   auto cur = m_pages.begin();
   auto next = m_pages.begin();
   while (++next != m_pages.end()) {
@@ -66,6 +87,7 @@ pair<PageSetConstIterator, PageSetConstIterator> File::ConsecutivePagesAtFront()
 
 // --------------------------------------------------------------------------
 bool File::HasData(off_t start, size_t size) const {
+  lock_guard<recursive_mutex> lock(m_mutex);
   auto stop = static_cast<off_t>(start + size);
   auto range = IntesectingRange(start, stop);
   // find the consecutive pages at front [beg to cur]
@@ -84,6 +106,7 @@ bool File::HasData(off_t start, size_t size) const {
 
 // --------------------------------------------------------------------------
 ContentRangeDeque File::GetUnloadedRanges(uint64_t fileTotalSize) const {
+  lock_guard<recursive_mutex> lock(m_mutex);
   ContentRangeDeque ranges;
   auto cur = m_pages.begin();
   auto next = m_pages.begin();
@@ -402,37 +425,57 @@ pair<PageSetConstIterator, PageSetConstIterator> File::IntesectingRange(
 pair<PageSetConstIterator, bool> File::UnguardedAddPage(off_t offset,
                                                         size_t len,
                                                         const char *buffer) {
-  auto res = m_pages.emplace(new Page(offset, len, buffer));
-  if (res.second) {
-    m_size += len;
+  pair<PageSetConstIterator, bool> res;
+  if (UseTempFile()) {
+    res = m_pages.emplace(new Page(
+        offset, len, buffer, BuildTempFilePath(GetBaseName(), offset, len)));
+    // do not count size of data stored in tmp file
   } else {
-    DebugError("Fail to new a page from a buffer " +
-               ToStringLine(offset, len, buffer));
+    res = m_pages.emplace(new Page(offset, len, buffer));
+    if (res.second) {
+      m_size += len;  // count size of data stored in cache
+    }
   }
+
+  DebugErrorIf(
+      !res.second,
+      "Fail to new a page from a buffer " + ToStringLine(offset, len, buffer));
   return res;
 }
 
 // --------------------------------------------------------------------------
 pair<PageSetConstIterator, bool> File::UnguardedAddPage(
     off_t offset, size_t len, const shared_ptr<iostream> &stream) {
-  auto res = m_pages.emplace(new Page(offset, len, stream));
-  if (res.second) {
-    m_size += len;
+  pair<PageSetConstIterator, bool> res;
+  if (UseTempFile()) {
+    res = m_pages.emplace(new Page(
+        offset, len, stream, BuildTempFilePath(GetBaseName(), offset, len)));
   } else {
-    DebugError("Fail to new a page from a stream " + ToStringLine(offset, len));
+    res = m_pages.emplace(new Page(offset, len, stream));
+    if (res.second) {
+      m_size += len;
+    }
   }
+  DebugErrorIf(!res.second,
+               "Fail to new a page from a stream " + ToStringLine(offset, len));
   return res;
 }
 
 // --------------------------------------------------------------------------
 pair<PageSetConstIterator, bool> File::UnguardedAddPage(
     off_t offset, size_t len, shared_ptr<iostream> &&stream) {
-  auto res = m_pages.emplace(new Page(offset, len, std::move(stream)));
-  if (res.second) {
-    m_size += len;
+  pair<PageSetConstIterator, bool> res;
+  if (UseTempFile()) {
+    res = m_pages.emplace(new Page(
+        offset, len, stream, BuildTempFilePath(GetBaseName(), offset, len)));
   } else {
-    DebugError("Fail to new a page from a stream " + ToStringLine(offset, len));
+    res = m_pages.emplace(new Page(offset, len, std::move(stream)));
+    if (res.second) {
+      m_size += len;
+    }
   }
+  DebugErrorIf(!res.second,
+               "Fail to new a page from a stream " + ToStringLine(offset, len));
   return res;
 }
 
