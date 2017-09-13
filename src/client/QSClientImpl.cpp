@@ -111,7 +111,7 @@ GetBucketStatisticsOutcome QSClientImpl::GetBucketStatistics() const {
     return GetBucketStatisticsOutcome(std::move(output));
   } else {
     return GetBucketStatisticsOutcome(
-        std::move(BuildQSError(sdkErr, "QingStorGetBucketStatistics ", output,
+        std::move(BuildQSError(sdkErr, "QingStorGetBucketStatistics", output,
                                SDKShouldRetry(responseCode))));
   }
 }

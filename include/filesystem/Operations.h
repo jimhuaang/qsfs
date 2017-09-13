@@ -25,6 +25,55 @@ namespace QS {
 
 namespace FileSystem {
 
+// 
+// FUSE Invariants (https://github.com/libfuse/libfuse/wiki/Invariants)
+//
+// There are a number of assumptions that one can safely make when implementing
+// a filesystem using fuse. In general:
+//
+//     The VFS takes care of avoiding some race conditions:
+//
+//         while "Unlink()" is running on a specific file, it cannot be
+//         interrupted by a "Chmod()", "Link()" or "Open()" call from a
+//         different thread on the same file.
+//
+//         while "Rmdir()" is running, no files can be created in the directory
+//         that "Rmdir()" is acting on.
+//
+//     If a request returns invalid values (e.g. in the structure returned by
+//     "Getattr()" or in the link target returned by "Symlink()") or if a
+//     request appears to have failed (e.g. if a "Create()" request succeds but
+//     a subsequent "Getattr()" (that fuse calls automatically) indicates that
+//     no regular file has been created), the syscall returns EIO to the caller.
+//
+// When using the high-level API (defined in fuse.h):
+//
+//     All requests are absolute, i.e. all paths begin with / and include the
+//     complete path to a file or a directory. Symlinks, . and .. are already
+//     resolved.
+//
+//     For every request you can get except for "Getattr()", "Read()" and
+//     "Write()", usually for every path argument (both source and destination
+//     for link and rename, but only the source for symlink), you will get a
+//     "Getattr()" request just before the callback.
+//
+//     For example, suppose I store file names of files in a filesystem also
+//     into a database. To keep data in sync, I would like, for each filesystem
+//     operation that succeeds, to check if the file exists on the database. I
+//     just do this in the "Getattr()" call, since all other calls will be
+//     preceded by a getattr.
+//
+//     The value of the "st_dev" attribute in the "Getattr()" call are ignored
+//     by fuse and an appropriate anomynous device number is inserted instead.
+//
+//     The arguments for every request are already verified as much as possible.
+//     This means that, for example "readdir()" is only called with an existing
+//     directory name, "Readlink()" is only called with an existing symlink,
+//     "Symlink()" is only called if there isn't already another object with the
+//     requested linkname, "read()" and "Write()" are only called if the file
+//     has been opened with the correct flags.
+//
+
 void InitializeFUSECallbacks(struct fuse_operations *fuseOps);
 
 int qsfs_getattr(const char * path, struct stat * statbuf);

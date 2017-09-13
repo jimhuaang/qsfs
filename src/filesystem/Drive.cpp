@@ -221,6 +221,11 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
 }
 
 // --------------------------------------------------------------------------
+weak_ptr<QS::Data::Node> Drive::GetNodeSimple(const string &path){
+  return m_directoryTree->Find(path);
+}
+
+// --------------------------------------------------------------------------
 pair<ChildrenMultiMapConstIterator, ChildrenMultiMapConstIterator>
 Drive::GetChildren(const string &dirPath) {
   auto emptyRes = std::make_pair(m_directoryTree->CEndParentToChildrenMap(),

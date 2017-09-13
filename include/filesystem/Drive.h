@@ -91,8 +91,18 @@ class Drive {
   // Using updateIfDirectory to invoke updating the directory tree
   // asynchronizely if node is directory, which means the children of the
   // directory will be add to the tree.
+  //
+  // Notes: GetNode will connect to object storage to retrive the object and 
+  // update the local dir tree
   std::pair<std::weak_ptr<QS::Data::Node>, bool> GetNode(
       const std::string &path, bool updateIfDirectory = true);
+
+  // Get the node from local dir tree
+  // @param  : file path
+  // @return : node
+  //
+  // GetNodeSimple just find the node in local dir tree
+  std::weak_ptr<QS::Data::Node> GetNodeSimple(const std::string &path);
 
   // Get the children
   //

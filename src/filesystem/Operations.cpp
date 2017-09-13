@@ -54,6 +54,7 @@ using QS::Utils::AppendPathDelim;
 using QS::Utils::GetBaseName;
 using QS::Utils::GetDirName;
 using QS::Utils::IsRootDirectory;
+using std::pair;
 using std::shared_ptr;
 using std::string;
 using std::to_string;
@@ -172,6 +173,9 @@ void FillStatvfs(const struct statvfs& source, struct statvfs* target) {
 //          - 2nd member denote if the node is modified comparing with the
 //          moment before this operation.
 //          - 3rd member is the path maybe appended with "/"
+//
+// Note: GetFile will connect to object storage to retrive the object and 
+// update the local dir tree
 tuple<weak_ptr<Node>, bool, string> GetFile(const char* path,
                                             bool updateIfIsDir) {
   string appendPath = path;
@@ -183,6 +187,25 @@ tuple<weak_ptr<Node>, bool, string> GetFile(const char* path,
     res = drive.GetNode(appendPath, updateIfIsDir);
   }
   return std::make_tuple(res.first, res.second, appendPath);
+}
+
+// --------------------------------------------------------------------------
+// Get the file from local dir tree
+//
+// @param  : path
+// @return : {node, path_}
+//          - 1st member is the node;
+//          - 2nd member is the path maybe appended with "/"
+//
+pair<weak_ptr<Node>, string> GetFileSimple(const char *path) {
+  string appendPath = path;
+  auto& drive = Drive::Instance();
+  auto node = drive.GetNodeSimple(path).lock();
+  if (!node && string(path).back() != '/') {
+    appendPath = AppendPathDelim(path);
+    node = drive.GetNodeSimple(appendPath).lock();
+  }
+  return {node, appendPath};
 }
 
 }  // namespace
@@ -207,28 +230,28 @@ void InitializeFUSECallbacks(struct fuse_operations* fuseOps) {
   fuseOps->read = qsfs_read;
   fuseOps->write = qsfs_write;
   fuseOps->statfs = qsfs_statfs;
-  fuseOps->flush = NULL;  // TODO
+  // fuseOps->flush = NULL;
   fuseOps->release = qsfs_release;
-  fuseOps->fsync = NULL;        // TODO
-  fuseOps->setxattr = NULL;     // TODO
-  fuseOps->getxattr = NULL;     // TODO
-  fuseOps->listxattr = NULL;    // TODO
-  fuseOps->removexattr = NULL;  // TODO
+  // fuseOps->fsync = NULL;
+  // fuseOps->setxattr = NULL;
+  // fuseOps->getxattr = NULL;
+  // fuseOps->listxattr = NULL;
+  // fuseOps->removexattr = NULL;
   fuseOps->opendir = qsfs_opendir;
   fuseOps->readdir = qsfs_readdir;
-  fuseOps->releasedir = NULL;
-  fuseOps->fsyncdir = NULL;
+  // fuseOps->releasedir = NULL;
+  // fuseOps->fsyncdir = NULL;
   fuseOps->init = qsfs_init;
   fuseOps->destroy = qsfs_destroy;
   fuseOps->access = qsfs_access;
   fuseOps->create = qsfs_create;
-  fuseOps->ftruncate = NULL;
-  fuseOps->fgetattr = NULL;
-  fuseOps->lock = NULL;
+  // fuseOps->ftruncate = NULL;
+  // fuseOps->fgetattr = NULL;
+  // fuseOps->lock = NULL;
   fuseOps->utimens = qsfs_utimens;
-  fuseOps->write_buf = NULL;
-  fuseOps->read_buf = NULL;
-  fuseOps->fallocate = NULL;
+  // fuseOps->write_buf = NULL;
+  // fuseOps->read_buf = NULL;
+  // fuseOps->fallocate = NULL;
 }
 
 // --------------------------------------------------------------------------
@@ -279,28 +302,31 @@ int qsfs_getattr(const char* path, struct stat* statbuf) {
 // The buffer should be filled with a null terminated string. The buffer size
 // argument includes the space for the terminating null character. If the link
 // name is too long to fit in the buffer, it should be truncated.
+//
+// FUSE Invariants (https://github.com/libfuse/libfuse/wiki/Invariants)
+// The arguments is already verified
+// Readlink is only called with an existing symlink.
 int qsfs_readlink(const char* path, char* link, size_t size) {
-  if (!IsValidPath(path)) {
-    Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
-  }
-  if (link == nullptr) {
-    Error("Null buffer parameter from fuse");
-    return -EINVAL;
-  }
-  if (IsRootDirectory(path)) {
-    Error("Unable to link on root directory");
-    return -EPERM;  // operation not permitted
-  }
+  // if (!IsValidPath(path)) {
+  //   Error("Null path parameter from fuse");
+  //   return -EINVAL;  // invalid argument
+  // }
+  // if (link == nullptr) {
+  //   Error("Null buffer parameter from fuse");
+  //   return -EINVAL;
+  // }
+  // if (IsRootDirectory(path)) {
+  //   Error("Unable to link on root directory");
+  //   return -EPERM;  // operation not permitted
+  // }
 
   memset(link, 0, size);
   int ret = 0;
   try {
-    auto res = GetFile(path, false);
-    auto node = std::get<0>(res).lock();
-    string path_ = std::get<2>(res);
-
-    // Check whether path exists
+    auto res = GetFileSimple(path);
+    auto node = res.first.lock();
+    string path_ = res.second;
+    
     if (!(node && *node)) {
       ret = -ENOLINK;  // Link has been severed
       throw QSException("No such file " + FormatArg(path_));
@@ -308,6 +334,7 @@ int qsfs_readlink(const char* path, char* link, size_t size) {
 
     // Check whether it is a symlink
     if (!node->IsSymLink()) {
+      assert(false);  // should not happen
       ret = -EINVAL;  // invalid argument
       throw QSException("Not a symlink " + FormatArg(path));
     }
@@ -368,12 +395,10 @@ int qsfs_mknod(const char* path, mode_t mode, dev_t dev) {
   int ret = 0;
   auto& drive = Drive::Instance();
   try {
-    // Check parent directory
+    // Check parent directory permission
     CheckParentDir(path, W_OK | X_OK, &ret, false);
-
-    // Check whether path exists
-    auto res = drive.GetNode(path, false);
-    auto node = res.first.lock();
+    
+    auto node = drive.GetNodeSimple(path).lock();
     if (node && *node) {
       ret = -EEXIST;  // File exist
       throw QSException("File already exists " + FormatArg(path));
@@ -426,17 +451,16 @@ int qsfs_mkdir(const char* path, mode_t mode) {
     // Check parent directory
     CheckParentDir(path, W_OK | X_OK, &ret, false);
 
-    // Check whether a file or a directory with same path exists
-    auto res = GetFile(path, true);
-    auto node = std::get<0>(res).lock();
-    string path_ = std::get<2>(res);
+    auto res = GetFileSimple(path);
+    auto node = res.first.lock();
+    string path_ = res.second;
     if (node) {
       ret = -EEXIST;  // File exist
       throw QSException("File already exists " + FormatArg(path_));
     }
 
     // Create the directory
-    drive.MakeDir(path_, mode | S_IFDIR);
+    drive.MakeDir(AppendPathDelim(path), mode | S_IFDIR);
 
   } catch (const QSException& err) {
     Error(err.get());
@@ -466,8 +490,8 @@ int qsfs_unlink(const char* path) {
   try {
     // Check parent directory
     auto dir = CheckParentDir(path, W_OK | X_OK, &ret, false);
-    // Check whether the file exists
-    auto node = drive.GetNode(path, false).first.lock();
+
+    auto node = drive.GetNodeSimple(path).lock();
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such file " + FormatArg(path));
@@ -513,13 +537,13 @@ int qsfs_rmdir(const char* path) {
     // Check parent directory
     auto dir = CheckParentDir(path, W_OK | X_OK, &ret, false);
 
-    // Check whether the directory exists
     string path_ = AppendPathDelim(path);
-    auto node = drive.GetNode(path_, true).first.lock();
+    auto node = drive.GetNodeSimple(path_).lock();
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such directory " + FormatArg(path_));
     }
+
     if (!node->IsDirectory()) {
       ret = -EINVAL;  // invalid argument
       throw QSException("Not a directory " + FormatArg(path_));
@@ -551,19 +575,24 @@ int qsfs_rmdir(const char* path) {
 
 // --------------------------------------------------------------------------
 // Create a symbolic link
+//
+// FUSE Invariants (https://github.com/libfuse/libfuse/wiki/Invariants)
+// The arguments is already verified
+// Symlink is only called if there isn't already another object with the
+// requested linkname.
 int qsfs_symlink(const char* path, const char* link) {
-  if (!IsValidPath(path)) {
-    Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
-  }
-  if (!IsValidPath(link)) {
-    Error("Null link parameter from fuse");
-    return -EINVAL;  // invalid argument
-  }
-  if (IsRootDirectory(path)) {
-    Error("Unable to symlink root directory");
-    return -EPERM;  // operation not permitted
-  }
+  // if (!IsValidPath(path)) {
+  //   Error("Null path parameter from fuse");
+  //   return -EINVAL;  // invalid argument
+  // }
+  // if (!IsValidPath(link)) {
+  //   Error("Null link parameter from fuse");
+  //   return -EINVAL;  // invalid argument
+  // }
+  // if (IsRootDirectory(path)) {
+  //   Error("Unable to symlink root directory");
+  //   return -EPERM;  // operation not permitted
+  // }
   string filename = GetBaseName(link);
   if (filename.empty()) {
     Error("Invalid link parameter " + FormatArg(link));
@@ -579,17 +608,16 @@ int qsfs_symlink(const char* path, const char* link) {
     // Check link parent directory
     CheckParentDir(link, W_OK | X_OK, &ret, false);
 
-    // Check whether file with the link name already exists
-    auto res = GetFile(link, true);
-    auto node = std::get<0>(res).lock();
-    string link_ = std::get<2>(res);
-    if (node) {
+    auto res = GetFileSimple(link);
+    auto node = res.first.lock();
+    string link_ = res.second;
+    if (node && *node) {
       ret = -EEXIST;  // File exist
       throw QSException("File already exists " + FormatArg(link_));
     }
 
     // Create a symbolic link
-    drive.SymLink(path, link_);
+    drive.SymLink(path, link);
 
   } catch (const QSException& err) {
     Error(err.get());
@@ -631,10 +659,9 @@ int qsfs_rename(const char* path, const char* newpath) {
     // Check parent permission
     auto dir = CheckParentDir(path, W_OK | X_OK, &ret, false);
 
-    // Check whether the file exists
-    auto res = GetFile(path, false);
-    auto node = std::get<0>(res).lock();
-    string path_ = std::get<2>(res);
+    auto res = GetFileSimple(path);
+    auto node = res.first.lock();
+    string path_ = res.second;
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such file or directory " + FormatArg(path_));
@@ -644,9 +671,10 @@ int qsfs_rename(const char* path, const char* newpath) {
     CheckStickyBit(dir, node, &ret);
 
     // Delete newpath if it exists and it's an empty directory
-    auto nRes = GetFile(newpath, true);
-    auto nNode = std::get<0>(nRes).lock();
-    string newpath_ = std::get<2>(nRes);
+    auto nRes = GetFileSimple(newpath);
+    auto nNode = nRes.first.lock();
+    string newpath_ = nRes.second;
+
     if (nNode) {
       if (nNode->IsDirectory() && !nNode->IsEmpty()) {
         ret = -ENOTEMPTY;  // directory not empty
@@ -706,8 +734,7 @@ int qsfs_link(const char* path, const char* linkpath) {
   int ret = 0;
   auto& drive = Drive::Instance();
   try {
-    // Check if file exists
-    auto node = drive.GetNode(path, false).first.lock();
+    auto node = drive.GetNodeSimple(path).lock();
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such file or directory " + FormatArg(path));
@@ -732,9 +759,9 @@ int qsfs_link(const char* path, const char* linkpath) {
     CheckParentDir(linkpath, W_OK | X_OK, &ret, false);
 
     // Check if linkpath existing
-    auto lnkRes = GetFile(linkpath, true);
-    auto lnkNode = std::get<0>(lnkRes).lock();
-    string linkpath_ = std::get<2>(lnkRes);
+    auto lnkRes = GetFileSimple(linkpath);
+    auto lnkNode = lnkRes.first.lock();
+    string linkpath_ = lnkRes.second;  
     if (lnkNode && *lnkNode) {
       ret = -EEXIST;
       throw QSException("File already exists for link path " +
@@ -780,10 +807,9 @@ int qsfs_chmod(const char* path, mode_t mode) {
     // Check parent access permission
     CheckParentDir(path, X_OK, &ret, false);
 
-    // Check if file exists
-    auto res = GetFile(path, true);
-    auto node = std::get<0>(res).lock();
-    string path_ = std::get<2>(res);
+    auto res = GetFileSimple(path);
+    auto node = res.first.lock();
+    string path_ = res.second;
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such file or directory " + FormatArg(path));
@@ -832,9 +858,9 @@ int qsfs_chown(const char* path, uid_t uid, gid_t gid) {
     CheckParentDir(path, X_OK, &ret, false);
 
     // Check if file exists
-    auto res = GetFile(path, true);
-    auto node = std::get<0>(res).lock();
-    string path_ = std::get<2>(res);
+    auto res = GetFileSimple(path);
+    auto node = res.first.lock();
+    string path_ = res.second;
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such file or directory " + FormatArg(path));
@@ -881,8 +907,7 @@ int qsfs_truncate(const char* path, off_t newsize) {
     // Check parent permission
     CheckParentDir(path, X_OK, &ret, false);
 
-    // Check if file exists
-    auto node = drive.GetNode(path, false).first.lock();
+    auto node = drive.GetNodeSimple(path).lock();
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such file or directory " + FormatArg(path));
@@ -952,9 +977,8 @@ int qsfs_open(const char* path, struct fuse_file_info* fi) {
   
       // Check parent permission
       CheckParentDir(path, X_OK, &ret, false);
-  
-      // Check if file exists
-      auto node = drive.GetNode(path, false).first.lock();
+
+      auto node = drive.GetNodeSimple(path).lock();
       if (node && *node) {
         // Check if it is a directory
         if (node->IsDirectory()) {
@@ -1000,18 +1024,21 @@ int qsfs_open(const char* path, struct fuse_file_info* fi) {
 // exception to this is when the 'direct_io' mount option is specified, in which
 // case the return value of the read system call will reflect the return value
 // of this operation.
+//
+// FUSE Invariants (https://github.com/libfuse/libfuse/wiki/Invariants)
+// Read are only called if the file has been opend with the correct flags.
 int qsfs_read(const char* path, char* buf, size_t size, off_t offset,
               struct fuse_file_info* fi) {
-  if (!IsValidPath(path)) {
-    Error("Null path parameter from fuse");
-    errno = EINVAL;  // invalid argument
-    return 0;
-  }
-  if (buf == nullptr) {
-    Error("Null buf parameter from fuse");
-    errno = EINVAL;
-    return 0;
-  }
+  // if (!IsValidPath(path)) {
+  //   Error("Null path parameter from fuse");
+  //   errno = EINVAL;  // invalid argument
+  //   return 0;
+  // }
+  // if (buf == nullptr) {
+  //   Error("Null buf parameter from fuse");
+  //   errno = EINVAL;
+  //   return 0;
+  // }
 
   int readSize = 0;
   auto& drive = Drive::Instance();
@@ -1057,18 +1084,21 @@ int qsfs_read(const char* path, char* buf, size_t size, off_t offset,
 // Write should return exactly the number of bytes requested except on error. An
 // exception to this is when the 'direct_io' mount option is specified (see read
 // operation).
+//
+// FUSE Invariants (https://github.com/libfuse/libfuse/wiki/Invariants)
+// Write is only called if the file has been opened with the correct flags.
 int qsfs_write(const char* path, const char* buf, size_t size, off_t offset,
                struct fuse_file_info* fi) {
-  if (!IsValidPath(path)) {
-    Error("Null path parameter from fuse");
-    errno = EINVAL;
-    return 0;  // invalid argument
-  }
-  if (buf == nullptr) {
-    Error("Null buf parameter from fuse");
-    errno = EINVAL;
-    return 0;
-  }
+  // if (!IsValidPath(path)) {
+  //   Error("Null path parameter from fuse");
+  //   errno = EINVAL;
+  //   return 0;  // invalid argument
+  // }
+  // if (buf == nullptr) {
+  //   Error("Null buf parameter from fuse");
+  //   errno = EINVAL;
+  //   return 0;
+  // }
 
   int writeSize = 0;
   auto& drive = Drive::Instance();
@@ -1126,8 +1156,8 @@ int qsfs_statfs(const char* path, struct statvfs* statv) {
   int ret = 0;
   try {
     // Check whether path existing within the mounted filesystem
-    auto res = GetFile(path, true);
-    auto node = std::get<0>(res).lock();
+    auto res = GetFileSimple(path);
+    auto node = res.first.lock();
     if (node && *node) {
       // Set qsfs parameters
       struct statvfs stfs = Drive::Instance().GetFilesystemStatistics();
@@ -1188,9 +1218,9 @@ int qsfs_release(const char* path, struct fuse_file_info* fi) {
     CheckParentDir(path, X_OK, &ret, false);
 
     // Check whether path existing
-    auto res = GetFile(path, false);
-    auto node = std::get<0>(res).lock();
-    string path_ = std::get<2>(res);
+    auto res = GetFileSimple(path);
+    auto node = res.first.lock();
+    string path_ = res.second;
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such file or directory " + FormatArg(path_));
@@ -1286,8 +1316,7 @@ int qsfs_opendir(const char* path, struct fuse_file_info* fi) {
     CheckParentDir(path, mask, &ret, false);
 
     // Check if file exists
-    auto res = drive.GetNode(dirPath);
-    auto node = res.first.lock();
+    auto node = drive.GetNodeSimple(dirPath).lock();
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such directory " + FormatArg(path));
@@ -1321,24 +1350,26 @@ int qsfs_opendir(const char* path, struct fuse_file_info* fi) {
 // Ignores the offset parameter, and passes zero to the filler function's
 // offset. The filler function will not return '1' (unless an error happens),
 // so the whole directory is read in a single readdir operation.
+//
+// FUSE Invariants (https://github.com/libfuse/libfuse/wiki/Invariants)
+// Readdir is only called with an existing directory name
 int qsfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                  off_t offset, struct fuse_file_info* fi) {
-  if (!IsValidPath(path)) {
-    Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
-  }
-  if (buf == nullptr) {
-    Error("Null buffer parameter from fuse");
-    return -EINVAL;
-  }
+  // if (!IsValidPath(path)) {
+  //   Error("Null path parameter from fuse");
+  //   return -EINVAL;  // invalid argument
+  // }
+  // if (buf == nullptr) {
+  //   Error("Null buffer parameter from fuse");
+  //   return -EINVAL;
+  // }
 
   int ret = 0;
   auto& drive = Drive::Instance();
   auto dirPath = AppendPathDelim(path);
   try {
     // Check if file exists
-    auto res = drive.GetNode(dirPath, false);
-    auto node = res.first.lock();
+    auto node = drive.GetNodeSimple(dirPath).lock();
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such directory " + FormatArg(path));
@@ -1444,9 +1475,9 @@ int qsfs_access(const char* path, int mask) {
   int ret = 0;
   try {
     // Check whether file exists
-    auto res = GetFile(path, true);
-    auto node = std::get<0>(res).lock();
-    string path_ = std::get<2>(res);
+    auto res = GetFileSimple(path);
+    auto node = res.first.lock();
+    string path_ = res.second;
     if (!(node && *node)) {
       ret = -ENOENT;
       throw QSException("No such file or directory " + FormatArg(path_));
@@ -1501,8 +1532,7 @@ int qsfs_create(const char* path, mode_t mode, struct fuse_file_info* fi) {
     CheckParentDir(path, W_OK | X_OK, &ret, false);
 
     // Check whether path exists
-    auto res = drive.GetNode(path, false);
-    auto node = res.first.lock();
+    auto node = drive.GetNodeSimple(path).lock();
     if (node) {
       ret = -EEXIST;  // File exist
       throw QSException("File already exists " + FormatArg(path));
@@ -1584,9 +1614,9 @@ int qsfs_utimens(const char* path, const struct timespec tv[2]) {
     CheckParentDir(path, X_OK, &ret, false);
 
     // Check whether file exists
-    auto res = GetFile(path, true);
-    auto node = std::get<0>(res).lock();
-    string path_ = std::get<2>(res);
+    auto res = GetFileSimple(path);
+    auto node = res.first.lock();
+    string path_ = res.second;
     if (!(node && *node)) {
       ret = -ENOENT;
       throw QSException("No such file or directory " + FormatArg(path_));
