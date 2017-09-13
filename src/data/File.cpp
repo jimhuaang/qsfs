@@ -146,7 +146,6 @@ pair<size_t, list<shared_ptr<Page>>> File::Read(off_t offset, size_t len,
   auto LoadFileAndAddPage = [this, mtime, filePath, &outcomeSize,
                              &outcomePages](off_t offset, size_t len) {
     auto stream = make_shared<IOStream>(len);
-    // TODO(jim): consider where this temp stream buffer should go
     auto handle =
         QS::FileSystem::Drive::Instance().GetTransferManager()->DownloadFile(
             filePath, offset, len, stream);
@@ -281,8 +280,10 @@ bool File::Write(off_t offset, size_t len, const char *buffer, time_t mtime) {
       } else {  // Refresh the overlapped page's content.
         if (len_ <= static_cast<size_t>(page->Next() - offset_)) {
           SetTime(mtime);
+          // refresh parital content of page
           return page->UnguardedRefresh(offset_, len_, buffer + start_);
         } else {
+          // refresh entire page
           auto refresh = page->UnguardedRefresh(buffer + start_);
           if (!refresh) return false;
 

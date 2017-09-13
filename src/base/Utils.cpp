@@ -212,12 +212,11 @@ string GetPathDelimiter() { return string(1, PATH_DELIM); }
 
 // --------------------------------------------------------------------------
 std::string GetDirName(const std::string &path) {
-  string cpy(path);
-  if (IsRootDirectory(cpy)) {
-    DebugWarning(
-        "Try to get the dirname for root directory, null path returned");
-    return string();  // return null
+  if(IsRootDirectory(path) || path == "." || path == ".."){
+    return path;
   }
+
+  string cpy(path);
   if (cpy.back() == '/') cpy.pop_back();
   auto pos = cpy.find_last_of('/');
   if (pos != string::npos) {
@@ -231,12 +230,11 @@ std::string GetDirName(const std::string &path) {
 
 // --------------------------------------------------------------------------
 std::string GetBaseName(const std::string &path) {
-  string cpy(path);
-  if (IsRootDirectory(cpy)) {
-    DebugWarning(
-        "Try to get the basename for root directory, null basename returned");
-    return string();  // return null
+  if(IsRootDirectory(path) || path == "." || path == ".."){
+    return path;
   }
+  
+  string cpy(path);
   if (cpy.back() == '/') cpy.pop_back();
   auto pos = cpy.find_last_of('/');
   if (pos != string::npos) {

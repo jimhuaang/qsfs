@@ -128,6 +128,12 @@ Drive::~Drive() {
   if(FileExists(tmpfolder) && IsDirectory(tmpfolder)){
     DeleteFilesInDirectory(tmpfolder, true);  // delete folder itself
   }
+
+  m_client.reset();
+  m_transferManager.reset();
+  m_cache.reset();
+  m_directoryTree.reset();
+  m_unfinishedMultipartUploadHandles.clear();
 }
 
 // --------------------------------------------------------------------------
@@ -184,7 +190,8 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
     time_t modifiedSince = 0;
     modifiedSince = const_cast<const Node &>(*node).GetEntry().GetMTime();
     auto err = GetClient()->Stat(path, modifiedSince, &modified);
-    DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+    // key could be not existing, print warning instead of error
+    DebugWarningIf(!IsGoodQSError(err), GetMessageForQSError(err));
   };
 
   if (node) {
@@ -194,12 +201,14 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
     if (IsGoodQSError(err)) {
       node = m_directoryTree->Find(path).lock();
     } else {
-      DebugError(GetMessageForQSError(err));
+      // key could be not existing, print warning instead of error
+      DebugWarning(GetMessageForQSError(err));
     }
   }
 
-  // Update directory tree asynchornizely.
-  if (node->IsDirectory() && updateIfDirectory && modified) {
+  // Update directory tree asynchornizely
+  // Should check node existence as given file could be not existing
+  if (node && *node && node->IsDirectory() && updateIfDirectory && modified) {
     auto receivedHandler = [](const ClientError<QSError> &err) {
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     };
@@ -411,7 +420,7 @@ void Drive::OpenFile(const string &filePath, bool doCheck) {
     }
   }
 
-  auto res = GetNode(filePath, true);
+  auto res = GetNode(filePath, false);
   auto node = res.first.lock();
   bool modified = res.second;
   if (doCheck) {
@@ -539,7 +548,7 @@ void Drive::RenameFile(const string &filePath, const string &newFilePath,
 
   // Call GetNode to update meta(such as mtime, .etc)
   if (IsGoodQSError(err)) {
-    auto res = GetNode(newFilePath, true);
+    auto res = GetNode(newFilePath, false);
     auto node = res.first.lock();
     DebugErrorIf(!node, "Fail to rename file for " + filePath);
     return;

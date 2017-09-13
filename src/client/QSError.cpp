@@ -236,6 +236,12 @@ QSError SDKErrorToQSError(QsError sdkErr) {
           {QsError::QS_ERR_SING_ERROR,            QSError::SIGNATURE_INVALID},
           {QsError::QS_ERR_SEND_REQUEST_ERROR,    QSError::SDK_REQUEST_SEND_ERR},
           // Add others here
+          // TODO(jim): sdk error code is too simple which cannot express response code
+          // and without err msg, and which is not obey API rules.
+          // So, you will find some strange case, e.g 
+          // QS_ERR_NO_ERROR with HttpResponseCode::BAD_REQUEST 
+          // So, sdk error code need to do some updating, and this should updated
+          // accordingly.
       };
   auto it = sdkErrToQSErrMap.find(sdkErr);
   return it != sdkErrToQSErrMap.end() ? it->second : QSError::UNKNOWN;

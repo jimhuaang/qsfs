@@ -75,6 +75,7 @@ using QS::FileSystem::GetDirectoryMimeType;
 using QS::FileSystem::LookupMimeType;
 using QS::StringUtils::LTrim;
 using QS::TimeUtils::SecondsToRFC822GMT;
+using QS::TimeUtils::RFC822GMTToSeconds;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::GetBaseName;
 using std::chrono::milliseconds;
@@ -127,9 +128,9 @@ bool QSClient::Connect() {
     ++attemptedRetries;
   }
 
-  /*   auto err =
-        ListDirectory("/");  // TODO(jim): for test only, remove */
-  if (outcome.IsSuccess()) {
+    auto err =
+        ListDirectory("/");  // TODO(jim): for test only, remove
+/*   if (outcome.IsSuccess()) {
     // Update root node of the tree
     auto &dirTree = Drive::Instance().GetDirectoryTree();
     if (dirTree) {
@@ -146,7 +147,8 @@ bool QSClient::Connect() {
   } else {
     DebugError(GetMessageForQSError(outcome.GetError()));
     return false;
-  }
+  } */
+  return true;
 }
 
 // --------------------------------------------------------------------------
@@ -608,8 +610,8 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
 
     if (outcome.IsSuccess()) {
       for (auto &listObjOutput : outcome.GetResult()) {
-        auto fileMetaDatas =
-            QSClientUtils::ListObjectsOutputToFileMetaDatas(listObjOutput);
+        auto fileMetaDatas = QSClientUtils::ListObjectsOutputToFileMetaDatas(
+            listObjOutput, true);  // add dir itself
         auto &drive = QS::FileSystem::Drive::Instance();
         auto &dirTree = drive.GetDirectoryTree();
         if (!dirTree) break;
@@ -656,25 +658,38 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
 
   if (outcome.IsSuccess()) {
     auto res = outcome.GetResult();
-    if (res.GetResponseCode() != HttpResponseCode::NOT_MODIFIED) {
-      if (modified != nullptr) {
+    /*     if (res.GetResponseCode() == HttpResponseCode::NOT_FOUND) {
+          // As for object storage, there is no concept of directory.
+          // For some case, such as
+          //   an object of "/abc/tst.txt" can exist without existing
+          //   object of "/abc/"
+          // In this case, headobject with objKey of "/abc/" will not get
+       response.
+          // So, we need to use listobject with prefix of "/abc/" to confirm a
+          // directory is actually needed.
+          // ListDirectory(path); recursively TODO(jim):
+        } else  */
+    if (res.GetResponseCode() == HttpResponseCode::NOT_FOUND) {
+      return ClientError<QSError>(
+          QSError::KEY_NOT_EXIST, "HeadObject " + path,
+          SDKResponseCodeToString(HttpResponseCode::NOT_FOUND), false);
+    } else if (res.GetResponseCode() != HttpResponseCode::NOT_MODIFIED) {
+      // It seem sdk is not support well on If-Modified-Since
+      // So, here we do a double check
+      auto lastModified = res.GetLastModified();
+      time_t mtime =
+          lastModified.empty() ? 0 : RFC822GMTToSeconds(lastModified);
+      if (mtime > modifiedSince && modified != nullptr) {
         *modified = true;
       }
       auto fileMetaData =
           QSClientUtils::HeadObjectOutputToFileMetaData(path, res);
-      auto &dirTree = Drive::Instance().GetDirectoryTree();
-      if (dirTree) {
-        dirTree->Grow(std::move(fileMetaData));  // add Node to dir tree
+      if (fileMetaData) {
+        auto &dirTree = Drive::Instance().GetDirectoryTree();
+        if (dirTree) {
+          dirTree->Grow(std::move(fileMetaData));  // add Node to dir tree
+        }
       }
-    } else if(res.GetResponseCode() == HttpResponseCode::NOT_FOUND){
-      // As for object storage, there is no concept of directory.
-      // For some case, such as 
-      //   an object of "/abc/tst.txt" can exist without existing 
-      //   object of "/abc/"
-      // In this case, headobject with objKey of "/abc/" will not get response.
-      // So, we need to use listobject with prefix of "/abc/" to confirm a
-      // directory is actually needed.
-      ListDirectory(path);
     }
     return ClientError<QSError>(QSError::GOOD, false);
   } else {
@@ -740,7 +755,8 @@ void QSClient::StartQSService() {
     const auto &clientConfig = ClientConfiguration::Instance();
     // Must set sdk log at beginning, otherwise sdk will broken due to
     // uninitialization of plog sdk depended on.
-    QingStorService::initService(clientConfig.GetClientLogFile());
+    //QingStorService::initService(clientConfig.GetClientLogFile());  // TODO(jim):
+    QingStorService::initService("/home/jim/qsfs.test/qsfs.log/");
 
     static QsConfig sdkConfig(clientConfig.GetAccessKeyId(),
                               clientConfig.GetSecretKey());

@@ -69,9 +69,11 @@ mode_t GetDefineDirMode() {
   return (S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 }
 
+// 4096 byte is the default allocation block for ext2/ext3/ext4 filesystem
 uint16_t GetBlockSize() { return 4096; }
 uint16_t GetFragmentSize() { return 4096; }
 blkcnt_t GetBlocks(off_t size) { 
+  // A directory reserves one block for meta-data
   return size / 512 + 1; 
 }
 

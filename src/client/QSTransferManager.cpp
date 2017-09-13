@@ -477,7 +477,7 @@ void QSTransferManager::DoMultiPartUpload(
           DebugError(GetMessageForQSError(err));
         }
 
-        // release part buffer backe to resouce manager
+        // release part buffer back to resouce manager
         auto partStreamBuf = dynamic_cast<StreamBuf *>(stream->rdbuf());
         if (partStreamBuf) {
           GetBufferManager()->Release(partStreamBuf->ReleaseBuffer());

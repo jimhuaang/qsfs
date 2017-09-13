@@ -32,6 +32,8 @@
 #include "base/Utils.h"
 #include "data/FileMetaDataManager.h"
 
+#include <iostream>  // TODO(jim): remove
+
 namespace QS {
 
 namespace Data {
@@ -244,7 +246,7 @@ weak_ptr<Node> DirectoryTree::Find(const string &filePath) const {
   if (it != m_map.end()) {
     return it->second;
   } else {
-    DebugInfo("Node (" + filePath + ") is not existed in directory tree");
+    DebugInfo("Node (" + filePath + ") is not existing in directory tree");
     return weak_ptr<Node>();
   }
 }
@@ -268,6 +270,8 @@ ChildrenMultiMapConstIterator DirectoryTree::CEndParentToChildrenMap() const {
 // --------------------------------------------------------------------------
 shared_ptr<Node> DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
   lock_guard<recursive_mutex> lock(m_mutex);
+  if(!fileMeta) return nullptr;
+
   string filePath = fileMeta->GetFilePath();
 
   auto node = Find(filePath).lock();
@@ -339,8 +343,12 @@ shared_ptr<Node> DirectoryTree::UpdateDiretory(
   set<string> newChildrenIds;
   for (auto &child : childrenMetas) {
     auto childDirName = child->MyDirName();
+    if (childDirName.empty()) {
+      DebugWarning("Invalid child meta data with empty dirname");
+      continue;
+    }
     if (childDirName != path) {
-      DebugWarning("Invalid child meta data with dirname " + childDirName);
+      DebugWarning("Invalid child meta data with dirname=" + childDirName);
       continue;
     }
     newChildrenIds.emplace(child->GetFilePath());
@@ -353,7 +361,7 @@ shared_ptr<Node> DirectoryTree::UpdateDiretory(
     Grow(std::move(newChildrenMetas));
   } else {
     if (!node->IsDirectory()) {
-      DebugError("Found Node is not a directory for path " + path);
+      DebugError("Found Node is not a directory for path=" + path);
       return shared_ptr<Node>(nullptr);
     }
 

@@ -49,7 +49,7 @@ std::shared_ptr<QS::Data::FileMetaData> CommonPrefixToFileMetaData(
 
 std::vector<std::shared_ptr<QS::Data::FileMetaData>>
 ListObjectsOutputToFileMetaDatas(
-    const QingStor::ListObjectsOutput &listObjsOutput);
+    const QingStor::ListObjectsOutput &listObjsOutput, bool addSelf);
 
 }  // namespace QSClientUtils
 }  // namespace Client

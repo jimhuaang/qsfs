@@ -112,7 +112,7 @@ void CheckBucketName() {
   } else {
     if (options.GetBucket().find_first_of(illegalChars) != string::npos) {
       throw "BUCKET " + options.GetBucket() +
-          " -- bucket name cotains an illegal character of " + illegalChars;
+          " -- bucket name contains an illegal character of " + illegalChars;
     }
   }
 }

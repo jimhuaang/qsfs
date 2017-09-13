@@ -33,6 +33,7 @@ namespace Data {
 using QS::FileSystem::Configure::GetDefineDirMode;
 using QS::HashUtils::EnumHash;
 using QS::StringUtils::AccessMaskToString;
+using QS::StringUtils::ModeToString;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::GetProcessEffectiveUserID;
 using QS::Utils::GetProcessEffectiveGroupID;
@@ -96,9 +97,7 @@ FileMetaData::FileMetaData(const string &filePath, uint64_t fileSize,
 struct stat FileMetaData::ToStat() const {
   struct stat st;
   st.st_size = m_fileSize;
-  if (m_fileType == FileType::File) {
-    st.st_blocks = QS::FileSystem::Configure::GetBlocks(st.st_size);
-  }
+  st.st_blocks = QS::FileSystem::Configure::GetBlocks(st.st_size);
   st.st_blksize = QS::FileSystem::Configure::GetBlockSize();
   st.st_atim = {m_atime, 0};
   st.st_mtim = {m_mtime, 0};
@@ -158,10 +157,10 @@ string FileMetaData::MyBaseName() const {
 // --------------------------------------------------------------------------
 bool FileMetaData::FileAccess(uid_t uid, gid_t gid, int amode) const {
   DebugInfo("Check object access of " + m_filePath +
-            "[Parameter: uid=" + to_string(uid) + ", gid=" + to_string(gid) +
+            " [Parameter: uid=" + to_string(uid) + ", gid=" + to_string(gid) +
             ", amode=" + AccessMaskToString(amode) +
             "] - [File uid=" + to_string(m_uid) + ", gid=" + to_string(m_gid) +
-            ", mode=" + to_string(m_fileMode) + "]");
+            ", mode=" + ModeToString(m_fileMode) + "]");
 
   if (m_filePath.empty()) {
     DebugWarning("object file path is empty");
@@ -199,7 +198,7 @@ bool FileMetaData::FileAccess(uid_t uid, gid_t gid, int amode) const {
     }
   }
   // Check execute permission
-  if (amode & W_OK) {
+  if (amode & X_OK) {
     if (uid == 0) {
       // if execute permission is allowed for any user,
       // root shall get execute permission too.

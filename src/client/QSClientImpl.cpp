@@ -79,7 +79,7 @@ using std::vector;
 
 namespace {
 
-ClientError<QSError> BuildQSError(QsError sdkErr, const char *exceptionName,
+ClientError<QSError> BuildQSError(QsError sdkErr, const string &exceptionName,
                                   const QsOutput &output, bool retriable) {
   return ClientError<QSError>(
       SDKErrorToQSError(sdkErr), exceptionName,
@@ -111,7 +111,7 @@ GetBucketStatisticsOutcome QSClientImpl::GetBucketStatistics() const {
     return GetBucketStatisticsOutcome(std::move(output));
   } else {
     return GetBucketStatisticsOutcome(
-        std::move(BuildQSError(sdkErr, "QingStorGetBucketStatistics", output,
+        std::move(BuildQSError(sdkErr, "QingStorGetBucketStatistics ", output,
                                SDKShouldRetry(responseCode))));
   }
 }
@@ -134,12 +134,15 @@ HeadBucketOutcome QSClientImpl::HeadBucket() const {
 ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
                                              bool *resultTruncated,
                                              uint64_t maxCount) const {
-  static const char *exceptionName = "QingStorListObjects";
+  string exceptionName = "QingStorListObjects";
   if (input == nullptr) {
     return ListObjectsOutcome(
         ClientError<QSError>(QSError::PARAMETER_MISSING, exceptionName,
                              "Null ListObjectsInput", false));
   }
+  exceptionName.append(" prefix=");
+  exceptionName.append(input->GetPrefix());
+
   if (resultTruncated == nullptr) {
     return ListObjectsOutcome(
         ClientError<QSError>(QSError::PARAMETER_MISSING, exceptionName,
@@ -204,12 +207,16 @@ DeleteMultipleObjectsOutcome QSClientImpl::DeleteMultipleObjects(
 ListMultipartUploadsOutcome QSClientImpl::ListMultipartUploads(
     QingStor::ListMultipartUploadsInput *input, bool *resultTruncated,
     uint64_t maxCount) const {
-  static const char *exceptionName = "QingStorListMultipartUploads";
+  string exceptionName = "QingStorListMultipartUploads";
   if (input == nullptr) {
     return ListMultipartUploadsOutcome(
         ClientError<QSError>(QSError::PARAMETER_MISSING, exceptionName,
                              "Null ListMultipartUploadsInput", false));
   }
+
+  exceptionName.append(" prefix=");
+  exceptionName.append(input->GetPrefix());
+
   if (resultTruncated == nullptr) {
     return ListMultipartUploadsOutcome(
         ClientError<QSError>(QSError::PARAMETER_MISSING, exceptionName,
@@ -251,11 +258,14 @@ ListMultipartUploadsOutcome QSClientImpl::ListMultipartUploads(
 
 // --------------------------------------------------------------------------
 DeleteObjectOutcome QSClientImpl::DeleteObject(const string &objKey) const {
-  static const char *exceptionName = "QingStorDeleteObject";
+  string exceptionName = "QingStorDeleteObject";
   if (objKey.empty()) {
     return DeleteObjectOutcome(ClientError<QSError>(
         QSError::PARAMETER_MISSING, exceptionName, "Empty ObjectKey", false));
   }
+  exceptionName.append(" object=");
+  exceptionName.append(objKey);
+
   DeleteObjectInput input;  // dummy input
   DeleteObjectOutput output;
   auto sdkErr = m_bucket->deleteObject(objKey, input, output);
@@ -271,12 +281,15 @@ DeleteObjectOutcome QSClientImpl::DeleteObject(const string &objKey) const {
 // --------------------------------------------------------------------------
 GetObjectOutcome QSClientImpl::GetObject(const std::string &objKey,
                                          GetObjectInput *input) const {
-  static const char *exceptionName = "QingStorGetObject";
+  string exceptionName = "QingStorGetObject";
   if (objKey.empty() || input == nullptr) {
     return GetObjectOutcome(
         ClientError<QSError>(QSError::PARAMETER_MISSING, exceptionName,
                              "Empty ObjectKey or Null GetObjectInput", false));
   }
+  exceptionName.append(" object=");
+  exceptionName.append(objKey);
+
   bool askPartialContent = !input->GetRange().empty();
   GetObjectOutput output;
   auto sdkErr = m_bucket->getObject(objKey, *input, output);
@@ -307,12 +320,15 @@ GetObjectOutcome QSClientImpl::GetObject(const std::string &objKey,
 // --------------------------------------------------------------------------
 HeadObjectOutcome QSClientImpl::HeadObject(const string &objKey,
                                            HeadObjectInput *input) const {
-  static const char *exceptionName = "QingStorHeadObject";
+  string exceptionName = "QingStorHeadObject";
   if (objKey.empty() || input == nullptr) {
     return HeadObjectOutcome(
         ClientError<QSError>(QSError::PARAMETER_MISSING, exceptionName,
                              "Empty ObjectKey or Null HeadObjectInput", false));
   }
+  exceptionName.append(" object=");
+  exceptionName.append(objKey);
+
   HeadObjectOutput output;
   auto sdkErr = m_bucket->headObject(objKey, *input, output);
   auto responseCode = output.GetResponseCode();
@@ -327,12 +343,15 @@ HeadObjectOutcome QSClientImpl::HeadObject(const string &objKey,
 // --------------------------------------------------------------------------
 PutObjectOutcome QSClientImpl::PutObject(const string &objKey,
                                          PutObjectInput *input) const {
-  static const char *exceptionName = "QingStorPutObject";
+  string exceptionName = "QingStorPutObject";
   if (objKey.empty() || input == nullptr) {
     return PutObjectOutcome(
         ClientError<QSError>(QSError::PARAMETER_MISSING, exceptionName,
                              "Empty ObjectKey or Null PutObjectInput", false));
   }
+  exceptionName.append(" object=");
+  exceptionName.append(objKey);
+
   PutObjectOutput output;
   auto sdkErr = m_bucket->putObject(objKey, *input, output);
   auto responseCode = output.GetResponseCode();
@@ -347,12 +366,15 @@ PutObjectOutcome QSClientImpl::PutObject(const string &objKey,
 // --------------------------------------------------------------------------
 InitiateMultipartUploadOutcome QSClientImpl::InitiateMultipartUpload(
     const string &objKey, QingStor::InitiateMultipartUploadInput *input) const {
-  static const char *exceptionName = "QingStorInitiateMultipartUpload";
+  string exceptionName = "QingStorInitiateMultipartUpload";
   if (objKey.empty() || input == nullptr) {
     return InitiateMultipartUploadOutcome(ClientError<QSError>(
         QSError::PARAMETER_MISSING, exceptionName,
         "Empty ObjectKey or Null InitiateMultipartUploadInput", false));
   }
+  exceptionName.append(" object=");
+  exceptionName.append(objKey);
+
   InitiateMultipartUploadOutput output;
   auto sdkErr = m_bucket->initiateMultipartUpload(objKey, *input, output);
   auto responseCode = output.GetResponseCode();
@@ -367,12 +389,15 @@ InitiateMultipartUploadOutcome QSClientImpl::InitiateMultipartUpload(
 // --------------------------------------------------------------------------
 UploadMultipartOutcome QSClientImpl::UploadMultipart(
     const string &objKey, UploadMultipartInput *input) const {
-  static const char *exceptionName = "QingStorUploadMultipart";
+  string exceptionName = "QingStorUploadMultipart";
   if (objKey.empty() || input == nullptr) {
     return UploadMultipartOutcome(ClientError<QSError>(
         QSError::PARAMETER_MISSING, exceptionName,
         "Empty ObjectKey or Null UploadMultipartInput", false));
   }
+  exceptionName.append(" object=");
+  exceptionName.append(objKey);
+
   UploadMultipartOutput output;
   auto sdkErr = m_bucket->uploadMultipart(objKey, *input, output);
   auto responseCode = output.GetResponseCode();
@@ -387,12 +412,15 @@ UploadMultipartOutcome QSClientImpl::UploadMultipart(
 // --------------------------------------------------------------------------
 CompleteMultipartUploadOutcome QSClientImpl::CompleteMultipartUpload(
     const string &objKey, CompleteMultipartUploadInput *input) const {
-  static const char *exceptionName = "QingStorCompleteMultipartUpload";
+  string exceptionName = "QingStorCompleteMultipartUpload";
   if (objKey.empty() || input == nullptr) {
     return CompleteMultipartUploadOutcome(ClientError<QSError>(
         QSError::PARAMETER_MISSING, exceptionName,
         "Empty ObjectKey or Null CompleteMutlipartUploadInput", false));
   }
+  exceptionName.append(" object=");
+  exceptionName.append(objKey);
+
   CompleteMultipartUploadOutput output;
   auto sdkErr = m_bucket->completeMultipartUpload(objKey, *input, output);
   auto responseCode = output.GetResponseCode();
@@ -407,12 +435,15 @@ CompleteMultipartUploadOutcome QSClientImpl::CompleteMultipartUpload(
 // --------------------------------------------------------------------------
 AbortMultipartUploadOutcome QSClientImpl::AbortMultipartUpload(
     const string &objKey, AbortMultipartUploadInput *input) const {
-  static const char *exceptionName = "QingStorAbortMultipartUpload";
+  string exceptionName = "QingStorAbortMultipartUpload";
   if (objKey.empty() || input == nullptr) {
     return AbortMultipartUploadOutcome(ClientError<QSError>(
         QSError::PARAMETER_MISSING, exceptionName,
         "Empty ObjectKey or Null AbortMultipartUploadInput", false));
   }
+  exceptionName.append(" object=");
+  exceptionName.append(objKey);
+
   AbortMultipartUploadOutput output;
   auto sdkErr = m_bucket->abortMultipartUpload(objKey, *input, output);
   auto responseCode = output.GetResponseCode();
@@ -428,12 +459,15 @@ AbortMultipartUploadOutcome QSClientImpl::AbortMultipartUpload(
 ListMultipartOutcome QSClientImpl::ListMultipart(
     const string &objKey, QingStor::ListMultipartInput *input,
     bool *resultTruncated, uint64_t maxCount) const {
-  static const char *exceptionName = "QingStorListMultipart";
+  string exceptionName = "QingStorListMultipart";
   if (objKey.empty() || input == nullptr) {
     return ListMultipartOutcome(ClientError<QSError>(
         QSError::PARAMETER_MISSING, exceptionName,
         "Empty ObjectKey or Null ListMultipartInput", false));
   }
+  exceptionName.append(" object=");
+  exceptionName.append(objKey);
+
   if (resultTruncated == nullptr) {
     return ListMultipartOutcome(
         ClientError<QSError>(QSError::PARAMETER_MISSING, exceptionName,

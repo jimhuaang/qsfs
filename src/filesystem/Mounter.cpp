@@ -174,7 +174,7 @@ void Mounter::UnMount(const string &mountPoint, bool logOn) const {
   } else {
     if (logOn) {
       Warning("Trying to unmount filesystem at " + mountPoint +
-              " which is not mounted");
+              " which is not mounted"); 
     }
   }
 }

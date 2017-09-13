@@ -83,12 +83,12 @@ gid_t GetFuseContextGID() {
 }
 
 // --------------------------------------------------------------------------
-shared_ptr<Node> CheckParentDir(const string& path, int amode, int* ret) {
-  // Check parent with invoking asynchronizely update
+shared_ptr<Node> CheckParentDir(const string& path, int amode, int* ret,
+                                bool updateIfisDir = false) {
   // Normally, put CheckParentDir before check the file itself.
   string dirName = GetDirName(path);
   auto& drive = Drive::Instance();
-  auto res = drive.GetNode(dirName, true);
+  auto res = drive.GetNode(dirName, updateIfisDir);
   auto parent = res.first.lock();
 
   if (!(parent && *parent)) {
@@ -250,7 +250,7 @@ int qsfs_getattr(const char* path, struct stat* statbuf) {
   int ret = 0;
   try {
     // Check parent access permission
-    CheckParentDir(path, X_OK, &ret);  // should always put at beginning
+    CheckParentDir(path, X_OK, &ret, true);  // should always put at beginning
 
     // Check file
     auto res = GetFile(path, true);
@@ -369,7 +369,7 @@ int qsfs_mknod(const char* path, mode_t mode, dev_t dev) {
   auto& drive = Drive::Instance();
   try {
     // Check parent directory
-    CheckParentDir(path, W_OK | X_OK, &ret);
+    CheckParentDir(path, W_OK | X_OK, &ret, false);
 
     // Check whether path exists
     auto res = drive.GetNode(path, false);
@@ -424,7 +424,7 @@ int qsfs_mkdir(const char* path, mode_t mode) {
   auto& drive = Drive::Instance();
   try {
     // Check parent directory
-    CheckParentDir(path, W_OK | X_OK, &ret);
+    CheckParentDir(path, W_OK | X_OK, &ret, false);
 
     // Check whether a file or a directory with same path exists
     auto res = GetFile(path, true);
@@ -465,7 +465,7 @@ int qsfs_unlink(const char* path) {
   auto& drive = Drive::Instance();
   try {
     // Check parent directory
-    auto dir = CheckParentDir(path, W_OK | X_OK, &ret);
+    auto dir = CheckParentDir(path, W_OK | X_OK, &ret, false);
     // Check whether the file exists
     auto node = drive.GetNode(path, false).first.lock();
     if (!(node && *node)) {
@@ -511,7 +511,7 @@ int qsfs_rmdir(const char* path) {
   auto& drive = Drive::Instance();
   try {
     // Check parent directory
-    auto dir = CheckParentDir(path, W_OK | X_OK, &ret);
+    auto dir = CheckParentDir(path, W_OK | X_OK, &ret, false);
 
     // Check whether the directory exists
     string path_ = AppendPathDelim(path);
@@ -577,7 +577,7 @@ int qsfs_symlink(const char* path, const char* link) {
   auto& drive = Drive::Instance();
   try {
     // Check link parent directory
-    CheckParentDir(link, W_OK | X_OK, &ret);
+    CheckParentDir(link, W_OK | X_OK, &ret, false);
 
     // Check whether file with the link name already exists
     auto res = GetFile(link, true);
@@ -629,7 +629,7 @@ int qsfs_rename(const char* path, const char* newpath) {
   int ret = 0;
   try {
     // Check parent permission
-    auto dir = CheckParentDir(path, W_OK | X_OK, &ret);
+    auto dir = CheckParentDir(path, W_OK | X_OK, &ret, false);
 
     // Check whether the file exists
     auto res = GetFile(path, false);
@@ -656,7 +656,7 @@ int qsfs_rename(const char* path, const char* newpath) {
             FormatArg(newpath_));
       } else {
         // Check new path parent permission
-        CheckParentDir(newpath_, W_OK | X_OK, &ret);
+        CheckParentDir(newpath_, W_OK | X_OK, &ret, false);
 
         // Delete the file or empty directory with new file name
         Warning("New file name is existing. Replacing it " +
@@ -707,7 +707,7 @@ int qsfs_link(const char* path, const char* linkpath) {
   auto& drive = Drive::Instance();
   try {
     // Check if file exists
-    auto node = drive.GetNode(path, true).first.lock();
+    auto node = drive.GetNode(path, false).first.lock();
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such file or directory " + FormatArg(path));
@@ -729,7 +729,7 @@ int qsfs_link(const char* path, const char* linkpath) {
     }
 
     // Check the directory where link is to be created
-    CheckParentDir(linkpath, W_OK | X_OK, &ret);
+    CheckParentDir(linkpath, W_OK | X_OK, &ret, false);
 
     // Check if linkpath existing
     auto lnkRes = GetFile(linkpath, true);
@@ -778,7 +778,7 @@ int qsfs_chmod(const char* path, mode_t mode) {
   auto& drive = Drive::Instance();
   try {
     // Check parent access permission
-    CheckParentDir(path, X_OK, &ret);
+    CheckParentDir(path, X_OK, &ret, false);
 
     // Check if file exists
     auto res = GetFile(path, true);
@@ -829,7 +829,7 @@ int qsfs_chown(const char* path, uid_t uid, gid_t gid) {
   auto& drive = Drive::Instance();
   try {
     // Check parent access permission
-    CheckParentDir(path, X_OK, &ret);
+    CheckParentDir(path, X_OK, &ret, false);
 
     // Check if file exists
     auto res = GetFile(path, true);
@@ -879,10 +879,10 @@ int qsfs_truncate(const char* path, off_t newsize) {
   auto& drive = Drive::Instance();
   try {
     // Check parent permission
-    CheckParentDir(path, X_OK, &ret);
+    CheckParentDir(path, X_OK, &ret, false);
 
     // Check if file exists
-    auto node = drive.GetNode(path, true).first.lock();
+    auto node = drive.GetNode(path, false).first.lock();
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such file or directory " + FormatArg(path));
@@ -935,66 +935,51 @@ int qsfs_open(const char* path, struct fuse_file_info* fi) {
     return -EINVAL;  // invalid argument
   }
 
-
-  // TODO(jim):
-/*   if((unsigned int)fi->flags & O_TRUNC){
-    if(0 != st.st_size){
-      st.st_size = 0;
-      needs_flush = true; 
-      //Call TruncateFile(path, 0);
-    }
-  } */
-
-/*   int mask = (O_RDONLY != (fi->flags & O_ACCMODE) ? W_OK : R_OK);
-  if(0 != (result = check_parent_object_access(path, X_OK))){
-    return result;
-  }
-
-  result = check_object_access(path, mask, &st);
-  if(-ENOENT == result){
-    if(0 != (result = check_parent_object_access(path, W_OK))){
-      return result;
-    }
-  }else if(0 != result){
-    return result;
-  } */
-
   int ret = 0;
   auto& drive = Drive::Instance();
   try {
-    // Check parent directory
-    string dirName = GetDirName(path);
-    auto res = drive.GetNode(dirName, true);
-    auto parent = res.first.lock();
-    if (!(parent && *parent)) {
-      ret = -EINVAL;  // invalid argument
-      throw QSException("No parent directory " + FormatArg(path));
-    }
-
-    // Check parent permission
-    CheckParentDir(path, X_OK, &ret);
-
-    // Check if file exists
-    auto node = drive.GetNode(path, false).first.lock();
-    if (node && *node) {
-      // Check if it is a directory
-      if (node->IsDirectory()) {
-        ret = -EPERM;  // operation not permitted
-        throw QSException("Not a file, but a directory " + FormatArg(path));
-      }
-
-      // Check access permission
-      if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), R_OK)) {
-        ret = -EACCES;  // Permission denied
-        throw QSException("No read permission for path " + FormatArg(path));
-      }
+    if(static_cast<unsigned int>(fi->flags) & O_TRUNC){
+      drive.TruncateFile(path, 0);
     } else {
-      // Create a empty file
-      drive.MakeFile(path, GetDefineFileMode());
+      // Check parent directory
+      string dirName = GetDirName(path);
+      auto res = drive.GetNode(dirName, false);
+      auto parent = res.first.lock();
+      if (!(parent && *parent)) {
+        ret = -EINVAL;  // invalid argument
+        throw QSException("No parent directory " + FormatArg(path));
+      }
+  
+      // Check parent permission
+      CheckParentDir(path, X_OK, &ret, false);
+  
+      // Check if file exists
+      auto node = drive.GetNode(path, false).first.lock();
+      if (node && *node) {
+        // Check if it is a directory
+        if (node->IsDirectory()) {
+          ret = -EPERM;  // operation not permitted
+          throw QSException("Not a file, but a directory " + FormatArg(path));
+        }
+  
+        // Check access permission
+        if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), R_OK)) {
+          ret = -EACCES;  // Permission denied
+          throw QSException("No read permission for path " + FormatArg(path));
+        }
+      } else {
+        // Check access permission
+        if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), W_OK)) {
+          ret = -EACCES;  // Permission denied
+          throw QSException("No write permission for path " + FormatArg(path));
+        }
+        // Create a empty file
+        drive.MakeFile(path, GetDefineFileMode());
+      }
+  
+      // Do Open
+      drive.OpenFile(path, false);
     }
-
-    // Do Open
-    drive.OpenFile(path, false);
 
   } catch (const QSException& err) {
     Error(err.get());
@@ -1200,7 +1185,7 @@ int qsfs_release(const char* path, struct fuse_file_info* fi) {
   int ret = 0;
   try {
     // Check parent permission
-    CheckParentDir(path, X_OK, &ret);
+    CheckParentDir(path, X_OK, &ret, false);
 
     // Check whether path existing
     auto res = GetFile(path, false);
@@ -1298,7 +1283,7 @@ int qsfs_opendir(const char* path, struct fuse_file_info* fi) {
   auto dirPath = AppendPathDelim(path);
   try {
     // Check parent permission
-    CheckParentDir(path, mask, &ret);
+    CheckParentDir(path, mask, &ret, false);
 
     // Check if file exists
     auto res = drive.GetNode(dirPath);
@@ -1352,7 +1337,7 @@ int qsfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
   auto dirPath = AppendPathDelim(path);
   try {
     // Check if file exists
-    auto res = drive.GetNode(dirPath);
+    auto res = drive.GetNode(dirPath, false);
     auto node = res.first.lock();
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
@@ -1513,7 +1498,7 @@ int qsfs_create(const char* path, mode_t mode, struct fuse_file_info* fi) {
   auto& drive = Drive::Instance();
   try {
     // Check parent directory
-    CheckParentDir(path, W_OK | X_OK, &ret);
+    CheckParentDir(path, W_OK | X_OK, &ret, false);
 
     // Check whether path exists
     auto res = drive.GetNode(path, false);
@@ -1596,7 +1581,7 @@ int qsfs_utimens(const char* path, const struct timespec tv[2]) {
   int ret = 0;
   try {
     // Check parent directory access permission
-    CheckParentDir(path, X_OK, &ret);
+    CheckParentDir(path, X_OK, &ret, false);
 
     // Check whether file exists
     auto res = GetFile(path, true);

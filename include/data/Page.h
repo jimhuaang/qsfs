@@ -121,11 +121,14 @@ namespace Data {
 
    // Refresh the page's partial content
    //
-   // @param  : file offset, len of bytes to update, buffer poiner
+   // @param  : file offset, len of bytes to update, buffer, tmp file
    // @return : bool
    //
-   // May enlarge the page's size depended on 'len'.
-   bool Refresh(off_t offset, size_t len, const char *buffer);
+   // May enlarge the page's size depended on 'len', and when the len
+   // is larger than page's size and using tmp file, then all page's data
+   // will be put to tmp file.
+   bool Refresh(off_t offset, size_t len, const char *buffer,
+                const std::string &tmpfile = std::string());
 
    // Read the page's content
    //
@@ -157,7 +160,8 @@ namespace Data {
    // Refreseh the page's partial content without checking.
    // Starting from file offset, len of bytes will be updated.
    // For internal use only.
-   bool UnguardedRefresh(off_t offset, size_t len, const char *buffer);
+   bool UnguardedRefresh(off_t offset, size_t len, const char *buffer,
+                         const std::string &tmpfile = std::string());
 
    // Refresh the page's partial content without checking.
    // Starting from file offset, all the page's remaining size will be updated.

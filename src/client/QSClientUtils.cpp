@@ -93,9 +93,12 @@ shared_ptr<FileMetaData> HeadObjectOutputToFileMetaData(
   // TODO(jim): mode should do with meta when skd support this
   mode_t mode = size == 0 ? GetDefineDirMode() : GetDefineFileMode();
   // TODO(jim): type definition may need to consider list object
-  bool isDir = output.GetContentType() == GetDirectoryMimeType();
+  // bool isDir = output.GetContentType() == GetDirectoryMimeType();
+  bool isDir = size == 0;
   FileType type = isDir ? FileType::Directory : FileType::File;
-  time_t mtime = RFC822GMTToSeconds(output.GetLastModified());
+  // TODO(jim) : sdk bug no last modified when obj key is dir
+  time_t mtime = output.GetLastModified().empty() ? 
+                    time(NULL) : RFC822GMTToSeconds(output.GetLastModified());
   bool encrypted = !output.GetXQSEncryptionCustomerAlgorithm().empty();
   return make_shared<FileMetaData>(
       objKey, size, time(NULL), mtime, GetProcessEffectiveUserID(),
@@ -130,7 +133,7 @@ shared_ptr<FileMetaData> CommonPrefixToFileMetaData(const string &commonPrefix,
 
 // --------------------------------------------------------------------------
 vector<shared_ptr<FileMetaData>> ListObjectsOutputToFileMetaDatas(
-    const ListObjectsOutput &listObjsOutput) {
+    const ListObjectsOutput &listObjsOutput, bool addSelf) {
   // Do const cast as sdk does not provide const-qualified accessors
   ListObjectsOutput &output = const_cast<ListObjectsOutput &>(listObjsOutput);
   vector<shared_ptr<FileMetaData>> metas;
@@ -139,11 +142,13 @@ vector<shared_ptr<FileMetaData>> ListObjectsOutputToFileMetaDatas(
   }
 
   time_t atime = time(NULL);
-  // Add dir itself
   auto dirPath = AppendPathDelim("/" + output.GetPrefix());
-  metas.push_back(make_shared<FileMetaData>(
-      dirPath, 0, atime, atime, GetProcessEffectiveUserID(),
-      GetProcessEffectiveGroupID(), GetDefineDirMode(), FileType::Directory));
+  // Add dir itself
+  if (addSelf) {
+    metas.push_back(make_shared<FileMetaData>(
+        dirPath, 0, atime, atime, GetProcessEffectiveUserID(),
+        GetProcessEffectiveGroupID(), GetDefineDirMode(), FileType::Directory));
+  }
   // Add files
   for (const auto &key : output.GetKeys()) {
     metas.push_back(std::move(ObjectKeyToFileMetaData(key, dirPath, atime)));

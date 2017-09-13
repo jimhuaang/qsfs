@@ -27,6 +27,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include "base/HashUtils.h"
 #include "data/File.h"
@@ -151,6 +152,13 @@ class Cache {
   // Stream will be moved to cache.
   bool Write(const std::string &fileId, off_t offset, size_t len,
              std::shared_ptr<std::iostream> &&stream, time_t mtime);
+
+  // Prepare for Write
+  //
+  // @param  : file id, content data len
+  // @return : {falg of success, pointer to File}
+  std::pair<bool, std::unique_ptr<File> *> PrepareWrite(
+      const std::string &fileId, size_t len);
 
   // Free cache space
   //

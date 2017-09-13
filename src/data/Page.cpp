@@ -205,26 +205,46 @@ void Page::Resize(size_t smallerSize) {
 }
 
 // --------------------------------------------------------------------------
-bool Page::Refresh(off_t offset, size_t len, const char *buffer) {
-  bool isValidInput = offset >= m_offset && buffer != NULL && len > 0;
+bool Page::Refresh(off_t offset, size_t len, const char *buffer, const string &tmpfile) {
+  bool isValidInput =
+      offset >= m_offset && buffer != NULL && len > 0 && !tmpfile.empty();
   assert(isValidInput);
   if (!isValidInput) {
     DebugError("Try to refresh page(" + ToStringLine(m_offset, m_size) +
                ") with invalid input " + ToStringLine(offset, len, buffer));
     return false;
   }
-  return UnguardedRefresh(offset, len, buffer);
+  return UnguardedRefresh(offset, len, buffer, tmpfile);
 }
 
 // --------------------------------------------------------------------------
-bool Page::UnguardedRefresh(off_t offset, size_t len, const char *buffer) {
-  m_body->seekp(offset - m_offset, std::ios_base::beg);
-  m_body->write(buffer, len);
+bool Page::UnguardedRefresh(off_t offset, size_t len, const char *buffer,
+                            const string &tmpfile) {
   auto moreLen = offset + len - Next();
+  auto dataLen = moreLen > 0 ? m_size + moreLen : m_size;
+  auto data = make_shared<IOStream>(dataLen);
+  (*data) << m_body->rdbuf();
+  data->seekp(offset - m_offset, std::ios_base::beg);
+  data->write(buffer, len);
+
+  if (!data->good()) {
+    DebugError("Fail to refresh page(" + ToStringLine(m_offset, m_size) +
+               ") with input " + ToStringLine(offset, len, buffer));
+    return false;
+  }
+
+  if (!tmpfile.empty()) {
+    m_tmpFile = tmpfile;
+    if (!SetupTempFile()) {
+      DebugError("Unable to set up tmp file");
+      return false;
+    }
+  }
+
+  (*m_body) << data->rdbuf();
   if (moreLen > 0) {
     m_size += moreLen;
   }
-
   auto success = m_body->good();
   DebugErrorIf(!success,
                "Fail to refresh page(" + ToStringLine(m_offset, m_size) +

@@ -36,7 +36,9 @@ namespace Data {
 
 using QS::Data::Node;
 using QS::Data::StreamUtils::GetStreamSize;
+using QS::FileSystem::Configure::GetCacheTemporaryDirectory;
 using QS::StringUtils::PointerAddress;
+using QS::Utils::CreateDirectoryIfNotExists;
 using QS::Utils::GetBaseName;
 using std::deque;
 using std::iostream;
@@ -205,29 +207,13 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
     return false;
   }
 
-  if (!HasFreeSpace(len)) {
-    auto success = Free(len);
-    if (!success) return false;
-    // TODO(jim):
-    // when !success
-    // file SetUseTempFile(true);
-    // QS::Utils::IsSafeDiskSpace(GetCacheTemporaryDirectory(), len);
-    // raise(QSException("tmp folder has no available free space to cache file " + filePath));
-    // write to tmp file
-    // if tmp file not enough, raise exception
+  auto res = PrepareWrite(fileId, len);
+  auto success = res.first;
+  if(success){
+    auto file = res.second;
+    assert(file != nullptr);
+    success = (*file)->Write(offset, len, buffer, mtime);
   }
-
-  auto pos = m_cache.begin();
-  auto it = m_map.find(fileId);
-  if (it != m_map.end()) {
-    pos = UnguardedMakeFileMostRecentlyUsed(it->second);
-  } else {
-    pos = UnguardedNewEmptyFile(fileId);
-    assert(pos != m_cache.end());
-  }
-
-  auto &file = pos->second;
-  auto success = file->Write(offset, len, buffer, mtime);
   if (success) {
     m_size += len;
     return true;
@@ -257,9 +243,39 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
     return false;
   }
 
+  auto res = PrepareWrite(fileId, len);
+  auto success = res.first;
+  if(success){
+    auto file = res.second;
+    assert(file != nullptr);
+    success = (*file)->Write(offset, len, std::move(stream), mtime);
+  }
+  if (success) {
+    m_size += len;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+// --------------------------------------------------------------------------
+pair<bool, unique_ptr<File> *> Cache::PrepareWrite(const string &fileId,
+                                                   size_t len) {
+  bool availableFreeSpace = true;
   if (!HasFreeSpace(len)) {
-    auto success = Free(len);
-    if (!success) return false;
+    availableFreeSpace = Free(len);
+
+    if (!availableFreeSpace) {
+      auto tmpfolder = GetCacheTemporaryDirectory();
+      if (!CreateDirectoryIfNotExists(tmpfolder)) {
+        DebugError("Unable to mkdir for tmp folder " + tmpfolder);
+        return {false, nullptr};
+      }
+      if (!QS::Utils::IsSafeDiskSpace(tmpfolder, len)) {
+        DebugError("No available free space for tmp folder " + tmpfolder);
+        return {false, nullptr};
+      }
+    }
   }
 
   auto pos = m_cache.begin();
@@ -272,13 +288,11 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
   }
 
   auto &file = pos->second;
-  auto success = file->Write(offset, len, std::move(stream), mtime);
-  if (success) {
-    m_size += len;
-    return true;
-  } else {
-    return false;
+  if (!availableFreeSpace) {
+    file->SetUseTempFile(true);
   }
+
+  return {true, &file};
 }
 
 // --------------------------------------------------------------------------

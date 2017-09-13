@@ -55,8 +55,14 @@ std::string AccessMaskToString(int amode);
 // Convert file mode to string
 //
 // @param  : file mode
-// @return : string in form of [rwxXst]
+// @return : string in form of [-rwxXst]
 std::string ModeToString(mode_t mode);
+
+// Get file type letter
+//
+// @param  : file mode
+// @return : char
+char GetFileTypeLetter(mode_t mode);
 
 }  // namespace StringUtils
 }  // namespace QS
