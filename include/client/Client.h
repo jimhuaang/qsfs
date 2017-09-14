@@ -66,15 +66,12 @@ class Client {
   virtual ~Client();
 
  public:
-  // Connect to object storage
+
+  // Head bucket
   //
   // @param  : void
-  // @return : flag of success
-  //
-  // Connect will build up the root level of directory tree asynchornizely.
-  virtual bool Connect() = 0;
-
-  virtual bool DisConnect() = 0;
+  // @return : ClientError
+  virtual ClientError<QSError> HeadBucket() = 0;
 
   // Delete a file
   //

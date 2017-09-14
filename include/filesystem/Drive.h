@@ -60,8 +60,9 @@ class Drive {
 
  public:
   static Drive &Instance();
-  // accessor
   bool IsMountable() const;
+  
+  // accessor
   const std::shared_ptr<QS::Client::Client> &GetClient() const {
     return m_client;
   }
@@ -75,6 +76,14 @@ class Drive {
   }
 
  public:
+  // Connect to object storage
+  //
+  // @param  : void
+  // @return : flag of success
+  //
+  // Connect will build up the root level of directory tree asynchornizely.
+  bool Connect() const;
+
   // Return the drive root node.
   std::shared_ptr<QS::Data::Node> GetRoot();
 

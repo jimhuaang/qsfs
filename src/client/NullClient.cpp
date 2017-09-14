@@ -31,6 +31,10 @@ ClientError<QSError> GoodState() {
 
 using std::string;
 
+ClientError<QSError> NullClient::HeadBucket() {
+  return GoodState();
+}
+
 ClientError<QSError> NullClient::DeleteFile(const string &filePath) {
   return GoodState();
 }

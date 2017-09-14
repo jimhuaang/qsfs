@@ -156,7 +156,7 @@ string FileMetaData::MyBaseName() const {
 
 // --------------------------------------------------------------------------
 bool FileMetaData::FileAccess(uid_t uid, gid_t gid, int amode) const {
-  DebugInfo("Check object access of " + m_filePath +
+  DebugInfo("Check access permission of " + m_filePath +
             " [Parameter: uid=" + to_string(uid) + ", gid=" + to_string(gid) +
             ", amode=" + AccessMaskToString(amode) +
             "] - [File uid=" + to_string(m_uid) + ", gid=" + to_string(m_gid) +

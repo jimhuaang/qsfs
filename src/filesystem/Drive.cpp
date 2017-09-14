@@ -154,14 +154,37 @@ void Drive::SetDirectoryTree(unique_ptr<DirectoryTree> dirTree) {
 
 // --------------------------------------------------------------------------
 bool Drive::IsMountable() const {
-  m_mountable.store(GetClient()->Connect());
+  m_mountable.store(Connect());
   return m_mountable.load();
 }
 
 // --------------------------------------------------------------------------
+bool Drive::Connect() const {
+  auto err = GetClient()->HeadBucket();
+  if (!IsGoodQSError(err)) {
+    DebugError(GetMessageForQSError(err));
+    return false;
+  }
+
+  // Update root node of the tree
+  m_directoryTree->Grow(QS::Data::BuildDefaultDirectoryMeta("/"));
+
+  /*     auto err =
+          ListDirectory("/");  // TODO(jim): for test only, remove */
+
+  // Build up the root level of directory tree asynchornizely.
+  auto receivedHandler = [](const ClientError<QSError> &err) {
+    DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+  };
+  GetClient()->GetExecutor()->SubmitAsyncPrioritized(
+      receivedHandler, [this] { return GetClient()->ListDirectory("/"); });
+
+  return true;
+}
+
+// --------------------------------------------------------------------------
 shared_ptr<Node> Drive::GetRoot() {
-  bool connectSuccess = GetClient()->Connect();
-  if (!connectSuccess) {
+  if (!Connect()) {
     throw QSException("Unable to connect to object storage bucket");
   }
   return m_directoryTree->GetRoot();
@@ -195,7 +218,7 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
   };
 
   if (node) {
-    UpdateNode(path, node);
+    UpdateNode(path, node);  // TODO(jim): should we update this every time
   } else {
     auto err = GetClient()->Stat(path, 0, &modified);  // head it
     if (IsGoodQSError(err)) {
@@ -376,7 +399,12 @@ void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
   }
 
   if (type == FileType::File) {
-    GetClient()->MakeFile(filePath);
+    auto err = GetClient()->MakeFile(filePath);
+    if(!IsGoodQSError(err)){
+      DebugError(GetMessageForQSError(err));
+      return;
+    }
+
     // QSClient::MakeFile doesn't update directory tree, (refer it for details)
     // So we call Stat asynchronizely which will update dir tree.
     auto receivedHandler = [](const ClientError<QSError> &err) {
@@ -406,7 +434,12 @@ void Drive::MakeDir(const string &dirPath, mode_t mode) {
   }
 
   string path = AppendPathDelim(dirPath);
-  GetClient()->MakeDirectory(path);
+  auto err = GetClient()->MakeDirectory(path);
+  if(!IsGoodQSError(err)){
+    DebugError(GetMessageForQSError(err));
+    return;
+  }
+
   // QSClient::MakeDirectory doesn't update directory tree,
   // So we call Stat asynchronizely which will update dir tree.
   auto receivedHandler = [](const ClientError<QSError> &err) {

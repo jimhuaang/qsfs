@@ -42,15 +42,12 @@ class QSClient : public Client {
   ~QSClient();
 
  public:
-  // Connect to object storage
+
+  // Head bucket
   //
   // @param  : void
-  // @return : flag of success
-  //
-  // Connect will build up the root level of directory tree asynchornizely.
-  bool Connect() override;
-
-  bool DisConnect() override;
+  // @return : ClientError
+  ClientError<QSError> HeadBucket() override;
 
   // Delete a file
   //

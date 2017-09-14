@@ -35,8 +35,8 @@ class NullClient : public Client {
   ~NullClient() = default;
 
  public:
-  bool Connect() override { return false; }
-  bool DisConnect() override { return true; }
+
+  ClientError<QSError> HeadBucket() override;
 
   ClientError<QSError> DeleteFile(const std::string &filePath) override;
   ClientError<QSError> DeleteDirectory(const std::string &dirPath,
