@@ -143,11 +143,6 @@ ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
   exceptionName.append(" prefix=");
   exceptionName.append(input->GetPrefix());
 
-  if (resultTruncated == nullptr) {
-    return ListObjectsOutcome(
-        ClientError<QSError>(QSError::PARAMETER_MISSING, exceptionName,
-                             "Null input of resultTruncated", false));
-  }
   if (input->GetLimit() <= 0) {
     return ListObjectsOutcome(ClientError<QSError>(
         QSError::NO_SUCH_LIST_OBJECTS, exceptionName,
@@ -168,6 +163,7 @@ ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
     auto responseCode = output.GetResponseCode();
     if (SDKResponseSuccess(sdkErr, responseCode)) {
       count += output.GetKeys().size();
+      //count += output.GetCommonPrefixes().size();  // TODO(jim): should add this?
       responseTruncated = !output.GetNextMarker().empty();
       if (responseTruncated) {
         input->SetMarker(output.GetNextMarker());
@@ -178,7 +174,9 @@ ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
           sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
     }
   } while (responseTruncated && (listAllObjects || count < maxCount));
-  *resultTruncated = responseTruncated;
+  if(resultTruncated != nullptr){
+    *resultTruncated = responseTruncated;
+  }
   return ListObjectsOutcome(std::move(result));
 }
 
@@ -217,11 +215,6 @@ ListMultipartUploadsOutcome QSClientImpl::ListMultipartUploads(
   exceptionName.append(" prefix=");
   exceptionName.append(input->GetPrefix());
 
-  if (resultTruncated == nullptr) {
-    return ListMultipartUploadsOutcome(
-        ClientError<QSError>(QSError::PARAMETER_MISSING, exceptionName,
-                             "Null input of resultTruncated", false));
-  }
   if (input->GetLimit() <= 0) {
     return ListMultipartUploadsOutcome(ClientError<QSError>(
         QSError::NO_SUCH_LIST_MULTIPART_UPLOADS, exceptionName,
@@ -252,7 +245,9 @@ ListMultipartUploadsOutcome QSClientImpl::ListMultipartUploads(
           sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
     }
   } while (responseTruncated && (listAllPartUploads || count < maxCount));
-  *resultTruncated = responseTruncated;
+  if (resultTruncated != nullptr) {
+    *resultTruncated = responseTruncated;
+  }
   return ListMultipartUploadsOutcome(std::move(result));
 }
 
@@ -468,11 +463,6 @@ ListMultipartOutcome QSClientImpl::ListMultipart(
   exceptionName.append(" object=");
   exceptionName.append(objKey);
 
-  if (resultTruncated == nullptr) {
-    return ListMultipartOutcome(
-        ClientError<QSError>(QSError::PARAMETER_MISSING, exceptionName,
-                             "Null input of resultTruncated", false));
-  }
   if (input->GetLimit() <= 0) {
     return ListMultipartOutcome(ClientError<QSError>(
         QSError::NO_SUCH_LIST_MULTIPART, exceptionName,
@@ -504,7 +494,9 @@ ListMultipartOutcome QSClientImpl::ListMultipart(
           sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
     }
   } while (responseTruncated && (listAllParts || count < maxCount));
-  *resultTruncated = responseTruncated;
+  if (resultTruncated != nullptr){
+    *resultTruncated = responseTruncated;
+  }
   return ListMultipartOutcome(std::move(result));
 }
 

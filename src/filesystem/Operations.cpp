@@ -89,9 +89,12 @@ shared_ptr<Node> CheckParentDir(const string& path, int amode, int* ret,
   // Normally, put CheckParentDir before check the file itself.
   string dirName = GetDirName(path);
   auto& drive = Drive::Instance();
-  auto res = drive.GetNode(dirName, updateIfisDir);
-  auto parent = res.first.lock();
-
+  auto parent = drive.GetNodeSimple(dirName).lock();
+  if(!parent){
+    auto res = drive.GetNode(dirName, updateIfisDir);
+    parent = res.first.lock();
+  }
+  
   if (!(parent && *parent)) {
     *ret = -EINVAL;  // invalid argument
     throw QSException("No parent directory " + FormatArg(path));

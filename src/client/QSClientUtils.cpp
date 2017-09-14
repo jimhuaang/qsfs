@@ -30,6 +30,7 @@
 
 #include "base/TimeUtils.h"
 #include "base/Utils.h"
+#include "data/FileMetaData.h"
 #include "filesystem/Configure.h"
 #include "filesystem/MimeTypes.h"
 
@@ -43,6 +44,7 @@ using QingStor::GetBucketStatisticsOutput;
 using QingStor::HeadObjectOutput;
 using QingStor::Http::HttpResponseCode;
 using QingStor::ListObjectsOutput;
+using QS::Data::BuildDefaultDirectoryMeta;
 using QS::Data::FileMetaData;
 using QS::Data::FileType;
 using QS::FileSystem::Configure::GetBlockSize;
@@ -92,13 +94,17 @@ shared_ptr<FileMetaData> HeadObjectOutputToFileMetaData(
   auto size = static_cast<uint64_t>(output.GetContentLength());
   // TODO(jim): mode should do with meta when skd support this
   mode_t mode = size == 0 ? GetDefineDirMode() : GetDefineFileMode();
-  // TODO(jim): type definition may need to consider list object
-  // bool isDir = output.GetContentType() == GetDirectoryMimeType();
-  bool isDir = size == 0;
+  // obey mime type for now, may need update in future,
+  // as object storage has no dir concept,
+  // a dir could have no application/x-directory mime type.
+  bool isDir = output.GetContentType() == GetDirectoryMimeType();
   FileType type = isDir ? FileType::Directory : FileType::File;
-  // TODO(jim) : sdk bug no last modified when obj key is dir
-  time_t mtime = output.GetLastModified().empty() ? 
-                    time(NULL) : RFC822GMTToSeconds(output.GetLastModified());
+  // head object should contain meta such as mtime, but we just do a double
+  // check as it can be have no meta data e.g when response code=NOT_MODIFIED
+  auto lastModified = output.GetLastModified();
+  assert(!lastModified.empty());
+  time_t mtime =
+      lastModified.empty() ? time(NULL) : RFC822GMTToSeconds(lastModified);
   bool encrypted = !output.GetXQSEncryptionCustomerAlgorithm().empty();
   return make_shared<FileMetaData>(
       objKey, size, time(NULL), mtime, GetProcessEffectiveUserID(),
@@ -145,9 +151,7 @@ vector<shared_ptr<FileMetaData>> ListObjectsOutputToFileMetaDatas(
   auto dirPath = AppendPathDelim("/" + output.GetPrefix());
   // Add dir itself
   if (addSelf) {
-    metas.push_back(make_shared<FileMetaData>(
-        dirPath, 0, atime, atime, GetProcessEffectiveUserID(),
-        GetProcessEffectiveGroupID(), GetDefineDirMode(), FileType::Directory));
+    metas.push_back(BuildDefaultDirectoryMeta(dirPath));
   }
   // Add files
   for (const auto &key : output.GetKeys()) {

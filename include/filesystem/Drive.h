@@ -30,6 +30,8 @@
 #include "data/Cache.h"
 #include "data/Directory.h"
 
+extern int main(int argc, char **argv);  // TODO(jim): test to remove
+
 namespace QS {
 
 namespace Client {
@@ -78,11 +80,12 @@ class Drive {
  public:
   // Connect to object storage
   //
-  // @param  : void
+  // @param  : flag to build up dir tree asynchornizely or synchronizely
   // @return : flag of success
   //
-  // Connect will build up the root level of directory tree asynchornizely.
-  bool Connect() const;
+  // Notes: By default, Connect will build up the root level of directory tree
+  // asynchornizely
+  bool Connect(bool buildupDirTreeAsync = true) const;
 
   // Return the drive root node.
   std::shared_ptr<QS::Data::Node> GetRoot();
@@ -290,6 +293,8 @@ class Drive {
   friend class QS::Client::QSTransferManager;  // for cache
   friend class QS::Data::Cache;  // for directory
   friend class QS::Data::File;   // for transfer manager
+
+  friend int ::main(int argc, char **argv);  // TODO(jim): test to remove
 };
 
 }  // namespace FileSystem

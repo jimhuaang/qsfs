@@ -69,15 +69,18 @@ using QingStor::QingStorService;
 using QingStor::QsConfig;  // sdk config
 using QingStor::UploadMultipartInput;
 
+using QS::Data::BuildDefaultDirectoryMeta;
 using QS::Data::Node;
 using QS::FileSystem::Drive;
 using QS::FileSystem::GetDirectoryMimeType;
 using QS::FileSystem::LookupMimeType;
 using QS::StringUtils::LTrim;
+using QS::StringUtils::RTrim;
 using QS::TimeUtils::SecondsToRFC822GMT;
 using QS::TimeUtils::RFC822GMTToSeconds;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::GetBaseName;
+using QS::Utils::IsRootDirectory;
 using std::chrono::milliseconds;
 using std::iostream;
 using std::deque;
@@ -96,12 +99,6 @@ string BuildXQSSourceString(const string &objKey) {
   ret.append("/");
   ret.append(LTrim(objKey, '/'));
   return ret;
-}
-
-// --------------------------------------------------------------------------
-string FilePathToObjectKey(const string& filePath){
-  // object key should be not leading with '/'
-  return LTrim(LTrim(filePath, ' '), '/');
 }
 
 }  // namespace
@@ -158,8 +155,7 @@ ClientError<QSError> QSClient::DeleteFile(const string &filePath) {
     }
   }
 
-  auto objKey = FilePathToObjectKey(filePath);
-  auto outcome = GetQSClientImpl()->DeleteObject(objKey);
+  auto outcome = GetQSClientImpl()->DeleteObject(filePath);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -167,7 +163,7 @@ ClientError<QSError> QSClient::DeleteFile(const string &filePath) {
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->DeleteObject(objKey);
+    outcome = GetQSClientImpl()->DeleteObject(filePath);
     ++attemptedRetries;
   }
 
@@ -226,9 +222,7 @@ ClientError<QSError> QSClient::MakeFile(const string &filePath) {
   input.SetContentLength(0);  // create empty file
   input.SetContentType(LookupMimeType(filePath));
 
-
-  auto objKey = FilePathToObjectKey(filePath);
-  auto outcome = GetQSClientImpl()->PutObject(objKey, &input);
+  auto outcome = GetQSClientImpl()->PutObject(filePath, &input);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -236,7 +230,7 @@ ClientError<QSError> QSClient::MakeFile(const string &filePath) {
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->PutObject(objKey, &input);
+    outcome = GetQSClientImpl()->PutObject(filePath, &input);
     ++attemptedRetries;
   }
 
@@ -262,8 +256,7 @@ ClientError<QSError> QSClient::MakeDirectory(const string &dirPath) {
   input.SetContentLength(0);  // directory has zero length
   input.SetContentType(GetDirectoryMimeType());
 
-  auto objKey = FilePathToObjectKey(dirPath);
-  auto outcome = GetQSClientImpl()->PutObject(objKey, &input);
+  auto outcome = GetQSClientImpl()->PutObject(dirPath, &input);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -271,7 +264,7 @@ ClientError<QSError> QSClient::MakeDirectory(const string &dirPath) {
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->PutObject(objKey, &input);
+    outcome = GetQSClientImpl()->PutObject(dirPath, &input);
     ++attemptedRetries;
   }
 
@@ -296,12 +289,10 @@ ClientError<QSError> QSClient::MoveFile(const string &sourceFilePath,
                                         const string &destFilePath) {
   // TODO(jim):
   PutObjectInput input;
-  input.SetXQSMoveSource(
-      BuildXQSSourceString(FilePathToObjectKey(sourceFilePath)));
+  input.SetXQSMoveSource(BuildXQSSourceString(sourceFilePath));
   //input.SetContentType(LookupMimeType(destFilePath));
 
-  auto destObjKey = FilePathToObjectKey(destFilePath);
-  auto outcome = GetQSClientImpl()->PutObject(destObjKey, &input);
+  auto outcome = GetQSClientImpl()->PutObject(destFilePath, &input);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -309,7 +300,7 @@ ClientError<QSError> QSClient::MoveFile(const string &sourceFilePath,
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->PutObject(destObjKey, &input);
+    outcome = GetQSClientImpl()->PutObject(destFilePath, &input);
     ++attemptedRetries;
   }
 
@@ -388,8 +379,7 @@ ClientError<QSError> QSClient::DownloadFile(const string &filePath,
     input.SetRange(range);
   }
 
-  auto objKey = FilePathToObjectKey(filePath);
-  auto outcome = GetQSClientImpl()->GetObject(objKey, &input);
+  auto outcome = GetQSClientImpl()->GetObject(filePath, &input);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -397,7 +387,7 @@ ClientError<QSError> QSClient::DownloadFile(const string &filePath,
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->GetObject(objKey, &input);
+    outcome = GetQSClientImpl()->GetObject(filePath, &input);
     ++attemptedRetries;
   }
 
@@ -422,8 +412,7 @@ ClientError<QSError> QSClient::InitiateMultipartUpload(const string &filePath,
   InitiateMultipartUploadInput input;
   input.SetContentType(LookupMimeType(filePath));
 
-  auto objKey = FilePathToObjectKey(filePath);
-  auto outcome = GetQSClientImpl()->InitiateMultipartUpload(objKey, &input);
+  auto outcome = GetQSClientImpl()->InitiateMultipartUpload(filePath, &input);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -431,7 +420,7 @@ ClientError<QSError> QSClient::InitiateMultipartUpload(const string &filePath,
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->InitiateMultipartUpload(objKey, &input);
+    outcome = GetQSClientImpl()->InitiateMultipartUpload(filePath, &input);
     ++attemptedRetries;
   }
 
@@ -456,8 +445,7 @@ ClientError<QSError> QSClient::UploadMultipart(
   input.SetContentLength(contentLength);
   input.SetBody(buffer);
 
-  auto objKey = FilePathToObjectKey(filePath);
-  auto outcome = GetQSClientImpl()->UploadMultipart(objKey, &input);
+  auto outcome = GetQSClientImpl()->UploadMultipart(filePath, &input);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -465,7 +453,7 @@ ClientError<QSError> QSClient::UploadMultipart(
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->UploadMultipart(objKey, &input);
+    outcome = GetQSClientImpl()->UploadMultipart(filePath, &input);
     ++attemptedRetries;
   }
 
@@ -490,8 +478,7 @@ ClientError<QSError> QSClient::CompleteMultipartUpload(
   }
   input.SetObjectParts(std::move(objParts));
 
-  auto objKey = FilePathToObjectKey(filePath);
-  auto outcome = GetQSClientImpl()->CompleteMultipartUpload(objKey, &input);
+  auto outcome = GetQSClientImpl()->CompleteMultipartUpload(filePath, &input);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -499,7 +486,7 @@ ClientError<QSError> QSClient::CompleteMultipartUpload(
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->CompleteMultipartUpload(objKey, &input);
+    outcome = GetQSClientImpl()->CompleteMultipartUpload(filePath, &input);
     ++attemptedRetries;
   }
 
@@ -516,8 +503,7 @@ ClientError<QSError> QSClient::AbortMultipartUpload(const string &filePath,
   AbortMultipartUploadInput input;
   input.SetUploadID(uploadId);
 
-  auto objKey = FilePathToObjectKey(filePath);
-  auto outcome = GetQSClientImpl()->AbortMultipartUpload(objKey, &input);
+  auto outcome = GetQSClientImpl()->AbortMultipartUpload(filePath, &input);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -525,7 +511,7 @@ ClientError<QSError> QSClient::AbortMultipartUpload(const string &filePath,
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->AbortMultipartUpload(objKey, &input);
+    outcome = GetQSClientImpl()->AbortMultipartUpload(filePath, &input);
     ++attemptedRetries;
   }
 
@@ -545,8 +531,7 @@ ClientError<QSError> QSClient::UploadFile(const string &filePath,
   input.SetContentType(LookupMimeType(filePath));
   input.SetBody(buffer);
 
-  auto objKey = FilePathToObjectKey(filePath);
-  auto outcome = GetQSClientImpl()->PutObject(objKey, &input);
+  auto outcome = GetQSClientImpl()->PutObject(filePath, &input);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -554,7 +539,7 @@ ClientError<QSError> QSClient::UploadFile(const string &filePath,
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->PutObject(objKey, &input);
+    outcome = GetQSClientImpl()->PutObject(filePath, &input);
     ++attemptedRetries;
   }
 
@@ -576,19 +561,57 @@ ClientError<QSError> QSClient::UploadFile(const string &filePath,
 
 // --------------------------------------------------------------------------
 ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
+
+  auto &drive = QS::FileSystem::Drive::Instance();
+  auto &dirTree = drive.GetDirectoryTree();
+  auto dirNode = drive.GetNodeSimple(dirPath).lock();
+  bool doUpdate = false;
+  if(dirNode && *dirNode){
+    if (IsRootDirectory(dirPath)) {
+      // For root, as we cannot know if bucket is modified or not using
+      // current SDK, so we only update it if it's empty.
+      doUpdate = dirNode->IsEmpty();
+    } else {
+      HeadObjectInput input;
+      input.SetIfModifiedSince(SecondsToRFC822GMT(dirNode->GetMTime()));
+      auto out = GetQSClientImpl()->HeadObject(dirPath, &input);
+  
+      if (out.IsSuccess()) {
+        auto res = out.GetResult();
+        if (res.GetResponseCode() == HttpResponseCode::NOT_FOUND) {
+          // As for object storage, there is no concept of directory.
+          // For some case, such as
+          //   an object of "/abc/tst.txt" can exist without existing
+          //   object of "/abc/"
+          // For this case we just update the directory if it's empty.
+          doUpdate = dirNode->IsEmpty();
+        } else if (res.GetResponseCode() == HttpResponseCode::NOT_MODIFIED) {
+          doUpdate = false;
+        } else {  // modified
+          doUpdate = true;
+        }
+      } else {
+        doUpdate = false;
+        DebugError(GetMessageForQSError(out.GetError()));
+      }
+    }
+  }
+
   ListObjectsInput listObjInput;
   listObjInput.SetLimit(Constants::BucketListObjectsLimit);
   listObjInput.SetDelimiter(QS::Utils::GetPathDelimiter());
-  if (!QS::Utils::IsRootDirectory(dirPath)) {
-    string prefix = AppendPathDelim(FilePathToObjectKey(dirPath));
+  if (!IsRootDirectory(dirPath)) {
+    string prefix = AppendPathDelim(LTrim(dirPath, '/'));
     listObjInput.SetPrefix(prefix);
   }
+
   bool resultTruncated = false;
   // Set maxCount for a single list operation.
   // This will request for ListObjects seperately, so we can construct
   // directory tree gradually. This will be helpful for the performance
   // if there are a huge number of objects to list.
   uint64_t maxCount = static_cast<uint64_t>(Constants::BucketListObjectsLimit);
+  assert(dirTree);
   do {
     auto outcome = GetQSClientImpl()->ListObjects(&listObjInput,
                                                   &resultTruncated, maxCount);
@@ -605,27 +628,21 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
       ++attemptedRetries;
     }
 
-    if (outcome.IsSuccess()) {
-      for (auto &listObjOutput : outcome.GetResult()) {
-        auto fileMetaDatas = QSClientUtils::ListObjectsOutputToFileMetaDatas(
-            listObjOutput, true);  // add dir itself
-        auto &drive = QS::FileSystem::Drive::Instance();
-        auto &dirTree = drive.GetDirectoryTree();
-        if (!dirTree) break;
-        // DO NOT invoking update directory rescursively
-        auto res = drive.GetNode(dirPath, false);
-        auto dirNode = res.first.lock();
-        bool modified = res.second;
-        if (dirNode && modified) {
-          dirTree->UpdateDiretory(dirPath, std::move(fileMetaDatas));
-        } else {  // directory not existing at this moment
-          // Add its children to dir tree
-          dirTree->Grow(std::move(fileMetaDatas));
-        }
-      }
-    } else {
+    if (!outcome.IsSuccess()) {
       return outcome.GetError();
     }
+
+    for (auto &listObjOutput : outcome.GetResult()) {
+      auto fileMetaDatas = QSClientUtils::ListObjectsOutputToFileMetaDatas(
+          listObjOutput, true);  // add dir itself
+      if (!(dirNode && *dirNode)) {  // directory not existing at this moment
+        // Add its children to dir tree
+        dirTree->Grow(std::move(fileMetaDatas));
+      } else if (doUpdate) {
+        dirTree->UpdateDiretory(dirPath, std::move(fileMetaDatas));
+      }
+    }  // for list object output
+
   } while (resultTruncated);
   return ClientError<QSError>(QSError::GOOD, false);
 }
@@ -637,17 +654,20 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
     *modified = false;
   }
 
-  if(QS::Utils::IsRootDirectory(path)){
+  if (IsRootDirectory(path)) {
+    // As headobject will not return any meta for root "/",
+    // so we head bucket instead, and also head bucket return no meta, so we
+    // cannot know if bucket is modified or not, so we just think bucket is
+    // not modified, but this may need update if SDK return more data in future.
     return HeadBucket();
   }
 
   HeadObjectInput input;
-  if (modifiedSince > 0) {
+  if (modifiedSince >= 0) {
     input.SetIfModifiedSince(SecondsToRFC822GMT(modifiedSince));
   }
 
-  auto objKey = FilePathToObjectKey(path);
-  auto outcome = GetQSClientImpl()->HeadObject(objKey, &input);
+  auto outcome = GetQSClientImpl()->HeadObject(path, &input);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -655,44 +675,52 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->HeadObject(objKey, &input);
+    outcome = GetQSClientImpl()->HeadObject(path, &input);
     ++attemptedRetries;
   }
 
+  auto &dirTree = Drive::Instance().GetDirectoryTree();
+  assert(dirTree);
   if (outcome.IsSuccess()) {
     auto res = outcome.GetResult();
-    /*     if (res.GetResponseCode() == HttpResponseCode::NOT_FOUND) {
-          // As for object storage, there is no concept of directory.
-          // For some case, such as
-          //   an object of "/abc/tst.txt" can exist without existing
-          //   object of "/abc/"
-          // In this case, headobject with objKey of "/abc/" will not get
-       response.
-          // So, we need to use listobject with prefix of "/abc/" to confirm a
-          // directory is actually needed.
-          // ListDirectory(path); recursively TODO(jim):
-        } else  */
+    if (res.GetResponseCode() == HttpResponseCode::NOT_MODIFIED) {
+      // if is not modified, no meta is returned, so just return directly
+      return ClientError<QSError>(QSError::GOOD, false);
+    }
+
     if (res.GetResponseCode() == HttpResponseCode::NOT_FOUND) {
-      return ClientError<QSError>(
-          QSError::KEY_NOT_EXIST, "HeadObject " + path,
-          SDKResponseCodeToString(HttpResponseCode::NOT_FOUND), false);
-    } else if (res.GetResponseCode() != HttpResponseCode::NOT_MODIFIED) {
-      // It seem sdk is not support well on If-Modified-Since
-      // So, here we do a double check
-      auto lastModified = res.GetLastModified();
-      time_t mtime =
-          lastModified.empty() ? 0 : RFC822GMTToSeconds(lastModified);
-      if (mtime > modifiedSince && modified != nullptr) {
-        *modified = true;
-      }
-      auto fileMetaData =
-          QSClientUtils::HeadObjectOutputToFileMetaData(path, res);
-      if (fileMetaData) {
-        auto &dirTree = Drive::Instance().GetDirectoryTree();
-        if (dirTree) {
-          dirTree->Grow(std::move(fileMetaData));  // add Node to dir tree
+      // As for object storage, there is no concept of directory.
+      // For some case, such as
+      //   an object of "/abc/tst.txt" can exist without existing
+      //   object of "/abc/"
+      // In this case, headobject with objKey of "/abc/" will not get
+
+      // So, we need to use listobject with prefix of "/abc/" to confirm a
+      // directory is actually needed.
+      if (path.back() == '/') {
+        ListObjectsInput listObjInput;
+        listObjInput.SetLimit(10);
+        listObjInput.SetDelimiter(QS::Utils::GetPathDelimiter());
+        listObjInput.SetPrefix(LTrim(path, '/'));
+        auto outcome =
+            GetQSClientImpl()->ListObjects(&listObjInput, nullptr, 10);
+
+        if (outcome.IsSuccess()) {
+          *modified = true;
+          dirTree->Grow(BuildDefaultDirectoryMeta(path));  // add dir node
+          return ClientError<QSError>(QSError::GOOD, false);
         }
       }
+
+      DebugInfo("Objcet Not Found " + path);
+      return ClientError<QSError>(QSError::GOOD, false);
+    }
+
+    *modified = true;
+    auto fileMetaData =
+        QSClientUtils::HeadObjectOutputToFileMetaData(path, res);
+    if (fileMetaData) {
+      dirTree->Grow(std::move(fileMetaData));  // add Node to dir tree
     }
     return ClientError<QSError>(QSError::GOOD, false);
   } else {

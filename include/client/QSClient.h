@@ -177,7 +177,10 @@ class QSClient : public Client {
   // Using modifiedSince = 0 to always get object meta data, this is default.
   // Using modified to gain output of object modified status since given time.
   //
-  // Stat will update the dir tree if the node is modified
+  // Stat will update the node meta in dir tree if the node is modified.
+  //
+  // Notes: the meta will be return if object is modified, otherwise
+  // the response code will be 304 (NOT MODIFIED) and no meta returned.
   ClientError<QSError> Stat(const std::string &path, time_t modifiedSince = 0,
                             bool *modified = nullptr ) override;
 
@@ -186,6 +189,8 @@ class QSClient : public Client {
   // @param  : *stvfs(output)
   // @return : ClientError
   ClientError<QSError> Statvfs(struct statvfs *stvfs) override;
+
+
 
  public:
   static const std::unique_ptr<QingStor::QingStorService> &GetQingStorService();

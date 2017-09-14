@@ -154,12 +154,12 @@ void Drive::SetDirectoryTree(unique_ptr<DirectoryTree> dirTree) {
 
 // --------------------------------------------------------------------------
 bool Drive::IsMountable() const {
-  m_mountable.store(Connect());
+  m_mountable.store(Connect(false));  //synchronizely
   return m_mountable.load();
 }
 
 // --------------------------------------------------------------------------
-bool Drive::Connect() const {
+bool Drive::Connect(bool buildupDirTreeAsync) const {
   auto err = GetClient()->HeadBucket();
   if (!IsGoodQSError(err)) {
     DebugError(GetMessageForQSError(err));
@@ -169,15 +169,17 @@ bool Drive::Connect() const {
   // Update root node of the tree
   m_directoryTree->Grow(QS::Data::BuildDefaultDirectoryMeta("/"));
 
-  /*     auto err =
-          ListDirectory("/");  // TODO(jim): for test only, remove */
-
   // Build up the root level of directory tree asynchornizely.
   auto receivedHandler = [](const ClientError<QSError> &err) {
     DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
   };
-  GetClient()->GetExecutor()->SubmitAsyncPrioritized(
-      receivedHandler, [this] { return GetClient()->ListDirectory("/"); });
+
+  if (buildupDirTreeAsync) {  // asynchronizely
+    GetClient()->GetExecutor()->SubmitAsyncPrioritized(
+        receivedHandler, [this] { return GetClient()->ListDirectory("/"); });
+  } else { // synchronizely
+    receivedHandler(GetClient()->ListDirectory("/"));
+  }
 
   return true;
 }
@@ -213,19 +215,17 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
     time_t modifiedSince = 0;
     modifiedSince = const_cast<const Node &>(*node).GetEntry().GetMTime();
     auto err = GetClient()->Stat(path, modifiedSince, &modified);
-    // key could be not existing, print warning instead of error
-    DebugWarningIf(!IsGoodQSError(err), GetMessageForQSError(err));
+    DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
   };
 
   if (node) {
-    UpdateNode(path, node);  // TODO(jim): should we update this every time
+    UpdateNode(path, node);
   } else {
-    auto err = GetClient()->Stat(path, 0, &modified);  // head it
+    auto err = GetClient()->Stat(path);  // head it
     if (IsGoodQSError(err)) {
       node = m_directoryTree->Find(path).lock();
     } else {
-      // key could be not existing, print warning instead of error
-      DebugWarning(GetMessageForQSError(err));
+      DebugError(GetMessageForQSError(err));
     }
   }
 

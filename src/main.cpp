@@ -25,6 +25,14 @@
 #include "filesystem/Options.h"
 #include "filesystem/Parser.h"
 
+//TODO(jim): remove folloiwng
+#include "base/TimeUtils.h"
+#include "filesystem/Drive.h"
+#include "client/Client.h"
+#include "client/QSClient.h"
+#include "client/QSClientImpl.h"
+#include "qingstor-sdk-cpp/Types.h"     // for sdk QsOutput
+
 using QS::Exception::QSException;
 using QS::FileSystem::Configure::GetProgramName;
 using QS::FileSystem::HelpText::ShowQSFSHelp;
@@ -77,6 +85,22 @@ int main(int argc, char **argv) {
       // Notice: DO NOT use logging before initialization done.
       // Do initializations.
       Initializer::RunInitializers();
+
+
+      // TODO(jim): remvoe following testing code
+      auto &drive = QS::FileSystem::Drive::Instance();
+      auto client = drive.GetClient().get();
+      auto qsClient = dynamic_cast<QS::Client::QSClient*>(client);
+      auto &qsClientImpl = const_cast<const QS::Client::QSClient*>(qsClient)->GetQSClientImpl();
+      QingStor::HeadObjectInput input;
+      auto zeroTIme = QS::TimeUtils::SecondsToRFC822GMT(0);
+      input.SetIfModifiedSince(zeroTIme);
+      //input.SetIfModifiedSince("Sun, 14 May 2017 02:35:09 GMT");
+      auto res = qsClientImpl->HeadObject("/test/", &input);
+      int a = 1;
+      int b = 2;
+      int c = a + b;
+
 
       // Mount the file system.
       try {
