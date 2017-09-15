@@ -47,7 +47,7 @@ using QS::FileSystem::Configure::GetClientDefaultPoolSize;
 using QS::FileSystem::Configure::GetDefaultLogDirectory;
 using QS::FileSystem::Configure::GetDefineFileMode;
 using QS::FileSystem::Configure::GetQSConnectionDefaultRetries;
-using QS::FileSystem::Configure::GetQSLogFileName;
+using QS::FileSystem::Configure::GetQingStorSDKLogFileName;
 using QS::HashUtils::EnumHash;
 using QS::HashUtils::StringHash;
 using std::call_once;
@@ -119,7 +119,7 @@ ClientConfiguration::ClientConfiguration(const Credentials &credentials)
       m_connectionRetries(GetQSConnectionDefaultRetries()),
       m_additionalUserAgent(std::string()),
       m_logLevel(ClientLogLevel::Warn),
-      m_logFile(GetDefaultLogDirectory() + GetQSLogFileName()),
+      m_logFile(GetDefaultLogDirectory() + GetQingStorSDKLogFileName()),
       m_transactionRetries(Retry::DefaultMaxRetries),
       m_clientPoolSize(GetClientDefaultPoolSize()) {}
 
@@ -139,7 +139,7 @@ void ClientConfiguration::InitializeByOptions() {
     m_logLevel = ClientLogLevel::Debug;
   }
 
-  m_logFile = options.GetLogDirectory() + GetQSLogFileName();
+  m_logFile = options.GetLogDirectory() + GetQingStorSDKLogFileName();
   FILE *log = nullptr;
   if (options.IsClearLogDir()) {
     log = fopen(m_logFile.c_str(), "wb");

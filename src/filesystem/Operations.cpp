@@ -816,8 +816,9 @@ int qsfs_chmod(const char* path, mode_t mode) {
   int ret = 0;
   auto& drive = Drive::Instance();
   try {
+    // "Getattr()" is called before this callback, which already checked X_OK
     // Check parent access permission
-    CheckParentDir(path, X_OK, &ret, false);
+    // CheckParentDir(path, X_OK, &ret, false);
 
     auto res = GetFileSimple(path);
     auto node = res.first.lock();
@@ -835,7 +836,7 @@ int qsfs_chmod(const char* path, mode_t mode) {
                         to_string(node->GetUID()) + "] " + FormatArg(path_));
     }
 
-    // Do changing the file permission
+    // Change the file permission
     drive.Chmod(path_, mode);
 
   } catch (const QSException& err) {
@@ -866,8 +867,9 @@ int qsfs_chown(const char* path, uid_t uid, gid_t gid) {
   int ret = 0;
   auto& drive = Drive::Instance();
   try {
+    // "Getattr()" is called before this callback, which already checked X_OK
     // Check parent access permission
-    CheckParentDir(path, X_OK, &ret, false);
+    // CheckParentDir(path, X_OK, &ret, false);
 
     // Check if file exists
     auto res = GetFileSimple(path);
@@ -887,7 +889,7 @@ int qsfs_chown(const char* path, uid_t uid, gid_t gid) {
           ",owner=" + to_string(node->GetUID()) + "] " + FormatArg(path_));
     }
 
-    // Do changing owner and group
+    // Change owner and group
     drive.Chown(path_, uid, gid);
 
   } catch (const QSException& err) {
@@ -916,8 +918,9 @@ int qsfs_truncate(const char* path, off_t newsize) {
   int ret = 0;
   auto& drive = Drive::Instance();
   try {
+    // "Getattr()" is called before this callback, which already checked X_OK
     // Check parent permission
-    CheckParentDir(path, X_OK, &ret, false);
+    // CheckParentDir(path, X_OK, &ret, false);
 
     auto node = drive.GetNodeSimple(path).lock();
     if (!(node && *node)) {
@@ -987,8 +990,9 @@ int qsfs_open(const char* path, struct fuse_file_info* fi) {
         throw QSException("No parent directory " + FormatArg(path));
       }
   
+      // "Getattr()" is called before this callback, which already checked X_OK
       // Check parent permission
-      CheckParentDir(path, X_OK, &ret, false);
+      // CheckParentDir(path, X_OK, &ret, false);
 
       auto node = drive.GetNodeSimple(path).lock();
       if (node && *node) {
@@ -1226,8 +1230,9 @@ int qsfs_release(const char* path, struct fuse_file_info* fi) {
 
   int ret = 0;
   try {
+    // "Getattr()" is called before this callback, which already checked X_OK
     // Check parent permission
-    CheckParentDir(path, X_OK, &ret, false);
+    // CheckParentDir(path, X_OK, &ret, false);
 
     // Check whether path existing
     auto res = GetFileSimple(path);
@@ -1622,8 +1627,9 @@ int qsfs_utimens(const char* path, const struct timespec tv[2]) {
 
   int ret = 0;
   try {
+    // "Getattr()" is called before this callback, which already checked X_OK
     // Check parent directory access permission
-    CheckParentDir(path, X_OK, &ret, false);
+    // CheckParentDir(path, X_OK, &ret, false);
 
     // Check whether file exists
     auto res = GetFileSimple(path);

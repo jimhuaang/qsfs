@@ -80,6 +80,7 @@ using QS::TimeUtils::SecondsToRFC822GMT;
 using QS::TimeUtils::RFC822GMTToSeconds;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::GetBaseName;
+using QS::Utils::GetDirName;
 using QS::Utils::IsRootDirectory;
 using std::chrono::milliseconds;
 using std::iostream;
@@ -792,8 +793,8 @@ void QSClient::StartQSService() {
     const auto &clientConfig = ClientConfiguration::Instance();
     // Must set sdk log at beginning, otherwise sdk will broken due to
     // uninitialization of plog sdk depended on.
-    //QingStorService::initService(clientConfig.GetClientLogFile());  // TODO(jim):
-    QingStorService::initService("/home/jim/qsfs.test/qsfs.log/");
+    // QingStor SDK need a log dir.
+    QingStorService::initService(GetDirName(clientConfig.GetClientLogFile()));
 
     static QsConfig sdkConfig(clientConfig.GetAccessKeyId(),
                               clientConfig.GetSecretKey());

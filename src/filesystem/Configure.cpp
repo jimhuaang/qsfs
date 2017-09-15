@@ -89,7 +89,7 @@ size_t GetMaxFileMetaDataCount() {
 
 static const int CLIENT_DEFAULT_POOL_SIZE = 5;
 static const int QS_CONNECTION_DEFAULT_RETRIES = 3;  // qs sdk parameter
-static const char *QS_LOG_FILE_NAME = "qs_sdk.log";  // qs sdk log
+static const char *QS_SDK_LOG_FILE_NAME = "qingstor_sdk_log.txt";  // qs sdk log
 
 int GetClientDefaultPoolSize(){
   return CLIENT_DEFAULT_POOL_SIZE;
@@ -99,8 +99,8 @@ int GetQSConnectionDefaultRetries(){
   return QS_CONNECTION_DEFAULT_RETRIES;
 }
 
-const char* GetQSLogFileName(){
-  return QS_LOG_FILE_NAME;
+const char* GetQingStorSDKLogFileName(){
+  return QS_SDK_LOG_FILE_NAME;
 }
 
 size_t GetDefaultMaxParallelTransfers(){

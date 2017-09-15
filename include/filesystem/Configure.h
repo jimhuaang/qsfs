@@ -57,7 +57,7 @@ size_t GetMaxFileMetaDataCount();  // File meta data max count
 
 int GetQSConnectionDefaultRetries();
 int GetClientDefaultPoolSize();
-const char* GetQSLogFileName();
+const char* GetQingStorSDKLogFileName();
 
 size_t GetDefaultMaxParallelTransfers();
 uint64_t GetDefaultTransferMaxBufHeapSize();
