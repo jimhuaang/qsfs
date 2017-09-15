@@ -71,16 +71,19 @@ void GetBucketStatisticsOutputToStatvfs(
   auto output = const_cast<GetBucketStatisticsOutput &>(bucketStatsOutput);
   uint64_t numObjs = output.GetCount();
   uint64_t bytesUsed = output.GetSize();
-  uint64_t freeBlocks = UINT64_MAX;  // object storage is unlimited
+  uint64_t bytesTotal = UINT64_MAX; // object storage is unlimited
+  uint64_t bytesFree = bytesTotal - bytesUsed;
 
   statv->f_bsize = GetBlockSize();      // Filesystem block size
   statv->f_frsize = GetFragmentSize();  // Fragment size
   statv->f_blocks =
-      (bytesUsed / statv->f_frsize);    // Size of fs in f_frsize units
-  statv->f_bfree = freeBlocks;          // Number of free blocks
-  statv->f_bavail = freeBlocks;         // Number of free blocks for unprivileged users
-  statv->f_files = numObjs;             // Number of inodes
-  statv->f_namemax = GetNameMaxLen();   // Maximum filename length
+      (bytesTotal / statv->f_frsize);   // Size of fs in f_frsize units
+  statv->f_bfree = 
+      (bytesFree / statv->f_frsize);    // Number of free blocks
+  statv->f_bavail =
+      statv->f_bfree;        // Number of free blocks for unprivileged users
+  statv->f_files = numObjs;  // Number of inodes
+  statv->f_namemax = GetNameMaxLen();  // Maximum filename length
 }
 
 // --------------------------------------------------------------------------

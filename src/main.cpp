@@ -14,6 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
+#include <errno.h>
+
 #include <exception>
 #include <string>
 
@@ -51,7 +53,7 @@ int main(int argc, char **argv) {
   int ret = 0;
   auto errorHandle = [&ret](const char *err) {
     std::cerr << "[" << GetProgramName() << " ERROR] " << err << "\n";
-    ret = 1;
+    ret = errno;
   };
 
   // Parse command line arguments.
@@ -104,13 +106,15 @@ int main(int argc, char **argv) {
 
       // Mount the file system.
       try {
-        ret = mounter.Mount(options, true);  // log on
+        mounter.Mount(options, true);  // log on
       } catch (const QSException &err) {
         if (mounter.IsMounted(mountPoint, true)) {
           mounter.UnMount(mountPoint, true);
         }
         throw err.what();
       }
+
+      mounter.UnMount(mountPoint, true);  // log on
     }
   } catch (const QSException &err) {
     errorHandle(err.what());

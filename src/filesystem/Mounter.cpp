@@ -195,6 +195,7 @@ bool Mounter::DoMount(const Options &options, bool logOn,
       int ret =
           fuse_main(fuseArgs.argc, fuseArgs.argv, &qsfsOperations, user_data);
       if (0 != ret) {
+        errno = ret;
         throw QSException("Unable to mount qsfs");
       } else {
         return true;
