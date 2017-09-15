@@ -168,31 +168,6 @@ void FillStatvfs(const struct statvfs& source, struct statvfs* target) {
 }
 
 // --------------------------------------------------------------------------
-// Get the file
-//
-// @param  : path, flag to update asynchronizely if path is dir
-// @return : {node, bool, path_}
-//          - 1st member is the node;
-//          - 2nd member denote if the node is modified comparing with the
-//          moment before this operation.
-//          - 3rd member is the path maybe appended with "/"
-//
-// Note: GetFile will connect to object storage to retrive the object and 
-// update the local dir tree
-tuple<weak_ptr<Node>, bool, string> GetFile(const char* path,
-                                            bool updateIfIsDir) {
-  string appendPath = path;
-  auto& drive = Drive::Instance();
-  auto res = drive.GetNode(path, updateIfIsDir);
-  auto node = res.first.lock();
-  if (!node && string(path).back() != '/') {
-    appendPath = AppendPathDelim(path);
-    res = drive.GetNode(appendPath, updateIfIsDir);
-  }
-  return std::make_tuple(res.first, res.second, appendPath);
-}
-
-// --------------------------------------------------------------------------
 // Get the file from local dir tree
 //
 // @param  : path
@@ -209,6 +184,40 @@ pair<weak_ptr<Node>, string> GetFileSimple(const char *path) {
     node = drive.GetNodeSimple(appendPath).lock();
   }
   return {node, appendPath};
+}
+
+// --------------------------------------------------------------------------
+// Get the file
+//
+// @param  : path, flag to update asynchronizely if path is dir
+// @return : {node, bool, path_}
+//          - 1st member is the node;
+//          - 2nd member denote if the node is modified comparing with the
+//          moment before this operation.
+//          - 3rd member is the path maybe appended with "/"
+//
+// Note: GetFile will connect to object storage to retrive the object and 
+// update the local dir tree if the object is modified.
+tuple<weak_ptr<Node>, bool, string> GetFile(const char* path,
+                                            bool updateIfIsDir) {
+  auto &drive = Drive::Instance();
+  auto out = GetFileSimple(path);
+  if (out.first.lock()) {  // found node in local dir tree
+    // connect to object storage to update file
+    auto path_ = out.second;
+    auto res = drive.GetNode(path_, updateIfIsDir);
+    return std::make_tuple(res.first, res.second, path_);
+  } else {  // not found in local dir tree
+    // connect to object storage to retrive file
+    string appendPath = path;
+    auto res = drive.GetNode(path, updateIfIsDir);
+    auto node = res.first.lock();
+    if (!node && string(path).back() != '/') {
+      appendPath = AppendPathDelim(path);
+      res = drive.GetNode(appendPath, updateIfIsDir);
+    }
+    return std::make_tuple(res.first, res.second, appendPath);
+  }
 }
 
 }  // namespace

@@ -167,7 +167,9 @@ bool Drive::Connect(bool buildupDirTreeAsync) const {
   }
 
   // Update root node of the tree
-  m_directoryTree->Grow(QS::Data::BuildDefaultDirectoryMeta("/"));
+  if (!m_directoryTree->GetRoot()) {
+    m_directoryTree->Grow(QS::Data::BuildDefaultDirectoryMeta("/", time(NULL)));
+  }
 
   // Build up the root level of directory tree asynchornizely.
   auto receivedHandler = [](const ClientError<QSError> &err) {
@@ -230,7 +232,8 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
   }
 
   // Update directory tree asynchornizely
-  // Should check node existence as given file could be not existing
+  // Should check node existence as given file could be not existing which is
+  // not be considered as an error.
   if (node && *node && node->IsDirectory() && updateIfDirectory && modified) {
     auto receivedHandler = [](const ClientError<QSError> &err) {
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));

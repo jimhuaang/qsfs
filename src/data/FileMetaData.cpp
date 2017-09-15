@@ -57,11 +57,12 @@ const string &GetFileTypeName(FileType fileType) {
 }
 
 // --------------------------------------------------------------------------
-std::shared_ptr<FileMetaData> BuildDefaultDirectoryMeta(const string &dirPath) {
-  time_t ttime = time(NULL);
+std::shared_ptr<FileMetaData> BuildDefaultDirectoryMeta(const string &dirPath,
+                                                        time_t mtime) {
+  time_t atime = time(NULL);
   mode_t mode = GetDefineDirMode();
   return make_shared<FileMetaData>(
-      AppendPathDelim(dirPath), 0, ttime, ttime, GetProcessEffectiveUserID(),
+      AppendPathDelim(dirPath), 0, atime, mtime, GetProcessEffectiveUserID(),
       GetProcessEffectiveGroupID(), mode, FileType::Directory);
 }
 

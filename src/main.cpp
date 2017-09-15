@@ -88,18 +88,18 @@ int main(int argc, char **argv) {
 
 
       // TODO(jim): remvoe following testing code
-      auto &drive = QS::FileSystem::Drive::Instance();
-      auto client = drive.GetClient().get();
-      auto qsClient = dynamic_cast<QS::Client::QSClient*>(client);
-      auto &qsClientImpl = const_cast<const QS::Client::QSClient*>(qsClient)->GetQSClientImpl();
-      QingStor::HeadObjectInput input;
-      auto zeroTIme = QS::TimeUtils::SecondsToRFC822GMT(0);
-      input.SetIfModifiedSince(zeroTIme);
-      //input.SetIfModifiedSince("Sun, 14 May 2017 02:35:09 GMT");
-      auto res = qsClientImpl->HeadObject("/test/", &input);
-      int a = 1;
-      int b = 2;
-      int c = a + b;
+      // auto &drive = QS::FileSystem::Drive::Instance();
+      // auto client = drive.GetClient().get();
+      // auto qsClient = dynamic_cast<QS::Client::QSClient*>(client);
+      // auto &qsClientImpl = const_cast<const QS::Client::QSClient*>(qsClient)->GetQSClientImpl();
+      // QingStor::HeadObjectInput input;
+      // auto zeroTIme = QS::TimeUtils::SecondsToRFC822GMT(0);
+      // input.SetIfModifiedSince(zeroTIme);
+      // //input.SetIfModifiedSince("Sun, 14 May 2017 02:35:09 GMT");
+      // auto res = qsClientImpl->HeadObject("/test/", &input);
+      // int a = 1;
+      // int b = 2;
+      // int c = a + b;
 
 
       // Mount the file system.

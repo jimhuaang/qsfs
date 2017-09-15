@@ -384,6 +384,24 @@ gid_t GetProcessEffectiveGroupID() {
 }
 
 // --------------------------------------------------------------------------
+bool HavePermission(const std::string &path, bool logOn) {
+  struct stat st;
+  int errorCode = stat(path.c_str(), &st);
+  if (errorCode != 0) {
+    if (logOn) {
+      DebugError("Unable to access " + path +
+                 " when trying to check its permission : " + strerror(errno));
+    }
+    return false;
+  } else {
+    if (logOn) {
+      DebugInfo("Check file permission of " + path);
+    }
+    return HavePermission(&st, logOn);
+  }
+}
+
+// --------------------------------------------------------------------------
 bool HavePermission(struct stat *st, bool logOn) {
   // Check type
   if(st == nullptr){
@@ -419,24 +437,6 @@ bool HavePermission(struct stat *st, bool logOn) {
   }
 
   return false;
-}
-
-// --------------------------------------------------------------------------
-bool HavePermission(const std::string &path, bool logOn) {
-  struct stat st;
-  int errorCode = stat(path.c_str(), &st);
-  if (errorCode != 0) {
-    if (logOn) {
-      DebugError("Unable to access " + path +
-                 " when trying to check its permission : " + strerror(errno));
-    }
-    return false;
-  } else {
-    if (logOn) {
-      DebugInfo("Check file permission of " + path);
-    }
-    return HavePermission(&st, logOn);
-  }
 }
 
 // --------------------------------------------------------------------------

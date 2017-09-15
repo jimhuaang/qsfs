@@ -348,7 +348,8 @@ shared_ptr<Node> DirectoryTree::UpdateDiretory(
       continue;
     }
     if (childDirName != path) {
-      DebugWarning("Invalid child meta data with dirname=" + childDirName);
+      DebugWarning("Invalid child meta data with dirname=" + childDirName +
+                   " which is diffrent with " + path);
       continue;
     }
     newChildrenIds.emplace(child->GetFilePath());

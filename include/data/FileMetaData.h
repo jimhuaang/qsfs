@@ -46,9 +46,11 @@ enum class FileType {
 };
 
 const std::string &GetFileTypeName(FileType fileType);
-
+// Build a default dir meta
+// Set mtime = 0 by default, so as any update based on the condition that if dir
+// is modified should still be available.
 std::shared_ptr<QS::Data::FileMetaData> BuildDefaultDirectoryMeta(
-    const std::string &dirPath);
+    const std::string &dirPath, time_t mtime = 0);
 
 /**
  * Object file metadata

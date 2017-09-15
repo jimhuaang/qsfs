@@ -564,6 +564,7 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
 
   auto &drive = QS::FileSystem::Drive::Instance();
   auto &dirTree = drive.GetDirectoryTree();
+  assert(dirTree);
   auto dirNode = drive.GetNodeSimple(dirPath).lock();
   bool doUpdate = false;
   if(dirNode && *dirNode){
@@ -611,7 +612,6 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
   // directory tree gradually. This will be helpful for the performance
   // if there are a huge number of objects to list.
   uint64_t maxCount = static_cast<uint64_t>(Constants::BucketListObjectsLimit);
-  assert(dirTree);
   do {
     auto outcome = GetQSClientImpl()->ListObjects(&listObjInput,
                                                   &resultTruncated, maxCount);
@@ -633,13 +633,19 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
     }
 
     for (auto &listObjOutput : outcome.GetResult()) {
-      auto fileMetaDatas = QSClientUtils::ListObjectsOutputToFileMetaDatas(
-          listObjOutput, true);  // add dir itself
       if (!(dirNode && *dirNode)) {  // directory not existing at this moment
         // Add its children to dir tree
+        auto fileMetaDatas = QSClientUtils::ListObjectsOutputToFileMetaDatas(
+            listObjOutput, true);  // add dir itself
         dirTree->Grow(std::move(fileMetaDatas));
-      } else if (doUpdate) {
-        dirTree->UpdateDiretory(dirPath, std::move(fileMetaDatas));
+      } else if (doUpdate) {  // directory existing
+        auto fileMetaDatas = QSClientUtils::ListObjectsOutputToFileMetaDatas(
+            listObjOutput, false);  // not add dir itself
+        if (dirNode->IsEmpty()) {
+          dirTree->Grow(std::move(fileMetaDatas));
+        } else {
+          dirTree->UpdateDiretory(dirPath, std::move(fileMetaDatas));
+        }
       }
     }  // for list object output
 
@@ -712,7 +718,7 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
         }
       }
 
-      DebugInfo("Objcet Not Found " + path);
+      DebugInfo("Object (" + path + ") Not Found ");
       return ClientError<QSError>(QSError::GOOD, false);
     }
 

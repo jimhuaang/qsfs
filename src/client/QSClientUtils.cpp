@@ -103,11 +103,11 @@ shared_ptr<FileMetaData> HeadObjectOutputToFileMetaData(
   // check as it can be have no meta data e.g when response code=NOT_MODIFIED
   auto lastModified = output.GetLastModified();
   assert(!lastModified.empty());
-  time_t mtime =
-      lastModified.empty() ? time(NULL) : RFC822GMTToSeconds(lastModified);
+  time_t atime = time(NULL);
+  time_t mtime = lastModified.empty() ? 0 : RFC822GMTToSeconds(lastModified);
   bool encrypted = !output.GetXQSEncryptionCustomerAlgorithm().empty();
   return make_shared<FileMetaData>(
-      objKey, size, time(NULL), mtime, GetProcessEffectiveUserID(),
+      objKey, size, atime, mtime, GetProcessEffectiveUserID(),
       GetProcessEffectiveGroupID(), mode, type, output.GetContentType(),
       output.GetETag(), encrypted);
 }
@@ -131,8 +131,12 @@ shared_ptr<FileMetaData> CommonPrefixToFileMetaData(const string &commonPrefix,
                                                     const string &dirPath,
                                                     time_t atime) {
   auto fullPath = AppendPathDelim(dirPath + commonPrefix);
+  // Walk aroud, as ListObject return no meta for a dir, so set mtime=0.
+  // This is ok, as any update based on the condition that if dir is modified
+  // should still be available.
+  time_t mtime = 0;
   return make_shared<FileMetaData>(
-      fullPath, 0, atime, atime, GetProcessEffectiveUserID(),
+      fullPath, 0, atime, mtime, GetProcessEffectiveUserID(),
       GetProcessEffectiveGroupID(), GetDefineDirMode(),
       FileType::Directory);  // TODO(jim): sdk api (meta)
 }
@@ -147,7 +151,7 @@ vector<shared_ptr<FileMetaData>> ListObjectsOutputToFileMetaDatas(
     return metas;
   }
 
-  time_t atime = time(NULL);
+  time_t atime = time(NULL); 
   auto dirPath = AppendPathDelim("/" + output.GetPrefix());
   // Add dir itself
   if (addSelf) {
