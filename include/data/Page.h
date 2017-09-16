@@ -141,7 +141,7 @@ namespace Data {
    void SetStream(std::shared_ptr<std::iostream> && stream);
 
    // Remove tmp file from disk
-   void RemoveTempFileFromDiskIfExists() const;
+   void RemoveTempFileFromDiskIfExists(bool logOn = true) const;
 
    // Setup tmp file on disk
    // - open the tmp file

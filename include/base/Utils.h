@@ -68,10 +68,10 @@ std::pair<bool, std::string> DeleteFilesInDirectoryNoLog(
 bool DeleteFilesInDirectory(const std::string &path, bool deleteDirectorySelf);
 
 // Check if file exists
-bool FileExists(const std::string &path);
+bool FileExists(const std::string &path, bool logOn = true);
 
 // Check if file is a directory
-bool IsDirectory(const std::string &path);
+bool IsDirectory(const std::string &path, bool logOn = true);
 
 // Check if path is root
 bool IsRootDirectory(const std::string &path);

@@ -29,7 +29,7 @@ enum class LogLevel : int { Info = 0, Warn = 1, Error = 2, Fatal = 3 };
 //
 // @param  : log level enumeration
 // @return : log level name
-const std::string &GetLogLevelName(LogLevel logLevel);
+std::string GetLogLevelName(LogLevel logLevel);
 
 // Get log level
 //

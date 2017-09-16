@@ -20,7 +20,6 @@
 #include <string>
 #include <unordered_map>
 
-#include "base/HashUtils.h"
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
 #include "base/Utils.h"
@@ -31,7 +30,6 @@ namespace QS {
 namespace Data {
 
 using QS::FileSystem::Configure::GetDefineDirMode;
-using QS::HashUtils::EnumHash;
 using QS::StringUtils::AccessMaskToString;
 using QS::StringUtils::ModeToString;
 using QS::Utils::AppendPathDelim;
@@ -44,16 +42,35 @@ using std::to_string;
 using std::unordered_map;
 
 // --------------------------------------------------------------------------
-const string &GetFileTypeName(FileType fileType) {
-  static unordered_map<FileType, string, EnumHash> fileTypeNames = {
-      {FileType::File, "File"},
-      {FileType::Directory, "Directory"},
-      {FileType::SymLink, "Symbolic Link"},
-      {FileType::Block, "Block"},
-      {FileType::Character, "Character"},
-      {FileType::FIFO, "FIFO"},
-      {FileType::Socket, "Socket"}};
-  return fileTypeNames[fileType];
+string GetFileTypeName(FileType fileType) {
+  string type;
+  switch (fileType) {
+    case FileType::File:
+      type = "File";
+      break;
+    case FileType::Directory:
+      type = "Directory";
+      break;
+    case FileType::SymLink:
+      type = "Symbolic Link";
+      break;
+    case FileType::Block:
+      type = "Block";
+      break;
+    case FileType::Character:
+      type = "Character";
+      break;
+    case FileType::FIFO:
+      type = "FIFO";
+      break;
+    case FileType::Socket:
+      type = "Socket";
+      break;
+    default:
+      break;
+  }
+
+  return type;
 }
 
 // --------------------------------------------------------------------------

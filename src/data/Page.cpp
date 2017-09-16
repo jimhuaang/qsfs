@@ -41,6 +41,7 @@ using QS::Utils::CreateDirectoryIfNotExists;
 using QS::Utils::FileExists;
 using QS::Utils::GetDirName;
 using QS::Utils::RemoveFileIfExists;
+using QS::Utils::RemoveFileIfExistsNoLog;
 using std::fstream;
 using std::make_shared;
 using std::iostream;
@@ -171,9 +172,13 @@ void Page::SetStream(shared_ptr<iostream> &&stream) {
 }
 
 // --------------------------------------------------------------------------
-void Page::RemoveTempFileFromDiskIfExists() const {
-  if (!m_tmpFile.empty() && FileExists(m_tmpFile)) {
-    RemoveFileIfExists(m_tmpFile);
+void Page::RemoveTempFileFromDiskIfExists(bool logOn) const {
+  if (!m_tmpFile.empty() && FileExists(m_tmpFile, logOn)) {
+    if(logOn){
+      RemoveFileIfExists(m_tmpFile);
+    } else {
+      RemoveFileIfExistsNoLog(m_tmpFile);
+    }
   }
 }
 

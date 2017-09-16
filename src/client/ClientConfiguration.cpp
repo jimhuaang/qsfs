@@ -25,11 +25,10 @@
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
-#include <unordered_map>
 #include <utility>
 
 #include "base/Exception.h"
-#include "base/HashUtils.h"
+#include "base/StringUtils.h"
 #include "client/Credentials.h"
 #include "client/Protocol.h"
 #include "client/RetryStrategy.h"
@@ -48,48 +47,53 @@ using QS::FileSystem::Configure::GetDefaultLogDirectory;
 using QS::FileSystem::Configure::GetDefineFileMode;
 using QS::FileSystem::Configure::GetQSConnectionDefaultRetries;
 using QS::FileSystem::Configure::GetQingStorSDKLogFileName;
-using QS::HashUtils::EnumHash;
-using QS::HashUtils::StringHash;
 using std::call_once;
 using std::string;
 using std::unique_ptr;
-using std::unordered_map;
 
 
-const string &GetClientLogLevelName(ClientLogLevel level) {
-  static unordered_map<ClientLogLevel, string, EnumHash> logLevelNames = {
-      {ClientLogLevel::Debug, "debug"},
-      {ClientLogLevel::Info, "info"},
-      {ClientLogLevel::Warn, "warning"},
-      {ClientLogLevel::Error, "error"},
-      {ClientLogLevel::Fatal, "fatal"}};
-  return logLevelNames[level];
+string GetClientLogLevelName(ClientLogLevel level) {
+  string name;
+  switch (level) {
+    case ClientLogLevel::Debug:
+    name = "debug";
+    break;
+    case ClientLogLevel::Info:
+      name = "info";
+      break;
+    case ClientLogLevel::Warn:
+      name = "warning";
+      break;
+    case ClientLogLevel::Error:
+      name = "error";
+      break;
+    case ClientLogLevel::Fatal:
+      name = "fatal";
+      break;
+    default:
+      break;
+  }
+  return name;
 }
 
 ClientLogLevel GetClientLogLevelByName(const string &name) {
-  static unordered_map<string, ClientLogLevel, StringHash> nameLogLevels = {
-      {"debug", ClientLogLevel::Debug},
-      {"Debug", ClientLogLevel::Debug},
-      {"DEBUG", ClientLogLevel::Debug},
-      {"info", ClientLogLevel::Info},
-      {"Info", ClientLogLevel::Info},
-      {"INFO", ClientLogLevel::Info},
-      {"warn", ClientLogLevel::Warn},
-      {"Warn", ClientLogLevel::Warn},
-      {"WARN", ClientLogLevel::Warn},
-      {"warning", ClientLogLevel::Warn},
-      {"Warning", ClientLogLevel::Warn},
-      {"WARNING", ClientLogLevel::Warn},
-      {"error", ClientLogLevel::Error},
-      {"Error", ClientLogLevel::Error},
-      {"ERROR", ClientLogLevel::Error},
-      {"fatal", ClientLogLevel::Fatal},
-      {"Fatal", ClientLogLevel::Fatal},
-      {"FATAL", ClientLogLevel::Fatal}
-      // Add other entries here
-  };
-  auto it = nameLogLevels.find(name);
-  return it != nameLogLevels.end() ? it->second : ClientLogLevel::Warn;
+  ClientLogLevel level = ClientLogLevel::Warn;
+  if(name.empty()) {
+    return level;
+  }
+
+  auto name_lowercase = QS::StringUtils::ToLower(name);
+  if(name_lowercase == "debug"){
+    level = ClientLogLevel::Debug;
+  } else if (name_lowercase == "info"){
+    level = ClientLogLevel::Info;
+  }else if (name_lowercase == "error"){
+    level = ClientLogLevel::Error;
+  } else if(name_lowercase == "fatal"){
+    level = ClientLogLevel::Fatal;
+  }
+
+  return level;
 }
 
 static unique_ptr<ClientConfiguration> clientConfigInstance(nullptr);

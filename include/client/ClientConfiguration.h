@@ -44,7 +44,7 @@ enum class ClientLogLevel : int {  // SDK log level
   Fatal = 3
 };
 
-const std::string& GetClientLogLevelName(ClientLogLevel level);
+std::string GetClientLogLevelName(ClientLogLevel level);
 ClientLogLevel GetClientLogLevelByName(const std::string& name);
 
 class ClientConfiguration;

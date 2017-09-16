@@ -45,7 +45,7 @@ enum class FileType {
   Socket
 };
 
-const std::string &GetFileTypeName(FileType fileType);
+std::string GetFileTypeName(FileType fileType);
 // Build a default dir meta
 // Set mtime = 0 by default, so as any update based on the condition that if dir
 // is modified should still be available.

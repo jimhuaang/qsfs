@@ -171,21 +171,25 @@ bool DeleteFilesInDirectory(const std::string &path, bool deleteSelf) {
 }
 
 // --------------------------------------------------------------------------
-bool FileExists(const string &path) {
+bool FileExists(const string &path, bool logOn) {
   int errorCode = access(path.c_str(), F_OK);
   if (errorCode == 0) {
     return true;
   } else {
-    DebugInfo("File " + path + " not exists : " + strerror(errno));
+    if(logOn){
+      DebugInfo("File " + path + " not exists : " + strerror(errno));
+    }
     return false;
   }
 }
 
 // --------------------------------------------------------------------------
-bool IsDirectory(const string &path) {
+bool IsDirectory(const string &path, bool logOn) {
   struct stat stBuf;
   if (stat(path.c_str(), &stBuf) != 0) {
-    DebugWarning("Unable to access path " + PostErrMsg(path));
+    if(logOn){
+      DebugWarning("Unable to access path " + PostErrMsg(path));
+    }
     return false;
   } else {
     return S_ISDIR(stBuf.st_mode);
@@ -250,7 +254,7 @@ std::string GetBaseName(const std::string &path) {
 pair<bool, string> GetParentDirectory(const string &path) {
   bool success = false;
   string str;
-  if (FileExists(path)) {
+  if (FileExists(path, false)) {
     if (IsRootDirectory(path)) {
       success = true;
       str.assign("/");  // return root

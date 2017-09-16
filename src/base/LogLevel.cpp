@@ -16,50 +16,53 @@
 
 #include "base/LogLevel.h"
 
-#include <unordered_map>
-
-#include "base/HashUtils.h"
+#include "base/StringUtils.h"
 
 namespace QS {
 
 namespace Logging {
 
-using QS::HashUtils::EnumHash;
-using QS::HashUtils::StringHash;
 using std::string;
-using std::unordered_map;
 
-const string &GetLogLevelName(LogLevel logLevel) {
-  static unordered_map<LogLevel, string, EnumHash> logLevelNames = {
-      {LogLevel::Info, "INFO"},
-      {LogLevel::Warn, "WARN"},
-      {LogLevel::Error, "ERROR"},
-      {LogLevel::Fatal, "FATAL"}};
-  return logLevelNames[logLevel];
+string GetLogLevelName(LogLevel logLevel) {
+  string name;
+  switch (logLevel) {
+    case LogLevel::Info:
+      name = "INFO";
+      break;
+    case LogLevel::Warn:
+      name = "WARN";
+      break;
+    case LogLevel::Error:
+      name = "ERROR";
+      break;
+    case LogLevel::Fatal:
+      name = "FATAL";
+      break;
+    default:
+      break;
+  }
+  return name;
 }
 
 LogLevel GetLogLevelByName(const std::string &name) {
-  static unordered_map<string, LogLevel, StringHash> nameLogLevels = {
-      {"info", LogLevel::Info},
-      {"Info", LogLevel::Info},
-      {"INFO", LogLevel::Info},
-      {"warn", LogLevel::Warn},
-      {"Warn", LogLevel::Warn},
-      {"WARN", LogLevel::Warn},
-      {"warning", LogLevel::Warn},
-      {"Warning", LogLevel::Warn},
-      {"WARNING", LogLevel::Warn},
-      {"error", LogLevel::Error},
-      {"Error", LogLevel::Error},
-      {"ERROR", LogLevel::Error},
-      {"fatal", LogLevel::Fatal},
-      {"Fatal", LogLevel::Fatal},
-      {"FATAL", LogLevel::Fatal}
-      // Add other entries here
-  };
+ 
+  LogLevel level = LogLevel::Info;
+  if(name.empty()) {
+    return level;
+  }
 
-  auto it = nameLogLevels.find(name);
-  return it != nameLogLevels.end() ? it->second : LogLevel::Info;
+  auto name_lowercase = QS::StringUtils::ToLower(name);
+  if(name_lowercase == "warn" || name_lowercase == "warning"){
+    level = LogLevel::Warn;
+  } else if (name_lowercase == "error"){
+    level = LogLevel::Error;
+  } else if(name_lowercase == "fatal"){
+    level = LogLevel::Fatal;
+  }
+
+  return level;
+
 }
 
 string GetLogLevelPrefix(LogLevel logLevel) {
