@@ -79,9 +79,11 @@ int main(int argc, char **argv) {
       CheckMountPoint();
 
       auto mountPoint = options.GetMountPoint();
-      auto outcome = mounter.IsMountable(mountPoint, false);  // log off
-      if (!outcome.first) {
-        throw outcome.second;
+      if (!mounter.IsMounted(mountPoint, false)) {              // log off
+        auto outcome = mounter.IsMountable(mountPoint, false);  // log off
+        if (!outcome.first) {
+          throw outcome.second;
+        }
       }
 
       // Notice: DO NOT use logging before initialization done.
@@ -114,7 +116,9 @@ int main(int argc, char **argv) {
         throw err.what();
       }
 
-      mounter.UnMount(mountPoint, true);  // log on
+      if (mounter.IsMounted(mountPoint, true)) {
+        mounter.UnMount(mountPoint, true);
+      }
     }
   } catch (const QSException &err) {
     errorHandle(err.what());

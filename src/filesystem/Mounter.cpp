@@ -58,6 +58,15 @@ Mounter &Mounter::Instance() {
 }
 
 // --------------------------------------------------------------------------
+// IsMountable only checking following things:
+// the mount point is
+//   - not root
+//   - accessable, means exist
+//   - is dir
+//   - process has permission to access it
+//
+// Notes, IsMountable assume currently the mount point is still not mounted,
+// otherwise, stat a mounted point always fail.
 Mounter::Outcome Mounter::IsMountable(const std::string &mountPoint,
                                       bool logOn) const {
   bool success = true;
@@ -87,62 +96,15 @@ Mounter::Outcome Mounter::IsMountable(const std::string &mountPoint,
 
 // --------------------------------------------------------------------------
 bool Mounter::IsMounted(const string &mountPoint, bool logOn) const {
-  auto mountableOutcome = IsMountable(mountPoint, logOn);
-  if (!mountableOutcome.first) {
-    if (logOn) {
-      DebugWarning(mountableOutcome.second);
-    }
-    return false;
+  bool mounted = false;
+  string command("cat /etc/mtab | grep " + mountPoint + " | wc -c");
+  FILE *pFile = popen(command.c_str(), "r");
+  if (pFile != NULL && fgetc(pFile) != '0') {
+    mounted = true;
   }
+  pclose(pFile);
 
-  auto outcome = QS::Utils::GetParentDirectory(mountPoint);
-  if (!outcome.first) {
-    if (logOn) {
-      DebugWarning(outcome.second);
-    }
-    return false;
-  }
-
-  auto GetMajorMinorDeviceType = [](const string &path) -> pair<bool, string> {
-    bool success = true;
-    string str;
-
-    // Command to display file system major:minor device type
-    string command = "stat -fc%t:%T " + path;
-    FILE *pFile = popen(command.c_str(), "r");
-    if (pFile != NULL) {
-      char buf[512];
-      while (fgets(buf, sizeof buf, pFile) != NULL) {
-        buf[strcspn(buf, "\n")] = 0;  // remove newline
-        str.append(buf);
-      }
-
-      if (str.empty()) {
-        success = false;
-        str.assign("No data from pipe stream of command " + command);
-      }
-    } else {
-      success = false;
-      str.assign("Fail to invoke command " + command + " : " + strerror(errno));
-    }
-    pclose(pFile);
-
-    return {success, str};
-  };
-
-  auto resMountPath = GetMajorMinorDeviceType(mountPoint);
-  auto resMountParentPath = GetMajorMinorDeviceType(outcome.second);
-  if (!resMountPath.first || !resMountParentPath.first) {
-    if (logOn) {
-      DebugWarningIf(!resMountPath.first, resMountPath.second);
-      DebugWarningIf(!resMountParentPath.first, resMountParentPath.second);
-    }
-    return false;
-  } else {
-    // when directory is a mount point, it has a different device number
-    // than its parent directory.
-    return resMountPath != resMountParentPath;
-  }
+  return mounted;
 }
 
 // --------------------------------------------------------------------------
@@ -174,7 +136,7 @@ void Mounter::UnMount(const string &mountPoint, bool logOn) const {
   } else {
     if (logOn) {
       Warning("Trying to unmount filesystem at " + mountPoint +
-              " which is not mounted"); 
+              " which is not mounted");
     }
   }
 }
@@ -202,6 +164,9 @@ bool Mounter::DoMount(const Options &options, bool logOn,
       }
     } else {
       if (++count > maxTries) {
+        if (logOn) {
+          Error("Unable to unmount " + mountPoint);
+        }
         return false;
       }
       if (logOn) {
