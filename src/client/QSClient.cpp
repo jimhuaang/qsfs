@@ -707,7 +707,7 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
       // For some case, such as
       //   an object of "/abc/tst.txt" can exist without existing
       //   object of "/abc/"
-      // In this case, headobject with objKey of "/abc/" will not get
+      // In this case, headobject with objKey of "/abc/" will not success.
 
       // So, we need to use listobject with prefix of "/abc/" to confirm a
       // directory is actually needed.
@@ -720,17 +720,32 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
             GetQSClientImpl()->ListObjects(&listObjInput, nullptr, 10);
 
         if (outcome.IsSuccess()) {
-          *modified = true;
-          dirTree->Grow(BuildDefaultDirectoryMeta(path));  // add dir node
-          return ClientError<QSError>(QSError::GOOD, false);
-        }
+          bool dirExist = false;
+          for (auto &listObjOutput : outcome.GetResult()) {
+            if (!listObjOutput.GetKeys().empty() ||
+                !listObjOutput.GetCommonPrefixes().empty()) {
+              dirExist = true;
+              break;
+            }
+          }
+
+          if (dirExist) {
+            if (modified != nullptr) {
+              *modified = true;
+            }
+            dirTree->Grow(BuildDefaultDirectoryMeta(path));  // add dir node
+            return ClientError<QSError>(QSError::GOOD, false);
+          }
+        }  // if outcome is success
       }
 
       DebugInfo("Object (" + path + ") Not Found ");
       return ClientError<QSError>(QSError::GOOD, false);
     }
 
-    *modified = true;
+    if (modified != nullptr) {
+      *modified = true;
+    }
     auto fileMetaData =
         QSClientUtils::HeadObjectOutputToFileMetaData(path, res);
     if (fileMetaData) {

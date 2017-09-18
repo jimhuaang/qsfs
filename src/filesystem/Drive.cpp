@@ -411,13 +411,9 @@ void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
     }
 
     // QSClient::MakeFile doesn't update directory tree, (refer it for details)
-    // So we call Stat asynchronizely which will update dir tree.
-    auto receivedHandler = [](const ClientError<QSError> &err) {
-      DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
-    };
-    GetClient()->GetExecutor()->SubmitAsyncPrioritized(
-        receivedHandler,
-        [this, filePath] { return GetClient()->Stat(filePath); });
+    // So we call Stat synchronizely which will update dir tree.
+    err = GetClient()->Stat(filePath); 
+    DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
   } else {
     time_t mtime = time(NULL);
     m_directoryTree->Grow(make_shared<FileMetaData>(
@@ -446,12 +442,9 @@ void Drive::MakeDir(const string &dirPath, mode_t mode) {
   }
 
   // QSClient::MakeDirectory doesn't update directory tree,
-  // So we call Stat asynchronizely which will update dir tree.
-  auto receivedHandler = [](const ClientError<QSError> &err) {
-    DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
-  };
-  GetClient()->GetExecutor()->SubmitAsyncPrioritized(
-      receivedHandler, [this, path] { return GetClient()->Stat(path); });
+  // So we call Stat synchronizely which will update dir tree.
+  err = GetClient()->Stat(path);
+  DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
 }
 
 // --------------------------------------------------------------------------

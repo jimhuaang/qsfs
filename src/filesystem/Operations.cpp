@@ -298,7 +298,7 @@ int qsfs_getattr(const char* path, struct stat* statbuf) {
       throw QSException("No such file or directory " + FormatArg(path));
     }
   } catch (const QSException& err) {
-    Error(err.get());
+    Warning(err.get());
     if (ret == 0) {  // catch exception from lower level
       ret = -errno;
     }

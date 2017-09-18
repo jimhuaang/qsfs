@@ -63,6 +63,19 @@ using std::string;
 using std::shared_ptr;
 using std::vector;
 
+namespace {
+  string FixMimeTypeFromContentType(const std::string &contentType){
+    // There is bug in sdk putObject which will ingore "application" of
+    // "application/x-directory", so we make a conversion here
+    // TODO(jim): remove this if sdk fixed this bug
+    auto mimeType = contentType;
+    if(contentType == "/x-directory"){
+      mimeType = GetDirectoryMimeType();
+    }
+    return mimeType;
+  }
+} // namespace
+
 // --------------------------------------------------------------------------
 void GetBucketStatisticsOutputToStatvfs(
     const GetBucketStatisticsOutput &bucketStatsOutput, struct statvfs *statv) {
@@ -100,7 +113,8 @@ shared_ptr<FileMetaData> HeadObjectOutputToFileMetaData(
   // obey mime type for now, may need update in future,
   // as object storage has no dir concept,
   // a dir could have no application/x-directory mime type.
-  bool isDir = output.GetContentType() == GetDirectoryMimeType();
+  auto mimeType = FixMimeTypeFromContentType(output.GetContentType());
+  bool isDir = mimeType == GetDirectoryMimeType();
   FileType type = isDir ? FileType::Directory : FileType::File;
 
   // TODO(jim): mode should do with meta when skd support this
@@ -115,7 +129,7 @@ shared_ptr<FileMetaData> HeadObjectOutputToFileMetaData(
   bool encrypted = !output.GetXQSEncryptionCustomerAlgorithm().empty();
   return make_shared<FileMetaData>(
       objKey, size, atime, mtime, GetProcessEffectiveUserID(),
-      GetProcessEffectiveGroupID(), mode, type, output.GetContentType(),
+      GetProcessEffectiveGroupID(), mode, type, mimeType,
       output.GetETag(), encrypted);
 }
 
@@ -125,7 +139,7 @@ shared_ptr<FileMetaData> ObjectKeyToFileMetaData(const KeyType &objectKey,
   // Do const cast as sdk does not provide const-qualified accessors
   KeyType &key = const_cast<KeyType &>(objectKey);
   auto fullPath = "/" + key.GetKey();  // build full path
-  auto mimeType = key.GetMimeType();
+  auto mimeType = FixMimeTypeFromContentType(key.GetMimeType());
   bool isDir = mimeType == GetDirectoryMimeType();
   mode_t mode = isDir ? GetDefineDirMode() : GetDefineFileMode();
   FileType type = isDir ? FileType::Directory : FileType::File;
