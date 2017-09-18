@@ -639,14 +639,21 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
         auto fileMetaDatas = QSClientUtils::ListObjectsOutputToFileMetaDatas(
             listObjOutput, true);  // add dir itself
         dirTree->Grow(std::move(fileMetaDatas));
-      } else if (doUpdate) {  // directory existing
+      } else {  // directory existing
         auto fileMetaDatas = QSClientUtils::ListObjectsOutputToFileMetaDatas(
             listObjOutput, false);  // not add dir itself
-        if (dirNode->IsEmpty()) {
-          dirTree->Grow(std::move(fileMetaDatas));
+
+        if (doUpdate) {
+          if (dirNode->IsEmpty()) {
+            dirTree->Grow(std::move(fileMetaDatas));
+          } else {
+            dirTree->UpdateDiretory(dirPath, std::move(fileMetaDatas));
+          }
         } else {
-          dirTree->UpdateDiretory(dirPath, std::move(fileMetaDatas));
-        }
+          if(dirNode->IsEmpty() && !fileMetaDatas.empty()){
+            dirTree->Grow(std::move(fileMetaDatas));
+          }
+        }  // if doUpdate
       }
     }  // for list object output
 

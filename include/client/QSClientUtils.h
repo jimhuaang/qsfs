@@ -42,10 +42,10 @@ std::shared_ptr<QS::Data::FileMetaData> HeadObjectOutputToFileMetaData(
     const std::string &objKey, const QingStor::HeadObjectOutput &headObjOutput);
 
 std::shared_ptr<QS::Data::FileMetaData> ObjectKeyToFileMetaData(
-    const KeyType &key, const std::string &dirPath, time_t atime);
+    const KeyType &key, time_t atime);
 
 std::shared_ptr<QS::Data::FileMetaData> CommonPrefixToFileMetaData(
-    const std::string &commonPrefix, const std::string &dirPath, time_t atime);
+    const std::string &commonPrefix, time_t atime);
 
 std::vector<std::shared_ptr<QS::Data::FileMetaData>>
 ListObjectsOutputToFileMetaDatas(

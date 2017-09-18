@@ -234,7 +234,8 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
   // Update directory tree asynchornizely
   // Should check node existence as given file could be not existing which is
   // not be considered as an error.
-  if (node && *node && node->IsDirectory() && updateIfDirectory && modified) {
+  if (node && *node && node->IsDirectory() && updateIfDirectory &&
+      (modified || node->IsEmpty())) {
     auto receivedHandler = [](const ClientError<QSError> &err) {
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     };
@@ -274,9 +275,10 @@ Drive::GetChildren(const string &dirPath) {
   if (node) {
     if (modified || node->IsEmpty()) {
       // Update directory tree synchornizely
-      auto f = GetClient()->GetExecutor()->SubmitCallablePrioritized(
+/*       auto f = GetClient()->GetExecutor()->SubmitCallablePrioritized(
           [this, path] { return GetClient()->ListDirectory(path); });
-      auto err = f.get();
+      auto err = f.get(); */
+      auto err = GetClient()->ListDirectory(path);
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     }
     return m_directoryTree->FindChildren(path);

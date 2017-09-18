@@ -20,6 +20,7 @@
 #include <stdint.h>  // for uint64_t
 #include <time.h>
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -95,13 +96,16 @@ shared_ptr<FileMetaData> HeadObjectOutputToFileMetaData(
   }
 
   auto size = static_cast<uint64_t>(output.GetContentLength());
-  // TODO(jim): mode should do with meta when skd support this
-  mode_t mode = size == 0 ? GetDefineDirMode() : GetDefineFileMode();
+
   // obey mime type for now, may need update in future,
   // as object storage has no dir concept,
   // a dir could have no application/x-directory mime type.
   bool isDir = output.GetContentType() == GetDirectoryMimeType();
   FileType type = isDir ? FileType::Directory : FileType::File;
+
+  // TODO(jim): mode should do with meta when skd support this
+  mode_t mode = isDir ? GetDefineDirMode() : GetDefineFileMode();
+
   // head object should contain meta such as mtime, but we just do a double
   // check as it can be have no meta data e.g when response code=NOT_MODIFIED
   auto lastModified = output.GetLastModified();
@@ -117,23 +121,25 @@ shared_ptr<FileMetaData> HeadObjectOutputToFileMetaData(
 
 // --------------------------------------------------------------------------
 shared_ptr<FileMetaData> ObjectKeyToFileMetaData(const KeyType &objectKey,
-                                                 const string &dirPath,
                                                  time_t atime) {
   // Do const cast as sdk does not provide const-qualified accessors
   KeyType &key = const_cast<KeyType &>(objectKey);
+  auto fullPath = "/" + key.GetKey();  // build full path
+  auto mimeType = key.GetMimeType();
+  bool isDir = mimeType == GetDirectoryMimeType();
+  mode_t mode = isDir ? GetDefineDirMode() : GetDefineFileMode();
+  FileType type = isDir ? FileType::Directory : FileType::File;
   return make_shared<FileMetaData>(
-      dirPath + key.GetKey(),  // build full path
-      static_cast<uint64_t>(key.GetSize()), atime,
+      fullPath, static_cast<uint64_t>(key.GetSize()), atime,
       static_cast<time_t>(key.GetModified()), GetProcessEffectiveUserID(),
-      GetProcessEffectiveGroupID(), GetDefineFileMode(), FileType::File,
-      key.GetMimeType(), key.GetEtag(), key.GetEncrypted());
+      GetProcessEffectiveGroupID(), mode, type, mimeType, key.GetEtag(),
+      key.GetEncrypted());
 }
 
 // --------------------------------------------------------------------------
 shared_ptr<FileMetaData> CommonPrefixToFileMetaData(const string &commonPrefix,
-                                                    const string &dirPath,
                                                     time_t atime) {
-  auto fullPath = AppendPathDelim(dirPath + commonPrefix);
+  auto fullPath = "/"+ commonPrefix;
   // Walk aroud, as ListObject return no meta for a dir, so set mtime=0.
   // This is ok, as any update based on the condition that if dir is modified
   // should still be available.
@@ -154,21 +160,26 @@ vector<shared_ptr<FileMetaData>> ListObjectsOutputToFileMetaDatas(
     return metas;
   }
 
-  time_t atime = time(NULL); 
-  auto dirPath = AppendPathDelim("/" + output.GetPrefix());
-  // Add dir itself
-  if (addSelf) {
-    metas.push_back(BuildDefaultDirectoryMeta(dirPath));
-  }
+  time_t atime = time(NULL);
   // Add files
   for (const auto &key : output.GetKeys()) {
-    metas.push_back(std::move(ObjectKeyToFileMetaData(key, dirPath, atime)));
+    metas.push_back(std::move(ObjectKeyToFileMetaData(key, atime)));
   }
   // Add subdirs
   for (const auto &commonPrefix : output.GetCommonPrefixes()) {
-    metas.push_back(
-        std::move(CommonPrefixToFileMetaData(commonPrefix, dirPath, atime)));
+    metas.push_back(std::move(CommonPrefixToFileMetaData(commonPrefix, atime)));
   }
+  // Add dir itself
+  if (addSelf) {
+    auto dirPath = AppendPathDelim("/" + output.GetPrefix());
+    if (std::find_if(metas.begin(), metas.end(),
+                  [dirPath](const shared_ptr<FileMetaData> &meta) {
+                    return meta->GetFilePath() == dirPath;
+                  }) == metas.end()) {
+      metas.push_back(BuildDefaultDirectoryMeta(dirPath));
+    }
+  }
+
   return metas;
 }
 
