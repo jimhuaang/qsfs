@@ -26,6 +26,7 @@
 #include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
+#include <sstream>
 #include <utility>
 
 #include "base/Exception.h"
@@ -85,6 +86,7 @@ using std::make_shared;
 using std::pair;
 using std::shared_ptr;
 using std::string;
+using std::stringstream;
 using std::to_string;
 using std::unique_ptr;
 using std::vector;
@@ -417,6 +419,9 @@ void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
     err = GetClient()->Stat(filePath); 
     DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
   } else {
+    // This only make file of other types in local dir tree, nothing happens
+    // in server. And it will be removed when synchronize with server.
+    // TODO: may consider to support them in server
     time_t mtime = time(NULL);
     m_directoryTree->Grow(make_shared<FileMetaData>(
         filePath, 0, mtime, mtime, GetProcessEffectiveUserID(),
@@ -503,7 +508,7 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
   // Check file
   if (doCheck) {
     if (!(node && *node)) {
-      DebugError("No such file " + filePath);
+      DebugWarning("No such file " + filePath);
       return 0;
     }
     if (node->IsDirectory()) {
@@ -553,6 +558,34 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
 
   // Read from cache
   return m_cache->Read(filePath, offset, downloadSize, buf, node);
+}
+
+// --------------------------------------------------------------------------
+void Drive::ReadSymlink(const std::string &linkPath, bool doCheck) {
+  if (doCheck && linkPath.empty()) {
+    DebugWarning("Invalid input");
+    return;
+  }
+
+  auto node = GetNodeSimple(linkPath).lock();
+  if (doCheck) {
+    if (!(node && *node)) {
+      DebugWarning("No such file " + linkPath);
+      return;
+    }
+    if (!node->IsSymLink()) {
+      DebugError("Not a symlink " + linkPath);
+      return;
+    }
+  }
+
+  auto buffer = std::make_shared<stringstream>();
+  auto err = GetClient()->DownloadFile(linkPath, buffer);
+  if (IsGoodQSError(err)) {
+    node->SetSymbolicLink(buffer->str());
+  } else {
+    DebugError(GetMessageForQSError(err));
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -656,16 +689,25 @@ void Drive::SymLink(const string &filePath, const string &linkPath) {
     return;
   }
 
-  time_t mtime = time(NULL);
-  auto lnkNode = m_directoryTree->Grow(make_shared<FileMetaData>(
-      linkPath, filePath.size(), mtime, mtime, GetProcessEffectiveUserID(),
-      GetProcessEffectiveGroupID(), Configure::GetDefineFileMode(),
-      FileType::SymLink));
-  if (lnkNode && (lnkNode)) {
-    lnkNode->SetSymbolicLink(filePath);
-  } else {
+  auto err = GetClient()->SymLink(filePath, linkPath);
+  if (!IsGoodQSError(err)) {
     DebugError("Fail to create a symbolic link [path=" + filePath +
                ", link=" + linkPath);
+    DebugError(GetMessageForQSError(err));
+    return;
+  }
+
+  // QSClient::Symlink doesn't update directory tree (refer it for details)
+  // with the created symlink node, So we call Stat synchronizely.
+  err = GetClient()->Stat(linkPath);
+  if(!IsGoodQSError(err)){
+    DebugError(GetMessageForQSError(err));
+    return;
+  }
+
+  auto lnkNode = GetNodeSimple(linkPath).lock();
+  if (lnkNode && *lnkNode) {
+    lnkNode->SetSymbolicLink(filePath);
   }
 }
 

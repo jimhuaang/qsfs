@@ -34,6 +34,8 @@
 #include "client/QSClient.h"
 #include "client/QSClientImpl.h"
 #include "qingstor-sdk-cpp/Types.h"     // for sdk QsOutput
+#include <sstream>
+#include <memory>
 
 using QS::Exception::QSException;
 using QS::FileSystem::Configure::GetProgramName;
@@ -92,19 +94,33 @@ int main(int argc, char **argv) {
 
 
       // TODO(jim): remvoe following testing code
-      // auto &drive = QS::FileSystem::Drive::Instance();
-      // auto client = drive.GetClient().get();
-      // auto qsClient = dynamic_cast<QS::Client::QSClient*>(client);
-      // auto &qsClientImpl = const_cast<const QS::Client::QSClient*>(qsClient)->GetQSClientImpl();
-      // QingStor::HeadObjectInput input;
-      // auto zeroTIme = QS::TimeUtils::SecondsToRFC822GMT(0);
-      // input.SetIfModifiedSince(zeroTIme);
-      // //input.SetIfModifiedSince("Sun, 14 May 2017 02:35:09 GMT");
-      // auto res = qsClientImpl->HeadObject("/test/", &input);
-      // int a = 1;
-      // int b = 2;
-      // int c = a + b;
+      auto &drive = QS::FileSystem::Drive::Instance();
+      auto client = drive.GetClient().get();
+      auto qsClient = dynamic_cast<QS::Client::QSClient*>(client);
+      auto &qsClientImpl = const_cast<const QS::Client::QSClient*>(qsClient)->GetQSClientImpl();
+      //QingStor::PutObjectInput iPut;
+      //iPut.SetContentLength(0);  // create empty file
+      //iPut.SetContentType("symlink2file");
+      //auto resPut = qsClientImpl->PutObject("/symfile", &iPut);
+      //
+      //QingStor::HeadObjectInput iHead;
+      ////auto zeroTIme = QS::TimeUtils::SecondsToRFC822GMT(0);
+      ////input.SetIfModifiedSince(zeroTIme);
+      ////input.SetIfModifiedSince("Sun, 14 May 2017 02:35:09 GMT");
+      //auto resHead = qsClientImpl->HeadObject("/symfile", &iHead);
 
+      QingStor::GetObjectInput iGet;
+      auto resGet = qsClientImpl->GetObject("/symlink", &iGet);
+      auto bodyStream = resGet.GetResult().GetBody();
+      std::stringstream buffer;
+      bodyStream->seekg(0, std::ios_base::beg);
+      buffer.seekp(0, std::ios_base::beg);
+      buffer << bodyStream->rdbuf();
+      string content = buffer.str();
+
+      int a = 1;
+      int b = 2;
+      int c = a + b;
 
       // Mount the file system.
       try {

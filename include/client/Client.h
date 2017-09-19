@@ -132,8 +132,9 @@ class Client {
   // If range is empty, then the whole file will be downloaded.
   // The file data will be written to buffer.
   virtual ClientError<QSError> DownloadFile(
-      const std::string &filePath, const std::string &range,
-      const std::shared_ptr<std::iostream> &buffer, std::string *eTag) = 0;
+      const std::string &filePath, const std::shared_ptr<std::iostream> &buffer,
+      const std::string &range = std::string(),
+      std::string *eTag = nullptr) = 0;
 
   // Initiate multipart upload id
   //
@@ -172,6 +173,17 @@ class Client {
   virtual ClientError<QSError> UploadFile(
       const std::string &filePath, uint64_t fileSize,
       const std::shared_ptr<std::iostream> &buffer) = 0;
+
+  // Create a symbolic link to a file
+  //
+  // @param  : file path to link to, link path
+  // @return : void
+  //
+  // symbolic link is a file that contains a reference to the file or dir,
+  // the reference is the realitive path (from fuse) to the file,
+  // fuse will parse . and .., so we just put the path as link file content.
+  virtual ClientError<QSError> SymLink(const std::string &filePath,
+                                       const std::string &linkPath) = 0;
 
   // List directory
   //

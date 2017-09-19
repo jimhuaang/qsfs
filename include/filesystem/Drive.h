@@ -203,6 +203,15 @@ class Drive {
   size_t ReadFile(const std::string &filePath, off_t offset, size_t size,
                   char *buf, bool doCheck = true);
 
+  // Read target of a symlink file
+  //
+  // @param  : link file path, falg doCheck
+  // @return : number of bytes has been read
+  //
+  // ReadSymlink read link file content which is the realitive path to the
+  // target file, and update the symlink node in dir tree.
+  void ReadSymlink(const std::string &linkPath, bool doCheck = true);
+
   // Rename a file
   //
   // @param  : file path, new file path, flag to do check
@@ -222,10 +231,9 @@ class Drive {
   // @param  : file path to link to, link path
   // @return : void
   //
-  // symbolic link is a file that contains a reference to another file or dir
-  // in the form of an absolute path (in qsfs).
-  // Notes: symbolic link is only cached in local not in object storage,
-  // So it could be removed, e.g. when updating its parent dir.
+  // symbolic link is a file that contains a reference to the file or dir,
+  // the reference is the realitive path (from fuse) to the file,
+  // fuse will parse . and .., so we just put the path as link file content.
   void SymLink(const std::string &filePath, const std::string &linkPath);
 
   // Truncate a file

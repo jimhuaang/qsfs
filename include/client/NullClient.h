@@ -49,8 +49,8 @@ class NullClient : public Client {
                                      const std::string &targetDirPath) override;
 
   ClientError<QSError> DownloadFile(
-      const std::string &filePath, const std::string &range,
-      const std::shared_ptr<std::iostream> &buffer, std::string *eTag) override;
+      const std::string &filePath, const std::shared_ptr<std::iostream> &buffer,
+      const std::string &range, std::string *eTag) override;
 
   ClientError<QSError> InitiateMultipartUpload(const std::string &filePath,
                                                std::string *uploadId) override;
@@ -59,6 +59,9 @@ class NullClient : public Client {
       const std::string &filePath, const std::string &uploadId, int partNumber,
       uint64_t contentLength,
       const std::shared_ptr<std::iostream> &buffer) override;
+
+  ClientError<QSError> SymLink(const std::string &filePath,
+                               const std::string &linkPath) override;
 
   ClientError<QSError> CompleteMultipartUpload(
       const std::string &filePath, const std::string &uploadId,

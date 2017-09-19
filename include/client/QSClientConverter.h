@@ -32,7 +32,7 @@ namespace QS {
 
 namespace Client {
 
-namespace QSClientUtils {
+namespace QSClientConverter {
 
 void GetBucketStatisticsOutputToStatvfs(
     const QingStor::GetBucketStatisticsOutput &bucketStatsOutput,
@@ -51,7 +51,7 @@ std::vector<std::shared_ptr<QS::Data::FileMetaData>>
 ListObjectsOutputToFileMetaDatas(
     const QingStor::ListObjectsOutput &listObjsOutput, bool addSelf);
 
-}  // namespace QSClientUtils
+}  // namespace QSClientConverter
 }  // namespace Client
 }  // namespace QS
 

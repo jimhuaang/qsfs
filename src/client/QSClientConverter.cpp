@@ -14,7 +14,7 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "client/QSClientUtils.h"
+#include "client/QSClientConverter.h"
 
 #include <assert.h>
 #include <stdint.h>  // for uint64_t
@@ -39,7 +39,7 @@ namespace QS {
 
 namespace Client {
 
-namespace QSClientUtils {
+namespace QSClientConverter {
 
 using QingStor::GetBucketStatisticsOutput;
 using QingStor::HeadObjectOutput;
@@ -54,6 +54,7 @@ using QS::FileSystem::Configure::GetDefineDirMode;
 using QS::FileSystem::Configure::GetFragmentSize;
 using QS::FileSystem::Configure::GetNameMaxLen;
 using QS::FileSystem::GetDirectoryMimeType;
+using QS::FileSystem::GetSymlinkMimeType;
 using QS::TimeUtils::RFC822GMTToSeconds;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::GetProcessEffectiveUserID;
@@ -64,17 +65,21 @@ using std::shared_ptr;
 using std::vector;
 
 namespace {
-  string FixMimeTypeFromContentType(const std::string &contentType){
-    // There is bug in sdk putObject which will ingore "application" of
-    // "application/x-directory", so we make a conversion here
-    // TODO(jim): remove this if sdk fixed this bug
-    auto mimeType = contentType;
-    if(contentType == "/x-directory"){
-      mimeType = GetDirectoryMimeType();
-    }
-    return mimeType;
+
+string FixMimeTypeFromContentType(const std::string &contentType) {
+  // There is bug in sdk putObject which will ingore "application" of
+  // "application/x-directory", so we make a conversion here
+  // TODO(jim): remove this if sdk fixed this bug
+  auto mimeType = contentType;
+  if (contentType == "/x-directory") {
+    mimeType = GetDirectoryMimeType();
+  } else if (contentType == "/symlink") {
+    mimeType = GetSymlinkMimeType();
   }
-} // namespace
+  return mimeType;
+}
+
+}  // namespace
 
 // --------------------------------------------------------------------------
 void GetBucketStatisticsOutputToStatvfs(
@@ -115,7 +120,9 @@ shared_ptr<FileMetaData> HeadObjectOutputToFileMetaData(
   // a dir could have no application/x-directory mime type.
   auto mimeType = FixMimeTypeFromContentType(output.GetContentType());
   bool isDir = mimeType == GetDirectoryMimeType();
-  FileType type = isDir ? FileType::Directory : FileType::File;
+  FileType type = isDir ? FileType::Directory
+                        : mimeType == GetSymlinkMimeType() ? FileType::SymLink
+                                                           : FileType::File;
 
   // TODO(jim): mode should do with meta when skd support this
   mode_t mode = isDir ? GetDefineDirMode() : GetDefineFileMode();
@@ -141,8 +148,11 @@ shared_ptr<FileMetaData> ObjectKeyToFileMetaData(const KeyType &objectKey,
   auto fullPath = "/" + key.GetKey();  // build full path
   auto mimeType = FixMimeTypeFromContentType(key.GetMimeType());
   bool isDir = mimeType == GetDirectoryMimeType();
+  FileType type = isDir ? FileType::Directory
+                        : mimeType == GetSymlinkMimeType() ? FileType::SymLink
+                                                           : FileType::File;
+  // TODO(jim): mode should do with meta when skd support this
   mode_t mode = isDir ? GetDefineDirMode() : GetDefineFileMode();
-  FileType type = isDir ? FileType::Directory : FileType::File;
   return make_shared<FileMetaData>(
       fullPath, static_cast<uint64_t>(key.GetSize()), atime,
       static_cast<time_t>(key.GetModified()), GetProcessEffectiveUserID(),
@@ -197,6 +207,6 @@ vector<shared_ptr<FileMetaData>> ListObjectsOutputToFileMetaDatas(
   return metas;
 }
 
-}  // namespace QSClientUtils
+}  // namespace QSClientConverter
 }  // namespace Client
 }  // namespace QS

@@ -38,6 +38,8 @@ static const char *CONTENT_TYPE_STREAM1 = "application/octet-stream";
 //static const char *CONTENT_TYPE_STREAM2 = "binary/octet-stream";
 static const char *CONTENT_TYPE_DIR = "application/x-directory";
 static const char *CONTENT_TYPE_TXT = "text/plain";
+// Simulate a symbolic link mime type
+static const char *CONTENT_TYPE_SYMLINK = "application/symlink";
 
 static unique_ptr<MimeTypes> instance(nullptr);
 static std::once_flag flag;
@@ -127,6 +129,12 @@ string GetDirectoryMimeType() { return CONTENT_TYPE_DIR; }
 
 // --------------------------------------------------------------------------
 string GetTextMimeType() { return CONTENT_TYPE_TXT; }
+
+// --------------------------------------------------------------------------
+string GetSymlinkMimeType() {
+  // Stimulate a mime type for symlink
+  return CONTENT_TYPE_SYMLINK;
+}
 
 }  // namespace FileSystem
 }  // namespace QS

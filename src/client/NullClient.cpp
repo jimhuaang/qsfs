@@ -63,8 +63,8 @@ ClientError<QSError> NullClient::MoveDirectory(const string &sourceDirPath,
 }
 
 ClientError<QSError> NullClient::DownloadFile(
-    const std::string &filePath, const std::string &range,
-    const std::shared_ptr<std::iostream> &buffer, std::string *eTag) {
+    const std::string &filePath, const std::shared_ptr<std::iostream> &buffer,
+    const std::string &range, std::string *eTag) {
   return GoodState();
 }
 
@@ -93,6 +93,11 @@ ClientError<QSError> NullClient::AbortMultipartUpload(
 ClientError<QSError> NullClient::UploadFile(
     const std::string &filePath, uint64_t fileSize,
     const std::shared_ptr<std::iostream> &buffer) {
+  return GoodState();
+}
+
+ClientError<QSError> NullClient::SymLink(const std::string &filePath,
+                                         const std::string &linkPath) {
   return GoodState();
 }
 

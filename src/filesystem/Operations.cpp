@@ -363,6 +363,7 @@ int qsfs_readlink(const char* path, char* link, size_t size) {
     }
 
     // Read the link
+    Drive::Instance().ReadSymlink(path, false);
     auto symlink = Trim(node->GetSymbolicLink(), ' ');
     size_t size_ = symlink.size();
     if (size <= size_) {
@@ -386,7 +387,7 @@ int qsfs_readlink(const char* path, char* link, size_t size) {
 // Create a file node
 //
 // This is called for creation of all non-directory, non-symlink nodes.
-// If the filesystem defines a crete() method, then for regular files that
+// If the filesystem defines a create() method, then for regular files that
 // will be called instead.
 int qsfs_mknod(const char* path, mode_t mode, dev_t dev) {
   if (!IsValidPath(path)) {
@@ -555,7 +556,8 @@ int qsfs_rmdir(const char* path) {
     auto dir = CheckParentDir(path, W_OK | X_OK, &ret, false);
 
     string path_ = AppendPathDelim(path);
-    auto node = drive.GetNodeSimple(path_).lock();
+    auto res = drive.GetNode(path_, true, false);  // update dir synchronizely
+    auto node = res.first.lock();
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such directory " + FormatArg(path_));
@@ -577,7 +579,7 @@ int qsfs_rmdir(const char* path) {
     CheckStickyBit(dir, node, &ret);
 
     // Do delete empty directory
-    drive.DeleteDir(path_, false);
+    drive.DeleteDir(path_, false, false);
 
   } catch (const QSException& err) {
     Error(err.get());

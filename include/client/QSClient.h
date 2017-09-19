@@ -109,14 +109,15 @@ class QSClient : public Client {
 
   // Download file
   //
-  // @param  : file path, contenct range, buffer(input), eTag (output)
+  // @param  : file path, buffer(input), contenct range, eTag (output)
   // @return : ClinetError
   //
   // If range is empty, then the whole file will be downloaded.
   // The file data will be written to buffer.
   ClientError<QSError> DownloadFile(
-      const std::string &filePath, const std::string &range,
-      const std::shared_ptr<std::iostream> &buffer, std::string *eTag) override;
+      const std::string &filePath, const std::shared_ptr<std::iostream> &buffer,
+      const std::string &range = std::string(),
+      std::string *eTag = nullptr) override;
 
   // Initiate multipart upload id
   //
@@ -168,6 +169,18 @@ class QSClient : public Client {
   // Notice the dirPath should end with delimiter.
   ClientError<QSError> ListDirectory(const std::string &dirPath) override;
 
+
+  // Create a symbolic link to a file
+  //
+  // @param  : file path to link to, link path
+  // @return : void
+  //
+  // symbolic link is a file that contains a reference to the file or dir,
+  // the reference is the realitive path (from fuse) to the file,
+  // fuse will parse . and .., so we just put the path as link file content.
+  ClientError<QSError> SymLink(const std::string &filePath,
+                               const std::string &linkPath) override;
+
   // Get object meta data
   //
   // @param  : file path, modifiedSince, *modified(output)
@@ -189,8 +202,6 @@ class QSClient : public Client {
   // @param  : *stvfs(output)
   // @return : ClientError
   ClientError<QSError> Statvfs(struct statvfs *stvfs) override;
-
-
 
  public:
   static const std::unique_ptr<QingStor::QingStorService> &GetQingStorService();

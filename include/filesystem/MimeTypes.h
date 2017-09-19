@@ -78,6 +78,12 @@ std::string GetDirectoryMimeType();
 // @return : text mime type
 std::string GetTextMimeType();
 
+// Get mime type for symlink file
+//
+// @param  : void
+// @return : symlink mime type
+std::string GetSymlinkMimeType();
+
 }  // namespace FileSystem
 }  // namespace QS
 

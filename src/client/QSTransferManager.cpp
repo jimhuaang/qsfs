@@ -213,9 +213,8 @@ void QSTransferManager::DoSinglePartDownload(
       [this, handle, part]() -> pair<ClientError<QSError>, string> {
         string eTag;
         auto err = GetClient()->DownloadFile(
-            handle->GetObjectKey(),
-            BuildRequestRange(part->GetRangeBegin(), part->GetSize()),
-            handle->GetDownloadStream(), &eTag);
+            handle->GetObjectKey(), handle->GetDownloadStream(),
+            BuildRequestRange(part->GetRangeBegin(), part->GetSize()), &eTag);
         return {err, eTag};
       });
 }
@@ -283,9 +282,9 @@ void QSTransferManager::DoMultiPartDownload(
           [this, objKey, part]() -> pair<ClientError<QSError>, string> {
             string eTag;
             auto err = GetClient()->DownloadFile(
-                objKey,
+                objKey, part->GetDownloadPartStream(),
                 BuildRequestRange(part->GetRangeBegin(), part->GetSize()),
-                part->GetDownloadPartStream(), &eTag);
+                &eTag);
             return {err, eTag};
           });
     } else {

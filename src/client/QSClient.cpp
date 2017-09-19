@@ -24,6 +24,7 @@
 #include <iostream>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -42,8 +43,8 @@
 #include "client/ClientImpl.h"
 #include "client/Constants.h"
 #include "client/Protocol.h"
+#include "client/QSClientConverter.h"
 #include "client/QSClientImpl.h"
-#include "client/QSClientUtils.h"
 #include "client/QSError.h"
 #include "client/URI.h"
 #include "data/Cache.h"
@@ -73,6 +74,7 @@ using QS::Data::BuildDefaultDirectoryMeta;
 using QS::Data::Node;
 using QS::FileSystem::Drive;
 using QS::FileSystem::GetDirectoryMimeType;
+using QS::FileSystem::GetSymlinkMimeType;
 using QS::FileSystem::LookupMimeType;
 using QS::StringUtils::LTrim;
 using QS::StringUtils::RTrim;
@@ -83,10 +85,12 @@ using QS::Utils::GetBaseName;
 using QS::Utils::GetDirName;
 using QS::Utils::IsRootDirectory;
 using std::chrono::milliseconds;
+using std::make_shared;
 using std::iostream;
 using std::deque;
 using std::shared_ptr;
 using std::string;
+using std::stringstream;
 using std::unique_ptr;
 
 namespace {
@@ -372,9 +376,8 @@ ClientError<QSError> QSClient::MoveDirectory(const string &sourceDirPath,
 
 // --------------------------------------------------------------------------
 ClientError<QSError> QSClient::DownloadFile(const string &filePath,
-                                            const string &range,
                                             const shared_ptr<iostream> &buffer,
-                                            string *eTag) {
+                                            const string &range, string *eTag) {
   GetObjectInput input;
   if (!range.empty()) {
     input.SetRange(range);
@@ -561,8 +564,44 @@ ClientError<QSError> QSClient::UploadFile(const string &filePath,
 }
 
 // --------------------------------------------------------------------------
-ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
+ClientError<QSError> QSClient::SymLink(const string &filePath,
+                                       const string &linkPath) {
+  PutObjectInput input;
+  input.SetContentLength(filePath.size());
+  input.SetContentType(GetSymlinkMimeType());
+  auto ss = make_shared<stringstream>(filePath);
+  input.SetBody(ss);
 
+  auto outcome = GetQSClientImpl()->PutObject(linkPath, &input);
+  unsigned attemptedRetries = 0;
+  while (!outcome.IsSuccess() &&
+         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+    int32_t sleepMilliseconds =
+        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                         attemptedRetries);
+    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+    outcome = GetQSClientImpl()->PutObject(linkPath, &input);
+    ++attemptedRetries;
+  }
+
+  if (outcome.IsSuccess()) {
+    // As sdk doesn't return the created file meta data in PutObjectOutput,
+    // So we cannot grow the directory tree here, instead we need to call
+    // Stat to head the object again in Drive::MakeFile;
+    //
+    // auto &drive = Drive::Instance();
+    // auto &dirTree = Drive::Instance().GetDirectoryTree();
+    // if (dirTree) {
+    //   dirTree->Grow(PutObjectOutputToFileMeta());  // no implementation
+    // }
+    return ClientError<QSError>(QSError::GOOD, false);
+  } else {
+    return outcome.GetError();
+  }
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
   auto &drive = QS::FileSystem::Drive::Instance();
   auto &dirTree = drive.GetDirectoryTree();
   assert(dirTree);
@@ -605,12 +644,14 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
     for (auto &listObjOutput : outcome.GetResult()) {
       if (!(dirNode && *dirNode)) {  // directory not existing at this moment
         // Add its children to dir tree
-        auto fileMetaDatas = QSClientUtils::ListObjectsOutputToFileMetaDatas(
-            listObjOutput, true);  // add dir itself
+        auto fileMetaDatas =
+            QSClientConverter::ListObjectsOutputToFileMetaDatas(
+                listObjOutput, true);  // add dir itself
         dirTree->Grow(std::move(fileMetaDatas));
       } else {  // directory existing
-        auto fileMetaDatas = QSClientUtils::ListObjectsOutputToFileMetaDatas(
-            listObjOutput, false);  // not add dir itself
+        auto fileMetaDatas =
+            QSClientConverter::ListObjectsOutputToFileMetaDatas(
+                listObjOutput, false);  // not add dir itself
         if (dirNode->IsEmpty()) {
           dirTree->Grow(std::move(fileMetaDatas));
         } else {
@@ -708,7 +749,7 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
       *modified = true;
     }
     auto fileMetaData =
-        QSClientUtils::HeadObjectOutputToFileMetaData(path, res);
+        QSClientConverter::HeadObjectOutputToFileMetaData(path, res);
     if (fileMetaData) {
       dirTree->Grow(std::move(fileMetaData));  // add/update node in dir tree
     }
@@ -740,7 +781,7 @@ ClientError<QSError> QSClient::Statvfs(struct statvfs *stvfs) {
 
   if (outcome.IsSuccess()) {
     auto res = outcome.GetResult();
-    QSClientUtils::GetBucketStatisticsOutputToStatvfs(res, stvfs);
+    QSClientConverter::GetBucketStatisticsOutputToStatvfs(res, stvfs);
     return ClientError<QSError>(QSError::GOOD, false);
   } else {
     return outcome.GetError();
