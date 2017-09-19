@@ -567,37 +567,6 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
   auto &dirTree = drive.GetDirectoryTree();
   assert(dirTree);
   auto dirNode = drive.GetNodeSimple(dirPath).lock();
-  bool doUpdate = false;
-  if(dirNode && *dirNode){
-    if (IsRootDirectory(dirPath)) {
-      // For root, as we cannot know if bucket is modified or not using
-      // current SDK, so we only update it if it's empty.
-      doUpdate = dirNode->IsEmpty();
-    } else {
-      HeadObjectInput input;
-      input.SetIfModifiedSince(SecondsToRFC822GMT(dirNode->GetMTime()));
-      auto out = GetQSClientImpl()->HeadObject(dirPath, &input);
-  
-      if (out.IsSuccess()) {
-        auto res = out.GetResult();
-        if (res.GetResponseCode() == HttpResponseCode::NOT_FOUND) {
-          // As for object storage, there is no concept of directory.
-          // For some case, such as
-          //   an object of "/abc/tst.txt" can exist without existing
-          //   object of "/abc/"
-          // For this case we just update the directory if it's empty.
-          doUpdate = dirNode->IsEmpty();
-        } else if (res.GetResponseCode() == HttpResponseCode::NOT_MODIFIED) {
-          doUpdate = false;
-        } else {  // modified
-          doUpdate = true;
-        }
-      } else {
-        doUpdate = false;
-        DebugError(GetMessageForQSError(out.GetError()));
-      }
-    }
-  }
 
   ListObjectsInput listObjInput;
   listObjInput.SetLimit(Constants::BucketListObjectsLimit);
@@ -642,18 +611,11 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
       } else {  // directory existing
         auto fileMetaDatas = QSClientUtils::ListObjectsOutputToFileMetaDatas(
             listObjOutput, false);  // not add dir itself
-
-        if (doUpdate) {
-          if (dirNode->IsEmpty()) {
-            dirTree->Grow(std::move(fileMetaDatas));
-          } else {
-            dirTree->UpdateDiretory(dirPath, std::move(fileMetaDatas));
-          }
+        if (dirNode->IsEmpty()) {
+          dirTree->Grow(std::move(fileMetaDatas));
         } else {
-          if(dirNode->IsEmpty() && !fileMetaDatas.empty()){
-            dirTree->Grow(std::move(fileMetaDatas));
-          }
-        }  // if doUpdate
+          dirTree->UpdateDiretory(dirPath, std::move(fileMetaDatas));
+        }
       }
     }  // for list object output
 
@@ -669,10 +631,10 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
   }
 
   if (IsRootDirectory(path)) {
-    // As headobject will not return any meta for root "/",
-    // so we head bucket instead, and also head bucket return no meta, so we
-    // cannot know if bucket is modified or not, so we just think bucket is
-    // not modified, but this may need update if SDK return more data in future.
+    // Stat aims to get object meta data. As in object storage, bucket has no
+    // data to record last modified time. 
+    // Bucket mtime is set when connect to it at the first time.
+    // We just think bucket mtime is not modified since then.
     return HeadBucket();
   }
 
@@ -708,9 +670,8 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
       //   an object of "/abc/tst.txt" can exist without existing
       //   object of "/abc/"
       // In this case, headobject with objKey of "/abc/" will not success.
-
-      // So, we need to use listobject with prefix of "/abc/" to confirm a
-      // directory is actually needed.
+      // So, we need to use listobject with prefix of "/abc/" to confirm if a
+      // directory node is actually needed to be construct in dir tree.
       if (path.back() == '/') {
         ListObjectsInput listObjInput;
         listObjInput.SetLimit(10);
@@ -749,7 +710,7 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
     auto fileMetaData =
         QSClientUtils::HeadObjectOutputToFileMetaData(path, res);
     if (fileMetaData) {
-      dirTree->Grow(std::move(fileMetaData));  // add Node to dir tree
+      dirTree->Grow(std::move(fileMetaData));  // add/update node in dir tree
     }
     return ClientError<QSError>(QSError::GOOD, false);
   } else {

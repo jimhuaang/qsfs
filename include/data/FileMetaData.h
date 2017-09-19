@@ -81,6 +81,7 @@ public:
 
   // accessor
   const std::string &GetFilePath() const { return m_filePath;}
+  time_t GetMTime() const { return m_mtime; }
 
  private:
   FileMetaData() = default;

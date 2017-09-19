@@ -32,8 +32,6 @@
 #include "base/Utils.h"
 #include "data/FileMetaDataManager.h"
 
-#include <iostream>  // TODO(jim): remove
-
 namespace QS {
 
 namespace Data {
@@ -254,16 +252,19 @@ weak_ptr<Node> DirectoryTree::Find(const string &filePath) const {
 // --------------------------------------------------------------------------
 std::pair<ChildrenMultiMapConstIterator, ChildrenMultiMapConstIterator>
 DirectoryTree::FindChildren(const string &dirName) const {
+  lock_guard<recursive_mutex> lock(m_mutex);
   return m_parentToChildrenMap.equal_range(dirName);
 }
 
 // --------------------------------------------------------------------------
 ChildrenMultiMapConstIterator DirectoryTree::CBeginParentToChildrenMap() const {
+  lock_guard<recursive_mutex> lock(m_mutex);
   return m_parentToChildrenMap.cbegin();
 }
 
 // --------------------------------------------------------------------------
 ChildrenMultiMapConstIterator DirectoryTree::CEndParentToChildrenMap() const {
+  lock_guard<recursive_mutex> lock(m_mutex);
   return m_parentToChildrenMap.cend();
 }
 
@@ -276,7 +277,9 @@ shared_ptr<Node> DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
 
   auto node = Find(filePath).lock();
   if (node) {
-    node->SetEntry(Entry(std::move(fileMeta)));  // update entry
+    if(fileMeta->GetMTime() > node->GetMTime()){
+      node->SetEntry(Entry(std::move(fileMeta)));  // update entry
+    }
   } else {
     bool isDir = fileMeta->IsDirectory();
     auto dirName = fileMeta->MyDirName();
@@ -373,19 +376,21 @@ shared_ptr<Node> DirectoryTree::UpdateDiretory(
         oldChildrenIds.begin(), oldChildrenIds.end(), newChildrenIds.begin(),
         newChildrenIds.end(),
         std::inserter(deleteChildrenIds, deleteChildrenIds.end()));
-    auto range = FindChildren(path);
-    for (auto it = range.first; it != range.second; ++it) {
-      auto childNode = it->second.lock();
-      if (childNode && (*childNode)) {
-        if (deleteChildrenIds.find(childNode->GetFilePath()) !=
-            deleteChildrenIds.end()) {
-          m_parentToChildrenMap.erase(it);
+    if (!deleteChildrenIds.empty()) {
+      auto range = FindChildren(path);
+      for (auto it = range.first; it != range.second; ++it) {
+        auto childNode = it->second.lock();
+        if (childNode && (*childNode)) {
+          if (deleteChildrenIds.find(childNode->GetFilePath()) !=
+              deleteChildrenIds.end()) {
+            m_parentToChildrenMap.erase(it);
+          }
         }
       }
-    }
-    for (auto &childId : deleteChildrenIds) {
-      m_map.erase(childId);
-      node->Remove(childId);
+      for (auto &childId : deleteChildrenIds) {
+        m_map.erase(childId);
+        node->Remove(childId);
+      }
     }
 
     // Do updating
@@ -452,6 +457,8 @@ void DirectoryTree::Remove(const string &path) {
     DebugError("Unable to remove root");
     return;
   }
+  
+  lock_guard<recursive_mutex> lock(m_mutex);
   auto node = Find(path).lock();
   if (!(node && *node)) {
     DebugInfo("No such file or directory " + path);

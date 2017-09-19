@@ -95,7 +95,7 @@ class Drive {
 
   // Get the node
   //
-  // @param  : file path, bool denotes if update dir tree if node is a directory
+  // @param  : file path, flag update if is dir, flag update dir async
   // @return : a pair of { node, bool denotes if the node is modified comparing
   //           with the moment before this operation }
   //
@@ -107,7 +107,8 @@ class Drive {
   // Notes: GetNode will connect to object storage to retrive the object and 
   // update the local dir tree
   std::pair<std::weak_ptr<QS::Data::Node>, bool> GetNode(
-      const std::string &path, bool updateIfDirectory = true);
+      const std::string &path, bool updateIfDirectory = true,
+      bool updateDirAsync = true);
 
   // Get the node from local dir tree
   // @param  : file path
@@ -118,13 +119,13 @@ class Drive {
 
   // Get the children
   //
-  // @param  : dir path
+  // @param  : dir path, flag update if is dir
   // @return : a pair of iterators point to the range of the children in dir tree.
   //
-  // This will update the directory tree synchronizely if directory is modified.
+  // This will update the directory tree synchronizely if updateIfDir is true.
   std::pair<QS::Data::ChildrenMultiMapConstIterator,
             QS::Data::ChildrenMultiMapConstIterator>
-  GetChildren(const std::string &dirPath);
+  GetChildren(const std::string &dirPath, bool updateIfDir);
 
   // Change the permission bits of a file
   //

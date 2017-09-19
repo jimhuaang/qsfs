@@ -204,7 +204,7 @@ struct statvfs Drive::GetFilesystemStatistics() {
 
 // --------------------------------------------------------------------------
 pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
-                                          bool updateIfDirectory) {
+                                          bool updateIfDirectory, bool async) {
   if (path.empty()) {
     Error("Null file path");
     return {weak_ptr<Node>(), false};
@@ -234,14 +234,20 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
   // Update directory tree asynchornizely
   // Should check node existence as given file could be not existing which is
   // not be considered as an error.
-  if (node && *node && node->IsDirectory() && updateIfDirectory &&
-      (modified || node->IsEmpty())) {
+  // The modified time is only the meta of an object, we should not take
+  // modified time as an precondition to decide if we need to update dir or not.
+  if (node && *node && node->IsDirectory() && updateIfDirectory) {
     auto receivedHandler = [](const ClientError<QSError> &err) {
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     };
-    GetClient()->GetExecutor()->SubmitAsync(receivedHandler, [this, path] {
-      return GetClient()->ListDirectory(AppendPathDelim(path));
-    });
+
+    if (async) {
+      GetClient()->GetExecutor()->SubmitAsync(receivedHandler, [this, path] {
+        return GetClient()->ListDirectory(AppendPathDelim(path));
+      });
+    } else {
+      receivedHandler(GetClient()->ListDirectory(AppendPathDelim(path)));
+    }
   }
 
   return {node, modified};
@@ -254,7 +260,7 @@ weak_ptr<QS::Data::Node> Drive::GetNodeSimple(const string &path){
 
 // --------------------------------------------------------------------------
 pair<ChildrenMultiMapConstIterator, ChildrenMultiMapConstIterator>
-Drive::GetChildren(const string &dirPath) {
+Drive::GetChildren(const string &dirPath, bool updateIfDir) {
   auto emptyRes = std::make_pair(m_directoryTree->CEndParentToChildrenMap(),
                                  m_directoryTree->CEndParentToChildrenMap());
   if (dirPath.empty()) {
@@ -271,13 +277,9 @@ Drive::GetChildren(const string &dirPath) {
   auto res = GetNode(path, false);  // Do not invoke updating dirctory
                                     // as we will do it synchronizely
   auto node = res.first.lock();
-  bool modified = res.second;
   if (node) {
-    if (modified || node->IsEmpty()) {
+    if (node->IsDirectory() && updateIfDir) {
       // Update directory tree synchornizely
-/*       auto f = GetClient()->GetExecutor()->SubmitCallablePrioritized(
-          [this, path] { return GetClient()->ListDirectory(path); });
-      auto err = f.get(); */
       auto err = GetClient()->ListDirectory(path);
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     }
@@ -410,8 +412,8 @@ void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
       return;
     }
 
-    // QSClient::MakeFile doesn't update directory tree, (refer it for details)
-    // So we call Stat synchronizely which will update dir tree.
+    // QSClient::MakeFile doesn't update directory tree (refer it for details)
+    // with the created file node, So we call Stat synchronizely.
     err = GetClient()->Stat(filePath); 
     DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
   } else {
@@ -441,8 +443,8 @@ void Drive::MakeDir(const string &dirPath, mode_t mode) {
     return;
   }
 
-  // QSClient::MakeDirectory doesn't update directory tree,
-  // So we call Stat synchronizely which will update dir tree.
+  // QSClient::MakeDirectory doesn't grow directory tree with the created dir
+  // node, So we call Stat synchronizely.
   err = GetClient()->Stat(path);
   DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
 }

@@ -163,7 +163,7 @@ ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
     auto responseCode = output.GetResponseCode();
     if (SDKResponseSuccess(sdkErr, responseCode)) {
       count += output.GetKeys().size();
-      //count += output.GetCommonPrefixes().size();  // TODO(jim): should add this?
+      count += output.GetCommonPrefixes().size();
       responseTruncated = !output.GetNextMarker().empty();
       if (responseTruncated) {
         input->SetMarker(output.GetNextMarker());

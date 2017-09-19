@@ -85,16 +85,17 @@ gid_t GetFuseContextGID() {
 
 // --------------------------------------------------------------------------
 shared_ptr<Node> CheckParentDir(const string& path, int amode, int* ret,
-                                bool updateIfisDir = false) {
+                                bool updateIfisDir = false,
+                                bool updateDirAsync = true) {
   // Normally, put CheckParentDir before check the file itself.
   string dirName = GetDirName(path);
   auto& drive = Drive::Instance();
   auto parent = drive.GetNodeSimple(dirName).lock();
-  if(!parent){
-    auto res = drive.GetNode(dirName, updateIfisDir);
+  if (!parent) {
+    auto res = drive.GetNode(dirName, updateIfisDir, updateDirAsync);
     parent = res.first.lock();
   }
-  
+
   if (!(parent && *parent)) {
     *ret = -EINVAL;  // invalid argument
     throw QSException("No parent directory " + FormatArg(path));
@@ -189,7 +190,7 @@ pair<weak_ptr<Node>, string> GetFileSimple(const char *path) {
 // --------------------------------------------------------------------------
 // Get the file
 //
-// @param  : path, flag to update asynchronizely if path is dir
+// @param  : path, flag update dir, flag update dir asynchronizely
 // @return : {node, bool, path_}
 //          - 1st member is the node;
 //          - 2nd member denote if the node is modified comparing with the
@@ -199,22 +200,23 @@ pair<weak_ptr<Node>, string> GetFileSimple(const char *path) {
 // Note: GetFile will connect to object storage to retrive the object and 
 // update the local dir tree if the object is modified.
 tuple<weak_ptr<Node>, bool, string> GetFile(const char* path,
-                                            bool updateIfIsDir) {
-  auto &drive = Drive::Instance();
+                                            bool updateIfIsDir,
+                                            bool updateDirAsync = true) {
+  auto& drive = Drive::Instance();
   auto out = GetFileSimple(path);
   if (out.first.lock()) {  // found node in local dir tree
     // connect to object storage to update file
     auto path_ = out.second;
-    auto res = drive.GetNode(path_, updateIfIsDir);
+    auto res = drive.GetNode(path_, updateIfIsDir, updateDirAsync);
     return std::make_tuple(res.first, res.second, path_);
   } else {  // not found in local dir tree
     // connect to object storage to retrive file
     string appendPath = path;
-    auto res = drive.GetNode(path, updateIfIsDir);
+    auto res = drive.GetNode(path, updateIfIsDir, updateDirAsync);
     auto node = res.first.lock();
     if (!node && string(path).back() != '/') {
       appendPath = AppendPathDelim(path);
-      res = drive.GetNode(appendPath, updateIfIsDir);
+      res = drive.GetNode(appendPath, updateIfIsDir, updateDirAsync);
     }
     return std::make_tuple(res.first, res.second, appendPath);
   }
@@ -284,11 +286,14 @@ int qsfs_getattr(const char* path, struct stat* statbuf) {
   memset(statbuf, 0, sizeof(*statbuf));
   int ret = 0;
   try {
+    // Getattr is invoked before most callbacks to decide if path is existing,
+    // We do update dir in opendir instead here.
+
     // Check parent access permission
-    CheckParentDir(path, X_OK, &ret, true);  // should always put at beginning
+    CheckParentDir(path, X_OK, &ret, false);  // should always put at beginning
 
     // Check file
-    auto res = GetFile(path, true);
+    auto res = GetFile(path, false);  // not update dir
     auto node = std::get<0>(res).lock();
     if (node && *node) {
       auto st = const_cast<const Node&>(*node).GetEntry().ToStat();
@@ -1332,8 +1337,10 @@ int qsfs_opendir(const char* path, struct fuse_file_info* fi) {
     // Check parent permission
     CheckParentDir(path, mask, &ret, false);
 
-    // Check if file exists
-    auto node = drive.GetNodeSimple(dirPath).lock();
+    // Check if dir exists
+    auto res = drive.GetNode(dirPath, true, false);  // update dir synchronizely
+    auto node = res.first.lock();
+
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such directory " + FormatArg(path));
@@ -1385,7 +1392,7 @@ int qsfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
   auto& drive = Drive::Instance();
   auto dirPath = AppendPathDelim(path);
   try {
-    // Check if file exists
+    // Check if dir exists
     auto node = drive.GetNodeSimple(dirPath).lock();
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
@@ -1411,7 +1418,9 @@ int qsfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     }
 
     // Put the children into filler
-    auto range = drive.GetChildren(dirPath);
+    // As opendir,which has already updated dir, get called before this callback
+    // So no need to update dir again.
+    auto range = drive.GetChildren(dirPath, false);
     for (auto it = range.first; it != range.second; ++it) {
       if (auto child = it->second.lock()) {
         auto filename = child->MyBaseName();
