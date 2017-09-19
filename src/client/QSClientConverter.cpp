@@ -64,22 +64,6 @@ using std::string;
 using std::shared_ptr;
 using std::vector;
 
-namespace {
-
-string FixMimeTypeFromContentType(const std::string &contentType) {
-  // There is bug in sdk putObject which will ingore "application" of
-  // "application/x-directory", so we make a conversion here
-  // TODO(jim): remove this if sdk fixed this bug
-  auto mimeType = contentType;
-  if (contentType == "/x-directory") {
-    mimeType = GetDirectoryMimeType();
-  } else if (contentType == "/symlink") {
-    mimeType = GetSymlinkMimeType();
-  }
-  return mimeType;
-}
-
-}  // namespace
 
 // --------------------------------------------------------------------------
 void GetBucketStatisticsOutputToStatvfs(
@@ -118,7 +102,7 @@ shared_ptr<FileMetaData> HeadObjectOutputToFileMetaData(
   // obey mime type for now, may need update in future,
   // as object storage has no dir concept,
   // a dir could have no application/x-directory mime type.
-  auto mimeType = FixMimeTypeFromContentType(output.GetContentType());
+  auto mimeType = output.GetContentType();
   bool isDir = mimeType == GetDirectoryMimeType();
   FileType type = isDir ? FileType::Directory
                         : mimeType == GetSymlinkMimeType() ? FileType::SymLink
@@ -146,7 +130,7 @@ shared_ptr<FileMetaData> ObjectKeyToFileMetaData(const KeyType &objectKey,
   // Do const cast as sdk does not provide const-qualified accessors
   KeyType &key = const_cast<KeyType &>(objectKey);
   auto fullPath = "/" + key.GetKey();  // build full path
-  auto mimeType = FixMimeTypeFromContentType(key.GetMimeType());
+  auto mimeType = key.GetMimeType();
   bool isDir = mimeType == GetDirectoryMimeType();
   FileType type = isDir ? FileType::Directory
                         : mimeType == GetSymlinkMimeType() ? FileType::SymLink
