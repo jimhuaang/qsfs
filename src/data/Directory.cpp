@@ -250,6 +250,11 @@ weak_ptr<Node> DirectoryTree::Find(const string &filePath) const {
 }
 
 // --------------------------------------------------------------------------
+bool DirectoryTree::Has(const std::string &filePath) const{
+  return m_map.find(filePath) != m_map.end();
+}
+
+// --------------------------------------------------------------------------
 std::pair<ChildrenMultiMapConstIterator, ChildrenMultiMapConstIterator>
 DirectoryTree::FindChildren(const string &dirName) const {
   lock_guard<recursive_mutex> lock(m_mutex);
@@ -437,11 +442,11 @@ shared_ptr<Node> DirectoryTree::Rename(const string &oldFilePath,
     m_map.emplace(newFilePath, node);
     m_map.erase(oldFilePath);
     if (node->IsDirectory()) {
-      auto range = FindChildren(newFilePath);
+      auto range = FindChildren(oldFilePath);
       for (auto it = range.first; it != range.second; ++it) {
         m_parentToChildrenMap.emplace(newFilePath, std::move(it->second));
-        m_parentToChildrenMap.erase(it);
       }
+      m_parentToChildrenMap.erase(oldFilePath);
     }
     m_currentNode = node;
   } else {

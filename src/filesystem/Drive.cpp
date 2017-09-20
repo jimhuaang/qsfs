@@ -422,7 +422,7 @@ void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
     err = GetClient()->Stat(filePath); 
     DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
   } else {
-    DebugWarning(
+    DebugError(
         "Not support to create a special file (block, char, FIFO, etc.)");
     // This only make file of other types in local dir tree, nothing happens
     // in server. And it will be removed when synchronize with server.

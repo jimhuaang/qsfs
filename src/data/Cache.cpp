@@ -353,8 +353,8 @@ void Cache::Rename(const string &oldFileId, const string &newFileId) {
 
   auto iter = m_map.find(newFileId);
   if (iter != m_map.end()) {
-    DebugWarning("New file id: + " + newFileId +
-                 " is already existed in the cache. Just remove it from cache");
+    DebugWarning("New file (" + newFileId +
+                 ") is already existed in the cache. Just remove it from cache");
     UnguardedErase(iter);
   }
 
@@ -366,8 +366,8 @@ void Cache::Rename(const string &oldFileId, const string &newFileId) {
     m_map.emplace(newFileId, pos);
     m_map.erase(it);
   } else {
-    DebugWarning("Try to rename file id " + oldFileId +
-                 " which is not found. Go on")
+    DebugInfo("Try to rename file (" + oldFileId +
+                 ") which is not cached. Go on")
   }
 }
 

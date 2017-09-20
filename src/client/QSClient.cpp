@@ -292,10 +292,16 @@ ClientError<QSError> QSClient::MakeDirectory(const string &dirPath) {
 // --------------------------------------------------------------------------
 ClientError<QSError> QSClient::MoveFile(const string &sourceFilePath,
                                         const string &destFilePath) {
-  // TODO(jim):
   PutObjectInput input;
   input.SetXQSMoveSource(BuildXQSSourceString(sourceFilePath));
-  //input.SetContentType(LookupMimeType(destFilePath));
+  // sdk cpp require content-length parameter, though it will be ignored
+  // so, set 0 to avoid sdk parameter checking failure
+  input.SetContentLength(0);
+  // it seems put-move discards the content-type, so we set directory
+  // mime type explicitly
+  if (RTrim(sourceFilePath, ' ').back() == '/') {  // is dir
+    input.SetContentType(GetDirectoryMimeType());
+  }
 
   auto outcome = GetQSClientImpl()->PutObject(destFilePath, &input);
   unsigned attemptedRetries = 0;
@@ -316,7 +322,7 @@ ClientError<QSError> QSClient::MoveFile(const string &sourceFilePath,
       dirTree->Rename(sourceFilePath, destFilePath);
     }
     auto &cache = drive.GetCache();
-    if (cache) {
+    if (cache && cache->HasFile(sourceFilePath)) {
       cache->Rename(sourceFilePath, destFilePath);
     }
     return ClientError<QSError>(QSError::GOOD, false);

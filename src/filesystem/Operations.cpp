@@ -695,7 +695,6 @@ int qsfs_rename(const char* path, const char* newpath) {
     auto nRes = GetFileSimple(newpath);
     auto nNode = nRes.first.lock();
     string newpath_ = nRes.second;
-
     if (nNode) {
       if (nNode->IsDirectory() && !nNode->IsEmpty()) {
         ret = -ENOTEMPTY;  // directory not empty
@@ -716,9 +715,9 @@ int qsfs_rename(const char* path, const char* newpath) {
 
     // Do Renaming
     if(node->IsDirectory()){
-      Drive::Instance().RenameDir(path_, newpath_, false);
+      Drive::Instance().RenameDir(path_, AppendPathDelim(newpath), false);
     } else {
-      Drive::Instance().RenameFile(path_, newpath_, false);
+      Drive::Instance().RenameFile(path_, newpath, false);
     }
 
   } catch (const QSException& err) {

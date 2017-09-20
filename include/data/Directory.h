@@ -308,6 +308,12 @@ class DirectoryTree {
   // @return : node
   std::weak_ptr<Node> Find(const std::string &filePath) const;
 
+  // Return if dir tree has node
+  //
+  // @param  : file path (absolute path)
+  // @return : node
+  bool Has(const std::string &filePath) const;
+
   // Find children
   //
   // @param  : dir name which should be ending with "/"
