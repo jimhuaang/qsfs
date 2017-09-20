@@ -372,6 +372,9 @@ void Drive::DeleteDir(const string &dirPath, bool recursive, bool doCheck) {
 
 // --------------------------------------------------------------------------
 void Drive::HardLink(const string &filePath, const string &hardlinkPath) {
+  // DO NOT use it for now.
+  // As DirectoryTree::HardLink is not ready, and Drive still need to add
+  // another function ReadHardLink to support hardlink.
   assert(!filePath.empty() && !hardlinkPath.empty());
   if (filePath.empty() || hardlinkPath.empty()) {
     DebugWarning("Invalid empty parameter");
@@ -402,7 +405,7 @@ void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
     type = FileType::Socket;
   } else {
     DebugWarning(
-        "Try to make a directory or symbolic link, but MakeFile is only for "
+        "Try to create a directory or symbolic link, but MakeFile is only for "
         "creation of non-directory and non-symlink nodes. ");
     return;
   }
@@ -419,13 +422,15 @@ void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
     err = GetClient()->Stat(filePath); 
     DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
   } else {
+    DebugWarning(
+        "Not support to create a special file (block, char, FIFO, etc.)");
     // This only make file of other types in local dir tree, nothing happens
     // in server. And it will be removed when synchronize with server.
-    // TODO: may consider to support them in server
-    time_t mtime = time(NULL);
-    m_directoryTree->Grow(make_shared<FileMetaData>(
-        filePath, 0, mtime, mtime, GetProcessEffectiveUserID(),
-        GetProcessEffectiveGroupID(), mode, type, "", "", false, dev));
+    // TODO(jim): may consider to support them in server if sdk support this
+    // time_t mtime = time(NULL);
+    // m_directoryTree->Grow(make_shared<FileMetaData>(
+    //     filePath, 0, mtime, mtime, GetProcessEffectiveUserID(),
+    //     GetProcessEffectiveGroupID(), mode, type, "", "", false, dev));
   }
 }
 

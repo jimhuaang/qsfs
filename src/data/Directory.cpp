@@ -505,6 +505,10 @@ void DirectoryTree::Remove(const string &path) {
 // --------------------------------------------------------------------------
 shared_ptr<Node> DirectoryTree::HardLink(const string &filePath,
                                          const string &hardlinkPath) {
+  // DO not use this for now.
+  // HardLink currently shared meta data of target file when creating it,
+  // Still need to synchronize with target file, to support this we may need
+  // to refactory Node to contain a shared_ptr<Entry>.
   lock_guard<recursive_mutex> lock(m_mutex);
   auto node = Find(filePath).lock();
   if (!(node && *node)) {
