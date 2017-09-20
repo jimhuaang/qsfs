@@ -44,6 +44,11 @@ std::shared_ptr<QS::Data::FileMetaData> HeadObjectOutputToFileMetaData(
 std::shared_ptr<QS::Data::FileMetaData> ObjectKeyToFileMetaData(
     const KeyType &key, time_t atime);
 
+// As sdk also provide dir itself in keys when list object of the dir path,
+// ObjectKeyToDirMetaData serve to such special case only.
+std::shared_ptr<QS::Data::FileMetaData> ObjectKeyToDirMetaData(
+    const KeyType &key, time_t atime);
+
 std::shared_ptr<QS::Data::FileMetaData> CommonPrefixToFileMetaData(
     const std::string &commonPrefix, time_t atime);
 

@@ -145,6 +145,20 @@ shared_ptr<FileMetaData> ObjectKeyToFileMetaData(const KeyType &objectKey,
 }
 
 // --------------------------------------------------------------------------
+shared_ptr<FileMetaData> ObjectKeyToDirMetaData(const KeyType &objectKey,
+                                                time_t atime) {
+  // Do const cast as sdk does not provide const-qualified accessors
+  KeyType &key = const_cast<KeyType &>(objectKey);
+  auto fullPath = AppendPathDelim("/" + key.GetKey());  // build full path
+
+  return make_shared<FileMetaData>(
+      fullPath, 0, atime, static_cast<time_t>(key.GetModified()),
+      GetProcessEffectiveUserID(), GetProcessEffectiveGroupID(),
+      GetDefineDirMode(), FileType::Directory, GetDirectoryMimeType(),
+      key.GetEtag(), key.GetEncrypted());
+}
+
+// --------------------------------------------------------------------------
 shared_ptr<FileMetaData> CommonPrefixToFileMetaData(const string &commonPrefix,
                                                     time_t atime) {
   auto fullPath = "/"+ commonPrefix;
@@ -169,8 +183,15 @@ vector<shared_ptr<FileMetaData>> ListObjectsOutputToFileMetaDatas(
   }
 
   time_t atime = time(NULL);
+  string prefix = output.GetPrefix();
+  const KeyType *dirItselfAsKey = nullptr;
   // Add files
-  for (const auto &key : output.GetKeys()) {
+  for (auto &key : output.GetKeys()) {
+    // sdk will put dir itself into keys, ignore it
+    if (prefix == key.GetKey()) {
+      dirItselfAsKey = &key;
+      continue;
+    }
     metas.push_back(std::move(ObjectKeyToFileMetaData(key, atime)));
   }
   // Add subdirs
@@ -179,12 +200,16 @@ vector<shared_ptr<FileMetaData>> ListObjectsOutputToFileMetaDatas(
   }
   // Add dir itself
   if (addSelf) {
-    auto dirPath = AppendPathDelim("/" + output.GetPrefix());
+    auto dirPath = AppendPathDelim("/" + prefix);
     if (std::find_if(metas.begin(), metas.end(),
                   [dirPath](const shared_ptr<FileMetaData> &meta) {
                     return meta->GetFilePath() == dirPath;
                   }) == metas.end()) {
-      metas.push_back(BuildDefaultDirectoryMeta(dirPath));
+      if(dirItselfAsKey != nullptr){
+        metas.push_back(ObjectKeyToDirMetaData(*dirItselfAsKey, atime));
+      } else {
+        metas.push_back(BuildDefaultDirectoryMeta(dirPath));
+      }
     }
   }
 

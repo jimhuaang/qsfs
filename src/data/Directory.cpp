@@ -351,16 +351,17 @@ shared_ptr<Node> DirectoryTree::UpdateDiretory(
   set<string> newChildrenIds;
   for (auto &child : childrenMetas) {
     auto childDirName = child->MyDirName();
+    auto childFilePath = child->GetFilePath();
     if (childDirName.empty()) {
-      DebugWarning("Invalid child meta data with empty dirname");
+      DebugWarning("Invalid child node (" + childFilePath + ") with empty dirname");
       continue;
     }
     if (childDirName != path) {
-      DebugWarning("Invalid child meta data with dirname=" + childDirName +
+      DebugWarning("Invalid child node (" + childFilePath + ") with dirname=" + childDirName +
                    " which is diffrent with " + path);
       continue;
     }
-    newChildrenIds.emplace(child->GetFilePath());
+    newChildrenIds.emplace(childFilePath);
     newChildrenMetas.push_back(std::move(child));
   }
 
