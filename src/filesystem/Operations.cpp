@@ -600,18 +600,20 @@ int qsfs_rmdir(const char* path) {
 // Symlink is only called if there isn't already another object with the
 // requested linkname.
 int qsfs_symlink(const char* path, const char* link) {
-  // if (!IsValidPath(path)) {
-  //   Error("Null path parameter from fuse");
-  //   return -EINVAL;  // invalid argument
-  // }
-  // if (!IsValidPath(link)) {
-  //   Error("Null link parameter from fuse");
-  //   return -EINVAL;  // invalid argument
-  // }
-  // if (IsRootDirectory(path)) {
-  //   Error("Unable to symlink root directory");
-  //   return -EPERM;  // operation not permitted
-  // }
+  //
+    // if (!IsValidPath(path)) {
+    //   Error("Null path parameter from fuse");
+    //   return -EINVAL;  // invalid argument
+    // }
+    // if (!IsValidPath(link)) {
+    //   Error("Null link parameter from fuse");
+    //   return -EINVAL;  // invalid argument
+    // }
+    // if (IsRootDirectory(path)) {
+    //   Error("Unable to symlink root directory");
+    //   return -EPERM;  // operation not permitted
+    // }
+
   string filename = GetBaseName(link);
   if (filename.empty()) {
     Error("Invalid link parameter " + FormatArg(link));
@@ -733,72 +735,78 @@ int qsfs_rename(const char* path, const char* newpath) {
 // --------------------------------------------------------------------------
 // Create a hard link to a file
 int qsfs_link(const char* path, const char* linkpath) {
-  if (!IsValidPath(path) || !IsValidPath(linkpath)) {
-    Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
-  }
-  if (IsRootDirectory(path) || IsRootDirectory(linkpath)) {
-    Error("Unable to link on root directory");
-    return -EPERM;  // operation not permitted
-  }
-  string linkPathBaseName = GetBaseName(linkpath);
-  if (linkPathBaseName.empty()) {
-    Error("Invalid link file path " + FormatArg(linkpath));
-    return -EINVAL;
-  } else if (linkPathBaseName.size() > GetNameMaxLen()) {
-    Error("file name too long " + FormatArg(linkPathBaseName));
-    return -ENAMETOOLONG;  // file name too long
-  }
+  DebugError("Hard link not permitted [from=" + string(path) +
+             " to=" + string(linkpath));
+  return -EPERM;  // operation not permitted
 
-  int ret = 0;
-  auto& drive = Drive::Instance();
-  try {
-    auto node = drive.GetNodeSimple(path).lock();
-    if (!(node && *node)) {
-      ret = -ENOENT;  // No such file or directory
-      throw QSException("No such file or directory " + FormatArg(path));
-    }
+//  Not support hard link currently.
+  // if (!IsValidPath(path) || !IsValidPath(linkpath)) {
+  //   Error("Null path parameter from fuse");
+  //   return -EINVAL;  // invalid argument
+  // }
+  // if (IsRootDirectory(path) || IsRootDirectory(linkpath)) {
+  //   Error("Unable to link on root directory");
+  //   return -EPERM;  // operation not permitted
+  // }
+  // string linkPathBaseName = GetBaseName(linkpath);
+  // if (linkPathBaseName.empty()) {
+  //   Error("Invalid link file path " + FormatArg(linkpath));
+  //   return -EINVAL;
+  // } else if (linkPathBaseName.size() > GetNameMaxLen()) {
+  //   Error("file name too long " + FormatArg(linkPathBaseName));
+  //   return -ENAMETOOLONG;  // file name too long
+  // }
+  // 
+  // int ret = 0;
+  // auto& drive = Drive::Instance();
+  // try {
+  //   auto node = drive.GetNodeSimple(path).lock();
+  //   if (!(node && *node)) {
+  //     ret = -ENOENT;  // No such file or directory
+  //     throw QSException("No such file or directory " + FormatArg(path));
+  //   }
+  // 
+  //   // Check if it is a directory
+  //   if (node->IsDirectory()) {
+  //     ret = -EPERM;  // operation not permitted
+  //     throw QSException("Unable to hard link to a directory " +
+  //                       FormatArg(path));
+  //   }
+  // 
+  //   // Check access permission
+  //   if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(),
+  //                         (W_OK | R_OK))) {
+  //     ret = -EACCES;  // Permission denied
+  //     throw QSException("No read and write permission for path " +
+  //                       FormatArg(path));
+  //   }
+  // 
+  //   // Check the directory where link is to be created
+  //   CheckParentDir(linkpath, W_OK | X_OK, &ret, false);
+  // 
+  //   // Check if linkpath existing
+  //   auto lnkRes = GetFileSimple(linkpath);
+  //   auto lnkNode = lnkRes.first.lock();
+  //   string linkpath_ = lnkRes.second;  
+  //   if (lnkNode && *lnkNode) {
+  //     ret = -EEXIST;
+  //     throw QSException("File already exists for link path " +
+  //                       FormatArg(linkpath_));
+  //   }
+  // 
+  //   // Create hard link
+  //   drive.HardLink(path, linkpath_);
+  // 
+  // } catch (const QSException& err) {
+  //   Error(err.get());
+  //   if (ret == 0) {  // catch exception from lower level
+  //     ret = -errno;
+  //   }
+  //   return ret;
+  // }
+  // 
+  // return ret;
 
-    // Check if it is a directory
-    if (node->IsDirectory()) {
-      ret = -EPERM;  // operation not permitted
-      throw QSException("Unable to hard link to a directory " +
-                        FormatArg(path));
-    }
-
-    // Check access permission
-    if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(),
-                          (W_OK | R_OK))) {
-      ret = -EACCES;  // Permission denied
-      throw QSException("No read and write permission for path " +
-                        FormatArg(path));
-    }
-
-    // Check the directory where link is to be created
-    CheckParentDir(linkpath, W_OK | X_OK, &ret, false);
-
-    // Check if linkpath existing
-    auto lnkRes = GetFileSimple(linkpath);
-    auto lnkNode = lnkRes.first.lock();
-    string linkpath_ = lnkRes.second;  
-    if (lnkNode && *lnkNode) {
-      ret = -EEXIST;
-      throw QSException("File already exists for link path " +
-                        FormatArg(linkpath_));
-    }
-
-    // Create hard link
-    drive.HardLink(path, linkpath_);
-
-  } catch (const QSException& err) {
-    Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
-      ret = -errno;
-    }
-    return ret;
-  }
-
-  return ret;
 }
 
 // --------------------------------------------------------------------------
