@@ -64,7 +64,7 @@ bool SDKResponseCodeSuccess(HttpResponseCode code){
           //HttpResponseCode::UNAUTHORIZED,                    //"Unauthorized"                   // 401
           //HttpResponseCode::PAYMENT_REQUIRED,                //"PaymentRequired"                // 402
           //HttpResponseCode::FORBIDDEN,                       //"Forbidden"                      // 403
-          HttpResponseCode::NOT_FOUND,                       //"NotFound"                       // 404
+          //HttpResponseCode::NOT_FOUND,                       //"NotFound"                       // 404
           //HttpResponseCode::METHOD_NOT_ALLOWED,              //"MethodNotAllowed"               // 405
           //HttpResponseCode::NOT_ACCEPTABLE,                  //"NotAcceptable"                  // 406
           //HttpResponseCode::PROXY_AUTHENTICATION_REQUIRED,   //"ProxyAuthenticationRequired"    // 407
@@ -138,13 +138,9 @@ QSError StringToQSError(const string &errorCode) {
           {"InternalFailure",             QSError::INTERNAL_FAILURE},
           {"KeyNotExist",                 QSError::KEY_NOT_EXIST},
           {"NetworkConnection",           QSError::NETWORK_CONNECTION},
-          {"NoSuchGetObject",             QSError::NO_SUCH_GET_OBJECT},
-          {"NoSuchHeadObject",            QSError::NO_SUCH_HEAD_OBJECT},
           {"NoSuchListMultipart",         QSError::NO_SUCH_LIST_MULTIPART},
           {"NoSuchListMultipartUploads",  QSError::NO_SUCH_LIST_MULTIPART_UPLOADS},
           {"NoSuchListObjects",           QSError::NO_SUCH_LIST_OBJECTS},
-          {"NoSuchPutObject",             QSError::NO_SUCH_PUT_OBJECT},
-          {"NoSuchUpload",                QSError::NO_SUCH_UPLOAD,},
           {"ObjectAlreadyInActiveTier",   QSError::OBJECT_ALREADY_IN_ACTIVE_TIER},
           {"ObjectNotInActiveTier",       QSError::OBJECT_NOT_IN_ACTIVE_TIER},
           {"ParameterCombinationInvalid", QSError::PARAMETER_COMBINATION_INVALID},
@@ -183,13 +179,9 @@ std::string QSErrorToString(QSError err){
           {QSError::INTERNAL_FAILURE              , "InternalFailure"             },
           {QSError::KEY_NOT_EXIST                 , "KeyNotExist"                 },
           {QSError::NETWORK_CONNECTION            , "NetworkConnection"           },
-          {QSError::NO_SUCH_GET_OBJECT            , "NoSuchGetObject"             },
-          {QSError::NO_SUCH_HEAD_OBJECT           , "NoSuchHeadObject"            },
           {QSError::NO_SUCH_LIST_MULTIPART        , "NoSuchListMultipart"         },
           {QSError::NO_SUCH_LIST_MULTIPART_UPLOADS, "NoSuchListMultipartUploads"  },
           {QSError::NO_SUCH_LIST_OBJECTS          , "NoSuchListObjects"           },
-          {QSError::NO_SUCH_PUT_OBJECT            , "NoSuchPutObject"             },
-          {QSError::NO_SUCH_UPLOAD                , "NoSuchUpload"                },
           {QSError::OBJECT_ALREADY_IN_ACTIVE_TIER , "ObjectAlreadyInActiveTier"   },
           {QSError::OBJECT_NOT_IN_ACTIVE_TIER     , "ObjectNotInActiveTier"       },
           {QSError::PARAMETER_COMBINATION_INVALID , "ParameterCombinationInvalid" },
@@ -248,8 +240,87 @@ QSError SDKErrorToQSError(QsError sdkErr) {
 }
 
 // --------------------------------------------------------------------------
-bool SDKResponseSuccess(QsError sdkErr, HttpResponseCode code) {
-  return (sdkErr == QsError::QS_ERR_NO_ERROR) && SDKResponseCodeSuccess(code);
+QSError SDKResponseToQSError(HttpResponseCode code) {
+  static unordered_map<HttpResponseCode, QSError, QS::HashUtils::EnumHash>
+      sdkRspCodeToQSErrMap = {
+          {HttpResponseCode::REQUEST_NOT_MADE,                 QSError::ACTION_INVALID},
+          //{HttpResponseCode::CONTINUE,                         100},
+          //{HttpResponseCode::SWITCHING_PROTOCOLS,              101},
+          //{HttpResponseCode::PROCESSING,                       102},
+          {HttpResponseCode::OK,                               QSError::GOOD},
+          {HttpResponseCode::CREATED,                          QSError::GOOD},
+          {HttpResponseCode::ACCEPTED,                         QSError::GOOD},
+          {HttpResponseCode::NON_AUTHORITATIVE_INFORMATION,    QSError::AUTHENTICATION_TOKEN_MISSING},
+          {HttpResponseCode::NO_CONTENT,                       QSError::GOOD},
+          {HttpResponseCode::RESET_CONTENT,                    QSError::GOOD},
+          {HttpResponseCode::PARTIAL_CONTENT,                  QSError::GOOD},
+          //{HttpResponseCode::MULTI_STATUS,                     207},
+          {HttpResponseCode::ALREADY_REPORTED,                 QSError::GOOD},
+          //{HttpResponseCode::IM_USED,                          226},
+          //{HttpResponseCode::MULTIPLE_CHOICES,                 300},
+          {HttpResponseCode::MOVED_PERMANENTLY,                QSError::RESOURCE_NOT_FOUND},
+          {HttpResponseCode::FOUND,                            QSError::GOOD},
+          //{HttpResponseCode::SEE_OTHER,                        303},
+          {HttpResponseCode::NOT_MODIFIED,                     QSError::GOOD},
+          //{HttpResponseCode::USE_PROXY,                        305},
+          //{HttpResponseCode::SWITCH_PROXY,                     306},
+          //{HttpResponseCode::TEMPORARY_REDIRECT,               307},
+          //{HttpResponseCode::PERMANENT_REDIRECT,               308},
+          {HttpResponseCode::BAD_REQUEST,                      QSError::SERVICE_UNAVAILABLE},
+          {HttpResponseCode::UNAUTHORIZED,                     QSError::CLIENT_UNRECOGNIZED},
+          {HttpResponseCode::PAYMENT_REQUIRED,                 QSError::PARAMETER_MISSING},
+          {HttpResponseCode::FORBIDDEN,                        QSError::ACCESS_DENIED},
+          {HttpResponseCode::NOT_FOUND,                        QSError::KEY_NOT_EXIST},
+          {HttpResponseCode::METHOD_NOT_ALLOWED,               QSError::ACTION_INVALID},
+          {HttpResponseCode::NOT_ACCEPTABLE,                   QSError::ACCESS_DENIED},
+          {HttpResponseCode::PROXY_AUTHENTICATION_REQUIRED,    QSError::AUTHENTICATION_TOKEN_MISSING},
+          {HttpResponseCode::REQUEST_TIMEOUT,                  QSError::REQUEST_EXPIRED},
+          {HttpResponseCode::CONFLICT,                         QSError::ACTION_INVALID},
+          //{HttpResponseCode::GONE,                             410},
+          {HttpResponseCode::LENGTH_REQUIRED,                  QSError::PARAMETER_MISSING},
+          {HttpResponseCode::PRECONDITION_FAILED,              QSError::INTERNAL_FAILURE},
+          {HttpResponseCode::REQUEST_ENTITY_TOO_LARGE,         QSError::SERVICE_UNAVAILABLE},
+          {HttpResponseCode::REQUEST_URI_TOO_LONG,             QSError::QUERY_PARAMETER_INVALID},
+          {HttpResponseCode::UNSUPPORTED_MEDIA_TYPE,           QSError::PARAMETER_VALUE_INAVLID},
+          {HttpResponseCode::REQUESTED_RANGE_NOT_SATISFIABLE,  QSError::QUERY_PARAMETER_INVALID},
+          {HttpResponseCode::EXPECTATION_FAILED,               QSError::PARAMETER_VALUE_INAVLID},
+          //{HttpResponseCode::IM_A_TEAPOT,                      418},
+          {HttpResponseCode::AUTHENTICATION_TIMEOUT,           QSError::REQUEST_EXPIRED},
+          {HttpResponseCode::METHOD_FAILURE,                   QSError::SERVICE_UNAVAILABLE},
+          {HttpResponseCode::UNPROC_ENTITY,                    QSError::PARAMETER_VALUE_INAVLID},
+          {HttpResponseCode::LOCKED,                           QSError::SERVICE_UNAVAILABLE},
+          //{HttpResponseCode::FAILED_DEPENDENCY,                424},
+          {HttpResponseCode::UPGRADE_REQUIRED,                 QSError::PARAMETER_MISSING},
+          //{HttpResponseCode::PRECONDITION_REQUIRED,            427},
+          {HttpResponseCode::TOO_MANY_REQUESTS,                QSError::SERVICE_UNAVAILABLE},
+          {HttpResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,  QSError::PARAMETER_VALUE_INAVLID},
+          {HttpResponseCode::LOGIN_TIMEOUT,                    QSError::REQUEST_EXPIRED},
+          {HttpResponseCode::NO_RESPONSE,                      QSError::SERVICE_UNAVAILABLE},
+          //{HttpResponseCode::RETRY_WITH,                       449},
+          {HttpResponseCode::BLOCKED,                          QSError::NETWORK_CONNECTION},
+          {HttpResponseCode::REDIRECT,                         QSError::NETWORK_CONNECTION},
+          {HttpResponseCode::REQUEST_HEADER_TOO_LARGE,         QSError::PARAMETER_VALUE_INAVLID},
+          {HttpResponseCode::CERT_ERROR,                       QSError::CLIENT_TOKEN_ID_INVALID},
+          {HttpResponseCode::NO_CERT,                          QSError::AUTHENTICATION_TOKEN_MISSING},
+          //{HttpResponseCode::HTTP_TO_HTTPS,                    497},
+          {HttpResponseCode::CLIENT_CLOSED_TO_REQUEST,         QSError::SERVICE_UNAVAILABLE},
+          {HttpResponseCode::INTERNAL_SERVER_ERROR,            QSError::INTERNAL_FAILURE},
+          {HttpResponseCode::NOT_IMPLEMENTED,                  QSError::ACTION_INVALID},
+          {HttpResponseCode::BAD_GATEWAY,                      QSError::NETWORK_CONNECTION},
+          {HttpResponseCode::SERVICE_UNAVAILABLE,              QSError::SERVICE_UNAVAILABLE},
+          {HttpResponseCode::GATEWAY_TIMEOUT,                  QSError::NETWORK_CONNECTION},
+          {HttpResponseCode::HTTP_VERSION_NOT_SUPPORTED,       QSError::INTERNAL_FAILURE},
+          //{HttpResponseCode::VARIANT_ALSO_NEGOTIATES,          506},
+          {HttpResponseCode::INSUFFICIENT_STORAGE,             QSError::INTERNAL_FAILURE},
+          {HttpResponseCode::LOOP_DETECTED,                    QSError::INTERNAL_FAILURE},
+          {HttpResponseCode::BANDWIDTH_LIMIT_EXCEEDED,         QSError::INTERNAL_FAILURE},
+          //{HttpResponseCode::NOT_EXTENDED,                     510},
+          {HttpResponseCode::NETWORK_AUTHENTICATION_REQUIRED,  QSError::NETWORK_CONNECTION},
+          {HttpResponseCode::NETWORK_READ_TIMEOUT,             QSError::NETWORK_CONNECTION},
+          {HttpResponseCode::NETWORK_CONNECT_TIMEOUT,          QSError::NETWORK_CONNECTION},
+      };
+  auto it = sdkRspCodeToQSErrMap.find(code);
+  return it != sdkRspCodeToQSErrMap.end() ? it->second : QSError::UNKNOWN;
 }
 
 // --------------------------------------------------------------------------
@@ -335,6 +406,11 @@ bool SDKShouldRetry(QingStor::Http::HttpResponseCode code){
       };
   auto it = retryableCodeSet.find(code);
   return it != retryableCodeSet.end();  //TODO(jim):
+}
+
+// --------------------------------------------------------------------------
+bool SDKResponseSuccess(QsError sdkErr, HttpResponseCode code) {
+  return (sdkErr == QsError::QS_ERR_NO_ERROR) && SDKResponseCodeSuccess(code);
 }
 
 // --------------------------------------------------------------------------

@@ -37,6 +37,7 @@ namespace Data {
 using QS::Data::Node;
 using QS::Data::StreamUtils::GetStreamSize;
 using QS::FileSystem::Configure::GetCacheTemporaryDirectory;
+using QS::StringUtils::FormatPath;
 using QS::StringUtils::PointerAddress;
 using QS::Utils::CreateDirectoryIfNotExists;
 using QS::Utils::GetBaseName;
@@ -148,8 +149,8 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
     pos = UnguardedMakeFileMostRecentlyUsed(it->second);
     sizeBegin = pos->second->GetSize();
   } else {
-    DebugInfo("File (" + node->GetFilePath() +
-              ") is not found in cache. Creating new one");
+    DebugInfo("File NOT exist in cache. Creating new one" +
+              FormatPath(node->GetFilePath()));
     pos = UnguardedNewEmptyFile(fileId);
     assert(pos != m_cache.end());
   }
@@ -157,7 +158,7 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
   auto &file = pos->second;
   auto outcome = file->Read(offset, len, &(node->GetEntry()));
   if (outcome.first == 0 || outcome.second.empty()) {
-    DebugInfo("Read no bytes from file(" + node->GetFilePath() + ")");
+    DebugInfo("Read NO bytes from file " + FormatPath(node->GetFilePath()));
     return 0;
   }
 
@@ -167,7 +168,8 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
     bool success = Free(addedSize);
     if (!success) {
       DebugWarning("Cache is full. Unable to free added" +
-                   to_string(addedSize) + " bytes when reading file " + fileId);
+                   to_string(addedSize) + " bytes when reading file " +
+                   FormatPath(fileId));
     }
     m_size += addedSize;
   }
@@ -268,11 +270,12 @@ pair<bool, unique_ptr<File> *> Cache::PrepareWrite(const string &fileId,
     if (!availableFreeSpace) {
       auto tmpfolder = GetCacheTemporaryDirectory();
       if (!CreateDirectoryIfNotExists(tmpfolder)) {
-        DebugError("Unable to mkdir for tmp folder " + tmpfolder);
+        DebugError("Unable to mkdir for tmp folder " + FormatPath(tmpfolder));
         return {false, nullptr};
       }
       if (!QS::Utils::IsSafeDiskSpace(tmpfolder, len)) {
-        DebugError("No available free space for tmp folder " + tmpfolder);
+        DebugError("No available free space for tmp folder " +
+                   FormatPath(tmpfolder));
         return {false, nullptr};
       }
     }
@@ -339,7 +342,7 @@ CacheListIterator Cache::Erase(const string &fileId) {
   if (it != m_map.end()) {
     return UnguardedErase(it);
   } else {
-    DebugInfo("Try to remove file " + fileId + " which is not found. Go on");
+    DebugInfo("File NOT exist, NO remove " + FormatPath(fileId));
     return m_cache.end();
   }
 }
@@ -347,14 +350,14 @@ CacheListIterator Cache::Erase(const string &fileId) {
 // --------------------------------------------------------------------------
 void Cache::Rename(const string &oldFileId, const string &newFileId) {
   if (oldFileId == newFileId) {
-    DebugInfo("The new file id is the same as the old one. Go on");
+    DebugInfo("File exists, NO rename " + FormatPath(oldFileId));
     return;
   }
 
   auto iter = m_map.find(newFileId);
   if (iter != m_map.end()) {
-    DebugWarning("New file (" + newFileId +
-                 ") is already existed in the cache. Just remove it from cache");
+    DebugWarning("File exist, Just remove it from cache " +
+                 FormatPath(newFileId));
     UnguardedErase(iter);
   }
 
@@ -366,8 +369,7 @@ void Cache::Rename(const string &oldFileId, const string &newFileId) {
     m_map.emplace(newFileId, pos);
     m_map.erase(it);
   } else {
-    DebugInfo("Try to rename file (" + oldFileId +
-                 ") which is not cached. Go on")
+    DebugInfo("File NOT exists, NO rename " + FormatPath(oldFileId));
   }
 }
 
@@ -378,8 +380,8 @@ void Cache::SetTime(const string &fileId, time_t mtime) {
     auto &file = it->second->second;
     file->SetTime(mtime);
   } else {
-    DebugWarning("Try to set time for file " + fileId +
-                 " which is not found. Go on");
+    DebugWarning("Unable to set time for non existing file " +
+                 FormatPath(fileId));
   }
 }
 
@@ -397,7 +399,7 @@ void Cache::Resize(const string &fileId, size_t newSize) {
                     to_string(oldSize) + " to " + to_string(newSize) +
                     ". But now file size is " + to_string(file->GetSize()));
   } else {
-    DebugWarning("Try to resize file " + fileId + " which is not found. Go on");
+    DebugWarning("Unable to resize non existing file " + FormatPath(fileId));
   }
 }
 
@@ -409,7 +411,7 @@ CacheListIterator Cache::UnguardedNewEmptyFile(const string &fileId) {
     m_map.emplace(fileId, m_cache.begin());
     return m_cache.begin();
   } else {
-    DebugError("Fail to new an empty file with fileId : " + fileId);
+    DebugError("Fail to create empty file in cache : " + FormatPath(fileId));
     return m_cache.end();
   }
 }

@@ -45,6 +45,7 @@ namespace QS {
 
 namespace Utils {
 
+using QS::StringUtils::FormatPath;
 using std::cerr;
 using std::pair;
 using std::string;
@@ -54,7 +55,11 @@ using std::vector;
 static const char PATH_DELIM = '/';
 
 namespace {
-string PostErrMsg(const string &path) { return path + " : " + strerror(errno); }
+
+string PostErrMsg(const string &path) {
+  return string(": ") + strerror(errno) + FormatPath(path);
+}
+
 }  // namespace
 
 // --------------------------------------------------------------------------
@@ -68,7 +73,7 @@ bool CreateDirectoryIfNotExistsNoLog(const string &path) {
 
 // --------------------------------------------------------------------------
 bool CreateDirectoryIfNotExists(const string &path) {
-  Info("Creating directory " + path);
+  Info("Creating directory " + FormatPath(path));
   bool success = CreateDirectoryIfNotExistsNoLog(path);
 
   DebugErrorIf(!success, "Fail to creating directory " + PostErrMsg(path));
@@ -86,7 +91,7 @@ bool RemoveDirectoryIfExistsNoLog(const string &path) {
 
 // --------------------------------------------------------------------------
 bool RemoveDirectoryIfExists(const string &path) {
-  Info("Deleting directory " + path);
+  Info("Deleting directory " + FormatPath(path));
   bool success = RemoveDirectoryIfExistsNoLog(path);
 
   DebugErrorIf(!success, "Fail to deleting directory " + PostErrMsg(path));
@@ -103,7 +108,7 @@ bool RemoveFileIfExistsNoLog(const string &path) {
 
 // --------------------------------------------------------------------------
 bool RemoveFileIfExists(const string &path) {
-  Info("Removing file " + path);
+  Info("Removing file " + FormatPath(path));
   bool success = RemoveFileIfExistsNoLog(path);
   DebugErrorIf(!success, "Fail to deleting file " + PostErrMsg(path));
   return success;
@@ -177,7 +182,7 @@ bool FileExists(const string &path, bool logOn) {
     return true;
   } else {
     if(logOn){
-      DebugInfo("File " + path + " not exists : " + strerror(errno));
+      DebugInfo("File NOT exists " + PostErrMsg(path));
     }
     return false;
   }
@@ -226,8 +231,8 @@ std::string GetDirName(const std::string &path) {
   if (pos != string::npos) {
     return cpy.substr(0, pos + 1);  // including the ending "/"
   } else {
-    DebugError("Unable to find dirname for path " + cpy +
-               " null path returned");
+    DebugWarning("Unable to find dirname, Null path returned  " +
+                 FormatPath(cpy));
     return string();
   }
 }
@@ -244,8 +249,7 @@ std::string GetBaseName(const std::string &path) {
   if (pos != string::npos) {
     return cpy.substr(pos + 1);  // not including "/"
   } else {
-    DebugError("Unable to find basename for path " + cpy +
-               " null basename returned");
+    DebugWarning("Null basename " + FormatPath(cpy));
     return string();
   }
 }
@@ -268,11 +272,11 @@ pair<bool, string> GetParentDirectory(const string &path) {
         success = true;
         str = str.substr(0, pos + 1);  // including the ending "/"
       } else {
-        str.assign("Unable to find parent director for path " + path);
+        str.assign("Unable to find parent directory " +  FormatPath(path));
       }
     }
   } else {
-    str.assign("Unable to access path " + path);
+    str.assign("Unable to access " + FormatPath(path));
   }
 
   return {success, str};
@@ -290,7 +294,7 @@ bool IsDirectoryEmpty(const std::string &path) {
       }
     }
   } else {
-    Error("Failed to open path " + path + " : " + strerror(errno));
+    Error("Failed to open path " + PostErrMsg(path));
     return false;
   }
 
@@ -320,7 +324,7 @@ string GetUserName(uid_t uid, bool logOn) {
 
   if (result == NULL) {
     if (logOn) {
-      DebugInfo("No data in passwd of " + to_string(uid));
+      DebugInfo("NO data in passwd [uid= " + to_string(uid) +"]");
     }
     return string();
   }
@@ -354,7 +358,7 @@ bool IsIncludedInGroup(uid_t uid, gid_t gid, bool logOn) {
   }
   if (result == NULL) {
     if (logOn) {
-      DebugInfo("No gid in group of " + to_string(gid));
+      DebugInfo("NO gid in group [gid=" + to_string(gid) + "]");
     }
     return false;
   }
@@ -393,13 +397,14 @@ bool HavePermission(const std::string &path, bool logOn) {
   int errorCode = stat(path.c_str(), &st);
   if (errorCode != 0) {
     if (logOn) {
-      DebugError("Unable to access " + path +
-                 " when trying to check its permission : " + strerror(errno));
+      DebugWarning(
+          "Unable to access file when trying to check its permission " +
+          PostErrMsg(path));
     }
     return false;
   } else {
     if (logOn) {
-      DebugInfo("Check file permission of " + path);
+      DebugInfo("Check file permission " + FormatPath(path));
     }
     return HavePermission(&st, logOn);
   }
@@ -418,7 +423,7 @@ bool HavePermission(struct stat *st, bool logOn) {
 
   if (logOn) {
     DebugInfo("[Process: uid=" + to_string(uidProcess) + ", gid=" +
-              to_string(gidProcess) + "] - [File uid=" + to_string(st->st_uid) +
+              to_string(gidProcess) + "] [File uid=" + to_string(st->st_uid) +
               ", gid=" + to_string(st->st_gid) + "]");
   }
 
@@ -448,8 +453,7 @@ uint64_t GetFreeDiskSpace(const string& absolutePath) {
   struct statvfs vfsbuf;
   int ret = statvfs(absolutePath.c_str(), &vfsbuf);
   if (ret != 0) {
-    DebugError("Fail to get free disk space for " + absolutePath + " : " +
-               strerror(errno));
+    DebugError("Fail to get free disk space " + PostErrMsg(absolutePath));
     return 0;
   }
   return (vfsbuf.f_bavail * vfsbuf.f_bsize);

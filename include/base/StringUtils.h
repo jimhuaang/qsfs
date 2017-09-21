@@ -64,6 +64,13 @@ std::string ModeToString(mode_t mode);
 // @return : char
 char GetFileTypeLetter(mode_t mode);
 
+// Format path
+//
+// @param  : path
+// @return : formatted string
+std::string FormatPath(const std::string &path);
+std::string FormatPath(const std::string &from, const std::string &to);
+
 }  // namespace StringUtils
 }  // namespace QS
 

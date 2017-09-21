@@ -155,5 +155,15 @@ char GetFileTypeLetter(mode_t mode) {
   return (c);
 }
 
+// --------------------------------------------------------------------------
+string FormatPath(const string &path) {
+  return "[path=" + path +"]";
+}
+
+// --------------------------------------------------------------------------
+string FormatPath(const string &from, const string &to) {
+  return "[from=" + from + " to=" + to + "]";
+}
+
 }  // namespace StringUtils
 }  // namespace QS

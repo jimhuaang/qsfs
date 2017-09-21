@@ -31,6 +31,7 @@
 
 #include "base/Exception.h"
 #include "base/LogMacros.h"
+#include "base/StringUtils.h"
 #include "base/Utils.h"
 #include "filesystem/Drive.h"
 #include "filesystem/IncludeFuse.h"  // for fuse.h
@@ -41,6 +42,7 @@ namespace QS {
 
 namespace FileSystem {
 
+using QS::StringUtils::FormatPath;
 using QS::Exception::QSException;
 using std::call_once;
 using std::once_flag;
@@ -83,12 +85,12 @@ Mounter::Outcome Mounter::IsMountable(const std::string &mountPoint,
 
   struct stat stBuf;
   if (stat(mountPoint.c_str(), &stBuf) != 0) {
-    ErrorOut("Unable to access MOUNTPOINT " + mountPoint + " : " +
-             strerror(errno));
+    ErrorOut("Unable to access MOUNTPOINT : " + string(strerror(errno)) +
+             FormatPath(mountPoint));
   } else if (!S_ISDIR(stBuf.st_mode)) {
-    ErrorOut("MOUNTPOINT " + mountPoint + " is not a directory");
+    ErrorOut("MOUNTPOINT is not a directory " + FormatPath(mountPoint));
   } else if (!QS::Utils::HavePermission(mountPoint, logOn)) {
-    ErrorOut("MOUNTPOINT " + mountPoint + " permisson denied");
+    ErrorOut("MOUNTPOINT permisson denied " + FormatPath(mountPoint));
   }
 
   return {success, msg};
@@ -123,8 +125,8 @@ void Mounter::UnMount(const string &mountPoint, bool logOn) const {
     FILE *pFile = popen(command.c_str(), "r");
     if (pFile != NULL && fgetc(pFile) != '0') {
       if (logOn) {
-        Error("Unable to unmout filesystem at " + mountPoint +
-              ". Trying lazy unmount");
+        Error("Unable to unmout filesystem at MOUNTPOINT. Trying lazy unmount " +
+              FormatPath(mountPoint));
       }
       command.assign("fusermount -uqz " + mountPoint);
       system(command.c_str());
@@ -135,8 +137,8 @@ void Mounter::UnMount(const string &mountPoint, bool logOn) const {
     }
   } else {
     if (logOn) {
-      Warning("Trying to unmount filesystem at " + mountPoint +
-              " which is not mounted");
+      Warning("Trying to unmount filesystem at an unmounted MOUNTPOINT " +
+              FormatPath(mountPoint));
     }
   }
 }
@@ -165,13 +167,14 @@ bool Mounter::DoMount(const Options &options, bool logOn,
     } else {
       if (++count > maxTries) {
         if (logOn) {
-          Error("Unable to unmount " + mountPoint);
+          Error("Unable to unmount MOUNTPOINT " + FormatPath(mountPoint));
         }
         return false;
       }
       if (logOn) {
-        Warning(mountPoint +
-                "is already mounted. Tring to unmount, and mount again");
+        Warning(
+            "MOUNTPOINT is already mounted. Tring to unmount, and mount again " +
+            FormatPath(mountPoint));
       }
       string command("umount -l " + mountPoint);  // lazy detach filesystem
       system(command.c_str());

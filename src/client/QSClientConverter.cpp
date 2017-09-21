@@ -208,7 +208,7 @@ vector<shared_ptr<FileMetaData>> ListObjectsOutputToFileMetaDatas(
       if(dirItselfAsKey != nullptr){
         metas.push_back(ObjectKeyToDirMetaData(*dirItselfAsKey, atime));
       } else {
-        metas.push_back(BuildDefaultDirectoryMeta(dirPath));
+        metas.push_back(BuildDefaultDirectoryMeta(dirPath));  // mtime = 0
       }
     }
   }

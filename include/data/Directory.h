@@ -128,13 +128,12 @@ class Entry {
   void DecreaseNumLink() { --m_metaData.lock()->m_numLink; }
   void IncreaseNumLink() { ++m_metaData.lock()->m_numLink; }
   void SetFileSize(uint64_t size) { m_metaData.lock()->m_fileSize = size; }
-  void SetFilePath(const std::string &newFilePath) {
-    m_metaData.lock()->m_filePath = newFilePath;
-  }
   void SetNeedUpload(bool needUpload) {
     m_metaData.lock()->m_needUpload = needUpload;
   }
   void SetFileOpen(bool fileOpen) { m_metaData.lock()->m_fileOpen = fileOpen; }
+
+  void Rename(const std::string &newFilePath);
 
  private:
   // Using weak_ptr as FileMetaDataManger will control file mete data life cycle
@@ -235,12 +234,6 @@ class Node {
  private:
   Entry &GetEntry() { return m_entry; }
 
-  void SetFilePath(const std::string &newFilePath) {
-    if (m_entry) {
-      m_entry.SetFilePath(newFilePath);
-    }
-  }
-
   void SetNeedUpload(bool needUpload) {
     if (m_entry) {
       m_entry.SetNeedUpload(needUpload);
@@ -254,6 +247,12 @@ class Node {
   void SetFileSize(size_t sz){
     if(m_entry){
       m_entry.SetFileSize(sz);
+    }
+  }
+
+  void Rename(const std::string &newFilePath) {
+    if (m_entry) {
+      m_entry.Rename(newFilePath);
     }
   }
 
@@ -317,9 +316,9 @@ class DirectoryTree {
   // Find children
   //
   // @param  : dir name which should be ending with "/"
-  // @return : a pair of iterator stands for the range of children node
-  std::pair<ChildrenMultiMapConstIterator, ChildrenMultiMapConstIterator>
-  FindChildren(const std::string &dirName) const;
+  // @return : node list
+  std::vector<std::weak_ptr<Node>> FindChildren(
+      const std::string &dirName) const;
 
   // Const iterator point to begin of the parent to children map
   ChildrenMultiMapConstIterator CBeginParentToChildrenMap() const;

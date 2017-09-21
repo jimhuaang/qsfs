@@ -30,6 +30,7 @@
 
 #include "base/Exception.h"
 #include "base/LogMacros.h"
+#include "base/StringUtils.h"
 #include "base/Utils.h"
 #include "filesystem/Configure.h"
 
@@ -38,6 +39,7 @@ namespace QS {
 namespace Client {
 
 using QS::Exception::QSException;
+using QS::StringUtils::FormatPath;
 using std::call_once;
 using std::ifstream;
 using std::make_pair;
@@ -95,7 +97,7 @@ Credentials DefaultCredentialsProvider::GetCredentials(
   if (it == m_bucketMap.end()) {
     throw QSException("Fail to fetch access key for bucket " + bucket +
                       "which is not found in credentials file " +
-                      m_credentialsFile);
+                      FormatPath(m_credentialsFile));
   }
   return Credentials(it->second.first, it->second.second);
 }
@@ -104,7 +106,9 @@ pair<bool, string> DefaultCredentialsProvider::ReadCredentialsFile(
     const std::string& file) {
   bool success = true;
   string errMsg;
-  auto Postfix = [&file]() -> string { return "credentials file " + file; };
+  auto Postfix = [&file]() -> string {
+    return "credentials file " + FormatPath(file);
+  };
 
   if (QS::Utils::FileExists(file)) {
     // Check credentials file permission
@@ -113,7 +117,7 @@ pair<bool, string> DefaultCredentialsProvider::ReadCredentialsFile(
 
     // Check if have permission to read credetials file
     if (!QS::Utils::HavePermission(file, true)) {
-      return ErrorOut("Credentials file " + file + " : Permisson denied");
+      return ErrorOut("Credentials file permisson denied " + FormatPath(file));
     }
 
     // Read credentials
@@ -163,11 +167,11 @@ pair<bool, string> DefaultCredentialsProvider::ReadCredentialsFile(
         }
       }
     } else {
-      return ErrorOut("Fail to read credentilas file " + file + " : " +
-                      strerror(errno));
+      return ErrorOut("Fail to read credentilas file : " +
+                      string(strerror(errno)) + FormatPath(file));
     }
   } else {
-    return ErrorOut("Credentials file " + file + " is not existing");
+    return ErrorOut("Credentials file NOT exist " + FormatPath(file));
   }
 
   return {success, errMsg};
@@ -178,22 +182,22 @@ namespace {
 pair<bool, string> CheckCredentialsFilePermission(const string& file) {
   struct stat st;
   if (stat(file.c_str(), &st) != 0) {
-    return ErrorOut("Unable to read credentials file " + file + " : " +
-                    strerror(errno));
+    return ErrorOut("Unable to read credentials file : " +
+                    string(strerror(errno)) + FormatPath(file));
   }
   if ((st.st_mode & S_IROTH) || (st.st_mode & S_IWOTH) ||
       (st.st_mode & S_IXOTH)) {
-    return ErrorOut("Credentials file " + file +
-                    " should not have others permissions");
+    return ErrorOut("Credentials file should not have others permissions " +
+                    FormatPath(file));
   }
   if ((st.st_mode & S_IRGRP) || (st.st_mode & S_IWGRP) ||
       (st.st_mode & S_IXGRP)) {
-    return ErrorOut("Credentials file " + file +
-                    " should not have group permissions");
+    return ErrorOut("Credentials file should not have group permissions " +
+                    FormatPath(file));
   }
   if ((st.st_mode & S_IXUSR)) {
-    return ErrorOut("Credentials file " + file +
-                    " should not have executable permissions");
+    return ErrorOut("Credentials file should not have executable permissions " +
+                    FormatPath(file));
   }
 
   return {true, ""};

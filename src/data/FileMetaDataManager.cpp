@@ -20,6 +20,7 @@
 #include <mutex>  // NOLINT
 
 #include "base/LogMacros.h"
+#include "base/StringUtils.h"
 #include "filesystem/Configure.h"
 
 namespace QS {
@@ -27,8 +28,10 @@ namespace QS {
 namespace Data {
 
 using QS::FileSystem::Configure::GetMaxFileMetaDataCount;
+using QS::StringUtils::FormatPath;
 using std::lock_guard;
 using std::recursive_mutex;
+using std::string;
 using std::to_string;
 using std::shared_ptr;
 using std::unique_ptr;
@@ -57,20 +60,19 @@ MetaDataListIterator FileMetaDataManager::Get(const std::string &filePath) {
   if (it != m_map.end()) {
     pos = UnguardedMakeMetaDataMostRecentlyUsed(it->second);
   } else {
-    DebugWarning("File (" + filePath +
-                 ") is not found in file meta data manager.");
+    DebugInfo("File NOT exist " + FormatPath(filePath));
   }
   return pos;
 }
 
 // --------------------------------------------------------------------------
-MetaDataListConstIterator FileMetaDataManager::Begin() const{
+MetaDataListConstIterator FileMetaDataManager::Begin() const {
   lock_guard<recursive_mutex> lock(m_mutex);
   return m_metaDatas.cbegin();
 }
 
 // --------------------------------------------------------------------------
-MetaDataListIterator FileMetaDataManager::Begin(){
+MetaDataListIterator FileMetaDataManager::Begin() {
   lock_guard<recursive_mutex> lock(m_mutex);
   return m_metaDatas.begin();
 }
@@ -82,7 +84,7 @@ MetaDataListConstIterator FileMetaDataManager::End() const {
 }
 
 // --------------------------------------------------------------------------
-MetaDataListIterator FileMetaDataManager::End(){
+MetaDataListIterator FileMetaDataManager::End() {
   lock_guard<recursive_mutex> lock(m_mutex);
   return m_metaDatas.end();
 }
@@ -114,7 +116,7 @@ MetaDataListIterator FileMetaDataManager::AddNoLock(
       m_map.emplace(filePath, m_metaDatas.begin());
       return m_metaDatas.begin();
     } else {
-      DebugError("Fail to add meta data into manager for file " + filePath);
+      DebugWarning("Fail to add file " + FormatPath(filePath));
       return m_metaDatas.end();
     }
   } else {  // exist already, update it
@@ -152,8 +154,7 @@ MetaDataListIterator FileMetaDataManager::Erase(const std::string &filePath) {
     next = m_metaDatas.erase(it->second);
     m_map.erase(it);
   } else {
-    DebugWarning("Try to remove non-existing meta data from manager for file " +
-                 filePath);
+    DebugWarning("File NOT exist, NO remove " + FormatPath(filePath));
   }
   return next;
 }
@@ -163,6 +164,34 @@ void FileMetaDataManager::Clear() {
   lock_guard<recursive_mutex> lock(m_mutex);
   m_map.clear();
   m_metaDatas.clear();
+}
+
+// --------------------------------------------------------------------------
+void FileMetaDataManager::Rename(const string &oldFilePath,
+                                 const string &newFilePath) {
+  if (oldFilePath == newFilePath) {
+    // Disable following info
+    // DebugInfo("File exist, NO rename" + FormatPath(newFilePath) );
+    return;
+  }
+
+  lock_guard<recursive_mutex> lock(m_mutex);
+  if (m_map.find(newFilePath) != m_map.end()) {
+    DebugWarning("File exist, NO rename " +
+                 FormatPath(oldFilePath, newFilePath));
+    return;
+  }
+
+  auto it = m_map.find(oldFilePath);
+  if (it != m_map.end()) {
+    it->second->first = newFilePath;
+    it->second->second->m_filePath = newFilePath;
+    auto pos = UnguardedMakeMetaDataMostRecentlyUsed(it->second);
+    m_map.emplace(newFilePath, pos);
+    m_map.erase(it);
+  } else {
+    DebugWarning("File not exist, NO rename " + FormatPath(oldFilePath));
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -181,15 +210,13 @@ bool FileMetaDataManager::HasFreeSpaceNoLock(size_t needCount) const {
 // --------------------------------------------------------------------------
 bool FileMetaDataManager::FreeNoLock(size_t needCount) {
   if (needCount > GetMaxFileMetaDataCount()) {
-    DebugError(
-        "Try to free file meta data manager of " + to_string(needCount) +
-        " items which surpass the maximum file meta data count (" +
-        to_string(GetMaxFileMetaDataCount()) + "). Do nothing");
+    DebugError("Try to free file meta data manager of " + to_string(needCount) +
+               " items which surpass the maximum file meta data count (" +
+               to_string(GetMaxFileMetaDataCount()) + "). Do nothing");
     return false;
   }
   if (HasFreeSpaceNoLock(needCount)) {
-    DebugInfo("Tre to free file meta data manager of " +
-              to_string(needCount) +
+    DebugInfo("Tre to free file meta data manager of " + to_string(needCount) +
               " items while free space is still availabe. Go on");
     return true;
   }
@@ -204,8 +231,7 @@ bool FileMetaDataManager::FreeNoLock(size_t needCount) {
     }
     m_metaDatas.pop_back();
   }
-  DebugInfo("Has freed file meta data of " + to_string(needCount) +
-            " items");
+  DebugInfo("Has freed file meta data of " + to_string(needCount) + " items");
   return true;
 }
 

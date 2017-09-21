@@ -76,6 +76,7 @@ using QS::FileSystem::Drive;
 using QS::FileSystem::GetDirectoryMimeType;
 using QS::FileSystem::GetSymlinkMimeType;
 using QS::FileSystem::LookupMimeType;
+using QS::StringUtils::FormatPath;
 using QS::StringUtils::LTrim;
 using QS::StringUtils::RTrim;
 using QS::TimeUtils::SecondsToRFC822GMT;
@@ -211,7 +212,7 @@ ClientError<QSError> QSClient::DeleteDirectory(const string &dirPath,
     while(!files.empty()){
       auto file = files.front();
       files.pop_front();
-      err = DeleteFile(file);
+      err = DeleteFile(file);  // TODO(jim): asyns or sync?, must leaf at first
       if(!IsGoodQSError(err)){
         break;
       }
@@ -260,8 +261,9 @@ ClientError<QSError> QSClient::MakeDirectory(const string &dirPath) {
   PutObjectInput input;
   input.SetContentLength(0);  // directory has zero length
   input.SetContentType(GetDirectoryMimeType());
+  auto dir = AppendPathDelim(dirPath);
 
-  auto outcome = GetQSClientImpl()->PutObject(dirPath, &input);
+  auto outcome = GetQSClientImpl()->PutObject(dir, &input);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -269,7 +271,7 @@ ClientError<QSError> QSClient::MakeDirectory(const string &dirPath) {
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->PutObject(dirPath, &input);
+    outcome = GetQSClientImpl()->PutObject(dir, &input);
     ++attemptedRetries;
   }
 
@@ -299,7 +301,8 @@ ClientError<QSError> QSClient::MoveFile(const string &sourceFilePath,
   input.SetContentLength(0);
   // it seems put-move discards the content-type, so we set directory
   // mime type explicitly
-  if (RTrim(sourceFilePath, ' ').back() == '/') {  // is dir
+  bool isDir = RTrim(sourceFilePath, ' ').back() == '/';
+  if (isDir) {
     input.SetContentType(GetDirectoryMimeType());
   }
 
@@ -315,10 +318,10 @@ ClientError<QSError> QSClient::MoveFile(const string &sourceFilePath,
     ++attemptedRetries;
   }
 
+  auto &drive = Drive::Instance();
+  auto &dirTree = drive.GetDirectoryTree();
   if (outcome.IsSuccess()) {
-    auto &drive = Drive::Instance();
-    auto &dirTree = drive.GetDirectoryTree();
-    if (dirTree) {
+    if (dirTree && dirTree->Has(sourceFilePath)) {
       dirTree->Rename(sourceFilePath, destFilePath);
     }
     auto &cache = drive.GetCache();
@@ -327,6 +330,27 @@ ClientError<QSError> QSClient::MoveFile(const string &sourceFilePath,
     }
     return ClientError<QSError>(QSError::GOOD, false);
   } else {
+    // Handle following special case
+    // As for object storage, there is no concept of directory.
+    // For some case, such as
+    //   an object of "/abc/tst.txt" can exist without existing
+    //   object of "/abc/"
+    // In this case, putobject(move) with objKey of "/abc/" will not success.
+    // So, we need to create it.
+    auto err = outcome.GetError();
+    if (err.GetError() == QSError::KEY_NOT_EXIST && isDir) {
+      auto err = MakeDirectory(destFilePath);
+      if (IsGoodQSError(err)) {
+        if (dirTree && dirTree->Has(sourceFilePath)) {
+          dirTree->Rename(sourceFilePath, destFilePath);
+        }
+        return ClientError<QSError>(QSError::GOOD, false);
+      } else {
+        DebugInfo("Object NOT created " + FormatPath(destFilePath));
+        return err;
+      }
+    }
+
     return outcome.GetError();
   }
 }
@@ -335,7 +359,8 @@ ClientError<QSError> QSClient::MoveFile(const string &sourceFilePath,
 ClientError<QSError> QSClient::MoveDirectory(const string &sourceDirPath,
                                              const string &targetDirPath) {
   string sourceDir = AppendPathDelim(sourceDirPath);
-  ListDirectory(sourceDir);  // will update directory tree
+  //TODO(jim): need do it recursively, from upper to lower, list one then move one async
+  ListDirectory(sourceDir);  // will update directory tree  
 
   auto &drive = Drive::Instance();
   auto &dirTree = drive.GetDirectoryTree();
@@ -353,8 +378,8 @@ ClientError<QSError> QSClient::MoveDirectory(const string &sourceDirPath,
   deque<string> childTargetPaths;
   for (auto &path : childPaths) {
     if (path.substr(0, len) != sourceDir) {
-      DebugError("Directory " + sourceDir + " has an invalid child file " +
-                 path);
+      DebugError("Directory has an invalid child file [dir=" + sourceDir +
+                 " child=" + path + "]");
       return ClientError<QSError>(QSError::PARAMETER_VALUE_INAVLID, false);
     }
     childTargetPaths.emplace_back(targetDir + path.substr(len));
@@ -368,7 +393,7 @@ ClientError<QSError> QSClient::MoveDirectory(const string &sourceDirPath,
     auto target = childTargetPaths.back();
     childTargetPaths.pop_back();
 
-    err = MoveFile(source, target);
+    err = MoveFile(source, target);  // TODO(jim): do this async
     if (!IsGoodQSError(err)) {
       break;
     }
@@ -711,14 +736,26 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
       return ClientError<QSError>(QSError::GOOD, false);
     }
 
-    if (res.GetResponseCode() == HttpResponseCode::NOT_FOUND) {
-      // As for object storage, there is no concept of directory.
-      // For some case, such as
-      //   an object of "/abc/tst.txt" can exist without existing
-      //   object of "/abc/"
-      // In this case, headobject with objKey of "/abc/" will not success.
-      // So, we need to use listobject with prefix of "/abc/" to confirm if a
-      // directory node is actually needed to be construct in dir tree.
+    if (modified != nullptr) {
+      *modified = true;
+    }
+    auto fileMetaData =
+        QSClientConverter::HeadObjectOutputToFileMetaData(path, res);
+    if (fileMetaData) {
+      dirTree->Grow(std::move(fileMetaData));  // add/update node in dir tree
+    }
+    return ClientError<QSError>(QSError::GOOD, false);
+  } else {
+    // Handle following special case.
+    // As for object storage, there is no concept of directory.
+    // For some case, such as
+    //   an object of "/abc/tst.txt" can exist without existing
+    //   object of "/abc/"
+    // In this case, headobject with objKey of "/abc/" will not success.
+    // So, we need to use listobject with prefix of "/abc/" to confirm if a
+    // directory node is actually needed to be construct in dir tree.
+    auto err = outcome.GetError();
+    if (err.GetError() == QSError::KEY_NOT_EXIST) {
       if (path.back() == '/') {
         ListObjectsInput listObjInput;
         listObjInput.SetLimit(10);
@@ -747,20 +784,10 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
         }  // if outcome is success
       }
 
-      DebugInfo("Object (" + path + ") Not Found ");
+      DebugInfo("Object NOT found " + FormatPath(path));
       return ClientError<QSError>(QSError::GOOD, false);
     }
-
-    if (modified != nullptr) {
-      *modified = true;
-    }
-    auto fileMetaData =
-        QSClientConverter::HeadObjectOutputToFileMetaData(path, res);
-    if (fileMetaData) {
-      dirTree->Grow(std::move(fileMetaData));  // add/update node in dir tree
-    }
-    return ClientError<QSError>(QSError::GOOD, false);
-  } else {
+    
     return outcome.GetError();
   }
 }

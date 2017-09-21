@@ -34,6 +34,7 @@ namespace Data {
 
 class Entry;
 class FileMetaData;
+class FileMetaDataManager;
 
 enum class FileType {
   File,
@@ -107,6 +108,7 @@ public:
   bool m_fileOpen = false;
 
   friend class Entry;
+  friend class FileMetaDataManager;
 };
 
 }  // namespace Data

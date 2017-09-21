@@ -81,11 +81,17 @@ namespace {
 
 ClientError<QSError> BuildQSError(QsError sdkErr, const string &exceptionName,
                                   const QsOutput &output, bool retriable) {
-  return ClientError<QSError>(
-      SDKErrorToQSError(sdkErr), exceptionName,
-      // sdk does not provide const-qualified accessor
-      SDKResponseCodeToString(const_cast<QsOutput &>(output).GetResponseCode()),
-      retriable);
+  // QS_ERR_NO_ERROR only says the request has sent, but it desen't not mean
+  // response code is ok
+  auto rspCode = const_cast<QsOutput &>(output).GetResponseCode();
+  auto err = SDKResponseToQSError(rspCode);
+  if (err == QSError::UNKNOWN) {
+    err = SDKErrorToQSError(sdkErr);
+  }
+
+  return ClientError<QSError>(err, exceptionName,
+                              // sdk does not provide const-qualified accessor
+                              SDKResponseCodeToString(rspCode), retriable);
 }
 
 }  // namespace

@@ -43,13 +43,9 @@ enum class QSError {
   INTERNAL_FAILURE,
   KEY_NOT_EXIST,
   NETWORK_CONNECTION,
-  NO_SUCH_GET_OBJECT,  // TODO(jim): may need to remove
-  NO_SUCH_HEAD_OBJECT,  // 
   NO_SUCH_LIST_MULTIPART,
   NO_SUCH_LIST_MULTIPART_UPLOADS,
   NO_SUCH_LIST_OBJECTS,
-  NO_SUCH_PUT_OBJECT,  // 
-  NO_SUCH_UPLOAD,
   OBJECT_ALREADY_IN_ACTIVE_TIER,
   OBJECT_NOT_IN_ACTIVE_TIER,
   PARAMETER_COMBINATION_INVALID,
@@ -74,8 +70,9 @@ std::string GetMessageForQSError(const ClientError<QSError> &error);
 bool IsGoodQSError(const ClientError<QSError> &error);
 
 QSError SDKErrorToQSError(QsError sdkErr);
-bool SDKResponseSuccess(QsError sdkErr, QingStor::Http::HttpResponseCode code);
+QSError SDKResponseToQSError(QingStor::Http::HttpResponseCode code);
 bool SDKShouldRetry(QingStor::Http::HttpResponseCode code);
+bool SDKResponseSuccess(QsError sdkErr, QingStor::Http::HttpResponseCode code);
 
 std::string SDKResponseCodeToName(QingStor::Http::HttpResponseCode code);
 int SDKResponseCodeToInt(QingStor::Http::HttpResponseCode code);

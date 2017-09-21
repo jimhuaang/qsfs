@@ -107,8 +107,8 @@ class Drive {
   // Notes: GetNode will connect to object storage to retrive the object and 
   // update the local dir tree
   std::pair<std::weak_ptr<QS::Data::Node>, bool> GetNode(
-      const std::string &path, bool updateIfDirectory = true,
-      bool updateDirAsync = true);
+      const std::string &path, bool updateIfDirectory = false,
+      bool updateDirAsync = false);
 
   // Get the node from local dir tree
   // @param  : file path
@@ -117,15 +117,14 @@ class Drive {
   // GetNodeSimple just find the node in local dir tree
   std::weak_ptr<QS::Data::Node> GetNodeSimple(const std::string &path);
 
-  // Get the children
+  // Find the children
   //
   // @param  : dir path, flag update if is dir
-  // @return : a pair of iterators point to the range of the children in dir tree.
+  // @return : child node list
   //
   // This will update the directory tree synchronizely if updateIfDir is true.
-  std::pair<QS::Data::ChildrenMultiMapConstIterator,
-            QS::Data::ChildrenMultiMapConstIterator>
-  GetChildren(const std::string &dirPath, bool updateIfDir);
+  std::vector<std::weak_ptr<QS::Data::Node>> FindChildren(
+      const std::string &dirPath, bool updateIfDir);
 
   // Change the permission bits of a file
   //
