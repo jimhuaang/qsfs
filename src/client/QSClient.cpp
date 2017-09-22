@@ -152,8 +152,7 @@ ClientError<QSError> QSClient::DeleteFile(const string &filePath) {
   auto node = dirTree->Find(filePath).lock();
   if (node && *node) {
     // In case of hard links, multiple node have the same file, do not delete
-    // the
-    // file for a hard link.
+    // the file for a hard link.
     if (node->IsHardLink() ||
         (!node->IsDirectory() && node->GetNumLink() >= 2)) {
       dirTree->Remove(filePath);
@@ -161,6 +160,21 @@ ClientError<QSError> QSClient::DeleteFile(const string &filePath) {
     }
   }
 
+  auto err = DeleteObject(filePath);
+  if (IsGoodQSError(err)) {
+    dirTree->Remove(filePath);
+
+    auto &cache = drive.GetCache();
+    if (cache && cache->HasFile(filePath)) {
+      cache->Erase(filePath);
+    }
+  }
+
+  return err;
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::DeleteObject(const std::string &filePath) {
   auto outcome = GetQSClientImpl()->DeleteObject(filePath);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
@@ -173,55 +187,8 @@ ClientError<QSError> QSClient::DeleteFile(const string &filePath) {
     ++attemptedRetries;
   }
 
-  if (outcome.IsSuccess()) {
-    dirTree->Remove(filePath);
-
-    auto &cache = drive.GetCache();
-    if (cache && !node->IsDirectory()) {
-      cache->Erase(filePath);
-    }
-    return ClientError<QSError>(QSError::GOOD, false);
-  } else {
-    return outcome.GetError();
-  }
-}
-
-// --------------------------------------------------------------------------
-ClientError<QSError> QSClient::DeleteDirectory(const string &dirPath,
-                                               bool recursive) {
-  string dir = AppendPathDelim(dirPath);
-  ListDirectory(dir);  // will update directory tree
-
-  auto &drive = Drive::Instance();
-  auto &dirTree = drive.GetDirectoryTree();
-  auto node = dirTree->Find(dir).lock();
-  if (!(node && *node)) {
-    DebugWarning("Directory node NOT exist, NO delete " + FormatPath(dirPath));
-    return ClientError<QSError>(QSError::GOOD, false);
-  }
-  if (!node->IsDirectory()) {
-    DebugWarning("NOT Directory node, NO delete " + FormatPath(dirPath));
-    return ClientError<QSError>(QSError::ACTION_INVALID, false);
-  }
-
-  if (node->IsEmpty()) {
-    return DeleteFile(dirPath);
-  }
-
-  auto err = ClientError<QSError>(QSError::GOOD, false);
-  if (recursive) {
-    auto files = node->GetChildrenIdsRecursively();
-    while (!files.empty()) {
-      auto file = files.front();
-      files.pop_front();
-      err = DeleteFile(file);  // TODO(jim): asyns or sync?, must leaf at first
-      if (!IsGoodQSError(err)) {
-        break;
-      }
-    }
-  }
-
-  return err;
+  return outcome.IsSuccess() ? ClientError<QSError>(QSError::GOOD, false)
+                             : outcome.GetError();
 }
 
 // --------------------------------------------------------------------------
@@ -323,7 +290,7 @@ ClientError<QSError> QSClient::MoveFile(const string &sourceFilePath,
           dirTree->Rename(sourceFilePath, destFilePath);
         }
       } else {
-        DebugInfo("Object NOT created : " + GetMessageForQSError(err1) +
+        DebugInfo("Object not created : " + GetMessageForQSError(err1) +
                   FormatPath(destFilePath));
       }
     }
@@ -820,7 +787,7 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
         }  // if outcome is success
       }
 
-      DebugInfo("Object NOT found " + FormatPath(path));
+      DebugInfo("Object not found " + FormatPath(path));
       return ClientError<QSError>(QSError::GOOD, false);
     }
 

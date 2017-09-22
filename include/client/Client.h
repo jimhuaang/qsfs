@@ -85,15 +85,6 @@ class Client {
   // files or subdirectories belongs to it).
   virtual ClientError<QSError> DeleteFile(const std::string &filePath) = 0;
 
-  // Delete a directory
-  //
-  // @param  : dir path, flag recursively to remove its contents
-  // @return : ClientError
-  //
-  // DeleteDirectory is used to delete a directory and its contents recursively.
-  virtual ClientError<QSError> DeleteDirectory(const std::string &dirPath,
-                                               bool recursive) = 0;
-
   // Create an empty file
   //
   // @param  : file path

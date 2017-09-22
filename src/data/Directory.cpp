@@ -174,7 +174,7 @@ shared_ptr<Node> Node::Insert(const shared_ptr<Node> &child) {
         m_entry.IncreaseNumLink();
       }
     } else {
-      DebugInfo("Node already exists, NO insertion " +
+      DebugInfo("Node already exists, no insertion " +
                 FormatPath(child->GetFilePath()));
     }
   } else {
@@ -202,14 +202,14 @@ void Node::Remove(const std::string &childFilePath) {
     m_children.erase(it);
     if (reset) m_children.clear();
   } else {
-    DebugWarning("Node NOT exist, NO remove " + FormatPath(childFilePath));
+    DebugWarning("Node not exist, no remove " + FormatPath(childFilePath));
   }
 }
 
 // --------------------------------------------------------------------------
 void Node::RenameChild(const string &oldFilePath, const string &newFilePath) {
   if (oldFilePath == newFilePath) {
-    DebugInfo("Same file name, NO rename " + FormatPath(oldFilePath));
+    DebugInfo("Same file name, no rename " + FormatPath(oldFilePath));
     return;
   }
 
@@ -227,7 +227,7 @@ void Node::RenameChild(const string &oldFilePath, const string &newFilePath) {
     auto hint = m_children.erase(it);
     m_children.emplace_hint(hint, newFilePath, child);
   } else {
-    DebugWarning("Node NOT exist, NO rename " + FormatPath(oldFilePath));
+    DebugWarning("Node not exist, no rename " + FormatPath(oldFilePath));
   }
 }
 
@@ -314,7 +314,7 @@ shared_ptr<Node> DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
         parent->Insert(node);
         node->SetParent(parent);
       } else {
-        DebugInfo("Parent node NOT exist " + FormatPath(filePath));
+        DebugInfo("Parent node not exist " + FormatPath(filePath));
       }
     }
 
@@ -353,14 +353,14 @@ shared_ptr<Node> DirectoryTree::UpdateDirectory(
     DebugWarning("Null dir path");
     return shared_ptr<Node>(nullptr);
   }
-
-  DebugInfo("Update directory " + FormatPath(dirPath));
-  lock_guard<recursive_mutex> lock(m_mutex);
   string path = dirPath;
   if (dirPath.back() != '/') {
     DebugInfo("Input dir path is not ending with '/', append it");
     path = AppendPathDelim(dirPath);
   }
+
+  DebugInfo("Update directory " + FormatPath(dirPath));
+  lock_guard<recursive_mutex> lock(m_mutex);
   // Check children metas and collect valid ones
   vector<shared_ptr<FileMetaData>> newChildrenMetas;
   set<string> newChildrenIds;
@@ -385,7 +385,7 @@ shared_ptr<Node> DirectoryTree::UpdateDirectory(
   auto node = Find(path).lock();
   if (node && *node) {
     if (!node->IsDirectory()) {
-      DebugWarning("NOT a directory " + FormatPath(path));
+      DebugWarning("Not a directory " + FormatPath(path));
       return shared_ptr<Node>(nullptr);
     }
 
@@ -437,22 +437,21 @@ shared_ptr<Node> DirectoryTree::Rename(const string &oldFilePath,
     return shared_ptr<Node>(nullptr);
   }
 
-  DebugInfo("Rename Node " + FormatPath(oldFilePath, newFilePath));
-
   lock_guard<recursive_mutex> lock(m_mutex);
   auto node = Find(oldFilePath).lock();
   if (node && *node) {
     // Check parameter
     if (Find(newFilePath).lock()) {
-      DebugWarning("Cannot renaming, Node exist " + FormatPath(newFilePath));
+      DebugWarning("Node exist, no rename " + FormatPath(newFilePath));
       return node;
     }
     if (!(*node)) {
-      DebugWarning("Node is NOT operable " + FormatPath(oldFilePath));
+      DebugWarning("Node not operable, no rename " + FormatPath(oldFilePath));
       return node;
     }
 
     // Do Renaming
+    DebugInfo("Rename Node " + FormatPath(oldFilePath, newFilePath));
     auto parentName = node->MyDirName();
     node->Rename(newFilePath);  // still need as parent maybe not added yet
     auto parent = node->GetParent();
@@ -470,7 +469,7 @@ shared_ptr<Node> DirectoryTree::Rename(const string &oldFilePath,
     }
     // m_currentNode = node;
   } else {
-    DebugWarning("Node NOT exist " + FormatPath(oldFilePath));
+    DebugWarning("Node not exist " + FormatPath(oldFilePath));
   }
 
   return node;
@@ -483,15 +482,14 @@ void DirectoryTree::Remove(const string &path) {
     return;
   }
 
-  DebugInfo("Removing node " + FormatPath(path));
-
   lock_guard<recursive_mutex> lock(m_mutex);
   auto node = Find(path).lock();
   if (!(node && *node)) {
-    DebugInfo("No such file or directory " + FormatPath(path));
+    DebugInfo("No such file or directory, no remove " + FormatPath(path));
     return;
   }
 
+  DebugInfo("Removing node " + FormatPath(path));  
   auto parent = node->GetParent();
   if (parent) {
     // if path is a directory, when go out of this function, destructor

@@ -361,7 +361,7 @@ int qsfs_readlink(const char* path, char* link, size_t size) {
     }
 
     // Read the link
-    Drive::Instance().ReadSymlink(path, false);
+    Drive::Instance().ReadSymlink(path);
     auto symlink = Trim(node->GetSymbolicLink(), ' ');
     size_t size_ = symlink.size();
     if (size <= size_) {
@@ -507,7 +507,7 @@ int qsfs_unlink(const char* path) {
     // Check parent directory
     auto dir = CheckParentDir(path, W_OK | X_OK, &ret, false);
 
-    auto node = drive.GetNodeSimple(path).lock();
+    auto node = drive.GetNodeSimple(path).lock();  // getattr synchornized node
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such file " + FormatPath(path));
@@ -521,7 +521,7 @@ int qsfs_unlink(const char* path) {
       ret = -EINVAL;  // invalid argument
       throw QSException("Not a file, but a directory " + FormatPath(path));
     } else {
-      drive.DeleteFile(path, false);
+      drive.RemoveFile(path);
     }
 
   } catch (const QSException& err) {
@@ -577,7 +577,7 @@ int qsfs_rmdir(const char* path) {
     CheckStickyBit(dir, node, &ret);
 
     // Do delete empty directory
-    drive.DeleteDir(path_, false, false);
+    drive.RemoveFile(path_);
 
   } catch (const QSException& err) {
     Error(err.get());
@@ -669,7 +669,7 @@ int qsfs_rename(const char* path, const char* newpath) {
     Error("Invalid new file path " + FormatPath(newpath));
     return -EINVAL;
   } else if (newPathBaseName.size() > GetNameMaxLen()) {
-    Error("New file name too long [name=" + newPathBaseName +"]");
+    Error("File name too long [name=" + newPathBaseName +"]");
     return -ENAMETOOLONG;  // file name too long
   }
 
@@ -696,27 +696,24 @@ int qsfs_rename(const char* path, const char* newpath) {
     if (nNode) {
       if (nNode->IsDirectory() && !nNode->IsEmpty()) {
         ret = -ENOTEMPTY;  // directory not empty
-        throw QSException(
-            "Unable to rename. New file name is an existing directory and is "
-            "not empty " +
-            FormatPath(newpath_));
+        throw QSException("Unable to rename, directory not empty " +
+                          FormatPath(path_, newpath_));
       } else {
         // Check new path parent permission
         CheckParentDir(newpath_, W_OK | X_OK, &ret, false);
 
         // Delete the file or empty directory with new file name
-        Warning("New file name is existing. Replacing it " +
-                FormatPath(newpath_));
-        Drive::Instance().DeleteFile(newpath_, false);
+        Warning("File exists, replace it " + FormatPath(newpath_));
+        Drive::Instance().RemoveFile(newpath_);
       }
     }
 
     // Do Renaming
     if (node->IsDirectory()) {
       // rename dir asynchronizely
-      Drive::Instance().RenameDir(path_, AppendPathDelim(newpath), false, true);
+      Drive::Instance().RenameDir(path_, AppendPathDelim(newpath), true);
     } else {
-      Drive::Instance().RenameFile(path_, newpath, false);
+      Drive::Instance().RenameFile(path_, newpath);
     }
 
   } catch (const QSException& err) {
@@ -1031,7 +1028,7 @@ int qsfs_open(const char* path, struct fuse_file_info* fi) {
       }
   
       // Do Open
-      drive.OpenFile(path, false);
+      drive.OpenFile(path);
     }
 
   } catch (const QSException& err) {
@@ -1093,7 +1090,7 @@ int qsfs_read(const char* path, char* buf, size_t size, off_t offset,
 
     // Do Read
     try {
-      readSize = drive.ReadFile(path, offset, size, buf, false);
+      readSize = drive.ReadFile(path, offset, size, buf);
     } catch (const QSException& err) {
       errno = EAGAIN;  // try again
       throw;           // rethrow
@@ -1153,10 +1150,10 @@ int qsfs_write(const char* path, const char* buf, size_t size, off_t offset,
 
     // Do Write
     try {
-      writeSize = drive.WriteFile(path, offset, size, buf, false);
+      writeSize = drive.WriteFile(path, offset, size, buf);
     } catch (const QSException& err) {
       errno = EAGAIN;  // try again
-      throw;          // rethrow
+      throw;           // rethrow
     }
 
   } catch (const QSException& err) {
@@ -1265,7 +1262,7 @@ int qsfs_release(const char* path, struct fuse_file_info* fi) {
     // Write the file to object storage
     if (node->IsNeedUpload()) {
       try {
-        Drive::Instance().UploadFile(path_, false);
+        Drive::Instance().UploadFile(path_);
       } catch (const QSException& err) {
         Error(err.get());
         return -EAGAIN;  // Try again

@@ -39,8 +39,6 @@ class NullClient : public Client {
   ClientError<QSError> HeadBucket() override;
 
   ClientError<QSError> DeleteFile(const std::string &filePath) override;
-  ClientError<QSError> DeleteDirectory(const std::string &dirPath,
-                                       bool recursive) override;
   ClientError<QSError> MakeFile(const std::string &filePath) override;
   ClientError<QSError> MakeDirectory(const std::string &dirPath) override;
   ClientError<QSError> MoveFile(const std::string &filePath,

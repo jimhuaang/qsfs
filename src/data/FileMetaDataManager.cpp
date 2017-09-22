@@ -60,7 +60,7 @@ MetaDataListIterator FileMetaDataManager::Get(const std::string &filePath) {
   if (it != m_map.end()) {
     pos = UnguardedMakeMetaDataMostRecentlyUsed(it->second);
   } else {
-    DebugInfo("File NOT exist " + FormatPath(filePath));
+    DebugInfo("File not exist " + FormatPath(filePath));
   }
   return pos;
 }
@@ -154,7 +154,7 @@ MetaDataListIterator FileMetaDataManager::Erase(const std::string &filePath) {
     next = m_metaDatas.erase(it->second);
     m_map.erase(it);
   } else {
-    DebugWarning("File NOT exist, NO remove " + FormatPath(filePath));
+    DebugWarning("File not exist, no remove " + FormatPath(filePath));
   }
   return next;
 }
@@ -171,13 +171,13 @@ void FileMetaDataManager::Rename(const string &oldFilePath,
                                  const string &newFilePath) {
   if (oldFilePath == newFilePath) {
     // Disable following info
-    // DebugInfo("File exist, NO rename" + FormatPath(newFilePath) );
+    // DebugInfo("File exist, no rename" + FormatPath(newFilePath) );
     return;
   }
 
   lock_guard<recursive_mutex> lock(m_mutex);
   if (m_map.find(newFilePath) != m_map.end()) {
-    DebugWarning("File exist, NO rename " +
+    DebugWarning("File exist, no rename " +
                  FormatPath(oldFilePath, newFilePath));
     return;
   }
@@ -190,7 +190,7 @@ void FileMetaDataManager::Rename(const string &oldFilePath,
     m_map.emplace(newFilePath, pos);
     m_map.erase(it);
   } else {
-    DebugWarning("File not exist, NO rename " + FormatPath(oldFilePath));
+    DebugWarning("File not exist, no rename " + FormatPath(oldFilePath));
   }
 }
 
@@ -198,7 +198,7 @@ void FileMetaDataManager::Rename(const string &oldFilePath,
 MetaDataListIterator FileMetaDataManager::UnguardedMakeMetaDataMostRecentlyUsed(
     MetaDataListConstIterator pos) {
   m_metaDatas.splice(m_metaDatas.begin(), m_metaDatas, pos);
-  // NO iterators or references become invalidated, so no need to update m_map.
+  // no iterators or references become invalidated, so no need to update m_map.
   return m_metaDatas.begin();
 }
 

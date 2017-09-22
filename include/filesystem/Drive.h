@@ -117,6 +117,12 @@ class Drive {
   // GetNodeSimple just find the node in local dir tree
   std::weak_ptr<QS::Data::Node> GetNodeSimple(const std::string &path);
 
+
+  //
+  // Following APIs assume the path exists and arguments have been validated
+  // The node has been synchornize with object storage server.
+  //
+
   // Find the children
   //
   // @param  : dir path, flag update if is dir
@@ -138,26 +144,11 @@ class Drive {
   // @return : void
   void Chown(const std::string &filePath, uid_t uid, gid_t gid);
 
-  // Delete a file
+  // Remove a file or an empty directory
   //
-  // @param  : file path, flag to do check
+  // @param  : file path
   // @return : void
-  //
-  // flag doCheck control whether to check the node existence
-  // and its file type.
-  void DeleteFile(const std::string &filePath, bool doCheck = true);
-
-  // Delete a directory
-  //
-  // @param  : dir path, flag recursive, flag to do check
-  // @return : void
-  //
-  // flag recursive control whether to delete the directory recursively.
-  // If set recursive = false, DeleteDir can only delete an empty dir.
-  // flag doCheck control whether to check the node existence, file type,
-  // and if it's empty
-  void DeleteDir(const std::string &dirPath, bool recursive,
-                 bool doCheck = true);
+  void RemoveFile(const std::string &filePath);
 
   // Create a hard link to a file
   //
@@ -184,9 +175,9 @@ class Drive {
 
   // Open a file
   //
-  // @param  : file path, flag to do check
+  // @param  : file path
   // @return : void
-  void OpenFile(const std::string &filePath, bool doCheck = true);
+  void OpenFile(const std::string &filePath);
 
   // Read data from a file
   //
@@ -200,30 +191,29 @@ class Drive {
   //
   // Flag doCheck control whether to check the file existence and file type.
   size_t ReadFile(const std::string &filePath, off_t offset, size_t size,
-                  char *buf, bool doCheck = true);
+                  char *buf);
 
   // Read target of a symlink file
   //
-  // @param  : link file path, falg doCheck
+  // @param  : link file path
   // @return : number of bytes has been read
   //
   // ReadSymlink read link file content which is the realitive path to the
   // target file, and update the symlink node in dir tree.
-  void ReadSymlink(const std::string &linkPath, bool doCheck = true);
+  void ReadSymlink(const std::string &linkPath);
 
   // Rename a file
   //
-  // @param  : file path, new file path, flag to do check
+  // @param  : file path, new file path
   // @return : void
-  void RenameFile(const std::string &filePath, const std::string &newFilePath,
-                  bool doCheck = true);
+  void RenameFile(const std::string &filePath, const std::string &newFilePath);
 
   // Rename a directory
   //
-  // @param  : dir path, new dir path, flag to do check
+  // @param  : dir path, new dir path, flag asynchornizely
   // @return : void
   void RenameDir(const std::string &dirPath, const std::string &newDirPath,
-                 bool doCheck = true, bool async = false);
+                 bool async = false);
 
   // Create a symbolic link to a file
   //
@@ -243,9 +233,9 @@ class Drive {
 
   // Upload a file
   //
-  // @param  : file path to upload to object storage, flag doCheck
+  // @param  : file path
   // @return : void
-  void UploadFile(const std::string &filePath, bool doCheck = true);
+  void UploadFile(const std::string &filePath);
 
   // Change access and modification times of a file
   //
@@ -258,7 +248,7 @@ class Drive {
   // @param  : file path to write data to, buf containing data, size, offset
   // @return : number of bytes has been wrote
   int WriteFile(const std::string &filePath, off_t offset, size_t size,
-                const char *buf, bool doCheck = true);
+                const char *buf);
 
  private:
   // Download file contents

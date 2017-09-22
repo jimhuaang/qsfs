@@ -171,7 +171,7 @@ pair<bool, string> DefaultCredentialsProvider::ReadCredentialsFile(
                       string(strerror(errno)) + FormatPath(file));
     }
   } else {
-    return ErrorOut("Credentials file NOT exist " + FormatPath(file));
+    return ErrorOut("Credentials file not exist " + FormatPath(file));
   }
 
   return {success, errMsg};

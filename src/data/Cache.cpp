@@ -149,7 +149,7 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
     pos = UnguardedMakeFileMostRecentlyUsed(it->second);
     sizeBegin = pos->second->GetSize();
   } else {
-    DebugInfo("File NOT exist in cache. Creating new one" +
+    DebugInfo("File not exist in cache. Creating new one" +
               FormatPath(node->GetFilePath()));
     pos = UnguardedNewEmptyFile(fileId);
     assert(pos != m_cache.end());
@@ -158,7 +158,7 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
   auto &file = pos->second;
   auto outcome = file->Read(offset, len, &(node->GetEntry()));
   if (outcome.first == 0 || outcome.second.empty()) {
-    DebugInfo("Read NO bytes from file " + FormatPath(node->GetFilePath()));
+    DebugInfo("Read no bytes from file " + FormatPath(node->GetFilePath()));
     return 0;
   }
 
@@ -342,7 +342,7 @@ CacheListIterator Cache::Erase(const string &fileId) {
   if (it != m_map.end()) {
     return UnguardedErase(it);
   } else {
-    DebugInfo("File NOT exist, NO remove " + FormatPath(fileId));
+    DebugInfo("File not exist, no remove " + FormatPath(fileId));
     return m_cache.end();
   }
 }
@@ -350,7 +350,7 @@ CacheListIterator Cache::Erase(const string &fileId) {
 // --------------------------------------------------------------------------
 void Cache::Rename(const string &oldFileId, const string &newFileId) {
   if (oldFileId == newFileId) {
-    DebugInfo("File exists, NO rename " + FormatPath(oldFileId));
+    DebugInfo("File exists, no rename " + FormatPath(oldFileId));
     return;
   }
 
@@ -369,7 +369,7 @@ void Cache::Rename(const string &oldFileId, const string &newFileId) {
     m_map.emplace(newFileId, pos);
     m_map.erase(it);
   } else {
-    DebugInfo("File NOT exists, NO rename " + FormatPath(oldFileId));
+    DebugInfo("File not exists, no rename " + FormatPath(oldFileId));
   }
 }
 
@@ -432,7 +432,7 @@ CacheListIterator Cache::UnguardedErase(
 CacheListIterator Cache::UnguardedMakeFileMostRecentlyUsed(
     CacheListConstIterator pos) {
   m_cache.splice(m_cache.begin(), m_cache, pos);
-  // NO iterators or references become invalidated, so no need to update m_map.
+  // no iterators or references become invalidated, so no need to update m_map.
   return m_cache.begin();
 }
 

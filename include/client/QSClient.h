@@ -62,16 +62,6 @@ class QSClient : public Client {
   // files or subdirectories belongs to it).
   ClientError<QSError> DeleteFile(const std::string &filePath) override;
 
-  // Delete a directory
-  //
-  // @param  : dir path, flag recursively to remove its contents
-  // @return : ClientError
-  //
-  // DeleteDirectory is used to delete a directory and its contents recursively.
-  // Current no implementation.
-  ClientError<QSError> DeleteDirectory(const std::string &dirPath,
-                                       bool recursive) override;
-
   // Create an empty file
   //
   // @param  : file path
@@ -211,12 +201,20 @@ class QSClient : public Client {
   // Following api only submit sdk request, no ops on local dirtree and cache.
   //
 
+  // Delete object
+  //
+  // @param  : object path
+  // @return : ClientError
+  //
+  // This only submit skd delete object request, no ops on dir tree and cache.
+  ClientError<QSError> DeleteObject(const std::string &path);
+
   // Move object
   //
   // @param  : source file path, target file path
   // @return : ClientError
   //
-  // This only submit sdk put(move) object request, no ops on dir tree.
+  // This only submit sdk put(move) object request, no ops on dir tree and cache.
   ClientError<QSError> MoveObject(const std::string &sourcePath,
                                   const std::string &targetPath);
 
@@ -225,7 +223,7 @@ class QSClient : public Client {
   // @param  : dir path, resultTruncated(output), maxCount
   // @return : ClientError
   //
-  // This only submit skd listobjects request, no ops on dir tree.
+  // This only submit skd listobjects request, no ops on dir tree and cache.
   ListObjectsOutcome ListObjects(const std::string &dirPath,
                                  bool *resultTruncated = nullptr,
                                  uint64_t maxCount = 0);

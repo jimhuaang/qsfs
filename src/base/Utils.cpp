@@ -182,7 +182,7 @@ bool FileExists(const string &path, bool logOn) {
     return true;
   } else {
     if(logOn){
-      DebugInfo("File NOT exists " + PostErrMsg(path));
+      DebugInfo("File not exists " + PostErrMsg(path));
     }
     return false;
   }
@@ -324,7 +324,7 @@ string GetUserName(uid_t uid, bool logOn) {
 
   if (result == NULL) {
     if (logOn) {
-      DebugInfo("NO data in passwd [uid= " + to_string(uid) +"]");
+      DebugInfo("No data in passwd [uid= " + to_string(uid) +"]");
     }
     return string();
   }
@@ -358,7 +358,7 @@ bool IsIncludedInGroup(uid_t uid, gid_t gid, bool logOn) {
   }
   if (result == NULL) {
     if (logOn) {
-      DebugInfo("NO gid in group [gid=" + to_string(gid) + "]");
+      DebugInfo("No gid in group [gid=" + to_string(gid) + "]");
     }
     return false;
   }

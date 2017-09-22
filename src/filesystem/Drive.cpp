@@ -210,7 +210,8 @@ struct statvfs Drive::GetFilesystemStatistics() {
 
 // --------------------------------------------------------------------------
 pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
-                                          bool updateIfDirectory, bool async) {
+                                          bool updateIfDirectory,
+                                          bool updateDirAsync) {
   if (path.empty()) {
     Error("Null file path");
     return {weak_ptr<Node>(), false};
@@ -247,7 +248,7 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     };
 
-    if (async) {
+    if (updateDirAsync) {
       GetClient()->GetExecutor()->SubmitAsync(receivedHandler, [this, path] {
         return GetClient()->ListDirectory(AppendPathDelim(path));
       });
@@ -267,31 +268,17 @@ weak_ptr<Node> Drive::GetNodeSimple(const string &path) {
 // --------------------------------------------------------------------------
 vector<weak_ptr<Node>> Drive::FindChildren(const string &dirPath,
                                            bool updateIfDir) {
-  vector<weak_ptr<Node>> emptyRes;
-  if (dirPath.empty()) {
-    Error("Null dir path");
-    return emptyRes;
-  }
-
-  auto path = dirPath;
-  if (dirPath.back() != '/') {
-    path = AppendPathDelim(dirPath);
-    DebugInfo("Input dir path not ending with '/', append it");
-  }
-
-  auto res = GetNode(path, false);  // Do not invoke updating dirctory
-                                    // as we will do it synchronizely
-  auto node = res.first.lock();
+  auto node = GetNodeSimple(dirPath).lock();
   if (node && *node) {
     if (node->IsDirectory() && updateIfDir) {
       // Update directory tree synchornizely
-      auto err = GetClient()->ListDirectory(path);
+      auto err = GetClient()->ListDirectory(dirPath);
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     }
-    return m_directoryTree->FindChildren(path);
+    return m_directoryTree->FindChildren(dirPath);
   } else {
-    DebugInfo("Directory NOT exist " + FormatPath(dirPath));
-    return emptyRes;
+    DebugError("Directory not exist " + FormatPath(dirPath));
+    return vector<weak_ptr<Node>>();
   }
 }
 
@@ -310,24 +297,8 @@ void Drive::Chown(const std::string &filePath, uid_t uid, gid_t gid) {
 }
 
 // --------------------------------------------------------------------------
-void Drive::DeleteFile(const string &filePath, bool doCheck) {
-  if (filePath.empty()) {
-    DebugWarning("Null file path");
-    return;
-  }
-
-  auto res = GetNode(filePath, false);
-  auto node = res.first.lock();
-  if (doCheck) {
-    if (!(node && *node)) {
-      DebugWarning("NO such file " + FormatPath(filePath));
-      return;
-    }
-    if (node->IsDirectory()) {
-      DebugWarning("Target file is a directory " + FormatPath(filePath));
-      return;
-    }
-  }
+// Remove a file or an empty directory
+void Drive::RemoveFile(const string &filePath) {
 
   // delete file asynchronizely
   auto receivedHandler = [](const ClientError<QSError> &err) {
@@ -336,42 +307,6 @@ void Drive::DeleteFile(const string &filePath, bool doCheck) {
   GetClient()->GetExecutor()->SubmitAsyncPrioritized(
       receivedHandler,
       [this, filePath] { return GetClient()->DeleteFile(filePath); });
-}
-
-// --------------------------------------------------------------------------
-void Drive::DeleteDir(const string &dirPath, bool recursive, bool doCheck) {
-  if (dirPath.empty()) {
-    DebugWarning("Null dir path");
-    return;
-  }
-
-  string path = AppendPathDelim(dirPath);
-  if (doCheck) {
-    auto res = GetNode(path, true, false);  // update dir sync
-    auto node = res.first.lock();
-    if (!(node && *node)) {
-      DebugWarning("NO such file or directory" + FormatPath(path));
-      return;
-    }
-    if (!node->IsDirectory()) {
-      DebugWarning("NOT a directory " + FormatPath(path));
-      return;
-    }
-    if (!node->IsEmpty()) {
-      DebugWarning("Unable to remove, directory is NOT empty " +
-                   FormatPath(path));
-      return;
-    }
-  }
-
-  // delete empty dir asynchronizely
-  auto receivedHandler = [](const ClientError<QSError> &err) {
-    DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
-  };
-  GetClient()->GetExecutor()->SubmitAsyncPrioritized(
-      receivedHandler, [this, path, recursive] {
-        return GetClient()->DeleteDirectory(path, recursive);
-      });
 }
 
 // --------------------------------------------------------------------------
@@ -390,12 +325,6 @@ void Drive::HardLink(const string &filePath, const string &hardlinkPath) {
 
 // --------------------------------------------------------------------------
 void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
-  assert(!filePath.empty());
-  if (filePath.empty()) {
-    DebugWarning("Invalid empty file path");
-    return;
-  }
-
   FileType type = FileType::File;
   if (mode & S_IFREG) {
     type = FileType::File;
@@ -440,18 +369,7 @@ void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
 
 // --------------------------------------------------------------------------
 void Drive::MakeDir(const string &dirPath, mode_t mode) {
-  assert(!dirPath.empty());
-  if (dirPath.empty()) {
-    DebugWarning("Invalid empty dir path");
-    return;
-  }
-  if (!(mode & S_IFDIR)) {
-    DebugWarning("Try to make a non-directory file. ");
-    return;
-  }
-
-  string path = AppendPathDelim(dirPath);
-  auto err = GetClient()->MakeDirectory(path);
+  auto err = GetClient()->MakeDirectory(dirPath);
   if(!IsGoodQSError(err)){
     DebugError(GetMessageForQSError(err));
     return;
@@ -459,32 +377,15 @@ void Drive::MakeDir(const string &dirPath, mode_t mode) {
 
   // QSClient::MakeDirectory doesn't grow directory tree with the created dir
   // node, So we call Stat synchronizely.
-  err = GetClient()->Stat(path);
+  err = GetClient()->Stat(dirPath);
   DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
 }
 
 // --------------------------------------------------------------------------
-void Drive::OpenFile(const string &filePath, bool doCheck) {
-  if (doCheck) {
-    if (filePath.empty()) {
-      DebugWarning("Invalid input");
-      return;
-    }
-  }
-
+void Drive::OpenFile(const string &filePath) {
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();
   bool modified = res.second;
-  if (doCheck) {
-    if (!(node && *node)) {
-      DebugError("NO such file or directory " + FormatPath(filePath));
-      return;
-    }
-    if (node->IsDirectory()) {
-      DebugError("NOT a file but a directory " + FormatPath(filePath));
-      return;
-    }
-  }
 
   auto ranges = m_cache->GetUnloadedRanges(filePath, node->GetFileSize());
   time_t mtime = node->GetMTime();
@@ -499,12 +400,7 @@ void Drive::OpenFile(const string &filePath, bool doCheck) {
 
 // --------------------------------------------------------------------------
 size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
-                       char *buf, bool doCheck) {
-  if (doCheck && (filePath.empty() || buf == nullptr)) {
-    DebugWarning("Invalid input");
-    return 0;
-  }
-
+                       char *buf) {
   if (size > GetMaxFileCacheSize()) {
     DebugError("Input size surpass max file cache size");
     return 0;
@@ -513,18 +409,6 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();
   bool modified = res.second;
-
-  // Check file
-  if (doCheck) {
-    if (!(node && *node)) {
-      DebugWarning("NO such file " + FormatPath(filePath));
-      return 0;
-    }
-    if (node->IsDirectory()) {
-      DebugError("NOT a file but a directory " + FormatPath(filePath));
-      return 0;
-    }
-  }
 
   // Ajust size or calculate remaining size
   uint64_t downloadSize = size;
@@ -570,24 +454,8 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
 }
 
 // --------------------------------------------------------------------------
-void Drive::ReadSymlink(const std::string &linkPath, bool doCheck) {
-  if (doCheck && linkPath.empty()) {
-    DebugWarning("Invalid input");
-    return;
-  }
-
+void Drive::ReadSymlink(const std::string &linkPath) {
   auto node = GetNodeSimple(linkPath).lock();
-  if (doCheck) {
-    if (!(node && *node)) {
-      DebugWarning("NO such file " + FormatPath(linkPath));
-      return;
-    }
-    if (!node->IsSymLink()) {
-      DebugError("NOT a symlink " + FormatPath(linkPath));
-      return;
-    }
-  }
-
   auto buffer = std::make_shared<stringstream>();
   auto err = GetClient()->DownloadFile(linkPath, buffer);
   if (IsGoodQSError(err)) {
@@ -598,35 +466,11 @@ void Drive::ReadSymlink(const std::string &linkPath, bool doCheck) {
 }
 
 // --------------------------------------------------------------------------
-void Drive::RenameFile(const string &filePath, const string &newFilePath,
-                       bool doCheck) {
-  if (doCheck) {
-    if (filePath.empty() || newFilePath.empty()) {
-      DebugWarning("Invalid empty parameter");
-      return;
-    }
-    if (IsRootDirectory(filePath)) {
-      DebugError("Unable to rename root");
-      return;
-    }
-
-    auto res = GetNode(filePath, false);  // Do not invoke updating dirctory
-                                          // as we are changing it
-    auto node = res.first.lock();
-    if (!(node && *node)) {
-      DebugInfo("NO such file " + FormatPath(filePath));
-      return;
-    }
-    if (node->IsDirectory()) {
-      DebugError("NOT a file but a directory " + FormatPath(filePath));
-      return;
-    }
-  }
-
+void Drive::RenameFile(const string &filePath, const string &newFilePath) {
   // Do Renaming
   auto err = GetClient()->MoveFile(filePath, newFilePath);
 
-  // Call GetNode to update meta(such as mtime, .etc)
+  // Update meta(such as mtime, .etc)
   if (IsGoodQSError(err)) {
     auto res = GetNode(newFilePath, false);
     auto node = res.first.lock();
@@ -640,41 +484,10 @@ void Drive::RenameFile(const string &filePath, const string &newFilePath,
 
 // --------------------------------------------------------------------------
 void Drive::RenameDir(const string &dirPath, const string &newDirPath,
-                      bool doCheck, bool async) {
-  if (doCheck) {
-    if (dirPath.empty() || newDirPath.empty()) {
-      DebugWarning("Invalid empty parameter");
-      return;
-    }
-    if (IsRootDirectory(dirPath)) {
-      DebugError("Unable to rename root");
-      return;
-    }
-
-    auto res = GetNode(dirPath, false);  // Do not invoke updating dirctory
-                                         // as we are changing it //TODO(jim):
-    auto node = res.first.lock();
-    if (!(node && *node)) {
-      DebugInfo("NO such file or directory " + FormatPath(dirPath));
-      return;
-    }
-    if (!node->IsDirectory()) {
-      DebugError("NOT a directory but a file " + FormatPath(dirPath));
-      return;
-    }
-  }
-
-  auto newPath = newDirPath;
-  if (newDirPath.back() != '/') {
-    DebugWarning(
-        "New file path is not ending with '/' for a directory, appending "
-        "it");
-    newPath = AppendPathDelim(newDirPath);
-  }
-
+                      bool async) {
   // Do Renaming
   auto receivedHandler = [this, dirPath,
-                          newPath](const ClientError<QSError> &err) {
+                          newDirPath](const ClientError<QSError> &err) {
     if (IsGoodQSError(err)) {
       // Rename local cache
       auto node = GetNodeSimple(dirPath).lock();
@@ -687,7 +500,7 @@ void Drive::RenameDir(const string &dirPath, const string &newDirPath,
                      " child=" + path + "]");
           childTargetPaths.emplace_back(path);  // put old path
         }
-        childTargetPaths.emplace_back(newPath + path.substr(len));
+        childTargetPaths.emplace_back(newDirPath + path.substr(len));
       }
       while (!childPaths.empty() && !childTargetPaths.empty()) {
         auto source = childPaths.back();
@@ -705,7 +518,7 @@ void Drive::RenameDir(const string &dirPath, const string &newDirPath,
       }
 
       // Add new dir node to dir tree
-      auto res = GetNode(newPath, true, false);  // update dir sync
+      auto res = GetNode(newDirPath, true, false);  // update dir sync
       node = res.first.lock();
       DebugErrorIf(!node, "Fail to rename dir " + FormatPath(dirPath));
     } else {
@@ -715,11 +528,11 @@ void Drive::RenameDir(const string &dirPath, const string &newDirPath,
 
   if (async) {
     GetClient()->GetExecutor()->SubmitAsyncPrioritized(
-        receivedHandler, [this, dirPath, newPath]() {
-          return GetClient()->MoveDirectory(dirPath, newPath, true);
+        receivedHandler, [this, dirPath, newDirPath]() {
+          return GetClient()->MoveDirectory(dirPath, newDirPath, true);
         });
   } else {
-    receivedHandler(GetClient()->MoveDirectory(dirPath, newPath, false));
+    receivedHandler(GetClient()->MoveDirectory(dirPath, newDirPath, false));
   }
 }
 
@@ -729,11 +542,6 @@ void Drive::RenameDir(const string &dirPath, const string &newDirPath,
 // pathname resolution.
 void Drive::SymLink(const string &filePath, const string &linkPath) {
   assert(!filePath.empty() && !linkPath.empty());
-  if (filePath.empty() || linkPath.empty()) {
-    DebugWarning("Invalid empty parameter");
-    return;
-  }
-
   auto err = GetClient()->SymLink(filePath, linkPath);
   if (!IsGoodQSError(err)) {
     DebugError("Fail to create a symbolic link [path=" + filePath +
@@ -785,31 +593,9 @@ void Drive::TruncateFile(const string &filePath, size_t newSize) {
 }
 
 // --------------------------------------------------------------------------
-void Drive::UploadFile(const string &filePath, bool doCheck) {
-  if (doCheck && filePath.empty()) {
-    DebugWarning("Invalid input");
-    return;
-  }
-
+void Drive::UploadFile(const string &filePath) {
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();
-
-  // Check file
-  if (doCheck) {
-    if (!(node && *node)) {
-      DebugError("NO such file " + FormatPath(filePath));
-      return;
-    }
-    if (node->IsDirectory()) {
-      DebugError("NOT a file but a directory " + FormatPath(filePath));
-      return;
-    }
-    if (!node->IsNeedUpload()) {
-      DebugError("File NOT need upload " + FormatPath(filePath));
-      return;
-    }
-  }
-
   auto callback = [this, node](const shared_ptr<TransferHandle> &handle) {
     if (handle) {
       node->SetNeedUpload(false);
@@ -851,12 +637,7 @@ void Drive::Utimens(const string &path, time_t mtime) {
 
 // --------------------------------------------------------------------------
 int Drive::WriteFile(const string &filePath, off_t offset, size_t size,
-                     const char *buf, bool doCheck) {
-  if (doCheck && (filePath.empty() || buf == nullptr)) {
-    DebugWarning("Invalid input");
-    return 0;
-  }
-
+                     const char *buf) {
   if (size > GetMaxFileCacheSize()) {
     DebugError("Input size surpass max file cache size");
     return 0;
@@ -864,23 +645,6 @@ int Drive::WriteFile(const string &filePath, off_t offset, size_t size,
 
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();
-
-  // Check file
-  if (doCheck) {
-    if (!(node && *node)) {
-      DebugWarning("NO such file " + FormatPath(filePath));
-      return 0;
-    }
-    if (node->IsDirectory()) {
-      DebugWarning("NOT a file but a directory " + FormatPath(filePath));
-      return 0;
-    }
-  }
-
-  if (!node->IsFileOpen()) {
-    DebugWarning("File is NOT open " + FormatPath(filePath));
-    return 0;
-  }
 
   bool success = m_cache->Write(filePath, offset, size, buf, time(NULL));
   if (success) {
