@@ -20,7 +20,6 @@
 #include <stdint.h>  // for uint64_t
 
 #include <chrono>
-#include <deque>
 #include <iostream>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -88,7 +87,6 @@ using QS::Utils::IsRootDirectory;
 using std::chrono::milliseconds;
 using std::make_shared;
 using std::iostream;
-using std::deque;
 using std::shared_ptr;
 using std::string;
 using std::stringstream;
@@ -138,7 +136,7 @@ ClientError<QSError> QSClient::HeadBucket() {
     ++attemptedRetries;
   }
 
-  if(outcome.IsSuccess()){
+  if (outcome.IsSuccess()) {
     return ClientError<QSError>(QSError::GOOD, false);
   } else {
     return outcome.GetError();
@@ -152,10 +150,12 @@ ClientError<QSError> QSClient::DeleteFile(const string &filePath) {
   auto &dirTree = drive.GetDirectoryTree();
   assert(dirTree);
   auto node = dirTree->Find(filePath).lock();
-  if(node && *node){
-    // In case of hard links, multiple node have the same file, do not delete the
+  if (node && *node) {
+    // In case of hard links, multiple node have the same file, do not delete
+    // the
     // file for a hard link.
-    if (node->IsHardLink() || (!node->IsDirectory() && node->GetNumLink() >= 2)) {
+    if (node->IsHardLink() ||
+        (!node->IsDirectory() && node->GetNumLink() >= 2)) {
       dirTree->Remove(filePath);
       return ClientError<QSError>(QSError::GOOD, false);
     }
@@ -173,9 +173,9 @@ ClientError<QSError> QSClient::DeleteFile(const string &filePath) {
     ++attemptedRetries;
   }
 
-  if(outcome.IsSuccess()){
+  if (outcome.IsSuccess()) {
     dirTree->Remove(filePath);
-    
+
     auto &cache = drive.GetCache();
     if (cache && !node->IsDirectory()) {
       cache->Erase(filePath);
@@ -196,29 +196,31 @@ ClientError<QSError> QSClient::DeleteDirectory(const string &dirPath,
   auto &dirTree = drive.GetDirectoryTree();
   auto node = dirTree->Find(dir).lock();
   if (!(node && *node)) {
+    DebugWarning("Directory node NOT exist, NO delete " + FormatPath(dirPath));
     return ClientError<QSError>(QSError::GOOD, false);
   }
   if (!node->IsDirectory()) {
+    DebugWarning("NOT Directory node, NO delete " + FormatPath(dirPath));
     return ClientError<QSError>(QSError::ACTION_INVALID, false);
   }
 
-  if(node->IsEmpty()){
+  if (node->IsEmpty()) {
     return DeleteFile(dirPath);
   }
 
   auto err = ClientError<QSError>(QSError::GOOD, false);
-  if(recursive){
+  if (recursive) {
     auto files = node->GetChildrenIdsRecursively();
-    while(!files.empty()){
+    while (!files.empty()) {
       auto file = files.front();
       files.pop_front();
       err = DeleteFile(file);  // TODO(jim): asyns or sync?, must leaf at first
-      if(!IsGoodQSError(err)){
+      if (!IsGoodQSError(err)) {
         break;
       }
     }
   }
-  
+
   return err;
 }
 
@@ -294,33 +296,10 @@ ClientError<QSError> QSClient::MakeDirectory(const string &dirPath) {
 // --------------------------------------------------------------------------
 ClientError<QSError> QSClient::MoveFile(const string &sourceFilePath,
                                         const string &destFilePath) {
-  PutObjectInput input;
-  input.SetXQSMoveSource(BuildXQSSourceString(sourceFilePath));
-  // sdk cpp require content-length parameter, though it will be ignored
-  // so, set 0 to avoid sdk parameter checking failure
-  input.SetContentLength(0);
-  // it seems put-move discards the content-type, so we set directory
-  // mime type explicitly
-  bool isDir = RTrim(sourceFilePath, ' ').back() == '/';
-  if (isDir) {
-    input.SetContentType(GetDirectoryMimeType());
-  }
-
-  auto outcome = GetQSClientImpl()->PutObject(destFilePath, &input);
-  unsigned attemptedRetries = 0;
-  while (!outcome.IsSuccess() &&
-         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-    int32_t sleepMilliseconds =
-        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
-                                                         attemptedRetries);
-    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->PutObject(destFilePath, &input);
-    ++attemptedRetries;
-  }
-
+  auto err = MoveObject(sourceFilePath, destFilePath);
   auto &drive = Drive::Instance();
   auto &dirTree = drive.GetDirectoryTree();
-  if (outcome.IsSuccess()) {
+  if (IsGoodQSError(err)) {
     if (dirTree && dirTree->Has(sourceFilePath)) {
       dirTree->Rename(sourceFilePath, destFilePath);
     }
@@ -328,7 +307,6 @@ ClientError<QSError> QSClient::MoveFile(const string &sourceFilePath,
     if (cache && cache->HasFile(sourceFilePath)) {
       cache->Rename(sourceFilePath, destFilePath);
     }
-    return ClientError<QSError>(QSError::GOOD, false);
   } else {
     // Handle following special case
     // As for object storage, there is no concept of directory.
@@ -337,72 +315,123 @@ ClientError<QSError> QSClient::MoveFile(const string &sourceFilePath,
     //   object of "/abc/"
     // In this case, putobject(move) with objKey of "/abc/" will not success.
     // So, we need to create it.
-    auto err = outcome.GetError();
+    bool isDir = RTrim(sourceFilePath, ' ').back() == '/';
     if (err.GetError() == QSError::KEY_NOT_EXIST && isDir) {
-      auto err = MakeDirectory(destFilePath);
-      if (IsGoodQSError(err)) {
+      auto err1 = MakeDirectory(destFilePath);
+      if (IsGoodQSError(err1)) {
         if (dirTree && dirTree->Has(sourceFilePath)) {
           dirTree->Rename(sourceFilePath, destFilePath);
         }
-        return ClientError<QSError>(QSError::GOOD, false);
       } else {
-        DebugInfo("Object NOT created " + FormatPath(destFilePath));
-        return err;
+        DebugInfo("Object NOT created : " + GetMessageForQSError(err1) +
+                  FormatPath(destFilePath));
       }
     }
-
-    return outcome.GetError();
   }
+
+  return err;
 }
 
 // --------------------------------------------------------------------------
+// Notes: MoveDirectory will do nothing on dir tree and cache.
 ClientError<QSError> QSClient::MoveDirectory(const string &sourceDirPath,
-                                             const string &targetDirPath) {
+                                             const string &targetDirPath,
+                                             bool async) {
   string sourceDir = AppendPathDelim(sourceDirPath);
-  //TODO(jim): need do it recursively, from upper to lower, list one then move one async
-  ListDirectory(sourceDir);  // will update directory tree  
-
-  auto &drive = Drive::Instance();
-  auto &dirTree = drive.GetDirectoryTree();
-  auto node = dirTree->Find(sourceDir).lock();
-  if (!(node && *node)) {
-    return ClientError<QSError>(QSError::GOOD, false);
-  }
-  if (!node->IsDirectory()) {
-    return ClientError<QSError>(QSError::ACTION_INVALID, false);
+  // List the source directory all objects
+  auto outcome = ListObjects(sourceDir);
+  if (!outcome.IsSuccess()) {
+    DebugError("Fail to list objects " + FormatPath(sourceDir));
+    return outcome.GetError();
   }
 
-  auto childPaths = node->GetChildrenIdsRecursively();
-  size_t len = sourceDir.size();
+  auto receivedHandler = [](const ClientError<QSError> &err) {
+    DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+  };
   string targetDir = AppendPathDelim(targetDirPath);
-  deque<string> childTargetPaths;
-  for (auto &path : childPaths) {
-    if (path.substr(0, len) != sourceDir) {
-      DebugError("Directory has an invalid child file [dir=" + sourceDir +
-                 " child=" + path + "]");
-      return ClientError<QSError>(QSError::PARAMETER_VALUE_INAVLID, false);
+  size_t lenSourceDir = sourceDir.size();
+  auto &listObjOutputs = outcome.GetResult();
+
+  // move sub files
+  auto prefix = LTrim(sourceDir, '/');
+  for (auto &listObjOutput : listObjOutputs) {
+    for (auto &key : listObjOutput.GetKeys()) {
+      // sdk will put dir (if exists) itself into keys, ignore it
+      if (prefix == key.GetKey()) {
+        continue;
+      }
+      auto sourceSubFile = "/" + key.GetKey();
+      auto targetSubFile = targetDir + sourceSubFile.substr(lenSourceDir);
+
+      if (async) {  // asynchronizely
+        GetExecutor()->SubmitAsync(
+            receivedHandler, [this, sourceSubFile, targetSubFile] {
+              return MoveObject(sourceSubFile, targetSubFile);
+            });
+      } else {  // synchronizely
+        receivedHandler(MoveObject(sourceSubFile, targetSubFile));
+      }
     }
-    childTargetPaths.emplace_back(targetDir + path.substr(len));
   }
 
-  // Move children
-  auto err = ClientError<QSError>(QSError::GOOD, false);
-  while (!childPaths.empty() && !childTargetPaths.empty()) {
-    auto source = childPaths.back();
-    childPaths.pop_back();
-    auto target = childTargetPaths.back();
-    childTargetPaths.pop_back();
+  // move sub folders
+  for (auto &listObjOutput : listObjOutputs) {
+    for (const auto &commonPrefix : listObjOutput.GetCommonPrefixes()) {
+      auto sourceSubDir = AppendPathDelim("/" + commonPrefix);
+      auto targetSubDir = targetDir + sourceSubDir.substr(lenSourceDir);
 
-    err = MoveFile(source, target);  // TODO(jim): do this async
-    if (!IsGoodQSError(err)) {
-      break;
+      if (async) {  // asynchronizely
+        GetExecutor()->SubmitAsync(
+            receivedHandler, [this, sourceSubDir, targetSubDir] {
+              return MoveDirectory(sourceSubDir, targetSubDir);
+            });
+      } else {  // synchronizely
+        receivedHandler(MoveDirectory(sourceSubDir, targetSubDir));
+      }
     }
   }
 
-  // Move dir itself
-  err = MoveFile(sourceDir, targetDir);
+  // move dir itself
+  if (async) {  // asynchronizely
+    GetExecutor()->SubmitAsync(receivedHandler, [this, sourceDir, targetDir] {
+      return MoveObject(sourceDir, targetDir);
+    });
+  } else {  // synchronizely
+    receivedHandler(MoveObject(sourceDir, targetDir));
+  }
 
-  return err;
+  return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ClientError<QSError> QSClient::MoveObject(const std::string &sourcePath,
+                                          const std::string &targetPath) {
+  PutObjectInput input;
+  input.SetXQSMoveSource(BuildXQSSourceString(sourcePath));
+  // sdk cpp require content-length parameter, though it will be ignored
+  // so, set 0 to avoid sdk parameter checking failure
+  input.SetContentLength(0);
+  // it seems put-move discards the content-type, so we set directory
+  // mime type explicitly
+  bool isDir = RTrim(sourcePath, ' ').back() == '/';
+  if (isDir) {
+    input.SetContentType(GetDirectoryMimeType());
+  }
+
+  auto outcome = GetQSClientImpl()->PutObject(targetPath, &input);
+  unsigned attemptedRetries = 0;
+  while (!outcome.IsSuccess() &&
+         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+    int32_t sleepMilliseconds =
+        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                         attemptedRetries);
+    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+    outcome = GetQSClientImpl()->PutObject(targetPath, &input);
+    ++attemptedRetries;
+  }
+
+  return outcome.IsSuccess() ? ClientError<QSError>(QSError::GOOD, false)
+                             : outcome.GetError();
 }
 
 // --------------------------------------------------------------------------
@@ -633,41 +662,19 @@ ClientError<QSError> QSClient::SymLink(const string &filePath,
 
 // --------------------------------------------------------------------------
 ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
-  auto &drive = QS::FileSystem::Drive::Instance();
-  auto &dirTree = drive.GetDirectoryTree();
-  assert(dirTree);
-  auto dirNode = drive.GetNodeSimple(dirPath).lock();
-
-  ListObjectsInput listObjInput;
-  listObjInput.SetLimit(Constants::BucketListObjectsLimit);
-  listObjInput.SetDelimiter(QS::Utils::GetPathDelimiter());
-  if (!IsRootDirectory(dirPath)) {
-    string prefix = AppendPathDelim(LTrim(dirPath, '/'));
-    listObjInput.SetPrefix(prefix);
-  }
-
   bool resultTruncated = false;
   // Set maxCount for a single list operation.
   // This will request for ListObjects seperately, so we can construct
   // directory tree gradually. This will be helpful for the performance
   // if there are a huge number of objects to list.
   uint64_t maxCount = static_cast<uint64_t>(Constants::BucketListObjectsLimit);
-  do {
-    auto outcome = GetQSClientImpl()->ListObjects(&listObjInput,
-                                                  &resultTruncated, maxCount);
-    unsigned attemptedRetries = 0;
-    while (
-        !outcome.IsSuccess() &&
-        GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-      int32_t sleepMilliseconds =
-          GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
-                                                           attemptedRetries);
-      RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-      outcome = GetQSClientImpl()->ListObjects(&listObjInput, &resultTruncated,
-                                               maxCount);
-      ++attemptedRetries;
-    }
 
+  auto &drive = QS::FileSystem::Drive::Instance();
+  auto &dirTree = drive.GetDirectoryTree();
+  assert(dirTree);
+  auto dirNode = drive.GetNodeSimple(dirPath).lock();
+  do {
+    auto outcome = ListObjects(dirPath, &resultTruncated, maxCount);
     if (!outcome.IsSuccess()) {
       return outcome.GetError();
     }
@@ -686,13 +693,42 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
         if (dirNode->IsEmpty()) {
           dirTree->Grow(std::move(fileMetaDatas));
         } else {
-          dirTree->UpdateDiretory(dirPath, std::move(fileMetaDatas));
+          dirTree->UpdateDirectory(dirPath, std::move(fileMetaDatas));
         }
       }
     }  // for list object output
-
   } while (resultTruncated);
+
   return ClientError<QSError>(QSError::GOOD, false);
+}
+
+// --------------------------------------------------------------------------
+ListObjectsOutcome QSClient::ListObjects(const string &dirPath,
+                                         bool *resultTruncated,
+                                         uint64_t maxCount) {
+  ListObjectsInput listObjInput;
+  listObjInput.SetLimit(Constants::BucketListObjectsLimit);
+  listObjInput.SetDelimiter(QS::Utils::GetPathDelimiter());
+  string prefix = IsRootDirectory(dirPath)
+                      ? string()
+                      : AppendPathDelim(LTrim(dirPath, '/'));
+  listObjInput.SetPrefix(prefix);
+
+  auto outcome =
+      GetQSClientImpl()->ListObjects(&listObjInput, resultTruncated, maxCount);
+  unsigned attemptedRetries = 0;
+  while (!outcome.IsSuccess() &&
+         GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
+    int32_t sleepMilliseconds =
+        GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
+                                                         attemptedRetries);
+    RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
+    outcome = GetQSClientImpl()->ListObjects(&listObjInput, resultTruncated,
+                                             maxCount);
+    ++attemptedRetries;
+  }
+
+  return outcome;
 }
 
 // --------------------------------------------------------------------------
@@ -704,7 +740,7 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
 
   if (IsRootDirectory(path)) {
     // Stat aims to get object meta data. As in object storage, bucket has no
-    // data to record last modified time. 
+    // data to record last modified time.
     // Bucket mtime is set when connect to it at the first time.
     // We just think bucket mtime is not modified since then.
     return HeadBucket();
@@ -787,7 +823,7 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
       DebugInfo("Object NOT found " + FormatPath(path));
       return ClientError<QSError>(QSError::GOOD, false);
     }
-    
+
     return outcome.GetError();
   }
 }

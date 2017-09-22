@@ -27,45 +27,12 @@
 #include <string>
 #include <vector>
 
-#include "client/ClientError.h"
-#include "client/Outcome.h"
-#include "client/QSError.h"
+#include "client/QSClientOutcome.h"
 
 namespace QS {
 
 namespace Client {
 class QSClient;
-
-using GetBucketStatisticsOutcome =
-    Outcome<QingStor::GetBucketStatisticsOutput, ClientError<QSError>>;
-using HeadBucketOutcome =
-    Outcome<QingStor::HeadBucketOutput, ClientError<QSError>>;
-using ListObjectsOutcome =
-    Outcome<std::vector<QingStor::ListObjectsOutput>, ClientError<QSError>>;
-using DeleteMultipleObjectsOutcome =
-    Outcome<QingStor::DeleteMultipleObjectsOutput, ClientError<QSError>>;
-using ListMultipartUploadsOutcome =
-    Outcome<std::vector<QingStor::ListMultipartUploadsOutput>, ClientError<QSError>>;
-
-using DeleteObjectOutcome =
-    Outcome<QingStor::DeleteObjectOutput, ClientError<QSError>>;
-using GetObjectOutcome =
-    Outcome<QingStor::GetObjectOutput, ClientError<QSError>>;
-using HeadObjectOutcome =
-    Outcome<QingStor::HeadObjectOutput, ClientError<QSError>>;
-using PutObjectOutcome =
-    Outcome<QingStor::PutObjectOutput, ClientError<QSError>>;
-
-using InitiateMultipartUploadOutcome =
-    Outcome<QingStor::InitiateMultipartUploadOutput, ClientError<QSError>>;
-using UploadMultipartOutcome =
-    Outcome<QingStor::UploadMultipartOutput, ClientError<QSError>>;
-using CompleteMultipartUploadOutcome =
-    Outcome<QingStor::CompleteMultipartUploadOutput, ClientError<QSError>>;
-using AbortMultipartUploadOutcome =
-    Outcome<QingStor::AbortMultipartUploadOutput, ClientError<QSError>>;
-using ListMultipartOutcome =
-    Outcome<std::vector<QingStor::ListMultipartOutput>, ClientError<QSError>>;
 
 class QSClientImpl : public ClientImpl {
  public:
@@ -100,7 +67,7 @@ class QSClientImpl : public ClientImpl {
   // If resultTruncated is true the input will be set with the next marker which
   // will help to continue the following list operation.
   ListObjectsOutcome ListObjects(QingStor::ListObjectsInput *input,
-                                 bool *resultTruncated,
+                                 bool *resultTruncated = nullptr,
                                  uint64_t maxCount = 0) const;
 
   // Delete multiple objects
@@ -120,8 +87,8 @@ class QSClientImpl : public ClientImpl {
   // If resultTruncated is true the input will be set with the next marker which
   // will help to continue the following list operation.
   ListMultipartUploadsOutcome ListMultipartUploads(
-      QingStor::ListMultipartUploadsInput *input, bool *resultTruncated,
-      uint64_t maxCount) const;
+      QingStor::ListMultipartUploadsInput *input,
+      bool *resultTruncated = nullptr, uint64_t maxCount = 0) const;
 
   //
   // Object Level Operations
@@ -203,7 +170,7 @@ class QSClientImpl : public ClientImpl {
   // this operation which will help to continue the following list operation.
   ListMultipartOutcome ListMultipart(const std::string &objKey,
                                      QingStor::ListMultipartInput *input,
-                                     bool *resultTruncated,
+                                     bool *resultTruncated = nullptr,
                                      uint64_t maxCount = 0) const;
 
  public:

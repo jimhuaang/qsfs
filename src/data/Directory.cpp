@@ -38,7 +38,6 @@ namespace QS {
 namespace Data {
 
 using QS::StringUtils::FormatPath;
-using QS::StringUtils::FormatPath;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::IsRootDirectory;
 using std::deque;
@@ -239,10 +238,10 @@ shared_ptr<Node> DirectoryTree::GetRoot() const {
 }
 
 // --------------------------------------------------------------------------
-shared_ptr<Node> DirectoryTree::GetCurrentNode() const {
-  lock_guard<recursive_mutex> lock(m_mutex);
-  return m_currentNode;
-}
+// shared_ptr<Node> DirectoryTree::GetCurrentNode() const {
+//   lock_guard<recursive_mutex> lock(m_mutex);
+//   return m_currentNode;
+// }
 
 // --------------------------------------------------------------------------
 weak_ptr<Node> DirectoryTree::Find(const string &filePath) const {
@@ -334,7 +333,7 @@ shared_ptr<Node> DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
     // record parent to children map
     m_parentToChildrenMap.emplace(dirName, node);
   }
-  m_currentNode = node;
+  // m_currentNode = node;
 
   return node;
 }
@@ -348,7 +347,7 @@ void DirectoryTree::Grow(vector<shared_ptr<FileMetaData>> &&fileMetas) {
 }
 
 // --------------------------------------------------------------------------
-shared_ptr<Node> DirectoryTree::UpdateDiretory(
+shared_ptr<Node> DirectoryTree::UpdateDirectory(
     const string &dirPath, vector<shared_ptr<FileMetaData>> &&childrenMetas) {
   if (dirPath.empty()) {
     DebugWarning("Null dir path");
@@ -422,7 +421,7 @@ shared_ptr<Node> DirectoryTree::UpdateDiretory(
     Grow(std::move(newChildrenMetas));
   }
 
-  m_currentNode = node;
+  // m_currentNode = node;
   return node;
 }
 
@@ -469,7 +468,7 @@ shared_ptr<Node> DirectoryTree::Rename(const string &oldFilePath,
       }
       m_parentToChildrenMap.erase(oldFilePath);
     }
-    m_currentNode = node;
+    // m_currentNode = node;
   } else {
     DebugWarning("Node NOT exist " + FormatPath(oldFilePath));
   }
@@ -495,6 +494,9 @@ void DirectoryTree::Remove(const string &path) {
 
   auto parent = node->GetParent();
   if (parent) {
+    // if path is a directory, when go out of this function, destructor
+    // will recursively delete all its children, as there is no references
+    // to the node now.
     parent->Remove(path);
   }
   m_map.erase(path);
@@ -525,9 +527,6 @@ void DirectoryTree::Remove(const string &path) {
     }
   }
 
-  // if path is a directory, when go out of this function, destructor
-  // will recursively delete all its children, as there is no references
-  // to the node now.
 }
 
 // --------------------------------------------------------------------------
@@ -561,7 +560,7 @@ shared_ptr<Node> DirectoryTree::HardLink(const string &filePath,
   node->IncreaseNumLink();
   m_map.emplace(hardlinkPath, lnkNode);
   m_parentToChildrenMap.emplace(node->GetFilePath(), lnkNode);
-  m_currentNode = lnkNode;
+  // m_currentNode = lnkNode;
   return lnkNode;
 }
 
@@ -570,7 +569,7 @@ DirectoryTree::DirectoryTree(time_t mtime, uid_t uid, gid_t gid, mode_t mode) {
   lock_guard<recursive_mutex> lock(m_mutex);
   m_root = make_shared<Node>(
       Entry(ROOT_PATH, 0, mtime, mtime, uid, gid, mode, FileType::Directory));
-  m_currentNode = m_root;
+  // m_currentNode = m_root;
   m_map.emplace(ROOT_PATH, m_root);
 }
 

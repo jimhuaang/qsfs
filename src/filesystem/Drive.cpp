@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <deque>
 #include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
@@ -84,6 +85,7 @@ using QS::Utils::GetDirName;
 using QS::Utils::GetProcessEffectiveUserID;
 using QS::Utils::GetProcessEffectiveGroupID;
 using QS::Utils::IsRootDirectory;
+using std::deque;
 using std::make_shared;
 using std::pair;
 using std::shared_ptr;
@@ -638,7 +640,7 @@ void Drive::RenameFile(const string &filePath, const string &newFilePath,
 
 // --------------------------------------------------------------------------
 void Drive::RenameDir(const string &dirPath, const string &newDirPath,
-                      bool doCheck) {
+                      bool doCheck, bool async) {
   if (doCheck) {
     if (dirPath.empty() || newDirPath.empty()) {
       DebugWarning("Invalid empty parameter");
@@ -671,17 +673,53 @@ void Drive::RenameDir(const string &dirPath, const string &newDirPath,
   }
 
   // Do Renaming
-  auto err = GetClient()->MoveDirectory(dirPath, newPath);
+  auto receivedHandler = [this, dirPath,
+                          newPath](const ClientError<QSError> &err) {
+    if (IsGoodQSError(err)) {
+      // Rename local cache
+      auto node = GetNodeSimple(dirPath).lock();
+      auto childPaths = node->GetChildrenIdsRecursively();
+      size_t len = dirPath.size();
+      deque<string> childTargetPaths;
+      for (auto &path : childPaths) {
+        if (path.substr(0, len) != dirPath) {
+          DebugError("Directory has an invalid child file [dir=" + dirPath +
+                     " child=" + path + "]");
+          childTargetPaths.emplace_back(path);  // put old path
+        }
+        childTargetPaths.emplace_back(newPath + path.substr(len));
+      }
+      while (!childPaths.empty() && !childTargetPaths.empty()) {
+        auto source = childPaths.back();
+        childPaths.pop_back();
+        auto target = childTargetPaths.back();
+        childTargetPaths.pop_back();
+        if (m_cache && m_cache->HasFile(source)) {
+          m_cache->Rename(source, target);
+        }
+      }
 
-  // Call GetNode to update meta(such as mtime, .etc)
-  if (IsGoodQSError(err)) {
-    auto res = GetNode(newPath, true, false);  // update dir sync
-    auto node = res.first.lock();
-    DebugErrorIf(!node, "Fail to rename dir " + FormatPath(dirPath));
-    return;
+      // Remove old dir node from dir tree
+      if (m_directoryTree) {
+        m_directoryTree->Remove(dirPath);
+      }
+
+      // Add new dir node to dir tree
+      auto res = GetNode(newPath, true, false);  // update dir sync
+      node = res.first.lock();
+      DebugErrorIf(!node, "Fail to rename dir " + FormatPath(dirPath));
+    } else {
+      DebugError(GetMessageForQSError(err));
+    }
+  };
+
+  if (async) {
+    GetClient()->GetExecutor()->SubmitAsyncPrioritized(
+        receivedHandler, [this, dirPath, newPath]() {
+          return GetClient()->MoveDirectory(dirPath, newPath, true);
+        });
   } else {
-    DebugError(GetMessageForQSError(err));
-    return;
+    receivedHandler(GetClient()->MoveDirectory(dirPath, newPath, false));
   }
 }
 

@@ -187,7 +187,7 @@ vector<shared_ptr<FileMetaData>> ListObjectsOutputToFileMetaDatas(
   const KeyType *dirItselfAsKey = nullptr;
   // Add files
   for (auto &key : output.GetKeys()) {
-    // sdk will put dir itself into keys, ignore it
+    // sdk will put dir (if exists) itself into keys, ignore it
     if (prefix == key.GetKey()) {
       dirItselfAsKey = &key;
       continue;

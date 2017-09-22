@@ -554,7 +554,7 @@ int qsfs_rmdir(const char* path) {
     auto dir = CheckParentDir(path, W_OK | X_OK, &ret, false);
 
     string path_ = AppendPathDelim(path);
-    auto res = drive.GetNode(path_, true, false);  // update dir synchronizely
+    auto res = drive.GetNode(path_, true);  // update dir synchronizely
     auto node = res.first.lock();
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
@@ -678,7 +678,7 @@ int qsfs_rename(const char* path, const char* newpath) {
     // Check parent permission
     auto dir = CheckParentDir(path, W_OK | X_OK, &ret, false);
 
-    auto res = GetFile(path, true);  // update dir sync
+    auto res = GetFile(path, true);  // update dir synchronizely
     auto node = std::get<0>(res).lock();
     string path_ = std::get<2>(res);
     if (!(node && *node)) {
@@ -690,7 +690,7 @@ int qsfs_rename(const char* path, const char* newpath) {
     CheckStickyBit(dir, node, &ret);
 
     // Delete newpath if it exists and it's an empty directory
-    auto nRes = GetFile(newpath, true);  // update dir sync
+    auto nRes = GetFile(newpath, true);  // update dir synchronizely
     auto nNode = std::get<0>(nRes).lock();
     string newpath_ = std::get<2>(nRes);
     if (nNode) {
@@ -712,8 +712,9 @@ int qsfs_rename(const char* path, const char* newpath) {
     }
 
     // Do Renaming
-    if(node->IsDirectory()){
-      Drive::Instance().RenameDir(path_, AppendPathDelim(newpath), false);
+    if (node->IsDirectory()) {
+      // rename dir asynchronizely
+      Drive::Instance().RenameDir(path_, AppendPathDelim(newpath), false, true);
     } else {
       Drive::Instance().RenameFile(path_, newpath, false);
     }
@@ -995,7 +996,7 @@ int qsfs_open(const char* path, struct fuse_file_info* fi) {
     } else {
       // Check parent directory
       string dirName = GetDirName(path);
-      auto res = drive.GetNode(dirName, false);
+      auto res = drive.GetNode(dirName, false);  // open file, so no update dir
       auto parent = res.first.lock();
       if (!(parent && *parent)) {
         ret = -EINVAL;  // invalid argument
@@ -1345,7 +1346,7 @@ int qsfs_opendir(const char* path, struct fuse_file_info* fi) {
     CheckParentDir(path, mask, &ret, false);
 
     // Check if dir exists
-    auto res = drive.GetNode(dirPath, true, false);  // update dir synchronizely
+    auto res = drive.GetNode(dirPath, true);  // update dir synchronizely
     auto node = res.first.lock();
 
     if (!(node && *node)) {
@@ -1400,7 +1401,8 @@ int qsfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
   auto dirPath = AppendPathDelim(path);
   try {
     // Check if dir exists
-    auto node = drive.GetNodeSimple(dirPath).lock();
+    auto res = drive.GetNode(dirPath, true);  // update dir synchronizely
+    auto node = res.first.lock();
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such directory " + FormatPath(path));
@@ -1425,9 +1427,7 @@ int qsfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     }
 
     // Put the children into filler
-    // As opendir is not necessary get called before this callback
-    // So no need to update dir again.  // TODO(jim): confirm again
-    auto childs = drive.FindChildren(dirPath, true);
+    auto childs = drive.FindChildren(dirPath, false);
     for (auto &child : childs){
       if (auto childNode = child.lock()) {
         auto filename = childNode->MyBaseName();
@@ -1508,9 +1508,9 @@ int qsfs_access(const char* path, int mask) {
   int ret = 0;
   try {
     // Check whether file exists
-    auto res = GetFileSimple(path);  // TODO(jim): update dir sync
-    auto node = res.first.lock();
-    string path_ = res.second;
+    auto res = GetFile(path, true, true);  // update dir asynchronizely
+    auto node = std::get<0>(res).lock();
+    string path_ = std::get<2>(res);
     if (!(node && *node)) {
       ret = -ENOENT;
       throw QSException("No such file or directory " + FormatPath(path_));

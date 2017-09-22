@@ -298,8 +298,9 @@ class DirectoryTree {
   // Get root
   std::shared_ptr<Node> GetRoot() const;
 
-  // Get current node
-  std::shared_ptr<Node> GetCurrentNode() const;
+  // Get current node 
+  // removed as this may has effect on remove
+  // std::shared_ptr<Node> GetCurrentNode() const;
 
   // Find node
   //
@@ -348,7 +349,7 @@ class DirectoryTree {
   //
   // @param  : dirpath, meta data of children
   // @return : the node has been update or null if update doesn't happen
-  std::shared_ptr<Node> UpdateDiretory(
+  std::shared_ptr<Node> UpdateDirectory(
       const std::string &dirPath,
       std::vector<std::shared_ptr<FileMetaData>> &&childrenMetas);
 
@@ -376,7 +377,7 @@ class DirectoryTree {
 
  private:
   std::shared_ptr<Node> m_root;
-  std::shared_ptr<Node> m_currentNode;
+  // std::shared_ptr<Node> m_currentNode;
   mutable std::recursive_mutex m_mutex;
   FilePathToWeakNodeUnorderedMap m_map;  // record all nodes map
 

@@ -223,7 +223,7 @@ class Drive {
   // @param  : dir path, new dir path, flag to do check
   // @return : void
   void RenameDir(const std::string &dirPath, const std::string &newDirPath,
-                 bool doCheck = true);
+                 bool doCheck = true, bool async = false);
 
   // Create a symbolic link to a file
   //
@@ -268,7 +268,7 @@ class Drive {
   void DownloadFileContentRanges(const std::string &filePath,
                                  const QS::Data::ContentRangeDeque &ranges,
                                  time_t mtime,
-                                 bool async);
+                                 bool async = false);
 
  private:
   std::shared_ptr<QS::Client::Client> &GetClient() { return m_client; }

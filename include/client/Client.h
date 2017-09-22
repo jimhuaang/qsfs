@@ -121,8 +121,9 @@ class Client {
   // @return : ClientError
   //
   // MoveDirectory will invoke dirTree and Cache renaming
-  virtual ClientError<QSError> MoveDirectory(
-      const std::string &sourceDirPath, const std::string &targetDirPath) = 0;
+  virtual ClientError<QSError> MoveDirectory(const std::string &sourceDirPath,
+                                             const std::string &targetDirPath,
+                                             bool async = false) = 0;
 
   // Download file
   //

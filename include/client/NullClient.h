@@ -46,7 +46,8 @@ class NullClient : public Client {
   ClientError<QSError> MoveFile(const std::string &filePath,
                                 const std::string &newFilePath) override;
   ClientError<QSError> MoveDirectory(const std::string &sourceDirPath,
-                                     const std::string &targetDirPath) override;
+                                     const std::string &targetDirPath,
+                                     bool async = false) override;
 
   ClientError<QSError> DownloadFile(
       const std::string &filePath, const std::shared_ptr<std::iostream> &buffer,

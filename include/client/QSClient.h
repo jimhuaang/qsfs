@@ -21,6 +21,7 @@
 #include <string>
 
 #include "client/Client.h"
+#include "client/QSClientOutcome.h"
 
 namespace QingStor {
 class QingStorService;
@@ -103,9 +104,11 @@ class QSClient : public Client {
   // @param  : source path, target path
   // @return : ClientError
   //
-  // MoveDirectory will invoke dirTree and Cache renaming
+  // MoveDirectory move dir, subdirs and subfiles recursively.
+  // Notes: MoveDirectory will do nothing on dir tree and cache.
   ClientError<QSError> MoveDirectory(const std::string &sourceDirPath,
-                                     const std::string &targetDirPath) override;
+                                     const std::string &targetDirPath,
+                                     bool async = false) override;
 
   // Download file
   //
@@ -202,6 +205,30 @@ class QSClient : public Client {
   // @param  : *stvfs(output)
   // @return : ClientError
   ClientError<QSError> Statvfs(struct statvfs *stvfs) override;
+
+ public:
+  //
+  // Following api only submit sdk request, no ops on local dirtree and cache.
+  //
+
+  // Move object
+  //
+  // @param  : source file path, target file path
+  // @return : ClientError
+  //
+  // This only submit sdk put(move) object request, no ops on dir tree.
+  ClientError<QSError> MoveObject(const std::string &sourcePath,
+                                  const std::string &targetPath);
+
+  // List objects
+  //
+  // @param  : dir path, resultTruncated(output), maxCount
+  // @return : ClientError
+  //
+  // This only submit skd listobjects request, no ops on dir tree.
+  ListObjectsOutcome ListObjects(const std::string &dirPath,
+                                 bool *resultTruncated = nullptr,
+                                 uint64_t maxCount = 0);
 
  public:
   static const std::unique_ptr<QingStor::QingStorService> &GetQingStorService();
