@@ -44,7 +44,7 @@ class QSTransferManager : public TransferManager {
   // @return : transfer handle
   std::shared_ptr<TransferHandle> DownloadFile(
       const std::string &filePath, off_t offset, uint64_t size,
-      std::shared_ptr<std::iostream> bufStream) override;
+      std::shared_ptr<std::iostream> bufStream, bool async = false) override;
 
   // Retry a failed download
   //
@@ -52,21 +52,23 @@ class QSTransferManager : public TransferManager {
   // @return : transfer handle after been retried
   std::shared_ptr<TransferHandle> RetryDownload(
       const std::shared_ptr<TransferHandle> &handle,
-      std::shared_ptr<std::iostream> bufStream) override;
+      std::shared_ptr<std::iostream> bufStream, bool async = false) override;
 
   // Upload a file
   //
   // @param  : file path, file size
   // @return : transfer handle
   std::shared_ptr<TransferHandle> UploadFile(const std::string &filePath,
-                                             uint64_t fileSize) override;
+                                             uint64_t fileSize,
+                                             bool async = false) override;
 
   // Retry a failed upload
   //
   // @param  : tranfser handle to retry
   // @return : transfer handle after been retried
   std::shared_ptr<TransferHandle> RetryUpload(
-      const std::shared_ptr<TransferHandle> &handle) override;
+      const std::shared_ptr<TransferHandle> &handle,
+      bool async = false) override;
 
   // Abort a multipart upload
   //
@@ -82,14 +84,20 @@ class QSTransferManager : public TransferManager {
 
  private:
   bool PrepareDownload(const std::shared_ptr<TransferHandle> &handle);
-  void DoSinglePartDownload(const std::shared_ptr<TransferHandle> &handle);
-  void DoMultiPartDownload(const std::shared_ptr<TransferHandle> &handle);
-  void DoDownload(const std::shared_ptr<TransferHandle> &handle);
+  void DoSinglePartDownload(const std::shared_ptr<TransferHandle> &handle,
+                            bool async = false);
+  void DoMultiPartDownload(const std::shared_ptr<TransferHandle> &handle,
+                           bool async = false);
+  void DoDownload(const std::shared_ptr<TransferHandle> &handle,
+                  bool async = false);
 
   bool PrepareUpload(const std::shared_ptr<TransferHandle> &handle);
-  void DoSinglePartUpload(const std::shared_ptr<TransferHandle> &handle);
-  void DoMultiPartUpload(const std::shared_ptr<TransferHandle> &handle);
-  void DoUpload(const std::shared_ptr<TransferHandle> &handle);
+  void DoSinglePartUpload(const std::shared_ptr<TransferHandle> &handle,
+                          bool async = false);
+  void DoMultiPartUpload(const std::shared_ptr<TransferHandle> &handle,
+                         bool async = false);
+  void DoUpload(const std::shared_ptr<TransferHandle> &handlebool,
+                bool async = false);
 };
 
 }  // namespace Client

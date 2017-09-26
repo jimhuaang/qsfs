@@ -405,7 +405,7 @@ bool SDKShouldRetry(QingStor::Http::HttpResponseCode code){
           HttpResponseCode::NETWORK_CONNECT_TIMEOUT,         //"NetworkConnectTimeout"          // 599
       };
   auto it = retryableCodeSet.find(code);
-  return it != retryableCodeSet.end();  //TODO(jim):
+  return it != retryableCodeSet.end();
 }
 
 // --------------------------------------------------------------------------

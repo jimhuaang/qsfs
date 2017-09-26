@@ -178,15 +178,15 @@ bool Drive::Connect(bool buildupDirTreeAsync) const {
   }
 
   // Build up the root level of directory tree asynchornizely.
-  auto receivedHandler = [](const ClientError<QSError> &err) {
+  auto ReceivedHandler = [](const ClientError<QSError> &err) {
     DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
   };
 
   if (buildupDirTreeAsync) {  // asynchronizely
     GetClient()->GetExecutor()->SubmitAsyncPrioritized(
-        receivedHandler, [this] { return GetClient()->ListDirectory("/"); });
+        ReceivedHandler, [this] { return GetClient()->ListDirectory("/"); });
   } else { // synchronizely
-    receivedHandler(GetClient()->ListDirectory("/"));
+    ReceivedHandler(GetClient()->ListDirectory("/"));
   }
 
   return true;
@@ -198,14 +198,6 @@ shared_ptr<Node> Drive::GetRoot() {
     throw QSException("Unable to connect to object storage bucket");
   }
   return m_directoryTree->GetRoot();
-}
-
-// --------------------------------------------------------------------------
-struct statvfs Drive::GetFilesystemStatistics() {
-  struct statvfs statv;
-  auto err = GetClient()->Statvfs(&statv);
-  DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
-  return statv;
 }
 
 // --------------------------------------------------------------------------
@@ -244,16 +236,16 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
   // The modified time is only the meta of an object, we should not take
   // modified time as an precondition to decide if we need to update dir or not.
   if (node && *node && node->IsDirectory() && updateIfDirectory) {
-    auto receivedHandler = [](const ClientError<QSError> &err) {
+    auto ReceivedHandler = [](const ClientError<QSError> &err) {
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     };
 
     if (updateDirAsync) {
-      GetClient()->GetExecutor()->SubmitAsync(receivedHandler, [this, path] {
+      GetClient()->GetExecutor()->SubmitAsync(ReceivedHandler, [this, path] {
         return GetClient()->ListDirectory(AppendPathDelim(path));
       });
     } else {
-      receivedHandler(GetClient()->ListDirectory(AppendPathDelim(path)));
+      ReceivedHandler(GetClient()->ListDirectory(AppendPathDelim(path)));
     }
   }
 
@@ -263,6 +255,14 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
 // --------------------------------------------------------------------------
 weak_ptr<Node> Drive::GetNodeSimple(const string &path) {
   return m_directoryTree->Find(path);
+}
+
+// --------------------------------------------------------------------------
+struct statvfs Drive::GetFilesystemStatistics() {
+  struct statvfs statv;
+  auto err = GetClient()->Statvfs(&statv);
+  DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+  return statv;
 }
 
 // --------------------------------------------------------------------------
@@ -298,15 +298,18 @@ void Drive::Chown(const std::string &filePath, uid_t uid, gid_t gid) {
 
 // --------------------------------------------------------------------------
 // Remove a file or an empty directory
-void Drive::RemoveFile(const string &filePath) {
-
-  // delete file asynchronizely
-  auto receivedHandler = [](const ClientError<QSError> &err) {
+void Drive::RemoveFile(const string &filePath, bool async) {
+  auto ReceivedHandler = [](const ClientError<QSError> &err) {
     DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
   };
-  GetClient()->GetExecutor()->SubmitAsyncPrioritized(
-      receivedHandler,
-      [this, filePath] { return GetClient()->DeleteFile(filePath); });
+
+  if (async) {  // delete file asynchronizely
+    GetClient()->GetExecutor()->SubmitAsyncPrioritized(
+        ReceivedHandler,
+        [this, filePath] { return GetClient()->DeleteFile(filePath); });
+  } else {
+    ReceivedHandler(GetClient()->DeleteFile(filePath));
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -392,7 +395,8 @@ void Drive::OpenFile(const string &filePath) {
   bool fileContentExist =
       m_cache->HasFileData(filePath, 0, node->GetFileSize());
   if (!fileContentExist || modified) {
-    DownloadFileContentRanges(filePath, ranges, mtime, true);
+    // TODO(jim): should we do this async?
+    DownloadFileContentRanges(filePath, ranges, mtime, false);
   }
 
   node->SetFileOpen(true);
@@ -424,7 +428,7 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
   }
 
   // Download file if not found in cache or if cache need update
-  bool fileContentExist = m_cache->HasFileData(filePath, offset, size);
+  bool fileContentExist = m_cache->HasFileData(filePath, offset, downloadSize);
   time_t mtime = node->GetMTime();
   if (!fileContentExist || modified) {
     // download synchronizely for request file part
@@ -486,7 +490,7 @@ void Drive::RenameFile(const string &filePath, const string &newFilePath) {
 void Drive::RenameDir(const string &dirPath, const string &newDirPath,
                       bool async) {
   // Do Renaming
-  auto receivedHandler = [this, dirPath,
+  auto ReceivedHandler = [this, dirPath,
                           newDirPath](const ClientError<QSError> &err) {
     if (IsGoodQSError(err)) {
       // Rename local cache
@@ -528,11 +532,11 @@ void Drive::RenameDir(const string &dirPath, const string &newDirPath,
 
   if (async) {
     GetClient()->GetExecutor()->SubmitAsyncPrioritized(
-        receivedHandler, [this, dirPath, newDirPath]() {
+        ReceivedHandler, [this, dirPath, newDirPath]() {
           return GetClient()->MoveDirectory(dirPath, newDirPath, true);
         });
   } else {
-    receivedHandler(GetClient()->MoveDirectory(dirPath, newDirPath, false));
+    ReceivedHandler(GetClient()->MoveDirectory(dirPath, newDirPath, false));
   }
 }
 
@@ -593,10 +597,10 @@ void Drive::TruncateFile(const string &filePath, size_t newSize) {
 }
 
 // --------------------------------------------------------------------------
-void Drive::UploadFile(const string &filePath) {
+void Drive::UploadFile(const string &filePath, bool async) {
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();
-  auto callback = [this, node](const shared_ptr<TransferHandle> &handle) {
+  auto Callback = [this, node](const shared_ptr<TransferHandle> &handle) {
     if (handle) {
       node->SetNeedUpload(false);
       node->SetFileOpen(false);
@@ -615,13 +619,25 @@ void Drive::UploadFile(const string &filePath) {
   auto fileSize = node->GetFileSize();
   auto ranges = m_cache->GetUnloadedRanges(filePath, fileSize);
   time_t mtime = node->GetMTime();
-  GetTransferManager()->GetExecutor()->SubmitAsync(
-      callback, [this, filePath, fileSize, ranges, mtime]() {
-        // download unloaded pages for file
-        DownloadFileContentRanges(filePath, ranges, mtime, false);
-        // upload the completed file
-        return m_transferManager->UploadFile(filePath, fileSize);
-      });
+  if(async){
+    GetTransferManager()->GetExecutor()->SubmitAsync(
+        Callback, [this, filePath, fileSize, ranges, mtime]() {
+          // download unloaded pages for file
+          // this is need as user could open a file and edit a part of it,
+          // but you need the completed file in order to upload it.
+          if (!ranges.empty()) {
+            DownloadFileContentRanges(filePath, ranges, mtime, false);
+          }
+          // upload the completed file
+          return m_transferManager->UploadFile(filePath, fileSize);
+        });
+  } else {
+    if (!ranges.empty()) {
+      DownloadFileContentRanges(filePath, ranges, mtime, false);
+    }
+    Callback(m_transferManager->UploadFile(filePath, fileSize));
+  }
+
 }
 
 // --------------------------------------------------------------------------
@@ -704,7 +720,7 @@ void Drive::DownloadFileContentRanges(const string &filePath,
         }
 
         auto stream_ = make_shared<IOStream>(downloadSize_);
-        auto callback = [this, filePath, offset_, downloadSize_, stream_,
+        auto Callback = [this, filePath, offset_, downloadSize_, stream_,
                          mtime](const shared_ptr<TransferHandle> &handle) {
           if (handle) {
             handle->WaitUntilFinished();
@@ -719,14 +735,14 @@ void Drive::DownloadFileContentRanges(const string &filePath,
 
         if (async) {
           GetTransferManager()->GetExecutor()->SubmitAsync(
-              callback, [this, filePath, offset_, downloadSize_, stream_]() {
+              Callback, [this, filePath, offset_, downloadSize_, stream_]() {
                 return m_transferManager->DownloadFile(filePath, offset_,
                                                        downloadSize_, stream_);
               });
         } else {
           auto handle = m_transferManager->DownloadFile(filePath, offset_,
                                                         downloadSize_, stream_);
-          callback(handle);
+          Callback(handle);
         }
 
         downloadedSize += downloadSize_;

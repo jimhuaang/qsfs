@@ -35,6 +35,7 @@ namespace Data {
 class Cache;
 class Entry;
 
+// Range represented by a pair of {offset, size}
 using ContentRangeDeque = std::deque<std::pair<off_t, size_t>>;
 
 class File {
@@ -42,7 +43,7 @@ class File {
   explicit File(const std::string &baseName, time_t mtime = 0, size_t size = 0)
       : m_baseName(baseName),
         m_mtime(mtime),
-        m_size(size),
+        m_cacheSize(size),
         m_useTempFile(false) {}
 
   File(File &&) = delete;
@@ -53,7 +54,7 @@ class File {
 
  public:
   std::string GetBaseName() const { return m_baseName; }
-  size_t GetSize() const { return m_size.load(); }
+  size_t GetSize() const { return m_cacheSize.load(); }
   time_t GetTime() const { return m_mtime.load(); }
   bool UseTempFile() const { return m_useTempFile.load(); }
 
@@ -165,7 +166,8 @@ class File {
  private:
   std::string m_baseName;           // file base name
   std::atomic<time_t> m_mtime;      // time of last modification
-  std::atomic<size_t> m_size;       // record sum of all pages' size stored in cache //TODO(jim): rename to m_cacheSize
+  std::atomic<size_t> m_cacheSize;  // record sum of all pages' size
+                                    // stored in cache not including tmp file
   std::atomic<bool> m_useTempFile;  // use tmp file when no free cache space
   mutable std::recursive_mutex m_mutex;
   PageSet m_pages;              // a set of pages suppose to be successive

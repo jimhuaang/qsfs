@@ -90,9 +90,6 @@ class Drive {
   // Return the drive root node.
   std::shared_ptr<QS::Data::Node> GetRoot();
 
-  // Return information about the mounted bucket.
-  struct statvfs GetFilesystemStatistics();
-
   // Get the node
   //
   // @param  : file path, flag update if is dir, flag update dir async
@@ -117,11 +114,17 @@ class Drive {
   // GetNodeSimple just find the node in local dir tree
   std::weak_ptr<QS::Data::Node> GetNodeSimple(const std::string &path);
 
+  //
+  //
+  // Following APIs handle request from fuse, they
+  // 1. Assume the path exists and arguments have been validated
+  // 2. Assume the node has been exist in dir tree and synchornized with object
+  // storage server.
+  //
+  //
 
-  //
-  // Following APIs assume the path exists and arguments have been validated
-  // The node has been synchornize with object storage server.
-  //
+  // Return information about the mounted bucket.
+  struct statvfs GetFilesystemStatistics();  
 
   // Find the children
   //
@@ -148,7 +151,7 @@ class Drive {
   //
   // @param  : file path
   // @return : void
-  void RemoveFile(const std::string &filePath);
+  void RemoveFile(const std::string &filePath, bool async = false);
 
   // Create a hard link to a file
   //
@@ -235,7 +238,7 @@ class Drive {
   //
   // @param  : file path
   // @return : void
-  void UploadFile(const std::string &filePath);
+  void UploadFile(const std::string &filePath, bool async = false);
 
   // Change access and modification times of a file
   //

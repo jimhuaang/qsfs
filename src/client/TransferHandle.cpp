@@ -63,6 +63,7 @@ Part::Part(uint16_t partId, size_t bestProgressInBytes, size_t sizeInBytes,
       m_rangeBegin(rangeBegin),
       m_downloadPartStream(nullptr) {}
 
+// --------------------------------------------------------------------------
 string Part::ToString() const {
   return "[part id: " + to_string(m_partId) + ", etag: " + m_eTag +
          ", current progress(bytes): " + to_string(m_currentProgress) +
@@ -102,25 +103,25 @@ TransferHandle::TransferHandle(const string &bucket, const string &objKey,
       m_contentType() {}
 
 // --------------------------------------------------------------------------
-const PartIdToPartMap &TransferHandle::GetQueuedParts() const {
+PartIdToPartMap TransferHandle::GetQueuedParts() const {
   lock_guard<mutex> lock(m_partsLock);
   return m_queuedParts;
 }
 
 // --------------------------------------------------------------------------
-const PartIdToPartMap &TransferHandle::GetPendingParts() const {
+PartIdToPartMap TransferHandle::GetPendingParts() const {
   lock_guard<mutex> lock(m_partsLock);
   return m_pendingParts;
 }
 
 // --------------------------------------------------------------------------
-const PartIdToPartMap &TransferHandle::GetFailedParts() const {
+PartIdToPartMap TransferHandle::GetFailedParts() const {
   lock_guard<mutex> lock(m_partsLock);
   return m_failedParts;
 }
 
 // --------------------------------------------------------------------------
-const PartIdToPartMap &TransferHandle::GetCompletedParts() const {
+PartIdToPartMap TransferHandle::GetCompletedParts() const {
   lock_guard<mutex> lock(m_partsLock);
   return m_completedParts;
 }

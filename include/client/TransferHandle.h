@@ -134,10 +134,10 @@ class TransferHandle {
  public:
   bool IsMultipart() const { return m_isMultipart; }
   const std::string &GetMultiPartId() const { return m_multipartId; }
-  const PartIdToPartMap &GetQueuedParts() const;
-  const PartIdToPartMap &GetPendingParts() const;
-  const PartIdToPartMap &GetFailedParts() const;
-  const PartIdToPartMap &GetCompletedParts() const;
+  PartIdToPartMap GetQueuedParts() const;
+  PartIdToPartMap GetPendingParts() const;
+  PartIdToPartMap GetFailedParts() const;
+  PartIdToPartMap GetCompletedParts() const;
   bool HasQueuedParts() const;
   bool HasPendingParts() const;
   bool HasFailedParts() const;

@@ -116,6 +116,7 @@ ContentRangeDeque File::GetUnloadedRanges(uint64_t fileTotalSize) const {
       size_t size = static_cast<size_t>((*next)->Offset() - off);
       ranges.emplace_back(off, size);
     }
+    ++cur;
   }
 
   if (static_cast<size_t>((*cur)->Next()) < fileTotalSize) {
@@ -310,7 +311,9 @@ bool File::Write(off_t offset, size_t len, shared_ptr<iostream> &&stream,
   auto AddPageAndUpdateTime = [this, mtime](
       off_t offset, size_t len, shared_ptr<iostream> &&stream) -> bool {
     auto res = this->UnguardedAddPage(offset, len, std::move(stream));
-    if (res.second) this->SetTime(mtime);
+    if (res.second) {
+      this->SetTime(mtime);
+    }
     return res.second;
   };
 
@@ -357,7 +360,7 @@ void File::Resize(size_t smallerSize) {
     auto it = UpperBoundPage(offset);
     if (it != m_pages.end()) {
       for (auto page = it; page != m_pages.end(); ++page) {
-        m_size -= (*page)->m_size;
+        m_cacheSize -= (*page)->m_size;
       }
       m_pages.erase(it, m_pages.end());
     }
@@ -369,7 +372,7 @@ void File::Resize(size_t smallerSize) {
         return;
       } else if (lastPage->m_offset <= offset && offset < lastPage->Stop()) {
         auto newSize = smallerSize - lastPage->m_offset;
-        m_size -= lastPage->m_size - newSize;
+        m_cacheSize -= lastPage->m_size - newSize;
         // Do a lazy remove for last page.
         lastPage->Resize(newSize);
       } else {
@@ -391,8 +394,8 @@ void File::Clear() {
     lock_guard<recursive_mutex> lock(m_mutex);
     m_pages.clear();
   }
-  m_mtime.store(time(NULL));
-  m_size.store(0);
+  m_mtime.store(0);
+  m_cacheSize.store(0);
 }
 
 // --------------------------------------------------------------------------
@@ -434,7 +437,7 @@ pair<PageSetConstIterator, bool> File::UnguardedAddPage(off_t offset,
   } else {
     res = m_pages.emplace(new Page(offset, len, buffer));
     if (res.second) {
-      m_size += len;  // count size of data stored in cache
+      m_cacheSize += len;  // count size of data stored in cache
     }
   }
 
@@ -454,7 +457,7 @@ pair<PageSetConstIterator, bool> File::UnguardedAddPage(
   } else {
     res = m_pages.emplace(new Page(offset, len, stream));
     if (res.second) {
-      m_size += len;
+      m_cacheSize += len;
     }
   }
   DebugErrorIf(!res.second,
@@ -472,7 +475,7 @@ pair<PageSetConstIterator, bool> File::UnguardedAddPage(
   } else {
     res = m_pages.emplace(new Page(offset, len, std::move(stream)));
     if (res.second) {
-      m_size += len;
+      m_cacheSize += len;
     }
   }
   DebugErrorIf(!res.second,

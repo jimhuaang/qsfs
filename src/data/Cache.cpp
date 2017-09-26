@@ -85,8 +85,10 @@ bool Cache::HasFileData(const string &filePath, off_t start,
 // --------------------------------------------------------------------------
 ContentRangeDeque Cache::GetUnloadedRanges(const string &filePath,
                                            uint64_t fileTotalSize) const {
+  ContentRangeDeque ranges;
   if (!HasFile(filePath)) {
-    return ContentRangeDeque();
+    ranges.emplace_back(0, fileTotalSize);
+    return ranges;
   }
   auto it = m_map.find(filePath);
   auto &file = it->second->second;
@@ -141,6 +143,8 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
     return 0;
   }
 
+  DebugInfo("Read cache [offset:len=" + to_string(offset) + ":" +
+            to_string(len) + "] " + FormatPath(fileId));
   memset(buffer, 0, len);  // Clear input buffer.
   size_t sizeBegin = 0;
   auto pos = m_cache.begin();
@@ -209,6 +213,8 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
     return false;
   }
 
+  DebugInfo("Write cache [offset:len=" + to_string(offset) + ":" +
+            to_string(len) + "] " + FormatPath(fileId));
   auto res = PrepareWrite(fileId, len);
   auto success = res.first;
   if(success){
@@ -245,6 +251,8 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
     return false;
   }
 
+  DebugInfo("Write cache [offset:len=" + to_string(offset) + ":" +
+            to_string(len) + "] " + FormatPath(fileId));
   auto res = PrepareWrite(fileId, len);
   auto success = res.first;
   if(success){
@@ -253,7 +261,7 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
     success = (*file)->Write(offset, len, std::move(stream), mtime);
   }
   if (success) {
-    m_size += len;
+    m_size += len;  // TODO(jim): should check if file exist at first from file, or file Write return added size
     return true;
   } else {
     return false;
@@ -340,6 +348,7 @@ bool Cache::Free(size_t size) {
 CacheListIterator Cache::Erase(const string &fileId) {
   auto it = m_map.find(fileId);
   if (it != m_map.end()) {
+    DebugInfo("Erase cache " + FormatPath(fileId));
     return UnguardedErase(it);
   } else {
     DebugInfo("File not exist, no remove " + FormatPath(fileId));

@@ -69,9 +69,10 @@ TransferManager::~TransferManager() {
 
 // --------------------------------------------------------------------------
 size_t TransferManager::GetBufferCount() const {
-  return GetBufferSize() == 0 ? 0
-                              : static_cast<size_t>(std::ceil(
-                                    GetBufferMaxHeapSize() / GetBufferSize()));
+  return GetBufferSize() == 0
+             ? 0
+             : static_cast<size_t>(
+                   std::floor(GetBufferMaxHeapSize() / GetBufferSize() + 1));
 }
 
 // --------------------------------------------------------------------------

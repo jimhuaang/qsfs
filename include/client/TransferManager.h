@@ -84,11 +84,11 @@ class TransferManager {
  public:
   // Download a file
   //
-  // @param  : file path, file offset, size, bufStream
+  // @param  : file path, file offset, size, bufStream, falg asynchornizely
   // @return : transfer handle
   virtual std::shared_ptr<TransferHandle> DownloadFile(
       const std::string &filePath, off_t offset, uint64_t size,
-      std::shared_ptr<std::iostream> bufStream) = 0;
+      std::shared_ptr<std::iostream> bufStream, bool async = false) = 0;
 
   // Retry a failed download
   //
@@ -96,21 +96,21 @@ class TransferManager {
   // @return : transfer handle after been retried
   virtual std::shared_ptr<TransferHandle> RetryDownload(
       const std::shared_ptr<TransferHandle> &handle,
-      std::shared_ptr<std::iostream> bufStream) = 0;
+      std::shared_ptr<std::iostream> bufStream, bool async = false) = 0;
 
   // Upload a file
   //
   // @param  : file path, file size
   // @return : transfer handle
   virtual std::shared_ptr<TransferHandle> UploadFile(
-      const std::string &filePath, uint64_t fileSize) = 0;
+      const std::string &filePath, uint64_t fileSize, bool async = false) = 0;
 
   // Retry a failed upload
   //
   // @param  : tranfser handle to retry
   // @return : transfer handle after been retried
   virtual std::shared_ptr<TransferHandle> RetryUpload(
-      const std::shared_ptr<TransferHandle> &handle) = 0;
+      const std::shared_ptr<TransferHandle> &handle, bool async = false) = 0;
 
   // Abort a multipart upload
   //

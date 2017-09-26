@@ -57,6 +57,7 @@ std::string BuildRequestRange(off_t start, size_t size) {
   assert(size > 0);
   DebugWarningIf(size == 0, "Invalide input with zero range size");
   // format: "bytes=start_offset-stop_offset"
+  // e.g. bytes=0-0 return the first byte
   string range = "bytes=";
   range += to_string(start);
   range += "-";

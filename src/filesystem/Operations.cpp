@@ -993,8 +993,7 @@ int qsfs_open(const char* path, struct fuse_file_info* fi) {
     } else {
       // Check parent directory
       string dirName = GetDirName(path);
-      auto res = drive.GetNode(dirName, false);  // open file, so no update dir
-      auto parent = res.first.lock();
+      auto parent = drive.GetNodeSimple(dirName).lock();
       if (!(parent && *parent)) {
         ret = -EINVAL;  // invalid argument
         throw QSException("No parent directory " + FormatPath(path));
@@ -1070,7 +1069,7 @@ int qsfs_read(const char* path, char* buf, size_t size, off_t offset,
   auto& drive = Drive::Instance();
   try {
     // Check if file exists
-    auto node = drive.GetNode(path, false).first.lock();
+    auto node = drive.GetNodeSimple(path).lock();
     if (!(node && *node)) {
       errno = ENOENT;  // No such file or directory
       throw QSException("No such file " + FormatPath(path));
@@ -1130,7 +1129,7 @@ int qsfs_write(const char* path, const char* buf, size_t size, off_t offset,
   auto& drive = Drive::Instance();
   try {
     // Check if file exists
-    auto node = drive.GetNode(path, false).first.lock();
+    auto node = drive.GetNodeSimple(path).lock();
     if (!(node && *node)) {
       errno = ENOENT;  // No such file or directory
       throw QSException("No such file " + FormatPath(path));
@@ -1398,8 +1397,8 @@ int qsfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
   auto dirPath = AppendPathDelim(path);
   try {
     // Check if dir exists
-    auto res = drive.GetNode(dirPath, true);  // update dir synchronizely
-    auto node = res.first.lock();
+    // As opendir get called before readdir, no need to update dir again.
+    auto node = drive.GetNodeSimple(dirPath).lock();
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
       throw QSException("No such directory " + FormatPath(path));
