@@ -18,7 +18,9 @@
 
 #include <assert.h>
 
+#include <chrono>  // NOLINT
 #include <memory>
+#include <future>  // NOLINT
 #include <utility>
 #include <vector>
 
@@ -31,6 +33,7 @@
 //#include "qingstor-sdk-cpp/types/ObjectPartType.h"
 
 #include "base/LogMacros.h"
+#include "base/ThreadPool.h"
 #include "client/ClientConfiguration.h"
 #include "client/QSClient.h"
 #include "client/QSError.h"
@@ -73,12 +76,15 @@ using QingStor::UploadMultipartInput;
 using QingStor::UploadMultipartOutput;
 using QS::Client::Utils::ParseRequestContentRange;
 using QS::Client::Utils::ParseResponseContentRange;
+using std::chrono::milliseconds;
+using std::pair;
 using std::string;
 using std::unique_ptr;
 using std::vector;
 
 namespace {
 
+// --------------------------------------------------------------------------
 ClientError<QSError> BuildQSError(QsError sdkErr, const string &exceptionName,
                                   const QsOutput &output, bool retriable) {
   // QS_ERR_NO_ERROR only says the request has sent, but it desen't not mean
@@ -94,10 +100,36 @@ ClientError<QSError> BuildQSError(QsError sdkErr, const string &exceptionName,
                               SDKResponseCodeToString(rspCode), retriable);
 }
 
+// --------------------------------------------------------------------------
+ClientError<QSError> TimeOutError(const string &exceptionName,
+                                  std::future_status status) {
+  ClientError<QSError> err;
+  switch (status) {
+    case std::future_status::timeout:
+      // request timeout is retryable
+      err =
+          ClientError<QSError>(QSError::REQUEST_EXPIRED, exceptionName,
+                               QSErrorToString(QSError::REQUEST_EXPIRED), true);
+      break;
+    case std::future_status::deferred:
+      err = ClientError<QSError>(QSError::REQUEST_DEFERRED, exceptionName,
+                                 QSErrorToString(QSError::REQUEST_DEFERRED),
+                                 false);
+      break;
+    case std::future_status::ready:  // Bypass
+    default:
+      err = ClientError<QSError>(QSError::GOOD, exceptionName,
+                                 QSErrorToString(QSError::GOOD), false);
+      break;
+  }
+
+  return err;
+}
+
 }  // namespace
 
 // --------------------------------------------------------------------------
-QSClientImpl::QSClientImpl() {
+QSClientImpl::QSClientImpl() : ClientImpl() {
   if (!m_bucket) {
     const auto &clientConfig = ClientConfiguration::Instance();
     const auto &qsService = QSClient::GetQingStorService();
@@ -108,38 +140,68 @@ QSClientImpl::QSClientImpl() {
 }
 
 // --------------------------------------------------------------------------
-GetBucketStatisticsOutcome QSClientImpl::GetBucketStatistics() const {
-  GetBucketStatisticsInput input;  // dummy input
-  GetBucketStatisticsOutput output;
-  auto sdkErr = m_bucket->getBucketStatistics(input, output);
-  auto responseCode = output.GetResponseCode();
-  if (SDKResponseSuccess(sdkErr, responseCode)) {
-    return GetBucketStatisticsOutcome(std::move(output));
+GetBucketStatisticsOutcome QSClientImpl::GetBucketStatistics(
+    uint32_t msTimeDuration) const {
+  string exceptionName = "QingStorGetBucketStatistics";
+  auto DoGetBucketStatistics =
+      [this]() -> pair<QsError, GetBucketStatisticsOutput> {
+    GetBucketStatisticsInput input;  // dummy input
+    GetBucketStatisticsOutput output;
+    auto sdkErr = m_bucket->getBucketStatistics(input, output);
+    return {sdkErr, std::move(output)};
+  };
+  auto fGetBucketStatistics =
+      GetExecutor()->SubmitCallablePrioritized(DoGetBucketStatistics);
+  auto fStatus = fGetBucketStatistics.wait_for(milliseconds(msTimeDuration));
+  if (fStatus == std::future_status::ready) {
+    auto res = fGetBucketStatistics.get();
+    auto &sdkErr = res.first;
+    auto &output = res.second;
+    auto responseCode = output.GetResponseCode();
+    if (SDKResponseSuccess(sdkErr, responseCode)) {
+      return GetBucketStatisticsOutcome(std::move(output));
+    } else {
+      return GetBucketStatisticsOutcome(std::move(BuildQSError(
+          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    }
   } else {
     return GetBucketStatisticsOutcome(
-        std::move(BuildQSError(sdkErr, "QingStorGetBucketStatistics", output,
-                               SDKShouldRetry(responseCode))));
+        std::move(TimeOutError(exceptionName, fStatus)));
   }
 }
 
 // --------------------------------------------------------------------------
-HeadBucketOutcome QSClientImpl::HeadBucket() const {
-  HeadBucketInput input;  // dummy input
-  HeadBucketOutput output;
-  auto sdkErr = m_bucket->headBucket(input, output);
-  auto responseCode = output.GetResponseCode();
-  if (SDKResponseSuccess(sdkErr, responseCode)) {
-    return HeadBucketOutcome(std::move(output));
+HeadBucketOutcome QSClientImpl::HeadBucket(uint32_t msTimeDuration) const {
+  string exceptionName = "QingStorHeadBucket";
+  auto DoHeadBucket = [this]() -> pair<QsError, HeadBucketOutput> {
+    HeadBucketInput input;  // dummy input
+    HeadBucketOutput output;
+    auto sdkErr = m_bucket->headBucket(input, output);
+    return {sdkErr, std::move(output)};
+  };
+  auto fHeadBucket = GetExecutor()->SubmitCallablePrioritized(DoHeadBucket);
+  auto fStatus = fHeadBucket.wait_for(milliseconds(msTimeDuration));
+  if (fStatus == std::future_status::ready) {
+    auto res = fHeadBucket.get();
+    auto &sdkErr = res.first;
+    auto &output = res.second;
+    auto responseCode = output.GetResponseCode();
+    if (SDKResponseSuccess(sdkErr, responseCode)) {
+      return HeadBucketOutcome(std::move(output));
+    } else {
+      return HeadBucketOutcome(std::move(BuildQSError(
+          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    }
   } else {
-    return HeadBucketOutcome(std::move(BuildQSError(
-        sdkErr, "QingStorHeadBucket", output, SDKShouldRetry(responseCode))));
+    return HeadBucketOutcome(std::move(TimeOutError(exceptionName, fStatus)));
   }
 }
 
 // --------------------------------------------------------------------------
 ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
                                              bool *resultTruncated,
-                                             uint64_t maxCount) const {
+                                             uint64_t maxCount,
+                                             uint32_t msTimeDuration) const {
   string exceptionName = "QingStorListObjects";
   if (input == nullptr) {
     return ListObjectsOutcome(
@@ -164,23 +226,38 @@ ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
       int remainingCount = static_cast<int>(maxCount - count);
       if (remainingCount < input->GetLimit()) input->SetLimit(remainingCount);
     }
-    ListObjectsOutput output;
-    auto sdkErr = m_bucket->listObjects(*input, output);
-    auto responseCode = output.GetResponseCode();
-    if (SDKResponseSuccess(sdkErr, responseCode)) {
-      count += output.GetKeys().size();
-      count += output.GetCommonPrefixes().size();
-      responseTruncated = !output.GetNextMarker().empty();
-      if (responseTruncated) {
-        input->SetMarker(output.GetNextMarker());
+
+    auto DoListObjects = [this, input]() -> pair<QsError, ListObjectsOutput> {
+      ListObjectsOutput output;
+      auto sdkErr = m_bucket->listObjects(*input, output);
+      return {sdkErr, std::move(output)};
+    };
+    auto fListObjects = GetExecutor()->SubmitCallablePrioritized(DoListObjects);
+    auto fStatus = fListObjects.wait_for(milliseconds(msTimeDuration));
+    if (fStatus == std::future_status::ready) {
+      auto res = fListObjects.get();
+      auto &sdkErr = res.first;
+      auto &output = res.second;
+
+      auto responseCode = output.GetResponseCode();
+      if (SDKResponseSuccess(sdkErr, responseCode)) {
+        count += output.GetKeys().size();
+        count += output.GetCommonPrefixes().size();
+        responseTruncated = !output.GetNextMarker().empty();
+        if (responseTruncated) {
+          input->SetMarker(output.GetNextMarker());
+        }
+        result.push_back(std::move(output));
+      } else {
+        return ListObjectsOutcome(std::move(BuildQSError(
+            sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
       }
-      result.push_back(std::move(output));
     } else {
-      return ListObjectsOutcome(std::move(BuildQSError(
-          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+      return ListObjectsOutcome(
+          std::move(TimeOutError(exceptionName, fStatus)));
     }
   } while (responseTruncated && (listAllObjects || count < maxCount));
-  if(resultTruncated != nullptr){
+  if (resultTruncated != nullptr) {
     *resultTruncated = responseTruncated;
   }
   return ListObjectsOutcome(std::move(result));
@@ -188,29 +265,46 @@ ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
 
 // --------------------------------------------------------------------------
 DeleteMultipleObjectsOutcome QSClientImpl::DeleteMultipleObjects(
-    DeleteMultipleObjectsInput *input) const {
+    DeleteMultipleObjectsInput *input, uint32_t msTimeDuration) const {
   static const char *exceptionName = "QingStorDeleteMultipleObjects";
   if (input == nullptr) {
     return DeleteMultipleObjectsOutcome(
         ClientError<QSError>(QSError::PARAMETER_MISSING, exceptionName,
                              "Null DeleteMultiplueObjectsInput", false));
   }
-  DeleteMultipleObjectsOutput output;
-  auto sdkErr = m_bucket->deleteMultipleObjects(*input, output);
-  auto responseCode = output.GetResponseCode();
-  if (SDKResponseSuccess(sdkErr, responseCode)) {
-    // TODO(jim): check undeleted objects
-    return DeleteMultipleObjectsOutcome(std::move(output));
+
+  auto DoDeleteMultiObject =
+      [this, input]() -> pair<QsError, DeleteMultipleObjectsOutput> {
+    DeleteMultipleObjectsOutput output;
+    auto sdkErr = m_bucket->deleteMultipleObjects(*input, output);
+    return {sdkErr, std::move(output)};
+  };
+  auto fDeleteMultiObject =
+      GetExecutor()->SubmitCallablePrioritized(DoDeleteMultiObject);
+  auto fStatus = fDeleteMultiObject.wait_for(milliseconds(msTimeDuration));
+  if (fStatus == std::future_status::ready) {
+    auto res = fDeleteMultiObject.get();
+    auto &sdkErr = res.first;
+    auto &output = res.second;
+
+    auto responseCode = output.GetResponseCode();
+    if (SDKResponseSuccess(sdkErr, responseCode)) {
+      // TODO(jim): check undeleted objects
+      return DeleteMultipleObjectsOutcome(std::move(output));
+    } else {
+      return DeleteMultipleObjectsOutcome(std::move(BuildQSError(
+          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    }
   } else {
-    return DeleteMultipleObjectsOutcome(std::move(BuildQSError(
-        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    return DeleteMultipleObjectsOutcome(
+        std::move(TimeOutError(exceptionName, fStatus)));
   }
 }
 
 // --------------------------------------------------------------------------
 ListMultipartUploadsOutcome QSClientImpl::ListMultipartUploads(
     QingStor::ListMultipartUploadsInput *input, bool *resultTruncated,
-    uint64_t maxCount) const {
+    uint64_t maxCount, uint32_t msTimeDuration) const {
   string exceptionName = "QingStorListMultipartUploads";
   if (input == nullptr) {
     return ListMultipartUploadsOutcome(
@@ -236,19 +330,35 @@ ListMultipartUploadsOutcome QSClientImpl::ListMultipartUploads(
       int remainingCount = static_cast<int>(maxCount - count);
       if (remainingCount < input->GetLimit()) input->SetLimit(remainingCount);
     }
-    ListMultipartUploadsOutput output;
-    auto sdkErr = m_bucket->listMultipartUploads(*input, output);
-    auto responseCode = output.GetResponseCode();
-    if (SDKResponseSuccess(sdkErr, responseCode)) {
-      count += output.GetUploads().size();
-      responseTruncated = !output.GetNextMarker().empty();
-      if (responseTruncated) {
-        input->SetMarker(output.GetNextMarker());
+
+    auto DoListMultipartUploads =
+        [this, input]() -> pair<QsError, ListMultipartUploadsOutput> {
+      ListMultipartUploadsOutput output;
+      auto sdkErr = m_bucket->listMultipartUploads(*input, output);
+      return {sdkErr, std::move(output)};
+    };
+    auto fListMultiPartUploads =
+        GetExecutor()->SubmitCallablePrioritized(DoListMultipartUploads);
+    auto fStatus = fListMultiPartUploads.wait_for(milliseconds(msTimeDuration));
+    if (fStatus == std::future_status::ready) {
+      auto res = fListMultiPartUploads.get();
+      auto &sdkErr = res.first;
+      auto &output = res.second;
+      auto responseCode = output.GetResponseCode();
+      if (SDKResponseSuccess(sdkErr, responseCode)) {
+        count += output.GetUploads().size();
+        responseTruncated = !output.GetNextMarker().empty();
+        if (responseTruncated) {
+          input->SetMarker(output.GetNextMarker());
+        }
+        result.push_back(std::move(output));
+      } else {
+        return ListMultipartUploadsOutcome(std::move(BuildQSError(
+            sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
       }
-      result.push_back(std::move(output));
     } else {
-      return ListMultipartUploadsOutcome(std::move(BuildQSError(
-          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+      return ListMultipartUploadsOutcome(
+          std::move(TimeOutError(exceptionName, fStatus)));
     }
   } while (responseTruncated && (listAllPartUploads || count < maxCount));
   if (resultTruncated != nullptr) {
@@ -258,7 +368,8 @@ ListMultipartUploadsOutcome QSClientImpl::ListMultipartUploads(
 }
 
 // --------------------------------------------------------------------------
-DeleteObjectOutcome QSClientImpl::DeleteObject(const string &objKey) const {
+DeleteObjectOutcome QSClientImpl::DeleteObject(const string &objKey,
+                                               uint32_t msTimeDuration) const {
   string exceptionName = "QingStorDeleteObject";
   if (objKey.empty()) {
     return DeleteObjectOutcome(ClientError<QSError>(
@@ -267,21 +378,35 @@ DeleteObjectOutcome QSClientImpl::DeleteObject(const string &objKey) const {
   exceptionName.append(" object=");
   exceptionName.append(objKey);
 
-  DeleteObjectInput input;  // dummy input
-  DeleteObjectOutput output;
-  auto sdkErr = m_bucket->deleteObject(objKey, input, output);
-  auto responseCode = output.GetResponseCode();
-  if (SDKResponseSuccess(sdkErr, responseCode)) {
-    return DeleteObjectOutcome(std::move(output));
+  auto DoDeleteObject = [this, objKey]() -> pair<QsError, DeleteObjectOutput> {
+    DeleteObjectInput input;  // dummy input
+    DeleteObjectOutput output;
+    auto sdkErr = m_bucket->deleteObject(objKey, input, output);
+    return {sdkErr, std::move(output)};
+  };
+
+  auto fDeleteObject = GetExecutor()->SubmitCallablePrioritized(DoDeleteObject);
+  auto fStatus = fDeleteObject.wait_for(milliseconds(msTimeDuration));
+  if (fStatus == std::future_status::ready) {
+    auto res = fDeleteObject.get();
+    auto &sdkErr = res.first;
+    auto &output = res.second;
+    auto responseCode = output.GetResponseCode();
+    if (SDKResponseSuccess(sdkErr, responseCode)) {
+      return DeleteObjectOutcome(std::move(output));
+    } else {
+      return DeleteObjectOutcome(std::move(BuildQSError(
+          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    }
   } else {
-    return DeleteObjectOutcome(std::move(BuildQSError(
-        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    return DeleteObjectOutcome(std::move(TimeOutError(exceptionName, fStatus)));
   }
 }
 
 // --------------------------------------------------------------------------
 GetObjectOutcome QSClientImpl::GetObject(const std::string &objKey,
-                                         GetObjectInput *input) const {
+                                         GetObjectInput *input,
+                                         uint32_t msTimeDuration) const {
   string exceptionName = "QingStorGetObject";
   if (objKey.empty() || input == nullptr) {
     return GetObjectOutcome(
@@ -292,35 +417,51 @@ GetObjectOutcome QSClientImpl::GetObject(const std::string &objKey,
   exceptionName.append(objKey);
 
   bool askPartialContent = !input->GetRange().empty();
-  GetObjectOutput output;
-  auto sdkErr = m_bucket->getObject(objKey, *input, output);
-  auto responseCode = output.GetResponseCode();
-  if (SDKResponseSuccess(sdkErr, responseCode)) {
-    if (askPartialContent) {
-      // qs sdk specification: if request set with range parameter, then 
-      // response successful with code 206 (Partial Content)
-      if (output.GetResponseCode() != HttpResponseCode::PARTIAL_CONTENT) {
-        return GetObjectOutcome(
-            std::move(BuildQSError(sdkErr, exceptionName, output, true)));
-      } else {
-        size_t reqLen = ParseRequestContentRange(input->GetRange()).second;
-        //auto rspRes = ParseResponseContentRange(output.GetContentRange());
-        size_t rspLen = output.GetContentLength();
-        DebugWarningIf(rspLen < reqLen,
-                       "[content range request:response=" + input->GetRange() +
-                           ":" + output.GetContentRange() + "]");
+
+  auto DoGetObject = [this, objKey, input]() -> pair<QsError, GetObjectOutput> {
+    GetObjectOutput output;
+    auto sdkErr = m_bucket->getObject(objKey, *input, output);
+    return {sdkErr, std::move(output)};
+  };
+
+  auto fGetObject = GetExecutor()->SubmitCallablePrioritized(DoGetObject);
+  auto fStatus = fGetObject.wait_for(milliseconds(msTimeDuration));
+  if (fStatus == std::future_status::ready) {
+    auto res = fGetObject.get();
+    auto &sdkErr = res.first;
+    auto &output = res.second;
+    auto responseCode = output.GetResponseCode();
+    if (SDKResponseSuccess(sdkErr, responseCode)) {
+      if (askPartialContent) {
+        // qs sdk specification: if request set with range parameter, then
+        // response successful with code 206 (Partial Content)
+        if (output.GetResponseCode() != HttpResponseCode::PARTIAL_CONTENT) {
+          return GetObjectOutcome(
+              std::move(BuildQSError(sdkErr, exceptionName, output, true)));
+        } else {
+          size_t reqLen = ParseRequestContentRange(input->GetRange()).second;
+          // auto rspRes = ParseResponseContentRange(output.GetContentRange());
+          size_t rspLen = output.GetContentLength();
+          DebugWarningIf(
+              rspLen < reqLen,
+              "[content range request:response=" + input->GetRange() + ":" +
+                  output.GetContentRange() + "]");
+        }
       }
+      return GetObjectOutcome(std::move(output));
+    } else {
+      return GetObjectOutcome(std::move(BuildQSError(
+          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
     }
-    return GetObjectOutcome(std::move(output));
   } else {
-    return GetObjectOutcome(std::move(BuildQSError(
-        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    return GetObjectOutcome(std::move(TimeOutError(exceptionName, fStatus)));
   }
 }
 
 // --------------------------------------------------------------------------
 HeadObjectOutcome QSClientImpl::HeadObject(const string &objKey,
-                                           HeadObjectInput *input) const {
+                                           HeadObjectInput *input,
+                                           uint32_t msTimeDuration) const {
   string exceptionName = "QingStorHeadObject";
   if (objKey.empty() || input == nullptr) {
     return HeadObjectOutcome(
@@ -330,20 +471,37 @@ HeadObjectOutcome QSClientImpl::HeadObject(const string &objKey,
   exceptionName.append(" object=");
   exceptionName.append(objKey);
 
-  HeadObjectOutput output;
-  auto sdkErr = m_bucket->headObject(objKey, *input, output);
-  auto responseCode = output.GetResponseCode();
-  if (SDKResponseSuccess(sdkErr, responseCode)) {
-    return HeadObjectOutcome(std::move(output));
+  auto DoHeadObject = [this, objKey,
+                       input]() -> pair<QsError, HeadObjectOutput> {
+    HeadObjectOutput output;
+    auto sdkErr = m_bucket->headObject(objKey, *input, output);
+    return {sdkErr, std::move(output)};
+  };
+
+  auto fHeadObject = GetExecutor()->SubmitCallablePrioritized(DoHeadObject);
+  auto fStatus =
+      fHeadObject.wait_for(milliseconds(msTimeDuration));
+  if (fStatus == std::future_status::ready) {
+    auto res = fHeadObject.get();
+    auto &sdkErr = res.first;
+    auto &output = res.second;
+    auto responseCode = output.GetResponseCode();
+    if (SDKResponseSuccess(sdkErr, responseCode)) {
+      return HeadObjectOutcome(std::move(output));
+    } else {
+      return HeadObjectOutcome(std::move(BuildQSError(
+          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    }
+
   } else {
-    return HeadObjectOutcome(std::move(BuildQSError(
-        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    return HeadObjectOutcome(std::move(TimeOutError(exceptionName, fStatus)));
   }
 }
 
 // --------------------------------------------------------------------------
 PutObjectOutcome QSClientImpl::PutObject(const string &objKey,
-                                         PutObjectInput *input) const {
+                                         PutObjectInput *input,
+                                         uint32_t msTimeDuration) const {
   string exceptionName = "QingStorPutObject";
   if (objKey.empty() || input == nullptr) {
     return PutObjectOutcome(
@@ -353,20 +511,34 @@ PutObjectOutcome QSClientImpl::PutObject(const string &objKey,
   exceptionName.append(" object=");
   exceptionName.append(objKey);
 
-  PutObjectOutput output;
-  auto sdkErr = m_bucket->putObject(objKey, *input, output);
-  auto responseCode = output.GetResponseCode();
-  if (SDKResponseSuccess(sdkErr, responseCode)) {
-    return PutObjectOutcome(std::move(output));
+  auto DoPutObject = [this, objKey, input]() -> pair<QsError, PutObjectOutput> {
+    PutObjectOutput output;
+    auto sdkErr = m_bucket->putObject(objKey, *input, output);
+    return {sdkErr, std::move(output)};
+  };
+
+  auto fPutObject = GetExecutor()->SubmitCallablePrioritized(DoPutObject);
+  auto fStatus = fPutObject.wait_for(milliseconds(msTimeDuration));
+  if (fStatus == std::future_status::ready) {
+    auto res = fPutObject.get();
+    auto &sdkErr = res.first;
+    auto &output = res.second;
+    auto responseCode = output.GetResponseCode();
+    if (SDKResponseSuccess(sdkErr, responseCode)) {
+      return PutObjectOutcome(std::move(output));
+    } else {
+      return PutObjectOutcome(std::move(BuildQSError(
+          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    }
   } else {
-    return PutObjectOutcome(std::move(BuildQSError(
-        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    return PutObjectOutcome(std::move(TimeOutError(exceptionName, fStatus)));
   }
 }
 
 // --------------------------------------------------------------------------
 InitiateMultipartUploadOutcome QSClientImpl::InitiateMultipartUpload(
-    const string &objKey, QingStor::InitiateMultipartUploadInput *input) const {
+    const string &objKey, QingStor::InitiateMultipartUploadInput *input,
+    uint32_t msTimeDuration) const {
   string exceptionName = "QingStorInitiateMultipartUpload";
   if (objKey.empty() || input == nullptr) {
     return InitiateMultipartUploadOutcome(ClientError<QSError>(
@@ -376,20 +548,37 @@ InitiateMultipartUploadOutcome QSClientImpl::InitiateMultipartUpload(
   exceptionName.append(" object=");
   exceptionName.append(objKey);
 
-  InitiateMultipartUploadOutput output;
-  auto sdkErr = m_bucket->initiateMultipartUpload(objKey, *input, output);
-  auto responseCode = output.GetResponseCode();
-  if (SDKResponseSuccess(sdkErr, responseCode)) {
-    return InitiateMultipartUploadOutcome(std::move(output));
+  auto DoInitiateMultipartUpload =
+      [this, objKey,
+       input]() -> pair<QsError, InitiateMultipartUploadOutput> {
+    InitiateMultipartUploadOutput output;
+    auto sdkErr = m_bucket->initiateMultipartUpload(objKey, *input, output);
+    return {sdkErr, std::move(output)};
+  };
+  auto fInitMultipartUpload =
+      GetExecutor()->SubmitCallablePrioritized(DoInitiateMultipartUpload);
+  auto fStatus = fInitMultipartUpload.wait_for(milliseconds(msTimeDuration));
+  if (fStatus == std::future_status::ready) {
+    auto res = fInitMultipartUpload.get();
+    auto &sdkErr = res.first;
+    auto &output = res.second;
+    auto responseCode = output.GetResponseCode();
+    if (SDKResponseSuccess(sdkErr, responseCode)) {
+      return InitiateMultipartUploadOutcome(std::move(output));
+    } else {
+      return InitiateMultipartUploadOutcome(std::move(BuildQSError(
+          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    }
   } else {
-    return InitiateMultipartUploadOutcome(std::move(BuildQSError(
-        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    return InitiateMultipartUploadOutcome(
+        std::move(TimeOutError(exceptionName, fStatus)));
   }
 }
 
 // --------------------------------------------------------------------------
 UploadMultipartOutcome QSClientImpl::UploadMultipart(
-    const string &objKey, UploadMultipartInput *input) const {
+    const string &objKey, UploadMultipartInput *input,
+    uint32_t msTimeDuration) const {
   string exceptionName = "QingStorUploadMultipart";
   if (objKey.empty() || input == nullptr) {
     return UploadMultipartOutcome(ClientError<QSError>(
@@ -399,20 +588,36 @@ UploadMultipartOutcome QSClientImpl::UploadMultipart(
   exceptionName.append(" object=");
   exceptionName.append(objKey);
 
-  UploadMultipartOutput output;
-  auto sdkErr = m_bucket->uploadMultipart(objKey, *input, output);
-  auto responseCode = output.GetResponseCode();
-  if (SDKResponseSuccess(sdkErr, responseCode)) {
-    return UploadMultipartOutcome(std::move(output));
+  auto DoUploadMultipart = [this, objKey,
+                            input]() -> pair<QsError, UploadMultipartOutput> {
+    UploadMultipartOutput output;
+    auto sdkErr = m_bucket->uploadMultipart(objKey, *input, output);
+    return {sdkErr, std::move(output)};
+  };
+  auto fUploadMultipart =
+      GetExecutor()->SubmitCallablePrioritized(DoUploadMultipart);
+  auto fStatus = fUploadMultipart.wait_for(milliseconds(msTimeDuration));
+  if (fStatus == std::future_status::ready) {
+    auto res = fUploadMultipart.get();
+    auto &sdkErr = res.first;
+    auto &output = res.second;
+    auto responseCode = output.GetResponseCode();
+    if (SDKResponseSuccess(sdkErr, responseCode)) {
+      return UploadMultipartOutcome(std::move(output));
+    } else {
+      return UploadMultipartOutcome(std::move(BuildQSError(
+          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    }
   } else {
-    return UploadMultipartOutcome(std::move(BuildQSError(
-        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    return UploadMultipartOutcome(
+        std::move(TimeOutError(exceptionName, fStatus)));
   }
 }
 
 // --------------------------------------------------------------------------
 CompleteMultipartUploadOutcome QSClientImpl::CompleteMultipartUpload(
-    const string &objKey, CompleteMultipartUploadInput *input) const {
+    const string &objKey, CompleteMultipartUploadInput *input,
+    uint32_t msTimeDuration) const {
   string exceptionName = "QingStorCompleteMultipartUpload";
   if (objKey.empty() || input == nullptr) {
     return CompleteMultipartUploadOutcome(ClientError<QSError>(
@@ -422,20 +627,38 @@ CompleteMultipartUploadOutcome QSClientImpl::CompleteMultipartUpload(
   exceptionName.append(" object=");
   exceptionName.append(objKey);
 
-  CompleteMultipartUploadOutput output;
-  auto sdkErr = m_bucket->completeMultipartUpload(objKey, *input, output);
-  auto responseCode = output.GetResponseCode();
-  if (SDKResponseSuccess(sdkErr, responseCode)) {
-    return CompleteMultipartUploadOutcome(std::move(output));
+  auto DoCompleteMultipartUpload =
+      [this, objKey,
+       input]() -> pair<QsError, CompleteMultipartUploadOutput> {
+    CompleteMultipartUploadOutput output;
+    auto sdkErr = m_bucket->completeMultipartUpload(objKey, *input, output);
+    return {sdkErr, std::move(output)};
+  };
+  auto fCompleteMultipartUpload =
+      GetExecutor()->SubmitCallablePrioritized(DoCompleteMultipartUpload);
+  auto fStatus =
+      fCompleteMultipartUpload.wait_for(milliseconds(msTimeDuration));
+  if (fStatus == std::future_status::ready) {
+    auto res = fCompleteMultipartUpload.get();
+    auto &sdkErr = res.first;
+    auto &output = res.second;
+    auto responseCode = output.GetResponseCode();
+    if (SDKResponseSuccess(sdkErr, responseCode)) {
+      return CompleteMultipartUploadOutcome(std::move(output));
+    } else {
+      return CompleteMultipartUploadOutcome(std::move(BuildQSError(
+          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    }
   } else {
-    return CompleteMultipartUploadOutcome(std::move(BuildQSError(
-        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    return CompleteMultipartUploadOutcome(
+        std::move(TimeOutError(exceptionName, fStatus)));
   }
 }
 
 // --------------------------------------------------------------------------
 AbortMultipartUploadOutcome QSClientImpl::AbortMultipartUpload(
-    const string &objKey, AbortMultipartUploadInput *input) const {
+    const string &objKey, AbortMultipartUploadInput *input,
+    uint32_t msTimeDuration) const {
   string exceptionName = "QingStorAbortMultipartUpload";
   if (objKey.empty() || input == nullptr) {
     return AbortMultipartUploadOutcome(ClientError<QSError>(
@@ -445,21 +668,36 @@ AbortMultipartUploadOutcome QSClientImpl::AbortMultipartUpload(
   exceptionName.append(" object=");
   exceptionName.append(objKey);
 
-  AbortMultipartUploadOutput output;
-  auto sdkErr = m_bucket->abortMultipartUpload(objKey, *input, output);
-  auto responseCode = output.GetResponseCode();
-  if (SDKResponseSuccess(sdkErr, responseCode)) {
-    return AbortMultipartUploadOutcome(std::move(output));
+  auto DoAbortMultipartUpload =
+      [this, objKey, input]() -> pair<QsError, AbortMultipartUploadOutput> {
+    AbortMultipartUploadOutput output;
+    auto sdkErr = m_bucket->abortMultipartUpload(objKey, *input, output);
+    return {sdkErr, std::move(output)};
+  };
+  auto fAbortMultipartUpload =
+      GetExecutor()->SubmitCallablePrioritized(DoAbortMultipartUpload);
+  auto fStatus = fAbortMultipartUpload.wait_for(milliseconds(msTimeDuration));
+  if (fStatus == std::future_status::ready) {
+    auto res = fAbortMultipartUpload.get();
+    auto &sdkErr = res.first;
+    auto &output = res.second;
+    auto responseCode = output.GetResponseCode();
+    if (SDKResponseSuccess(sdkErr, responseCode)) {
+      return AbortMultipartUploadOutcome(std::move(output));
+    } else {
+      return AbortMultipartUploadOutcome(std::move(BuildQSError(
+          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    }
   } else {
-    return AbortMultipartUploadOutcome(std::move(BuildQSError(
-        sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+    return AbortMultipartUploadOutcome(
+        std::move(TimeOutError(exceptionName, fStatus)));
   }
 }
 
 // --------------------------------------------------------------------------
 ListMultipartOutcome QSClientImpl::ListMultipart(
     const string &objKey, QingStor::ListMultipartInput *input,
-    bool *resultTruncated, uint64_t maxCount) const {
+    bool *resultTruncated, uint64_t maxCount, uint32_t msTimeDuration) const {
   string exceptionName = "QingStorListMultipart";
   if (objKey.empty() || input == nullptr) {
     return ListMultipartOutcome(ClientError<QSError>(
@@ -484,23 +722,39 @@ ListMultipartOutcome QSClientImpl::ListMultipart(
       int remainingCount = static_cast<int>(maxCount - count);
       if (remainingCount < input->GetLimit()) input->SetLimit(remainingCount);
     }
-    ListMultipartOutput output;
-    auto sdkErr = m_bucket->listMultipart(objKey, *input, output);
-    auto responseCode = output.GetResponseCode();
-    if (SDKResponseSuccess(sdkErr, responseCode)) {
-      count += output.GetCount();
-      auto objParts = output.GetObjectParts();
-      responseTruncated = !objParts.empty();
-      if (!objParts.empty()) {
-        input->SetPartNumberMarker(objParts.back().GetPartNumber());
+
+    auto DoListMultipart = [this, objKey,
+                            input]() -> pair<QsError, ListMultipartOutput> {
+      ListMultipartOutput output;
+      auto sdkErr = m_bucket->listMultipart(objKey, *input, output);
+      return {sdkErr, std::move(output)};
+    };
+    auto fListMultipart =
+        GetExecutor()->SubmitCallablePrioritized(DoListMultipart);
+    auto fStatus = fListMultipart.wait_for(milliseconds(msTimeDuration));
+    if (fStatus == std::future_status::ready) {
+      auto res = fListMultipart.get();
+      auto &sdkErr = res.first;
+      auto &output = res.second;
+      auto responseCode = output.GetResponseCode();
+      if (SDKResponseSuccess(sdkErr, responseCode)) {
+        count += output.GetCount();
+        auto objParts = output.GetObjectParts();
+        responseTruncated = !objParts.empty();
+        if (!objParts.empty()) {
+          input->SetPartNumberMarker(objParts.back().GetPartNumber());
+        }
+        result.push_back(std::move(output));
+      } else {
+        return ListMultipartOutcome(std::move(BuildQSError(
+            sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
       }
-      result.push_back(std::move(output));
     } else {
-      return ListMultipartOutcome(std::move(BuildQSError(
-          sdkErr, exceptionName, output, SDKShouldRetry(responseCode))));
+      return ListMultipartOutcome(
+          std::move(TimeOutError(exceptionName, fStatus)));
     }
   } while (responseTruncated && (listAllParts || count < maxCount));
-  if (resultTruncated != nullptr){
+  if (resultTruncated != nullptr) {
     *resultTruncated = responseTruncated;
   }
   return ListMultipartOutcome(std::move(result));

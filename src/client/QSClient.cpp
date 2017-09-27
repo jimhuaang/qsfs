@@ -20,6 +20,7 @@
 #include <stdint.h>  // for uint64_t
 
 #include <chrono>
+#include <cmath>
 #include <iostream>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -46,9 +47,11 @@
 #include "client/QSClientImpl.h"
 #include "client/QSError.h"
 #include "client/URI.h"
+#include "client/Utils.h"
 #include "data/Cache.h"
 #include "data/Directory.h"
 #include "data/FileMetaData.h"
+#include "data/Size.h"
 #include "filesystem/Drive.h"
 #include "filesystem/MimeTypes.h"
 
@@ -69,6 +72,7 @@ using QingStor::QingStorService;
 using QingStor::QsConfig;  // sdk config
 using QingStor::UploadMultipartInput;
 
+using QS::Client::Utils::ParseRequestContentRange;
 using QS::Data::BuildDefaultDirectoryMeta;
 using QS::Data::Node;
 using QS::FileSystem::Drive;
@@ -105,6 +109,12 @@ string BuildXQSSourceString(const string &objKey) {
   return ret;
 }
 
+// --------------------------------------------------------------------------
+uint32_t CalculateTransferTimeForFile(uint64_t fileSize){
+  // 100 milliseconds per MB
+  return std::floor(1 + fileSize / QS::Data::Size::MB1) * 100;
+}
+
 }  // namespace
 
 static std::once_flag onceFlagGetClientImpl;
@@ -128,12 +138,13 @@ ClientError<QSError> QSClient::HeadBucket() {
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-    int32_t sleepMilliseconds =
+    uint32_t sleepMilliseconds =
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
     outcome = GetQSClientImpl()->HeadBucket();
     ++attemptedRetries;
+    DebugInfo("Retry head bucket");
   }
 
   if (outcome.IsSuccess()) {
@@ -179,12 +190,13 @@ ClientError<QSError> QSClient::DeleteObject(const std::string &filePath) {
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-    int32_t sleepMilliseconds =
+    uint32_t sleepMilliseconds =
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
     outcome = GetQSClientImpl()->DeleteObject(filePath);
     ++attemptedRetries;
+    DebugInfo("Retry delete object " + FormatPath(filePath));
   }
 
   return outcome.IsSuccess() ? ClientError<QSError>(QSError::GOOD, false)
@@ -201,12 +213,13 @@ ClientError<QSError> QSClient::MakeFile(const string &filePath) {
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-    int32_t sleepMilliseconds =
+    uint32_t sleepMilliseconds =
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
     outcome = GetQSClientImpl()->PutObject(filePath, &input);
     ++attemptedRetries;
+    DebugInfo("Retry make file " + FormatPath(filePath));
   }
 
   if (outcome.IsSuccess()) {
@@ -236,12 +249,13 @@ ClientError<QSError> QSClient::MakeDirectory(const string &dirPath) {
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-    int32_t sleepMilliseconds =
+    uint32_t sleepMilliseconds =
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
     outcome = GetQSClientImpl()->PutObject(dir, &input);
     ++attemptedRetries;
+    DebugInfo("Retry make directory " + FormatPath(dirPath));
   }
 
   if (outcome.IsSuccess()) {
@@ -389,12 +403,13 @@ ClientError<QSError> QSClient::MoveObject(const std::string &sourcePath,
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-    int32_t sleepMilliseconds =
+    uint32_t sleepMilliseconds =
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
     outcome = GetQSClientImpl()->PutObject(targetPath, &input);
     ++attemptedRetries;
+    DebugInfo("Retry move object " + FormatPath(sourcePath, targetPath));
   }
 
   return outcome.IsSuccess() ? ClientError<QSError>(QSError::GOOD, false)
@@ -406,20 +421,25 @@ ClientError<QSError> QSClient::DownloadFile(const string &filePath,
                                             const shared_ptr<iostream> &buffer,
                                             const string &range, string *eTag) {
   GetObjectInput input;
+  uint32_t timeDuration = ClientConfiguration::Instance()
+                              .GetTransactionTimeDuration();  // milliseconds
   if (!range.empty()) {
     input.SetRange(range);
+    timeDuration =
+        CalculateTransferTimeForFile(ParseRequestContentRange(range).second);
   }
 
-  auto outcome = GetQSClientImpl()->GetObject(filePath, &input);
+  auto outcome = GetQSClientImpl()->GetObject(filePath, &input, timeDuration);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-    int32_t sleepMilliseconds =
+    uint32_t sleepMilliseconds =
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->GetObject(filePath, &input);
+    outcome = GetQSClientImpl()->GetObject(filePath, &input, timeDuration);
     ++attemptedRetries;
+    DebugInfo("Retry download file " + FormatPath(filePath));
   }
 
   if (outcome.IsSuccess()) {
@@ -447,12 +467,13 @@ ClientError<QSError> QSClient::InitiateMultipartUpload(const string &filePath,
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-    int32_t sleepMilliseconds =
+    uint32_t sleepMilliseconds =
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
     outcome = GetQSClientImpl()->InitiateMultipartUpload(filePath, &input);
     ++attemptedRetries;
+    DebugInfo("Retry initiate multipart upload " + FormatPath(filePath));
   }
 
   if (outcome.IsSuccess()) {
@@ -476,16 +497,20 @@ ClientError<QSError> QSClient::UploadMultipart(
   input.SetContentLength(contentLength);
   input.SetBody(buffer);
 
-  auto outcome = GetQSClientImpl()->UploadMultipart(filePath, &input);
+  auto timeDuration = CalculateTransferTimeForFile(contentLength);
+  auto outcome =
+      GetQSClientImpl()->UploadMultipart(filePath, &input, timeDuration);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-    int32_t sleepMilliseconds =
+    uint32_t sleepMilliseconds =
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->UploadMultipart(filePath, &input);
+    outcome =
+        GetQSClientImpl()->UploadMultipart(filePath, &input, timeDuration);
     ++attemptedRetries;
+    DebugInfo("Retry upload multipart " + FormatPath(filePath));
   }
 
   if (outcome.IsSuccess()) {
@@ -513,12 +538,13 @@ ClientError<QSError> QSClient::CompleteMultipartUpload(
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-    int32_t sleepMilliseconds =
+    uint32_t sleepMilliseconds =
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
     outcome = GetQSClientImpl()->CompleteMultipartUpload(filePath, &input);
     ++attemptedRetries;
+    DebugInfo("Retry complete multipart upload " + FormatPath(filePath));
   }
 
   if (outcome.IsSuccess()) {
@@ -538,12 +564,13 @@ ClientError<QSError> QSClient::AbortMultipartUpload(const string &filePath,
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-    int32_t sleepMilliseconds =
+    uint32_t sleepMilliseconds =
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
     outcome = GetQSClientImpl()->AbortMultipartUpload(filePath, &input);
     ++attemptedRetries;
+    DebugInfo("Retry abort mulitpart upload " + FormatPath(filePath));
   }
 
   if (outcome.IsSuccess()) {
@@ -562,16 +589,19 @@ ClientError<QSError> QSClient::UploadFile(const string &filePath,
   input.SetContentType(LookupMimeType(filePath));
   input.SetBody(buffer);
 
-  auto outcome = GetQSClientImpl()->PutObject(filePath, &input);
+  auto timeDuration = CalculateTransferTimeForFile(fileSize);
+
+  auto outcome = GetQSClientImpl()->PutObject(filePath, &input, timeDuration);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-    int32_t sleepMilliseconds =
+    uint32_t sleepMilliseconds =
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->PutObject(filePath, &input);
+    outcome = GetQSClientImpl()->PutObject(filePath, &input, timeDuration);
     ++attemptedRetries;
+    DebugInfo("Retry upload file " + FormatPath(filePath));
   }
 
   if (outcome.IsSuccess()) {
@@ -603,12 +633,13 @@ ClientError<QSError> QSClient::SymLink(const string &filePath,
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-    int32_t sleepMilliseconds =
+    uint32_t sleepMilliseconds =
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
     outcome = GetQSClientImpl()->PutObject(linkPath, &input);
     ++attemptedRetries;
+    DebugInfo("Retry symlink " + FormatPath(filePath, linkPath));
   }
 
   if (outcome.IsSuccess()) {
@@ -686,13 +717,14 @@ ListObjectsOutcome QSClient::ListObjects(const string &dirPath,
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-    int32_t sleepMilliseconds =
+    uint32_t sleepMilliseconds =
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
     outcome = GetQSClientImpl()->ListObjects(&listObjInput, resultTruncated,
                                              maxCount);
     ++attemptedRetries;
+    DebugInfo("Retry list objects " + FormatPath(dirPath));
   }
 
   return outcome;
@@ -722,12 +754,13 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-    int32_t sleepMilliseconds =
+    uint32_t sleepMilliseconds =
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
     outcome = GetQSClientImpl()->HeadObject(path, &input);
     ++attemptedRetries;
+    DebugInfo("Retry head object " + FormatPath(path));
   }
 
   auto &dirTree = Drive::Instance().GetDirectoryTree();
@@ -807,12 +840,13 @@ ClientError<QSError> QSClient::Statvfs(struct statvfs *stvfs) {
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
-    int32_t sleepMilliseconds =
+    uint32_t sleepMilliseconds =
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
     outcome = GetQSClientImpl()->GetBucketStatistics();
     ++attemptedRetries;
+    DebugInfo("Retry get bucket statistics");
   }
 
   if (outcome.IsSuccess()) {

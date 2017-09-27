@@ -79,6 +79,9 @@ class ClientConfiguration {
   ClientLogLevel GetClientLogLevel() const { return m_logLevel; }
   const std::string& GetClientLogFile() const { return m_logFile; }
   uint16_t GetTransactionRetries() const { return m_transactionRetries; }
+  uint32_t GetTransactionTimeDuration() const {
+    return m_transactionTimeDuration;
+  }
   uint16_t GetPoolSize() const { return m_clientPoolSize; }
 
  private:
@@ -101,8 +104,10 @@ class ClientConfiguration {
   ClientLogLevel m_logLevel;
   std::string m_logFile;  // log file path
 
-  uint16_t m_transactionRetries;  // retry times when transaction fails
-  uint16_t m_clientPoolSize;      // pool size of client
+  uint16_t m_transactionRetries;       // retry times when transaction fails
+  uint32_t m_transactionTimeDuration;  // default time duration for one
+                                       // transaction in milliseconds
+  uint16_t m_clientPoolSize;           // pool size of client
 };
 
 }  // namespace Client

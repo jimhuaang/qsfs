@@ -135,11 +135,11 @@ class TransferManager {
   size_t GetBufferCount() const;
 
  protected:
-  std::shared_ptr<Client> GetClient() { return m_client; }
-  std::unique_ptr<QS::Threading::ThreadPool> &GetExecutor() {
+  const std::shared_ptr<Client> GetClient() const { return m_client; }
+  const std::unique_ptr<QS::Threading::ThreadPool> &GetExecutor() const {
     return m_executor;
   }
-  std::unique_ptr<QS::Data::ResourceManager> &GetBufferManager() {
+  const std::unique_ptr<QS::Data::ResourceManager> &GetBufferManager() const {
     return m_bufferManager;
   }
 

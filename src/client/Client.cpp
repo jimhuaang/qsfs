@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <mutex>  // NOLINT
+#include <utility>
 
 #include "base/ThreadPool.h"
 #include "client/ClientImpl.h"

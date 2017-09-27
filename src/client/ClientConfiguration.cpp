@@ -47,6 +47,7 @@ using QS::FileSystem::Configure::GetDefaultLogDirectory;
 using QS::FileSystem::Configure::GetDefineFileMode;
 using QS::FileSystem::Configure::GetQSConnectionDefaultRetries;
 using QS::FileSystem::Configure::GetQingStorSDKLogFileName;
+using QS::FileSystem::Configure::GetTransactionDefaultTimeDuration;
 using std::call_once;
 using std::string;
 using std::unique_ptr;
@@ -125,6 +126,7 @@ ClientConfiguration::ClientConfiguration(const Credentials &credentials)
       m_logLevel(ClientLogLevel::Warn),
       m_logFile(GetDefaultLogDirectory() + GetQingStorSDKLogFileName()),
       m_transactionRetries(Retry::DefaultMaxRetries),
+      m_transactionTimeDuration(GetTransactionDefaultTimeDuration()),
       m_clientPoolSize(GetClientDefaultPoolSize()) {}
 
 ClientConfiguration::ClientConfiguration(const CredentialsProvider &provider)

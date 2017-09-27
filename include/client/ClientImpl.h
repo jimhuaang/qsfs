@@ -17,19 +17,34 @@
 #ifndef _QSFS_FUSE_INCLUDED_CLIENT_CLIENTIMPL_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_CLIENT_CLIENTIMPL_H_  // NOLINT
 
+#include <memory>
+
+#include "base/ThreadPool.h"
+#include "client/ClientConfiguration.h"
+
 namespace QS {
 
 namespace Client {
 
 class ClientImpl {
  public:
-  ClientImpl() = default;
+  ClientImpl(std::unique_ptr<QS::Threading::ThreadPool> executor =
+                 std::unique_ptr<QS::Threading::ThreadPool>(
+                     new QS::Threading::ThreadPool(
+                         ClientConfiguration::Instance().GetPoolSize())));
   ClientImpl(ClientImpl &&) = default;
   ClientImpl(const ClientImpl &) = default;
   ClientImpl &operator=(ClientImpl &&) = default;
   ClientImpl &operator=(const ClientImpl &) = default;
-  virtual ~ClientImpl() = default;
+  virtual ~ClientImpl();
 
+ protected:
+  const std::unique_ptr<QS::Threading::ThreadPool> &GetExecutor() const {
+    return m_executor;
+  }
+
+ private:
+  std::unique_ptr<QS::Threading::ThreadPool> m_executor;
 };
 
 }  // namespace Client

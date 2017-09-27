@@ -27,6 +27,7 @@
 #include <string>
 #include <vector>
 
+#include "client/ClientConfiguration.h"
 #include "client/QSClientOutcome.h"
 
 namespace QS {
@@ -49,10 +50,14 @@ class QSClientImpl : public ClientImpl {
   //
 
   // Get bucket statistics
-  GetBucketStatisticsOutcome GetBucketStatistics() const;
+  GetBucketStatisticsOutcome GetBucketStatistics(
+      uint32_t msTimeDuration =
+          ClientConfiguration::Instance().GetTransactionTimeDuration()) const;
 
   // Head bucket
-  HeadBucketOutcome HeadBucket() const;
+  HeadBucketOutcome HeadBucket(
+      uint32_t msTimeDuration =
+          ClientConfiguration::Instance().GetTransactionTimeDuration()) const;
 
   // List bucket objects
   //
@@ -66,13 +71,19 @@ class QSClientImpl : public ClientImpl {
   //
   // If resultTruncated is true the input will be set with the next marker which
   // will help to continue the following list operation.
-  ListObjectsOutcome ListObjects(QingStor::ListObjectsInput *input,
-                                 bool *resultTruncated = nullptr,
-                                 uint64_t maxCount = 0) const;
+  ListObjectsOutcome ListObjects(
+      QingStor::ListObjectsInput *input, bool *resultTruncated = nullptr,
+      uint64_t maxCount = 0,
+      uint32_t msTimeDuration =
+          ClientConfiguration::Instance().GetTransactionTimeDuration() *
+          10) const;
 
   // Delete multiple objects
   DeleteMultipleObjectsOutcome DeleteMultipleObjects(
-      QingStor::DeleteMultipleObjectsInput *input) const;
+      QingStor::DeleteMultipleObjectsInput *input,
+      uint32_t msTimeDuration =
+          ClientConfiguration::Instance().GetTransactionTimeDuration() *
+          10) const;
 
   // List multipart uploads
   //
@@ -88,7 +99,10 @@ class QSClientImpl : public ClientImpl {
   // will help to continue the following list operation.
   ListMultipartUploadsOutcome ListMultipartUploads(
       QingStor::ListMultipartUploadsInput *input,
-      bool *resultTruncated = nullptr, uint64_t maxCount = 0) const;
+      bool *resultTruncated = nullptr, uint64_t maxCount = 0,
+      uint32_t msTimeDuration =
+          ClientConfiguration::Instance().GetTransactionTimeDuration() *
+          10) const;
 
   //
   // Object Level Operations
@@ -98,28 +112,37 @@ class QSClientImpl : public ClientImpl {
   //
   // @param  : object key
   // @return : DeleteObjectOutcome
-  DeleteObjectOutcome DeleteObject(const std::string &objKey) const;
+  DeleteObjectOutcome DeleteObject(
+      const std::string &objKey,
+      uint32_t msTimeDuration =
+          ClientConfiguration::Instance().GetTransactionTimeDuration()) const;
 
   // Get object
   //
   // @param  : object key, GetObjectInput
   // @return : GetObjectOutcome
-  GetObjectOutcome GetObject(const std::string &objKey,
-                             QingStor::GetObjectInput *input) const;
+  GetObjectOutcome GetObject(
+      const std::string &objKey, QingStor::GetObjectInput *input,
+      uint32_t msTimeDuration =
+          ClientConfiguration::Instance().GetTransactionTimeDuration()) const;
 
   // Head object
   //
-  // @param  : object key, HeadObjectInput
+  // @param  : object key, HeadObjectInput, time duration in milliseconds
   // @return : HeadObjectOutcome
-  HeadObjectOutcome HeadObject(const std::string &objKey,
-                               QingStor::HeadObjectInput *input) const;
+  HeadObjectOutcome HeadObject(
+      const std::string &objKey, QingStor::HeadObjectInput *input,
+      uint32_t msTimeDuration =
+          ClientConfiguration::Instance().GetTransactionTimeDuration()) const;
 
   // Put object
   //
-  // @param  : object key, PutObjectInput
+  // @param  : object key, PutObjectInput, time duration in milliseconds
   // @return : PutObjectOutcome
-  PutObjectOutcome PutObject(const std::string &objKey,
-                             QingStor::PutObjectInput *input) const;
+  PutObjectOutcome PutObject(
+      const std::string &objKey, QingStor::PutObjectInput *input,
+      uint32_t msTimeDuration =
+          ClientConfiguration::Instance().GetTransactionTimeDuration()) const;
 
   //
   // Multipart Operations
@@ -130,31 +153,38 @@ class QSClientImpl : public ClientImpl {
   // @param  : object key, InitiateMultipartUploadInput
   // @return : InitiateMultipartUploadOutcome
   InitiateMultipartUploadOutcome InitiateMultipartUpload(
-      const std::string &objKey,
-      QingStor::InitiateMultipartUploadInput *input) const;
+      const std::string &objKey, QingStor::InitiateMultipartUploadInput *input,
+      uint32_t msTimeDuration =
+          ClientConfiguration::Instance().GetTransactionTimeDuration()) const;
 
   // Upload multipart
   //
   // @param  : object key, UploadMultipartInput
   // @return : UploadMultipartOutcome
   UploadMultipartOutcome UploadMultipart(
-      const std::string &objKey, QingStor::UploadMultipartInput *input) const;
+      const std::string &objKey, QingStor::UploadMultipartInput *input,
+      uint32_t msTimeDuration =
+          ClientConfiguration::Instance().GetTransactionTimeDuration() *
+          10) const;
 
   // Complete multipart upload
   //
   // @param  : object key, CompleteMultipartUploadInput
   // @return : CompleteMultipartUploadOutcome
   CompleteMultipartUploadOutcome CompleteMultipartUpload(
-      const std::string &objKey,
-      QingStor::CompleteMultipartUploadInput *input) const;
+      const std::string &objKey, QingStor::CompleteMultipartUploadInput *input,
+      uint32_t msTimeDuration =
+          ClientConfiguration::Instance().GetTransactionTimeDuration() *
+          10) const;
 
   // Abort multipart upload
   //
   // @param  : object key, AbortMultipartUploadInput
   // @return : AbortMultipartUploadOutcome
   AbortMultipartUploadOutcome AbortMultipartUpload(
-      const std::string &objKey,
-      QingStor::AbortMultipartUploadInput *input) const;
+      const std::string &objKey, QingStor::AbortMultipartUploadInput *input,
+      uint32_t msTimeDuration =
+          ClientConfiguration::Instance().GetTransactionTimeDuration()) const;
 
   // List multipart
   //
@@ -168,10 +198,12 @@ class QSClientImpl : public ClientImpl {
   //
   // If resultTruncated is true the input will be set with the last part id of
   // this operation which will help to continue the following list operation.
-  ListMultipartOutcome ListMultipart(const std::string &objKey,
-                                     QingStor::ListMultipartInput *input,
-                                     bool *resultTruncated = nullptr,
-                                     uint64_t maxCount = 0) const;
+  ListMultipartOutcome ListMultipart(
+      const std::string &objKey, QingStor::ListMultipartInput *input,
+      bool *resultTruncated = nullptr, uint64_t maxCount = 0,
+      uint32_t msTimeDuration =
+          ClientConfiguration::Instance().GetTransactionTimeDuration() *
+          10) const;
 
  public:
   const std::unique_ptr<QingStor::Bucket> &GetBucket() const {

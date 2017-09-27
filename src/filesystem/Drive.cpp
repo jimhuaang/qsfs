@@ -405,10 +405,10 @@ void Drive::OpenFile(const string &filePath) {
 // --------------------------------------------------------------------------
 size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
                        char *buf) {
-  if (size > GetMaxFileCacheSize()) {
-    DebugError("Input size surpass max file cache size");
-    return 0;
-  }
+  // if (size > GetMaxFileCacheSize()) {
+  //   DebugError("Input size surpass max file cache size");
+  //   return 0;
+  // }
 
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();
@@ -419,9 +419,9 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
   int64_t remainingSize = 0;
   auto fileSize = node->GetFileSize();
   if (offset + size > fileSize) {
-    DebugWarning("Input overflow [file:offset:size:totalsize = " + filePath +
-                 ":" + to_string(offset) + ":" + to_string(size) + ":" +
-                 to_string(fileSize) + "]. Ajust it");
+    DebugInfo("Read file [offset:size=" + to_string(offset) + ":" +
+              to_string(size) + " file size=" + to_string(fileSize) + "] " +
+              FormatPath(filePath) + " Overflow, ajust it");
     downloadSize = fileSize - offset;
   } else {
     remainingSize = fileSize - (offset + size);
@@ -610,9 +610,18 @@ void Drive::UploadFile(const string &filePath, bool async) {
       }
       handle->WaitUntilFinished();
       m_unfinishedMultipartUploadHandles.erase(handle->GetObjectKey());
-      // erase it after finish upload, as upload will change file meta mtime
-      // so when you try to access it again, qsfs will download it
-      m_cache->Erase(handle->GetObjectKey());
+
+      // update meta mtime
+      auto err = GetClient()->Stat(handle->GetObjectKey());
+      if(IsGoodQSError(err)){
+        // update cache mtime
+        auto node = GetNodeSimple(handle->GetObjectKey()).lock();
+        if(node && *node){
+          m_cache->SetTime(handle->GetObjectKey(),node->GetMTime());
+        }
+      } else {
+        DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+      }
     }
   };
 
@@ -654,10 +663,10 @@ void Drive::Utimens(const string &path, time_t mtime) {
 // --------------------------------------------------------------------------
 int Drive::WriteFile(const string &filePath, off_t offset, size_t size,
                      const char *buf) {
-  if (size > GetMaxFileCacheSize()) {
-    DebugError("Input size surpass max file cache size");
-    return 0;
-  }
+  // if (size > GetMaxFileCacheSize()) {
+  //   DebugError("Input size surpass max file cache size");
+  //   return 0;
+  // }
 
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();

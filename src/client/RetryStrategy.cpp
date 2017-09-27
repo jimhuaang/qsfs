@@ -27,7 +27,7 @@ bool RetryStrategy::ShouldRetry(const ClientError<QSError> &error,
   return attemptedRetryTimes >= m_maxRetryTimes ? false : error.ShouldRetry();
 }
 
-int32_t RetryStrategy::CalculateDelayBeforeNextRetry(
+uint32_t RetryStrategy::CalculateDelayBeforeNextRetry(
     const ClientError<QSError> &error, unsigned attemptedRetryTimes) const {
   return attemptedRetryTimes == 0 ? 0
                                   : (1 << attemptedRetryTimes) * m_scaleFactor;

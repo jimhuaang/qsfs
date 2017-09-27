@@ -14,29 +14,22 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_NULLCLIENTIMPL_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_NULLCLIENTIMPL_H_  // NOLINT
-
 #include "client/ClientImpl.h"
+
+#include <utility>
 
 namespace QS {
 
 namespace Client {
 
-class NullClientImpl : public ClientImpl {
- public:
-  NullClientImpl()
-      : ClientImpl(std::unique_ptr<QS::Threading::ThreadPool>(nullptr)) {}
-  NullClientImpl(NullClientImpl &&) = default;
-  NullClientImpl(const NullClientImpl &) = default;
-  NullClientImpl &operator=(NullClientImpl &&) = default;
-  NullClientImpl &operator=(const NullClientImpl &) = default;
-  ~NullClientImpl() = default;
+// --------------------------------------------------------------------------
+ClientImpl::ClientImpl(std::unique_ptr<QS::Threading::ThreadPool> executor)
+    : m_executor(std::move(executor)) {}
 
-};
-
+// --------------------------------------------------------------------------
+ClientImpl::~ClientImpl(){
+  // do nothing
+}
+  
 }  // namespace Client
 }  // namespace QS
-
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_NULLCLIENTIMPL_H_

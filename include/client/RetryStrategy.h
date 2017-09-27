@@ -25,7 +25,7 @@ namespace QS {
 namespace Client {
 
 namespace Retry {
-static const unsigned DefaultMaxRetries = 1;
+static const unsigned DefaultMaxRetries = 3;
 static const unsigned DefaultScaleFactor = 25;
 }  // namespace Retry
 
@@ -38,8 +38,8 @@ class RetryStrategy {
   bool ShouldRetry(const ClientError<QSError> &error,
                    unsigned attemptedRetryTimes) const;
 
-  int32_t CalculateDelayBeforeNextRetry(const ClientError<QSError> &error,
-                                        unsigned attemptedRetryTimes) const;
+  uint32_t CalculateDelayBeforeNextRetry(const ClientError<QSError> &error,
+                                         unsigned attemptedRetryTimes) const;
 
  private:
   unsigned m_maxRetryTimes;

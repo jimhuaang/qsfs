@@ -56,6 +56,7 @@ uint64_t GetMaxFileCacheSize();  // File cache size in bytes
 size_t GetMaxFileMetaDataCount();  // File meta data max count
 
 int GetQSConnectionDefaultRetries();
+uint32_t GetTransactionDefaultTimeDuration();  // in milliseconds
 int GetClientDefaultPoolSize();
 const char* GetQingStorSDKLogFileName();
 

@@ -216,7 +216,7 @@ class Client {
 
  protected:
   std::shared_ptr<ClientImpl> GetClientImpl() { return m_impl; }
-  std::unique_ptr<QS::Threading::ThreadPool> &GetExecutor() {
+  const std::unique_ptr<QS::Threading::ThreadPool> &GetExecutor() const {
     return m_executor;
   }
 
