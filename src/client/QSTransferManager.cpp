@@ -201,6 +201,7 @@ void QSTransferManager::DoSinglePartDownload(
         auto &err = outcome.first;
         auto &eTag = outcome.second;
         if (IsGoodQSError(err)) {
+          part->OnDataTransferred(part->GetSize(), handle);
           handle->ChangePartToCompleted(part, eTag);
           handle->UpdateStatus(TransferStatus::Completed);
         } else {
@@ -257,6 +258,7 @@ void QSTransferManager::DoMultiPartDownload(
           if (handle->ShouldContinue()) {
             handle->WritePartToDownloadStream(part->GetDownloadPartStream(),
                                               part->GetRangeBegin());
+            part->OnDataTransferred(part->GetSize(), handle);
             handle->ChangePartToCompleted(part, eTag);
           } else {
             handle->ChangePartToFailed(part);
@@ -424,9 +426,10 @@ void QSTransferManager::DoSinglePartUpload(
   }
 
   auto stream = make_shared<IOStream>(std::move(buf), fileSize);
-  auto ReceivedHandler = [this, handle, part,
+  auto ReceivedHandler = [this, handle, part, fileSize,
                           stream](const ClientError<QSError> &err) {
     if (IsGoodQSError(err)) {
+      part->OnDataTransferred(fileSize, handle);
       handle->ChangePartToCompleted(part);  // without eTag, as sdk
                                             // PutObjectOutput not return etag
       handle->UpdateStatus(TransferStatus::Completed);
@@ -494,6 +497,7 @@ void QSTransferManager::DoMultiPartUpload(
       auto ReceivedHandler = [this, handle, part,
                               stream](const ClientError<QSError> &err) {
         if (IsGoodQSError(err)) {
+          part->OnDataTransferred(GetBufferSize(), handle);
           handle->ChangePartToCompleted(part);
         } else {
           handle->ChangePartToFailed(part);

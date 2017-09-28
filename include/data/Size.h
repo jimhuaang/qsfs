@@ -26,6 +26,10 @@ namespace Data {
 
 namespace Size {
 
+const static uint64_t KB1 = 1 * 1024;
+const static uint64_t KB10 = 10 * 1024;
+const static uint64_t KB100 = 100 *1024;
+
 const static uint64_t MB1 = 1 * 1024 * 1024;
 const static uint64_t MB4 = 4 * 1024 * 1024;
 const static uint64_t MB5 = 5 * 1024 * 1024;

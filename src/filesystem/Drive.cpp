@@ -439,18 +439,23 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
     // waiting for download to finish for request file part
     if (handle) {
       handle->WaitUntilFinished();
-      bool success = m_cache->Write(filePath, offset, downloadSize,
-                                    std::move(stream), mtime);
-      DebugErrorIf(!success,
-                   "Fail to write cache [file:offset:len=" + filePath + ":" +
-                       to_string(offset) + ":" + to_string(downloadSize) + "]");
+      if (handle->DoneTransfer() && !handle->HasFailedParts()) {
+        bool success = m_cache->Write(filePath, offset, downloadSize,
+                                      std::move(stream), mtime);
+        DebugErrorIf(!success,
+                     "Fail to write cache [offset:len=" + to_string(offset) +
+                         ":" + to_string(downloadSize) + "] " +
+                         FormatPath(filePath));
+      }
     }
   }
 
   // download asynchronizely for unloaded part
   if (remainingSize > 0) {
     auto ranges = m_cache->GetUnloadedRanges(filePath, fileSize);
-    DownloadFileContentRanges(filePath, ranges, mtime, true);
+    if(!ranges.empty()){
+      DownloadFileContentRanges(filePath, ranges, mtime, true);
+    }
   }
 
   // Read from cache
@@ -611,16 +616,18 @@ void Drive::UploadFile(const string &filePath, bool async) {
       handle->WaitUntilFinished();
       m_unfinishedMultipartUploadHandles.erase(handle->GetObjectKey());
 
-      // update meta mtime
-      auto err = GetClient()->Stat(handle->GetObjectKey());
-      if(IsGoodQSError(err)){
-        // update cache mtime
-        auto node = GetNodeSimple(handle->GetObjectKey()).lock();
-        if(node && *node){
-          m_cache->SetTime(handle->GetObjectKey(),node->GetMTime());
+      if (handle->DoneTransfer() && !handle->HasFailedParts()) {
+        // update meta mtime
+        auto err = GetClient()->Stat(handle->GetObjectKey());
+        if (IsGoodQSError(err)) {
+          // update cache mtime
+          auto node = GetNodeSimple(handle->GetObjectKey()).lock();
+          if (node && *node) {
+            m_cache->SetTime(handle->GetObjectKey(), node->GetMTime());
+          }
+        } else {
+          DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
         }
-      } else {
-        DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
       }
     }
   };
@@ -733,12 +740,14 @@ void Drive::DownloadFileContentRanges(const string &filePath,
                          mtime](const shared_ptr<TransferHandle> &handle) {
           if (handle) {
             handle->WaitUntilFinished();
-            bool success = m_cache->Write(filePath, offset_, downloadSize_,
-                                          std::move(stream_), mtime);
-            DebugErrorIf(!success,
-                         "Fail to write cache [file:offset:len=" + filePath +
-                             ":" + to_string(offset_) + ":" +
-                             to_string(downloadSize_) + "]");
+            if (handle->DoneTransfer() && !handle->HasFailedParts()) {
+              bool success = m_cache->Write(filePath, offset_, downloadSize_,
+                                            std::move(stream_), mtime);
+              DebugErrorIf(!success,
+                           "Fail to write cache [file:offset:len=" + filePath +
+                               ":" + to_string(offset_) + ":" +
+                               to_string(downloadSize_) + "]");
+            }
           }
         };
 

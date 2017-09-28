@@ -272,9 +272,11 @@ size_t Page::Read(off_t offset, size_t len, char *buffer) {
 size_t Page::UnguardedRead(off_t offset, size_t len, char *buffer) {
   m_body->seekg(offset - m_offset, std::ios_base::beg);
   m_body->read(buffer, len);
-  DebugErrorIf(!m_body->good(),
-               "Fail to read page(" + ToStringLine(m_offset, m_size) +
-                   ") with input " + ToStringLine(offset, len, buffer));
+  if(!m_body->good()){
+    DebugError("Fail to read page(" + ToStringLine(m_offset, m_size) +
+               ") with input " + ToStringLine(offset, len, buffer));
+    return 0;
+  }
   return len;
 }
 

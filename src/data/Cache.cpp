@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include <cmath>
 #include <memory>
 #include <utility>
 
@@ -178,11 +179,13 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
     m_size += addedSize;
   }
 
+  // Notice outcome pagelist could has more content than required
   auto &pagelist = outcome.second;
   auto &page = pagelist.front();
   pagelist.pop_front();
   if (pagelist.empty()) {  // Only a single page.
-    page->UnguardedRead(offset, outcome.first, buffer);
+    auto sz = std::min(len, outcome.first);
+    return page->UnguardedRead(offset, sz, buffer);
   } else {  // Have Multipule pages.
     // read first page
     auto readSize = page->UnguardedRead(offset, buffer);
@@ -195,10 +198,10 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
       pagelist.pop_front();
     }
     // read last page
-    page->UnguardedRead(outcome.first - readSize, buffer + readSize);
+    auto sz = std::min(outcome.first - readSize, len - readSize);
+    readSize += page->UnguardedRead(sz, buffer + readSize);
+    return readSize;
   }
-
-  return outcome.first;
 }
 
 // --------------------------------------------------------------------------

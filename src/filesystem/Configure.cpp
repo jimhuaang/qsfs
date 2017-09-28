@@ -96,7 +96,7 @@ int GetClientDefaultPoolSize(){
 }
 
 uint32_t GetTransactionDefaultTimeDuration() {
-  return 100;  // in milliseconds
+  return 200;  // in milliseconds
 }
 
 int GetQSConnectionDefaultRetries(){

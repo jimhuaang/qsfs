@@ -111,8 +111,13 @@ string BuildXQSSourceString(const string &objKey) {
 
 // --------------------------------------------------------------------------
 uint32_t CalculateTransferTimeForFile(uint64_t fileSize){
-  // 100 milliseconds per MB
-  return std::floor(1 + fileSize / QS::Data::Size::MB1) * 100;
+  // 500 milliseconds per 100KB
+  return std::floor(1 + fileSize / QS::Data::Size::KB100) * 500;
+}
+
+// --------------------------------------------------------------------------
+uint32_t CalculateTimeForListObjects(uint64_t maxCount) {
+  return std::floor(1 + maxCount / 200) * 2000;
 }
 
 }  // namespace
@@ -399,7 +404,11 @@ ClientError<QSError> QSClient::MoveObject(const std::string &sourcePath,
     input.SetContentType(GetDirectoryMimeType());
   }
 
-  auto outcome = GetQSClientImpl()->PutObject(targetPath, &input);
+  // Seems move object cost more time than head object, so set more time
+  auto timeDuration =
+      ClientConfiguration::Instance().GetTransactionTimeDuration() * 5;
+
+  auto outcome = GetQSClientImpl()->PutObject(targetPath, &input, timeDuration);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -407,13 +416,25 @@ ClientError<QSError> QSClient::MoveObject(const std::string &sourcePath,
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->PutObject(targetPath, &input);
+    outcome = GetQSClientImpl()->PutObject(targetPath, &input, timeDuration);
     ++attemptedRetries;
     DebugInfo("Retry move object " + FormatPath(sourcePath, targetPath));
   }
 
-  return outcome.IsSuccess() ? ClientError<QSError>(QSError::GOOD, false)
-                             : outcome.GetError();
+  if (outcome.IsSuccess()) {
+    return ClientError<QSError>(QSError::GOOD, false);
+  } else {
+    // For move object, if retry happens, and if the previous transaction
+    // success finally, this will cause the following retry transaction fail.
+    // So we handle the special case, if retry happens and response code is
+    // NOT_FOUND(404) then we know the previous transaction before retry success
+    auto err = outcome.GetError();
+    if (attemptedRetries > 0 && err.GetError() == QSError::KEY_NOT_EXIST) {
+      return ClientError<QSError>(QSError::GOOD, false);
+    } else {
+      return err;
+    }
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -712,8 +733,10 @@ ListObjectsOutcome QSClient::ListObjects(const string &dirPath,
                       : AppendPathDelim(LTrim(dirPath, '/'));
   listObjInput.SetPrefix(prefix);
 
-  auto outcome =
-      GetQSClientImpl()->ListObjects(&listObjInput, resultTruncated, maxCount);
+  auto timeDuration = CalculateTimeForListObjects(maxCount);
+
+  auto outcome = GetQSClientImpl()->ListObjects(&listObjInput, resultTruncated,
+                                                maxCount, timeDuration);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -722,7 +745,7 @@ ListObjectsOutcome QSClient::ListObjects(const string &dirPath,
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
     outcome = GetQSClientImpl()->ListObjects(&listObjInput, resultTruncated,
-                                             maxCount);
+                                             maxCount, timeDuration);
     ++attemptedRetries;
     DebugInfo("Retry list objects " + FormatPath(dirPath));
   }

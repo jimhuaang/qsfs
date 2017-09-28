@@ -153,12 +153,13 @@ pair<size_t, list<shared_ptr<Page>>> File::Read(off_t offset, size_t len,
 
     if (handle) {
       handle->WaitUntilFinished();
-
-      auto res = UnguardedAddPage(offset, len, stream);
-      if (res.second) {
-        SetTime(mtime);
-        outcomePages.emplace_back(*(res.first));
-        outcomeSize += (*(res.first))->m_size;
+      if (handle->DoneTransfer() && !handle->HasFailedParts()) {
+        auto res = UnguardedAddPage(offset, len, stream);
+        if (res.second) {
+          SetTime(mtime);
+          outcomePages.emplace_back(*(res.first));
+          outcomeSize += (*(res.first))->m_size;
+        }
       }
     }
   };
