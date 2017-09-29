@@ -154,7 +154,7 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
     pos = UnguardedMakeFileMostRecentlyUsed(it->second);
     sizeBegin = pos->second->GetSize();
   } else {
-    DebugInfo("File not exist in cache. Creating new one" +
+    DebugInfo("File not exist in cache. Create new one" +
               FormatPath(node->GetFilePath()));
     pos = UnguardedNewEmptyFile(fileId);
     assert(pos != m_cache.end());

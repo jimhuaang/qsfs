@@ -216,7 +216,20 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
     time_t modifiedSince = 0;
     modifiedSince = const_cast<const Node &>(*node).GetEntry().GetMTime();
     auto err = GetClient()->Stat(path, modifiedSince, &modified);
-    DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+    if (!IsGoodQSError(err)) {
+      // As user can remove file through other ways such as web console, etc.
+      // So we need to remove file from local dir tree and cache.
+      if (err.GetError() == QSError::KEY_NOT_EXIST) {
+        // remove node
+        DebugInfo("File not exist " + FormatPath(path));
+        m_directoryTree->Remove(path);
+        if (m_cache->HasFile(path)) {
+          m_cache->Erase(path);
+        }
+      } else {
+        DebugError(GetMessageForQSError(err));
+      }
+    }
   };
 
   if (node && *node) {
@@ -226,7 +239,11 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
     if (IsGoodQSError(err)) {
       node = m_directoryTree->Find(path).lock();
     } else {
-      DebugError(GetMessageForQSError(err));
+      if (err.GetError() == QSError::KEY_NOT_EXIST) {
+        DebugInfo("File not exist " + FormatPath(path));
+      } else {
+        DebugError(GetMessageForQSError(err));
+      }
     }
   }
 
@@ -301,7 +318,7 @@ void Drive::Chown(const std::string &filePath, uid_t uid, gid_t gid) {
 void Drive::RemoveFile(const string &filePath, bool async) {
   auto ReceivedHandler = [filePath](const ClientError<QSError> &err) {
     if (IsGoodQSError(err)) {
-      DebugInfo("Deleted file " + FormatPath(filePath));
+      DebugInfo("Delete file " + FormatPath(filePath));
     } else {
       DebugError(GetMessageForQSError(err));
     }
@@ -357,7 +374,7 @@ void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
       return;
     }
 
-    DebugInfo("Created file " + FormatPath(filePath));
+    DebugInfo("Create file " + FormatPath(filePath));
 
     // QSClient::MakeFile doesn't update directory tree (refer it for details)
     // with the created file node, So we call Stat synchronizely.
@@ -384,7 +401,7 @@ void Drive::MakeDir(const string &dirPath, mode_t mode) {
     return;
   }
 
-  DebugInfo("Created dir " + FormatPath(dirPath));
+  DebugInfo("Create dir " + FormatPath(dirPath));
 
   // QSClient::MakeDirectory doesn't grow directory tree with the created dir
   // node, So we call Stat synchronizely.
@@ -397,6 +414,11 @@ void Drive::OpenFile(const string &filePath) {
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();
   bool modified = res.second;
+
+  if (!(node && *node)) {
+    DebugWarning("File not exist " + FormatPath(filePath));
+    return;
+  }
 
   auto ranges = m_cache->GetUnloadedRanges(filePath, node->GetFileSize());
   time_t mtime = node->GetMTime();
@@ -421,6 +443,11 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();
   bool modified = res.second;
+
+  if (!(node && *node)) {
+    DebugWarning("File not exist " + FormatPath(filePath));
+    return 0;
+  }
 
   // Ajust size or calculate remaining size
   uint64_t downloadSize = size;
@@ -448,7 +475,7 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
     if (handle) {
       handle->WaitUntilFinished();
       if (handle->DoneTransfer() && !handle->HasFailedParts()) {
-        DebugInfo("Downloaded file [offset:len=" + to_string(offset) + ":" +
+        DebugInfo("Download file [offset:len=" + to_string(offset) + ":" +
                   to_string(downloadSize) + "] " + FormatPath(filePath));
 
         bool success = m_cache->Write(filePath, offset, downloadSize,
@@ -495,7 +522,7 @@ void Drive::RenameFile(const string &filePath, const string &newFilePath) {
     auto res = GetNode(newFilePath, false);
     auto node = res.first.lock();
     if (node) {
-      DebugInfo("Renamed file " + FormatPath(filePath, newFilePath));
+      DebugInfo("Rename file " + FormatPath(filePath, newFilePath));
     } else {
       DebugWarning("Fail to rename file " + FormatPath(filePath, newFilePath));
     }
@@ -545,7 +572,7 @@ void Drive::RenameDir(const string &dirPath, const string &newDirPath,
       auto res = GetNode(newDirPath, true, false);  // update dir sync
       node = res.first.lock();
       if (node) {
-        DebugInfo("Renamed dir " + FormatPath(dirPath, newDirPath));
+        DebugInfo("Rename dir " + FormatPath(dirPath, newDirPath));
       } else {
         DebugWarning("Fail to rename dir " + FormatPath(dirPath));
       }
@@ -578,7 +605,7 @@ void Drive::SymLink(const string &filePath, const string &linkPath) {
     return;
   }
 
-  DebugInfo("Created symlink " + FormatPath(filePath, linkPath));
+  DebugInfo("Create symlink " + FormatPath(filePath, linkPath));
 
   // QSClient::Symlink doesn't update directory tree (refer it for details)
   // with the created symlink node, So we call Stat synchronizely.
@@ -627,6 +654,11 @@ void Drive::UploadFile(const string &filePath, bool async) {
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();
 
+  if (!(node && *node)) {
+    DebugWarning("File not exist " + FormatPath(filePath));
+    return;
+  }
+
   auto Callback = [this, node, filePath](const shared_ptr<TransferHandle> &handle) {
     if (handle) {
       node->SetNeedUpload(false);
@@ -639,7 +671,7 @@ void Drive::UploadFile(const string &filePath, bool async) {
       m_unfinishedMultipartUploadHandles.erase(handle->GetObjectKey());
 
       if (handle->DoneTransfer() && !handle->HasFailedParts()) {
-        DebugInfo("Uploaded file " + FormatPath(filePath));
+        DebugInfo("Upload file " + FormatPath(filePath));
         // update meta mtime
         auto err = GetClient()->Stat(handle->GetObjectKey());
         if (IsGoodQSError(err)) {
@@ -700,6 +732,11 @@ int Drive::WriteFile(const string &filePath, off_t offset, size_t size,
 
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();
+
+  if (!(node && *node)) {
+    DebugWarning("File not exist " + FormatPath(filePath));
+    return 0;
+  }
 
   bool success = m_cache->Write(filePath, offset, size, buf, time(NULL));
   if (success) {

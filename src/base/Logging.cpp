@@ -92,7 +92,7 @@ void DefaultLog::Initialize() {
   // Check log directory with logOn=false.
   // NOTES: set logOn=true will cause infinite loop.
   if (!QS::Utils::HavePermission(m_path, false)) {
-    throw QSException("Could not creating logging file at " + m_path +
+    throw QSException("Could not create logging file at " + m_path +
                       ": Permission denied");
   }
 }

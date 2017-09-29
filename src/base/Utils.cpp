@@ -67,16 +67,16 @@ bool CreateDirectoryIfNotExistsNoLog(const string &path) {
   int errorCode =
       mkdir(path.c_str(), QS::FileSystem::Configure::GetDefineDirMode());
   bool success = (errorCode == 0 || errno == EEXIST);
-  if (!success) cerr << "Fail to creating directory " + PostErrMsg(path) + "\n";
+  if (!success) cerr << "Fail to create directory " + PostErrMsg(path) + "\n";
   return success;
 }
 
 // --------------------------------------------------------------------------
 bool CreateDirectoryIfNotExists(const string &path) {
-  Info("Creating directory " + FormatPath(path));
+  Info("Create directory " + FormatPath(path));
   bool success = CreateDirectoryIfNotExistsNoLog(path);
 
-  DebugErrorIf(!success, "Fail to creating directory " + PostErrMsg(path));
+  DebugErrorIf(!success, "Fail to create directory " + PostErrMsg(path));
   return success;
 }
 
@@ -91,10 +91,10 @@ bool RemoveDirectoryIfExistsNoLog(const string &path) {
 
 // --------------------------------------------------------------------------
 bool RemoveDirectoryIfExists(const string &path) {
-  Info("Deleting directory " + FormatPath(path));
+  Info("Delete directory " + FormatPath(path));
   bool success = RemoveDirectoryIfExistsNoLog(path);
 
-  DebugErrorIf(!success, "Fail to deleting directory " + PostErrMsg(path));
+  DebugErrorIf(!success, "Fail to delete directory " + PostErrMsg(path));
   return success;
 }
 
@@ -102,15 +102,15 @@ bool RemoveDirectoryIfExists(const string &path) {
 bool RemoveFileIfExistsNoLog(const string &path) {
   int errorCode = unlink(path.c_str());
   bool success = (errorCode == 0 || errno == ENOENT);
-  if (!success) cerr << "Fail to deleting file " + PostErrMsg(path) + "\n";
+  if (!success) cerr << "Fail to delete file " + PostErrMsg(path) + "\n";
   return success;
 }
 
 // --------------------------------------------------------------------------
 bool RemoveFileIfExists(const string &path) {
-  Info("Removing file " + FormatPath(path));
+  Info("Remove file " + FormatPath(path));
   bool success = RemoveFileIfExistsNoLog(path);
-  DebugErrorIf(!success, "Fail to deleting file " + PostErrMsg(path));
+  DebugErrorIf(!success, "Fail to delete file " + PostErrMsg(path));
   return success;
 }
 

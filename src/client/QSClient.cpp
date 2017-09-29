@@ -840,15 +840,12 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
             }
             dirTree->Grow(BuildDefaultDirectoryMeta(path));  // add dir node
             return ClientError<QSError>(QSError::GOOD, false);
-          }
-        }  // if outcome is success
-      }
-
-      DebugInfo("Object not found " + FormatPath(path));
-      return ClientError<QSError>(QSError::GOOD, false);
+          }  // if dir exist
+        }    // if outcome is success
+      }      // if path is dir
     }
 
-    return outcome.GetError();
+    return err;
   }
 }
 
