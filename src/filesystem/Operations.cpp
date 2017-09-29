@@ -1342,8 +1342,7 @@ int qsfs_opendir(const char* path, struct fuse_file_info* fi) {
     CheckParentDir(path, mask, &ret, false);
 
     // Check if dir exists
-    auto res = drive.GetNode(dirPath, true);  // update dir synchronizely
-    auto node = res.first.lock();
+    auto node = drive.GetNodeSimple(dirPath).lock();
 
     if (!(node && *node)) {
       ret = -ENOENT;  // No such file or directory
@@ -1360,6 +1359,10 @@ int qsfs_opendir(const char* path, struct fuse_file_info* fi) {
     if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), mask)) {
       ret = -EACCES;  // Permission denied
       throw QSException("No read permission " + FormatPath(dirPath));
+    }
+
+    if (node->IsEmpty()) {
+      drive.GetNode(dirPath, true);  // update dir synchronizely
     }
   } catch (const QSException& err) {
     Error(err.get());

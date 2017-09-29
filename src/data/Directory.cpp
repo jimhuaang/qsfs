@@ -295,8 +295,8 @@ shared_ptr<Node> DirectoryTree::Grow(shared_ptr<FileMetaData> &&fileMeta) {
 
   auto node = Find(filePath).lock();
   if (node && *node) {
-    DebugInfo("Update Node " + FormatPath(filePath));
     if (fileMeta->GetMTime() > node->GetMTime()) {
+      DebugInfo("Update Node " + FormatPath(filePath));
       node->SetEntry(Entry(std::move(fileMeta)));  // update entry
     }
   } else {

@@ -31,6 +31,7 @@ namespace Data {
 
 using QS::FileSystem::Configure::GetDefineDirMode;
 using QS::StringUtils::AccessMaskToString;
+using QS::StringUtils::FormatPath;
 using QS::StringUtils::ModeToString;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::GetProcessEffectiveUserID;
@@ -174,11 +175,11 @@ string FileMetaData::MyBaseName() const {
 
 // --------------------------------------------------------------------------
 bool FileMetaData::FileAccess(uid_t uid, gid_t gid, int amode) const {
-  DebugInfo("Check access permission [path=" + m_filePath +
-            "] [Parameter: uid=" + to_string(uid) + ", gid=" + to_string(gid) +
-            ", amode=" + AccessMaskToString(amode) +
-            "] [File uid=" + to_string(m_uid) + ", gid=" + to_string(m_gid) +
-            ", mode=" + ModeToString(m_fileMode) + "]");
+  DebugInfo("Check access permission" + FormatPath(m_filePath));
+  DebugInfo("[Process uid:gid:mode=" + to_string(uid) + ":" + to_string(gid) +
+            ":" + AccessMaskToString(amode) +
+            ", File uid:gid:mode=" + to_string(m_uid) + ":" + to_string(m_gid) +
+            ":" + ModeToString(m_fileMode) + "]");
 
   if (m_filePath.empty()) {
     DebugWarning("object file path is empty");

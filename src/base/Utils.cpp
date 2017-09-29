@@ -422,9 +422,9 @@ bool HavePermission(struct stat *st, bool logOn) {
   gid_t gidProcess = GetProcessEffectiveGroupID();
 
   if (logOn) {
-    DebugInfo("[Process: uid=" + to_string(uidProcess) + ", gid=" +
-              to_string(gidProcess) + "] [File uid=" + to_string(st->st_uid) +
-              ", gid=" + to_string(st->st_gid) + "]");
+    DebugInfo("[Process uid:gid=" + to_string(uidProcess) + ":" +
+              to_string(gidProcess) + ", File uid:gid=" + to_string(st->st_uid) +
+              ":" + to_string(st->st_gid) + "]");
   }
 
   // Check owner

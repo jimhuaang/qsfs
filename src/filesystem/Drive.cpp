@@ -299,8 +299,12 @@ void Drive::Chown(const std::string &filePath, uid_t uid, gid_t gid) {
 // --------------------------------------------------------------------------
 // Remove a file or an empty directory
 void Drive::RemoveFile(const string &filePath, bool async) {
-  auto ReceivedHandler = [](const ClientError<QSError> &err) {
-    DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
+  auto ReceivedHandler = [filePath](const ClientError<QSError> &err) {
+    if (IsGoodQSError(err)) {
+      DebugInfo("Deleted file " + FormatPath(filePath));
+    } else {
+      DebugError(GetMessageForQSError(err));
+    }
   };
 
   if (async) {  // delete file asynchronizely
@@ -353,6 +357,8 @@ void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
       return;
     }
 
+    DebugInfo("Created file " + FormatPath(filePath));
+
     // QSClient::MakeFile doesn't update directory tree (refer it for details)
     // with the created file node, So we call Stat synchronizely.
     err = GetClient()->Stat(filePath); 
@@ -377,6 +383,8 @@ void Drive::MakeDir(const string &dirPath, mode_t mode) {
     DebugError(GetMessageForQSError(err));
     return;
   }
+
+  DebugInfo("Created dir " + FormatPath(dirPath));
 
   // QSClient::MakeDirectory doesn't grow directory tree with the created dir
   // node, So we call Stat synchronizely.
@@ -440,6 +448,9 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
     if (handle) {
       handle->WaitUntilFinished();
       if (handle->DoneTransfer() && !handle->HasFailedParts()) {
+        DebugInfo("Downloaded file [offset:len=" + to_string(offset) + ":" +
+                  to_string(downloadSize) + "] " + FormatPath(filePath));
+
         bool success = m_cache->Write(filePath, offset, downloadSize,
                                       std::move(stream), mtime);
         DebugErrorIf(!success,
@@ -483,7 +494,11 @@ void Drive::RenameFile(const string &filePath, const string &newFilePath) {
   if (IsGoodQSError(err)) {
     auto res = GetNode(newFilePath, false);
     auto node = res.first.lock();
-    DebugWarningIf(!node, "Fail to rename file " + FormatPath(filePath));
+    if (node) {
+      DebugInfo("Renamed file " + FormatPath(filePath, newFilePath));
+    } else {
+      DebugWarning("Fail to rename file " + FormatPath(filePath, newFilePath));
+    }
     return;
   } else {
     DebugError(GetMessageForQSError(err));
@@ -529,7 +544,11 @@ void Drive::RenameDir(const string &dirPath, const string &newDirPath,
       // Add new dir node to dir tree
       auto res = GetNode(newDirPath, true, false);  // update dir sync
       node = res.first.lock();
-      DebugErrorIf(!node, "Fail to rename dir " + FormatPath(dirPath));
+      if (node) {
+        DebugInfo("Renamed dir " + FormatPath(dirPath, newDirPath));
+      } else {
+        DebugWarning("Fail to rename dir " + FormatPath(dirPath));
+      }
     } else {
       DebugError(GetMessageForQSError(err));
     }
@@ -558,6 +577,8 @@ void Drive::SymLink(const string &filePath, const string &linkPath) {
     DebugError(GetMessageForQSError(err));
     return;
   }
+
+  DebugInfo("Created symlink " + FormatPath(filePath, linkPath));
 
   // QSClient::Symlink doesn't update directory tree (refer it for details)
   // with the created symlink node, So we call Stat synchronizely.
@@ -605,7 +626,8 @@ void Drive::TruncateFile(const string &filePath, size_t newSize) {
 void Drive::UploadFile(const string &filePath, bool async) {
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();
-  auto Callback = [this, node](const shared_ptr<TransferHandle> &handle) {
+
+  auto Callback = [this, node, filePath](const shared_ptr<TransferHandle> &handle) {
     if (handle) {
       node->SetNeedUpload(false);
       node->SetFileOpen(false);
@@ -617,6 +639,7 @@ void Drive::UploadFile(const string &filePath, bool async) {
       m_unfinishedMultipartUploadHandles.erase(handle->GetObjectKey());
 
       if (handle->DoneTransfer() && !handle->HasFailedParts()) {
+        DebugInfo("Uploaded file " + FormatPath(filePath));
         // update meta mtime
         auto err = GetClient()->Stat(handle->GetObjectKey());
         if (IsGoodQSError(err)) {
@@ -687,29 +710,6 @@ int Drive::WriteFile(const string &filePath, off_t offset, size_t size,
   }
 
   return success ? size : 0;
-
-  // if entry->file size < size + offset, update the entry size with max one
-  // Call Cache->Put to store fiel into cache and when overpass max size,
-  // invoke multipart upload (first two step)
-  // Finshed will be done in Release/ (here in Drive::UploadFile)
-
-  // node->SetNeedUpload(true);  // Mark upload
-
-  // create a write buffer if necceaary
-  // handle hole if file
-
-  // stat(filePath) to get file size to determine if trigger multiple upload
-  //
-  // if cache enough, load (0 to offset + size) and write to cache, mark need
-  // upload
-  // else NoCacheLoadAndPost
-  // every time when the cache file is a candidate to invoke multiupload, do it
-  // async
-
-  // For a random write case, when there is no enough cache, need to
-
-  // need to write to a temp cache file in local
-  // when inconsecutive large file
 }
 
 // --------------------------------------------------------------------------

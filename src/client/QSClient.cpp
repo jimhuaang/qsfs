@@ -117,7 +117,7 @@ uint32_t CalculateTransferTimeForFile(uint64_t fileSize){
 
 // --------------------------------------------------------------------------
 uint32_t CalculateTimeForListObjects(uint64_t maxCount) {
-  return std::floor(1 + maxCount / 200) * 2000;
+  return std::floor(1 + maxCount / 200) * 2000;  // in milliseconds
 }
 
 }  // namespace
@@ -334,6 +334,7 @@ ClientError<QSError> QSClient::MoveDirectory(const string &sourceDirPath,
   auto receivedHandler = [](const ClientError<QSError> &err) {
     DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
   };
+
   string targetDir = AppendPathDelim(targetDirPath);
   size_t lenSourceDir = sourceDir.size();
   auto &listObjOutputs = outcome.GetResult();
