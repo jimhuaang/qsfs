@@ -111,13 +111,13 @@ string BuildXQSSourceString(const string &objKey) {
 
 // --------------------------------------------------------------------------
 uint32_t CalculateTransferTimeForFile(uint64_t fileSize){
-  // 500 milliseconds per 100KB
-  return std::floor(1 + fileSize / QS::Data::Size::KB100) * 500;
+  // 2000 milliseconds per MB1
+  return std::floor(1 + fileSize / QS::Data::Size::MB1) * 2000 + 1000;
 }
 
 // --------------------------------------------------------------------------
 uint32_t CalculateTimeForListObjects(uint64_t maxCount) {
-  return std::floor(1 + maxCount / 200) * 2000;  // in milliseconds
+  return std::floor(1 + maxCount / 200) * 1000 + 1000;  // in milliseconds
 }
 
 }  // namespace

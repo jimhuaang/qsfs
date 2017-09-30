@@ -158,8 +158,9 @@ void QSTransferManager::AbortMultipartUpload(
 // --------------------------------------------------------------------------
 bool QSTransferManager::PrepareDownload(
     const shared_ptr<TransferHandle> &handle) {
-  assert(GetBufferSize() > 0);
-  if (!(GetBufferSize() > 0)) {
+  auto bufferSize = GetBufferSize();
+  assert(bufferSize > 0);
+  if (!(bufferSize > 0)) {
     DebugError("Buffer size is less than 0");
     return false;
   }
@@ -172,18 +173,18 @@ bool QSTransferManager::PrepareDownload(
   } else {
     // prepare part and add it into queue
     auto totalTransferSize = handle->GetBytesTotalSize();
-    size_t partCount = std::floor(totalTransferSize / GetBufferSize() + 1);
+    size_t partCount = std::floor(totalTransferSize / bufferSize + 1);
     handle->SetIsMultiPart(partCount > 1);
     for (size_t i = 1; i < partCount; ++i) {
       // part id, best progress in bytes, part size, range begin
       handle->AddQueuePart(make_shared<Part>(
-          i, 0, GetBufferSize(),
-          handle->GetContentRangeBegin() + (i - 1) * GetBufferSize()));
+          i, 0, bufferSize,
+          handle->GetContentRangeBegin() + (i - 1) * bufferSize));
     }
-    size_t sz = totalTransferSize - (partCount - 1) * GetBufferSize();
+    size_t sz = totalTransferSize - (partCount - 1) * bufferSize;
     handle->AddQueuePart(make_shared<Part>(
-        partCount, 0, std::min(sz, GetBufferSize()),
-        handle->GetContentRangeBegin() + (partCount - 1) * GetBufferSize()));
+        partCount, 0, std::min(sz, bufferSize),
+        handle->GetContentRangeBegin() + (partCount - 1) * bufferSize));
   }
   return true;
 }
@@ -336,8 +337,9 @@ void QSTransferManager::DoDownload(const shared_ptr<TransferHandle> &handle,
 // --------------------------------------------------------------------------
 bool QSTransferManager::PrepareUpload(
     const shared_ptr<TransferHandle> &handle) {
-  assert(GetBufferSize() > 0);
-  if (!(GetBufferSize() > 0)) {
+  auto bufferSize = GetBufferSize();
+  assert(bufferSize > 0);
+  if (!(bufferSize > 0)) {
     DebugError("Buffer size is less than 0");
     return false;
   }
@@ -370,9 +372,9 @@ bool QSTransferManager::PrepareUpload(
         return false;
       }
 
-      size_t partCount = std::floor(totalTransferSize / GetBufferSize() + 1);
+      size_t partCount = std::floor(totalTransferSize / bufferSize + 1);
       size_t lastCuttingSize =
-          totalTransferSize - (partCount - 1) * GetBufferSize();
+          totalTransferSize - (partCount - 1) * bufferSize;
       bool needAverageLastTwoPart =
           lastCuttingSize < GetUploadMultipartMinPartSize();
 
@@ -380,17 +382,17 @@ bool QSTransferManager::PrepareUpload(
       for (size_t i = 1; i < count; ++i) {
         // part id, best progress in bytes, part size, range begin
         handle->AddQueuePart(make_shared<Part>(
-            i, 0, GetBufferSize(),
-            handle->GetContentRangeBegin() + (i - 1) * GetBufferSize()));
+            i, 0, bufferSize,
+            handle->GetContentRangeBegin() + (i - 1) * bufferSize));
       }
 
       size_t sz = needAverageLastTwoPart
-                      ? (lastCuttingSize + GetBufferSize()) / 2
+                      ? (lastCuttingSize + bufferSize) / 2
                       : lastCuttingSize;
       for (size_t i = count; i <= partCount; ++i) {
         handle->AddQueuePart(make_shared<Part>(
             i, 0, sz,
-            handle->GetContentRangeBegin() + (count - 1) * GetBufferSize() +
+            handle->GetContentRangeBegin() + (count - 1) * bufferSize +
                 (i - count) * sz));
       }
     } else {  // single upload
@@ -479,12 +481,13 @@ void QSTransferManager::DoMultiPartUpload(
     }
 
     const auto &part = ipart->second;
-    bool success = cache->Read(objKey, part->GetRangeBegin(), GetBufferSize(),
+    auto partSize = part->GetSize();
+    bool success = cache->Read(objKey, part->GetRangeBegin(), part->GetSize(),
                                &(*buffer)[0], node);
     if (!success) {
       DebugError("Fail to read cache [file:offset:len = " + objKey + ":" +
                  to_string(part->GetRangeBegin()) + ":" +
-                 to_string(GetBufferSize()) + "], stop upload");
+                 to_string(part->GetSize()) + "], stop upload");
 
       GetBufferManager()->Release(std::move(buffer));
       break;
@@ -497,7 +500,7 @@ void QSTransferManager::DoMultiPartUpload(
       auto ReceivedHandler = [this, handle, part,
                               stream](const ClientError<QSError> &err) {
         if (IsGoodQSError(err)) {
-          part->OnDataTransferred(GetBufferSize(), handle);
+          part->OnDataTransferred(part->GetSize(), handle);
           handle->ChangePartToCompleted(part);
         } else {
           handle->ChangePartToFailed(part);
@@ -538,18 +541,18 @@ void QSTransferManager::DoMultiPartUpload(
 
       string uploadId = handle->GetMultiPartId();
       auto partId = part->GetPartId();
-      auto contentLen = GetBufferSize();
+      auto partSize = part->GetSize();
       if (async) {
         GetClient()->GetExecutor()->SubmitAsync(
             ReceivedHandler,
-            [this, objKey, uploadId, partId, contentLen, stream]() {
+            [this, objKey, uploadId, partId, partSize, stream]() {
               return GetClient()->UploadMultipart(objKey, uploadId, partId,
-                                                  contentLen, stream);
+                                                  partSize, stream);
             });
 
       } else {
         auto err = GetClient()->UploadMultipart(objKey, uploadId, partId,
-                                                contentLen, stream);
+                                                partSize, stream);
         ReceivedHandler(err);
       }
 

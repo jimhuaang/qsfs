@@ -730,9 +730,7 @@ int Drive::WriteFile(const string &filePath, off_t offset, size_t size,
   //   return 0;
   // }
 
-  auto res = GetNode(filePath, false);
-  auto node = res.first.lock();
-
+  auto node = GetNodeSimple(filePath).lock();
   if (!(node && *node)) {
     DebugWarning("File not exist " + FormatPath(filePath));
     return 0;
