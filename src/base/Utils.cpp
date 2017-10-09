@@ -57,7 +57,7 @@ static const char PATH_DELIM = '/';
 namespace {
 
 string PostErrMsg(const string &path) {
-  return string(": ") + strerror(errno) + FormatPath(path);
+  return string(": ") + strerror(errno) + " " + FormatPath(path);
 }
 
 }  // namespace

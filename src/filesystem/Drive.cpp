@@ -423,7 +423,7 @@ void Drive::OpenFile(const string &filePath) {
   auto ranges = m_cache->GetUnloadedRanges(filePath, node->GetFileSize());
   time_t mtime = node->GetMTime();
   bool fileContentExist =
-      m_cache->HasFileData(filePath, 0, node->GetFileSize());
+      m_cache->HasFileData(filePath, 0, node->GetFileSize());  // TODO(jim): test it
   if (!fileContentExist || modified) {
     // TODO(jim): should we do this async?
     DownloadFileContentRanges(filePath, ranges, mtime, false);

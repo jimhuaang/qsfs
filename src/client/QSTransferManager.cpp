@@ -173,7 +173,9 @@ bool QSTransferManager::PrepareDownload(
   } else {
     // prepare part and add it into queue
     auto totalTransferSize = handle->GetBytesTotalSize();
-    size_t partCount = std::floor(totalTransferSize / bufferSize + 1);
+    size_t partCount = static_cast<size_t>(
+        std::ceil(static_cast<long double>(totalTransferSize) /
+                  static_cast<long double>(bufferSize)));
     handle->SetIsMultiPart(partCount > 1);
     for (size_t i = 1; i < partCount; ++i) {
       // part id, best progress in bytes, part size, range begin
@@ -247,7 +249,7 @@ void QSTransferManager::DoMultiPartDownload(
     const auto &part = ipart->second;
     if (handle->ShouldContinue()) {
       part->SetDownloadPartStream(
-          make_shared<IOStream>(std::move(buffer), GetBufferSize()));
+          make_shared<IOStream>(std::move(buffer), part->GetSize()));
       handle->AddPendingPart(part);
 
       auto ReceivedHandler = [this, handle, part](
@@ -372,7 +374,9 @@ bool QSTransferManager::PrepareUpload(
         return false;
       }
 
-      size_t partCount = std::floor(totalTransferSize / bufferSize + 1);
+      size_t partCount = static_cast<size_t>(
+        std::ceil(static_cast<long double>(totalTransferSize) /
+                  static_cast<long double>(bufferSize)));
       size_t lastCuttingSize =
           totalTransferSize - (partCount - 1) * bufferSize;
       bool needAverageLastTwoPart =
@@ -481,7 +485,6 @@ void QSTransferManager::DoMultiPartUpload(
     }
 
     const auto &part = ipart->second;
-    auto partSize = part->GetSize();
     bool success = cache->Read(objKey, part->GetRangeBegin(), part->GetSize(),
                                &(*buffer)[0], node);
     if (!success) {
@@ -494,7 +497,7 @@ void QSTransferManager::DoMultiPartUpload(
     }
 
     if (handle->ShouldContinue()) {
-      auto stream = make_shared<IOStream>(std::move(buffer), GetBufferSize());
+      auto stream = make_shared<IOStream>(std::move(buffer), part->GetSize());
       handle->AddPendingPart(part);
 
       auto ReceivedHandler = [this, handle, part,

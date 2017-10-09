@@ -110,14 +110,16 @@ string BuildXQSSourceString(const string &objKey) {
 }
 
 // --------------------------------------------------------------------------
-uint32_t CalculateTransferTimeForFile(uint64_t fileSize){
+uint32_t CalculateTransferTimeForFile(uint64_t fileSize) {
   // 2000 milliseconds per MB1
-  return std::floor(1 + fileSize / QS::Data::Size::MB1) * 2000 + 1000;
+  return std::ceil(static_cast<long double>(fileSize) / QS::Data::Size::MB1) *
+             2000 + 1000;
 }
 
 // --------------------------------------------------------------------------
 uint32_t CalculateTimeForListObjects(uint64_t maxCount) {
-  return std::floor(1 + maxCount / 200) * 1000 + 1000;  // in milliseconds
+  // 1000 milliseconds per 200 objects
+  return std::ceil(static_cast<long double>(maxCount) / 200) * 1000 + 1000;
 }
 
 }  // namespace
@@ -125,8 +127,6 @@ uint32_t CalculateTimeForListObjects(uint64_t maxCount) {
 static std::once_flag onceFlagGetClientImpl;
 static std::once_flag onceFlagStartService;
 unique_ptr<QingStor::QingStorService> QSClient::m_qingStorService = nullptr;
-
-// TODO(jim): add template for retrying code
 
 // --------------------------------------------------------------------------
 QSClient::QSClient() : Client() {
