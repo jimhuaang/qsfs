@@ -119,6 +119,9 @@ namespace Data {
    // Return the offset
    off_t Offset() const { return m_offset; }
 
+   // Return if page use temp file
+   bool UseTempFile();
+
    // Refresh the page's partial content
    //
    // @param  : file offset, len of bytes to update, buffer, tmp file

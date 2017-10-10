@@ -133,6 +133,10 @@ CacheListIterator Cache::End() { return m_cache.end(); }
 // --------------------------------------------------------------------------
 size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
                    shared_ptr<Node> node) {
+  if (len == 0) {
+    return 0;  // do nothing, this case could happen for truncate file to empty
+  }
+
   bool validInput =
       !fileId.empty() && offset >= 0 && len >= 0 && buffer != NULL;
   assert(validInput);
@@ -209,6 +213,17 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
 // --------------------------------------------------------------------------
 bool Cache::Write(const string &fileId, off_t offset, size_t len,
                   const char *buffer, time_t mtime) {
+  if (len == 0) {
+    auto it = m_map.find(fileId);
+    if (it != m_map.end()) {
+      UnguardedMakeFileMostRecentlyUsed(it->second);
+    } else {
+      auto pos = UnguardedNewEmptyFile(fileId);
+      assert(pos != m_cache.end());
+    }
+    return true;  // do nothing
+  }
+
   bool validInput =
       !fileId.empty() && offset >= 0 && len >= 0 && buffer != NULL;
   assert(validInput);
@@ -237,6 +252,17 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
 // --------------------------------------------------------------------------
 bool Cache::Write(const string &fileId, off_t offset, size_t len,
                   shared_ptr<iostream> &&stream, time_t mtime) {
+  if (len == 0) {
+    auto it = m_map.find(fileId);
+    if (it != m_map.end()) {
+      UnguardedMakeFileMostRecentlyUsed(it->second);
+    } else {
+      auto pos = UnguardedNewEmptyFile(fileId);
+      assert(pos != m_cache.end());
+    }
+    return true;  // do nothing
+  }
+
   bool isValidInput = !fileId.empty() && offset >= 0 && stream;
   assert(isValidInput);
   if (!isValidInput) {
@@ -409,9 +435,12 @@ void Cache::Resize(const string &fileId, size_t newFileSize, time_t mtime) {
       // fill the hole
       auto holeSize = newFileSize - oldFileSize;
       vector<char> hole(holeSize);  // value initialization with '\0'
+      DebugInfo("Fill hole [offset:len=" + to_string(oldFileSize) + ":" +
+                to_string(holeSize) + "] " + FormatPath(fileId));
       Write(fileId, oldFileSize, holeSize, &hole[0], mtime);
     } else {
       file->ResizeToSmallerSize(newFileSize);
+      file->SetTime(mtime);
     }
 
     m_size += file->GetSize() - oldFileSize;

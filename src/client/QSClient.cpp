@@ -517,7 +517,9 @@ ClientError<QSError> QSClient::UploadMultipart(
   input.SetUploadID(uploadId);
   input.SetPartNumber(partNumber);
   input.SetContentLength(contentLength);
-  input.SetBody(buffer);
+  if(contentLength > 0){
+    input.SetBody(buffer);
+  }
 
   auto timeDuration = CalculateTransferTimeForFile(contentLength);
   auto outcome =
@@ -609,7 +611,9 @@ ClientError<QSError> QSClient::UploadFile(const string &filePath,
   PutObjectInput input;
   input.SetContentLength(fileSize);
   input.SetContentType(LookupMimeType(filePath));
-  input.SetBody(buffer);
+  if(fileSize > 0){
+    input.SetBody(buffer);
+  }
 
   auto timeDuration = CalculateTransferTimeForFile(fileSize);
 

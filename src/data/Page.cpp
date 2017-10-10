@@ -135,6 +135,11 @@ Page::~Page(){
 }
 
 // --------------------------------------------------------------------------
+bool Page::UseTempFile(){
+  return !m_tmpFile.empty() && IsTempFile(m_tmpFile);
+}
+
+// --------------------------------------------------------------------------
 void Page::UnguardedPutToBody(off_t offset, size_t len, const char *buffer){
   m_body->seekp(0, std::ios_base::beg);
   m_body->write(buffer, len);

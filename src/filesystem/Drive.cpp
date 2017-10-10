@@ -420,13 +420,18 @@ void Drive::OpenFile(const string &filePath) {
     return;
   }
 
-  auto ranges = m_cache->GetUnloadedRanges(filePath, node->GetFileSize());
-  time_t mtime = node->GetMTime();
-  bool fileContentExist =
-      m_cache->HasFileData(filePath, 0, node->GetFileSize());  // TODO(jim): test it
-  if (!fileContentExist || modified) {
-    // TODO(jim): should we do this async?
-    DownloadFileContentRanges(filePath, ranges, mtime, false);
+  auto fileSize = node->GetFileSize();
+  assert(fileSize >= 0);
+  if (fileSize == 0) {
+    m_cache->Write(filePath, 0, 0, NULL, time(NULL));
+  } else if (fileSize > 0) {
+    auto ranges = m_cache->GetUnloadedRanges(filePath, fileSize);
+    time_t mtime = node->GetMTime();
+    bool fileContentExist = m_cache->HasFileData(filePath, 0, fileSize);
+    if (!fileContentExist || modified) {
+      // TODO(jim): should we do this async?
+      DownloadFileContentRanges(filePath, ranges, mtime, false);
+    }
   }
 
   node->SetFileOpen(true);
@@ -623,30 +628,17 @@ void Drive::SymLink(const string &filePath, const string &linkPath) {
 
 // --------------------------------------------------------------------------
 void Drive::TruncateFile(const string &filePath, size_t newSize) {
-  // download file, truncate it, delete old file, and write it
-  // TODO(jim): maybe we do not need this method, just call delete and write
-  // node->SetNeedUpload(true);  // Mark upload
+  auto node = GetNodeSimple(filePath).lock();
+  if (!(node && *node)) {
+    DebugWarning("File not exist " + FormatPath(filePath));
+    return;
+  }
 
-  // if newSize = 0, empty file
-
-  // if newSize > size, fill the hole, Write file hole
-  /*   start = newsize > entry->file_size ? entry->file_size : newsize - 1;
-    size = newsize > entry->file_size ? (newsize - entry->file_size) :
-    (entry->file_size - newsize);
-    if (start > entry->file_size) {
-      buf = new char[size];
-      assert(buf != NULL);
-      memset(buf, 0, size);
-    } */
-
-  // Fill hole when Resize File(Cache, Page)
-
-  // if newSize < size, resize it
-
-  // update cached file
-  // set entry->write = true; should do this in Drive
-  // any modification on diretory tree should be synchronized by its
-  // api
+  if (newSize != node->GetFileSize()) {
+    m_cache->Resize(filePath, newSize, time(NULL));
+    node->SetFileSize(newSize);
+    node->SetNeedUpload(true);
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -688,8 +680,8 @@ void Drive::UploadFile(const string &filePath, bool async) {
   };
 
   auto fileSize = node->GetFileSize();
-  auto ranges = m_cache->GetUnloadedRanges(filePath, fileSize);
   time_t mtime = node->GetMTime();
+  auto ranges = m_cache->GetUnloadedRanges(filePath, fileSize);
   if(async){
     GetTransferManager()->GetExecutor()->SubmitAsync(
         Callback, [this, filePath, fileSize, ranges, mtime]() {

@@ -115,6 +115,10 @@ bool File::HasData(off_t start, size_t size) const {
 ContentRangeDeque File::GetUnloadedRanges(uint64_t fileTotalSize) const {
   lock_guard<recursive_mutex> lock(m_mutex);
   ContentRangeDeque ranges;
+  if(fileTotalSize ==0){
+    return ranges;
+  }
+
   auto cur = m_pages.begin();
   auto next = m_pages.begin();
   while (++next != m_pages.end()) {
@@ -389,7 +393,9 @@ void File::ResizeToSmallerSize(size_t smallerSize) {
     auto it = UpperBoundPage(offset);
     if (it != m_pages.end()) {
       for (auto page = it; page != m_pages.end(); ++page) {
-        m_cacheSize -= (*page)->m_size;
+        if (!(*page)->UseTempFile()) {
+          m_cacheSize -= (*page)->m_size;
+        }
       }
       m_pages.erase(it, m_pages.end());
     }
@@ -401,9 +407,11 @@ void File::ResizeToSmallerSize(size_t smallerSize) {
         return;
       } else if (lastPage->m_offset <= offset && offset < lastPage->Stop()) {
         auto newSize = smallerSize - lastPage->m_offset;
-        m_cacheSize -= lastPage->m_size - newSize;
         // Do a lazy remove for last page.
         lastPage->ResizeToSmallerSize(newSize);
+        if (!lastPage->UseTempFile()) {
+          m_cacheSize -= lastPage->m_size - newSize;
+        }
       } else {
         DebugError("After erased pages behind offset " + to_string(offset) +
                    " , last page now with " +
@@ -411,11 +419,7 @@ void File::ResizeToSmallerSize(size_t smallerSize) {
                    ". Should not happen, but go on. " +
                    PrintFileName(m_baseName));
       }
-    } else {
-      DebugError("File becomes empty after erase pages behind offset of " +
-                 to_string(offset) + ". Should not happen, but go on. " +
-                 PrintFileName(m_baseName));
-    }
+    } 
   }
 }
 
