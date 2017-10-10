@@ -98,22 +98,24 @@ class File {
   // Write a block of bytes into pages
   //
   // @param  : file offset, len, buffer, modification time
-  // @return : bool
+  // @return : {success, added size}
   //
   // From pointer of buffer, number of len bytes will be writen.
   // The owning file's offset is set with 'offset'.
-  bool Write(off_t offset, size_t len, const char *buffer, time_t mtime);
+  std::pair<bool, size_t> Write(off_t offset, size_t len, const char *buffer,
+                                time_t mtime);
 
   // Write stream into pages
   //
   // @param  : file offset, len of stream, stream, modification time
-  // @return : bool
+  // @return : {success, added size}
   //
   // The stream will be moved to the pages.
   // The owning file's offset is set with 'offset'.
-  bool Write(off_t offset, size_t len, std::shared_ptr<std::iostream> &&stream,
-             time_t mtime);
-  
+  std::pair<bool, size_t> Write(off_t offset, size_t len,
+                                std::shared_ptr<std::iostream> &&stream,
+                                time_t mtime);
+
   // Resize the total pages' size to a smaller size.
   void Resize(size_t smallerSize);
 

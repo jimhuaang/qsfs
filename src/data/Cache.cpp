@@ -220,17 +220,16 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
             to_string(len) + "] " + FormatPath(fileId));
   auto res = PrepareWrite(fileId, len);
   auto success = res.first;
-  if(success){
+  if (success) {
     auto file = res.second;
     assert(file != nullptr);
-    success = (*file)->Write(offset, len, buffer, mtime);
+    auto res = (*file)->Write(offset, len, buffer, mtime);
+    success = res.first;
+    if (success) {
+      m_size += res.second;
+    }
   }
-  if (success) {
-    m_size += len;
-    return true;
-  } else {
-    return false;
-  }
+  return success;
 }
 
 // --------------------------------------------------------------------------
@@ -258,17 +257,16 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
             to_string(len) + "] " + FormatPath(fileId));
   auto res = PrepareWrite(fileId, len);
   auto success = res.first;
-  if(success){
+  if (success) {
     auto file = res.second;
     assert(file != nullptr);
-    success = (*file)->Write(offset, len, std::move(stream), mtime);
+    auto res = (*file)->Write(offset, len, std::move(stream), mtime);
+    success = res.first;
+    if (success) {
+      m_size += res.second;
+    }
   }
-  if (success) {
-    m_size += len;  // TODO(jim): should check if file exist at first from file, or file Write return added size
-    return true;
-  } else {
-    return false;
-  }
+  return success;
 }
 
 // --------------------------------------------------------------------------

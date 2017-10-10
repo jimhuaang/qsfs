@@ -235,7 +235,8 @@ pair<size_t, list<shared_ptr<Page>>> File::Read(off_t offset, size_t len,
 }
 
 // --------------------------------------------------------------------------
-bool File::Write(off_t offset, size_t len, const char *buffer, time_t mtime) {
+pair<bool, size_t> File::Write(off_t offset, size_t len, const char *buffer,
+                               time_t mtime) {
   // Cache has checked input.
   // bool isValidInput = = offset >= 0 && len > 0 &&  buffer != NULL;
   // assert(isValidInput);
@@ -245,70 +246,87 @@ bool File::Write(off_t offset, size_t len, const char *buffer, time_t mtime) {
   //   return false;
   // }
 
-  auto AddPageAndUpdateTime = [this, mtime](off_t offset, size_t len,
-                                            const char *buffer) -> bool {
+  size_t addedSize = 0;
+  auto AddPageAndUpdateTime = [this, mtime, &addedSize](
+      off_t offset, size_t len, const char *buffer) -> bool {
     auto res = this->UnguardedAddPage(offset, len, buffer);
-    if (res.second) this->SetTime(mtime);
+    if (res.second) {
+      this->SetTime(mtime);
+      addedSize += len;
+    }
     return res.second;
   };
 
-  {
-    lock_guard<recursive_mutex> lock(m_mutex);
+  lock_guard<recursive_mutex> lock(m_mutex);
+  // If pages is empty.
+  if (m_pages.empty()) {
+    return {AddPageAndUpdateTime(offset, len, buffer), addedSize};
+  }
 
-    // If pages is empty.
-    if (m_pages.empty()) {
-      return AddPageAndUpdateTime(offset, len, buffer);
-    }
-
-    auto range = IntesectingRange(offset, offset + len);
-    auto it1 = range.first;
-    auto it2 = range.second;
-    auto offset_ = offset;
-    size_t start_ = 0;
-    size_t len_ = len;
-    // For pages which are not completely ahead of 'offset'
-    // but ahead of 'offset + len'.
-    while (it1 != it2) {
-      if (len_ <= 0) break;
-      auto &page = *it1;
-      if (offset_ < page->m_offset) {  // Insert new page for bytes not present.
-        auto lenNewPage = page->m_offset - offset_;
-        auto res = UnguardedAddPage(offset_, lenNewPage, buffer + start_);
-        if (!res.second) return false;
-
-        offset_ = page->m_offset;
-        start_ += lenNewPage;
-        len_ -= lenNewPage;
-      } else {  // Refresh the overlapped page's content.
-        if (len_ <= static_cast<size_t>(page->Next() - offset_)) {
-          SetTime(mtime);
-          // refresh parital content of page
-          return page->UnguardedRefresh(offset_, len_, buffer + start_);
-        } else {
-          // refresh entire page
-          auto refresh = page->UnguardedRefresh(buffer + start_);
-          if (!refresh) return false;
-
-          offset_ = page->Next();
-          start_ += page->m_size;
-          len_ -= page->m_size;
-          ++it1;
-        }
+  bool success = true;
+  auto range = IntesectingRange(offset, offset + len);
+  auto it1 = range.first;
+  auto it2 = range.second;
+  auto offset_ = offset;
+  size_t start_ = 0;
+  size_t len_ = len;
+  // For pages which are not completely ahead of 'offset'
+  // but ahead of 'offset + len'.
+  while (it1 != it2) {
+    if (len_ <= 0) break;
+    auto &page = *it1;
+    if (offset_ < page->m_offset) {  // Insert new page for bytes not present.
+      auto lenNewPage = page->m_offset - offset_;
+      auto res = UnguardedAddPage(offset_, lenNewPage, buffer + start_);
+      if (!res.second) {
+        success = false;
+        return {false, addedSize};
+      } else {
+        addedSize += lenNewPage;
       }
-    }  // end of while
-    // Insert new page for bytes not present.
-    if (len_ > 0) {
-      auto res = UnguardedAddPage(offset_, len_, buffer + start_);
-      if (!res.second) return false;
+
+      offset_ = page->m_offset;
+      start_ += lenNewPage;
+      len_ -= lenNewPage;
+    } else {  // Refresh the overlapped page's content.
+      if (len_ <= static_cast<size_t>(page->Next() - offset_)) {
+        SetTime(mtime);
+        // refresh parital content of page
+        return {page->UnguardedRefresh(offset_, len_, buffer + start_),
+                addedSize};
+      } else {
+        // refresh entire page
+        auto refresh = page->UnguardedRefresh(buffer + start_);
+        if (!refresh) {
+          success = false;
+          return {false, addedSize};
+        }
+
+        offset_ = page->Next();
+        start_ += page->m_size;
+        len_ -= page->m_size;
+        ++it1;
+      }
     }
-    SetTime(mtime);
-  }  // end of lock_guard
-  return true;
+  }  // end of while
+  // Insert new page for bytes not present.
+  if (len_ > 0) {
+    auto res = UnguardedAddPage(offset_, len_, buffer + start_);
+    if (res.second) {
+      success = true;
+      addedSize += len_;
+    } else {
+      success = false;
+    }
+  }
+  SetTime(mtime);
+
+  return {success, addedSize};
 }
 
 // --------------------------------------------------------------------------
-bool File::Write(off_t offset, size_t len, shared_ptr<iostream> &&stream,
-                 time_t mtime) {
+pair<bool, size_t> File::Write(off_t offset, size_t len,
+                               shared_ptr<iostream> &&stream, time_t mtime) {
   auto AddPageAndUpdateTime = [this, mtime](
       off_t offset, size_t len, shared_ptr<iostream> &&stream) -> bool {
     auto res = this->UnguardedAddPage(offset, len, std::move(stream));
@@ -320,17 +338,17 @@ bool File::Write(off_t offset, size_t len, shared_ptr<iostream> &&stream,
 
   lock_guard<recursive_mutex> lock(m_mutex);
   if (m_pages.empty()) {
-    return AddPageAndUpdateTime(offset, len, std::move(stream));
+    return {AddPageAndUpdateTime(offset, len, std::move(stream)), len};
   } else {
     auto it = LowerBoundPage(offset);
     auto &page = *it;
     if (it == m_pages.end()) {
-      return AddPageAndUpdateTime(offset, len, std::move(stream));
+      return {AddPageAndUpdateTime(offset, len, std::move(stream)), len};
     } else if (page->Offset() == offset && page->Size() == len) {
       // replace old stream
       page->SetStream(std::move(stream));
       SetTime(mtime);
-      return true;
+      return {true, 0};
     } else {
       auto buf = unique_ptr<vector<char>>(new vector<char>(len));
       stream->seekg(0, std::ios_base::beg);
@@ -339,7 +357,6 @@ bool File::Write(off_t offset, size_t len, shared_ptr<iostream> &&stream,
       return Write(offset, len, &(*buf)[0], mtime);
     }
   }
-  return false;
 }
 
 // --------------------------------------------------------------------------
