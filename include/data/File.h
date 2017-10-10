@@ -26,6 +26,8 @@
 #include <list>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <tuple>
+#include <utility>
 
 #include "data/Page.h"
 
@@ -98,7 +100,7 @@ class File {
   // Write a block of bytes into pages
   //
   // @param  : file offset, len, buffer, modification time
-  // @return : {success, added size}
+  // @return : {success, added size in cache}
   //
   // From pointer of buffer, number of len bytes will be writen.
   // The owning file's offset is set with 'offset'.
@@ -108,7 +110,7 @@ class File {
   // Write stream into pages
   //
   // @param  : file offset, len of stream, stream, modification time
-  // @return : {success, added size}
+  // @return : {success, added size in cache}
   //
   // The stream will be moved to the pages.
   // The owning file's offset is set with 'offset'.
@@ -117,7 +119,7 @@ class File {
                                 time_t mtime);
 
   // Resize the total pages' size to a smaller size.
-  void Resize(size_t smallerSize);
+  void ResizeToSmallerSize(size_t smallerSize);
 
   // Clear pages and reset attributes.
   void Clear();
@@ -155,14 +157,13 @@ class File {
   const std::shared_ptr<Page> &Back() { return *(m_pages.rbegin()); }
 
   // Add a new page from a block of character without checking input.
+  // Return {iterator pointer to added page, success, added size in cache}
   // Not-Synchronized
-  std::pair<PageSetConstIterator, bool> UnguardedAddPage(off_t offset,
-                                                         size_t len,
-                                                         const char *buffer);
-  std::pair<PageSetConstIterator, bool> UnguardedAddPage(
+  std::tuple<PageSetConstIterator, bool, size_t> UnguardedAddPage(
+      off_t offset, size_t len, const char *buffer);
+  std::tuple<PageSetConstIterator, bool, size_t> UnguardedAddPage(
       off_t offset, size_t len, const std::shared_ptr<std::iostream> &stream);
-
-  std::pair<PageSetConstIterator, bool> UnguardedAddPage(
+  std::tuple<PageSetConstIterator, bool, size_t> UnguardedAddPage(
       off_t offset, size_t len, std::shared_ptr<std::iostream> &&stream);
 
  private:
@@ -170,6 +171,7 @@ class File {
   std::atomic<time_t> m_mtime;      // time of last modification
   std::atomic<size_t> m_cacheSize;  // record sum of all pages' size
                                     // stored in cache not including tmp file
+
   std::atomic<bool> m_useTempFile;  // use tmp file when no free cache space
   mutable std::recursive_mutex m_mutex;
   PageSet m_pages;              // a set of pages suppose to be successive

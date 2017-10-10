@@ -190,9 +190,9 @@ class Cache {
 
   // Resize a file
   //
-  // @param  : file id, new file size
+  // @param  : file id, new file size, mtime
   // @return : void
-  void Resize(const std::string &fileId, size_t newSize);
+  void Resize(const std::string &fileId, size_t newSize, time_t mtime);
 
  private:
   // Create an empty File with fileId in cache, without checking input.

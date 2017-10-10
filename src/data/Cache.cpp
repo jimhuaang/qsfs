@@ -22,6 +22,7 @@
 #include <cmath>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
@@ -50,6 +51,7 @@ using std::shared_ptr;
 using std::string;
 using std::to_string;
 using std::unique_ptr;
+using std::vector;
 
 // --------------------------------------------------------------------------
 bool Cache::HasFreeSpace(size_t size) const {
@@ -396,18 +398,29 @@ void Cache::SetTime(const string &fileId, time_t mtime) {
 }
 
 // --------------------------------------------------------------------------
-void Cache::Resize(const string &fileId, size_t newSize) {
+void Cache::Resize(const string &fileId, size_t newFileSize, time_t mtime) {
   auto it = m_map.find(fileId);
   if (it != m_map.end()) {
     auto &file = it->second->second;
-    auto oldSize = file->GetSize();
-    file->Resize(newSize);
-    m_size += file->GetSize() - oldSize;
+    auto oldFileSize = file->GetSize();
+    if (newFileSize == oldFileSize) {
+      return;  // do nothing
+    } else if (newFileSize > oldFileSize) {
+      // fill the hole
+      auto holeSize = newFileSize - oldFileSize;
+      vector<char> hole(holeSize);  // value initialization with '\0'
+      Write(fileId, oldFileSize, holeSize, &hole[0], mtime);
+    } else {
+      file->ResizeToSmallerSize(newFileSize);
+    }
 
-    DebugInfoIf(file->GetSize() != newSize,
-                "Try to resize file " + fileId + " from size " +
-                    to_string(oldSize) + " to " + to_string(newSize) +
-                    ". But now file size is " + to_string(file->GetSize()));
+    m_size += file->GetSize() - oldFileSize;
+    DebugInfoIf(file->GetSize() != newFileSize && !file->UseTempFile(),
+                "Try to resize file from size " + to_string(oldFileSize) +
+                    " to " + to_string(newFileSize) +
+                    ". But now file size is " + to_string(file->GetSize()) +
+                    FormatPath(fileId));
+    DebugInfoIf(file->UseTempFile(), "temp file used " + FormatPath(fileId));
   } else {
     DebugWarning("Unable to resize non existing file " + FormatPath(fileId));
   }

@@ -157,7 +157,7 @@ void Page::UnguardedPutToBody(off_t offset, size_t len,
   m_body->seekp(0, std::ios_base::beg);
   if (len == instreamLen) {
     (*m_body) << instream->rdbuf();
-  } else {  // len > instreamLen
+  } else if (len < instreamLen) {
     stringstream ss;
     ss << instream->rdbuf();
     m_body->write(ss.str().c_str(), len);
@@ -200,7 +200,7 @@ bool Page::SetupTempFile() {
 }
 
 // --------------------------------------------------------------------------
-void Page::Resize(size_t smallerSize) {
+void Page::ResizeToSmallerSize(size_t smallerSize) {
   // Do a lazy resize:
   // 1. Change size to 'samllerSize'.
   // 2. Set output position indicator to 'samllerSize'.

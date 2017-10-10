@@ -149,7 +149,7 @@ namespace Data {
    bool SetupTempFile();
 
    // Do a lazy resize for page.
-   void Resize(size_t smallerSize);
+   void ResizeToSmallerSize(size_t smallerSize);
 
    // Put data to body
    // For internal use only
