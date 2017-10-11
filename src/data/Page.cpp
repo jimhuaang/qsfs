@@ -36,6 +36,7 @@ namespace Data {
 using QS::Data::IOStream;
 using QS::Data::StreamUtils::GetStreamSize;
 using QS::FileSystem::Configure::GetCacheTemporaryDirectory;
+using QS::StringUtils::FormatPath;
 using QS::StringUtils::PointerAddress;
 using QS::Utils::CreateDirectoryIfNotExists;
 using QS::Utils::FileExists;
@@ -52,7 +53,7 @@ using std::to_string;
 
 namespace {
 bool IsTempFile( const string & tmpfilePath){
-  return GetDirName(tmpfilePath) == "/tmp/";
+  return GetDirName(tmpfilePath) == GetCacheTemporaryDirectory();
 }
 }  // namespace
 
@@ -141,6 +142,10 @@ bool Page::UseTempFile(){
 
 // --------------------------------------------------------------------------
 void Page::UnguardedPutToBody(off_t offset, size_t len, const char *buffer){
+  if(!m_body){
+    DebugError("null body stream " + ToStringLine(offset, len, buffer));
+    return;
+  }
   m_body->seekp(0, std::ios_base::beg);
   m_body->write(buffer, len);
   DebugErrorIf(m_body->fail(),
@@ -191,15 +196,19 @@ void Page::RemoveTempFileFromDiskIfExists(bool logOn) const {
 bool Page::SetupTempFile() {
   CreateDirectoryIfNotExists(GetCacheTemporaryDirectory());
   if (!IsTempFile(m_tmpFile)) {
-    DebugError("tmp file " + m_tmpFile + " is not locating under tmp folder");
+    DebugError("tmp file not under /tmp " + FormatPath(m_tmpFile));
     return false;
   }
 
-  auto file = make_shared<fstream>(m_tmpFile);
+  auto file = make_shared<fstream>(
+      m_tmpFile,
+      std::ios::binary | std::ios::trunc | std::ios::in | std::ios::out);
   if (file && *file) {
+    DebugInfo("Make tmp file " + FormatPath(m_tmpFile));
     SetStream(std::move(file));
     return true;
   } else {
+    DebugError("Fail to make tmp file " + FormatPath(m_tmpFile));
     return false;
   }
 }
@@ -246,7 +255,7 @@ bool Page::UnguardedRefresh(off_t offset, size_t len, const char *buffer,
   if (!tmpfile.empty()) {
     m_tmpFile = tmpfile;
     if (!SetupTempFile()) {
-      DebugError("Unable to set up tmp file");
+      DebugError("Unable to set up tmp file " + FormatPath(m_tmpFile));
       return false;
     }
   }
@@ -275,6 +284,10 @@ size_t Page::Read(off_t offset, size_t len, char *buffer) {
 
 // --------------------------------------------------------------------------
 size_t Page::UnguardedRead(off_t offset, size_t len, char *buffer) {
+  if(!m_body){
+    DebugError("null body stream " + ToStringLine(offset, len, buffer));
+    return 0;
+  }
   m_body->seekg(offset - m_offset, std::ios_base::beg);
   m_body->read(buffer, len);
   if(!m_body->good()){
@@ -287,19 +300,19 @@ size_t Page::UnguardedRead(off_t offset, size_t len, char *buffer) {
 
 // --------------------------------------------------------------------------
 string ToStringLine(off_t offset, size_t len, const char *buffer) {
-  return "[offset:size:buffer] = [" + to_string(offset) + ":" + to_string(len) +
+  return "[offset:size:buffer=" + to_string(offset) + ":" + to_string(len) +
          ":" + PointerAddress(buffer) + "]";
 }
 
 // --------------------------------------------------------------------------
 string ToStringLine(off_t offset, size_t size) {
-  return "[offset:size] = [" + to_string(offset) + ":" + to_string(size) + "]";
+  return "[offset:size=" + to_string(offset) + ":" + to_string(size) + "]";
 }
 
 // --------------------------------------------------------------------------
 string ToStringLine(const string &fileId, off_t offset, size_t len,
                     const char *buffer) {
-  return "[fileId:offset:size:buffer] = [" + fileId + ":" + to_string(offset) +
+  return "[fileId:offset:size:buffer=" + fileId + ":" + to_string(offset) +
          ":" + to_string(len) + ":" + PointerAddress(buffer) + "]";
 }
 

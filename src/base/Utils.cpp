@@ -73,7 +73,7 @@ bool CreateDirectoryIfNotExistsNoLog(const string &path) {
 
 // --------------------------------------------------------------------------
 bool CreateDirectoryIfNotExists(const string &path) {
-  Info("Create directory " + FormatPath(path));
+  // Info("Create directory " + FormatPath(path));
   bool success = CreateDirectoryIfNotExistsNoLog(path);
 
   DebugErrorIf(!success, "Fail to create directory " + PostErrMsg(path));

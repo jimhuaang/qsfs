@@ -167,7 +167,7 @@ class Cache {
   //
   // Discard the least recently used File to make sure
   // there will be number of size avaiable cache space.
-  bool Free(size_t size);  // size in byte
+  bool Free(size_t size, const std::string &fileUnfreeable);  // size in byte
 
   // Remove file from cache
   //
@@ -208,7 +208,7 @@ class Cache {
       CacheListConstIterator pos);
 
  private:
-  // Record sum of the cache files' size
+  // Record sum of the cache files' size, not including tmp file
   size_t m_size = 0;
 
   // Most recently used File is put at front,

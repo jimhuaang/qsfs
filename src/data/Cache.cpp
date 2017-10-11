@@ -55,7 +55,7 @@ using std::vector;
 
 // --------------------------------------------------------------------------
 bool Cache::HasFreeSpace(size_t size) const {
-  return GetSize() + size < QS::FileSystem::Configure::GetMaxFileCacheSize();
+  return GetSize() + size <= QS::FileSystem::Configure::GetMaxFileCacheSize();
 }
 
 // --------------------------------------------------------------------------
@@ -63,7 +63,7 @@ bool Cache::IsLastFileOpen() const{
   if(m_cache.empty()) {
     return false;
   }
-  string fileName = m_cache.back().first;
+  const string &fileName = m_cache.back().first;
   auto &drive = QS::FileSystem::Drive::Instance();
   auto &dirTree = drive.GetDirectoryTree();
   assert(dirTree);
@@ -169,14 +169,15 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
   auto &file = pos->second;
   auto outcome = file->Read(offset, len, &(node->GetEntry()));
   if (outcome.first == 0 || outcome.second.empty()) {
-    DebugInfo("Read no bytes from file " + FormatPath(node->GetFilePath()));
+    DebugWarning("Read no bytes from file [offset:len=" + to_string(offset) +
+                 ":" + to_string(len) + "] " + FormatPath(node->GetFilePath()));
     return 0;
   }
 
   size_t addedSize = file->GetSize() - sizeBegin;
   if (addedSize > 0) {
     // Update cache status.
-    bool success = Free(addedSize);
+    bool success = Free(addedSize, fileId);
     if (!success) {
       DebugWarning("Cache is full. Unable to free added" +
                    to_string(addedSize) + " bytes when reading file " +
@@ -302,7 +303,7 @@ pair<bool, unique_ptr<File> *> Cache::PrepareWrite(const string &fileId,
                                                    size_t len) {
   bool availableFreeSpace = true;
   if (!HasFreeSpace(len)) {
-    availableFreeSpace = Free(len);
+    availableFreeSpace = Free(len, fileId);
 
     if (!availableFreeSpace) {
       auto tmpfolder = GetCacheTemporaryDirectory();
@@ -336,7 +337,7 @@ pair<bool, unique_ptr<File> *> Cache::PrepareWrite(const string &fileId,
 }
 
 // --------------------------------------------------------------------------
-bool Cache::Free(size_t size) {
+bool Cache::Free(size_t size, const string &fileUnfreeable) {
   if (size > QS::FileSystem::Configure::GetMaxFileCacheSize()) {
     DebugError("Try to free cache of " + to_string(size) +
                " bytes which surpass the maximum cache size(" +
@@ -352,22 +353,26 @@ bool Cache::Free(size_t size) {
 
   assert(!m_cache.empty());
   size_t freedSpace = 0;
-  while (!HasFreeSpace(size)) {
-    // Discards the least recently used File first,
-    // which is put at back.
-    auto &file = m_cache.back().second;
-    if (file) {
+  while (!HasFreeSpace(size) && !m_cache.empty()) {
+    // Discards the least recently used File first, which is put at back.
+    // Notice do NOT store a reference of the File supposed to be removed.
+    auto fileId = m_cache.back().first;
+    if (m_cache.back().second) {
       if(IsLastFileOpen()){
         return false;
       }
-      freedSpace += file->GetSize();
-      m_size -= file->GetSize();
-      file->Clear();
+      if(fileId == fileUnfreeable){
+        return false;
+      }
+      freedSpace += m_cache.back().second->GetSize();
+      m_size -= m_cache.back().second->GetSize();
+      m_cache.back().second->Clear();
     } else {
       DebugWarning(
           "The last recently used file (put at the end of cache) is null");
     }
     m_cache.pop_back();
+    m_map.erase(fileId);
   }
   DebugInfo("Has freed cache of " + to_string(freedSpace) + " bytes");
   return true;

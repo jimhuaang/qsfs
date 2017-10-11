@@ -79,7 +79,8 @@ blkcnt_t GetBlocks(off_t size) {
 
 uint64_t GetMaxFileCacheSize() {
   // TODO(Jim) : add option max_cache 
-  return QS::Data::Size::MB100;  // default value
+  // return QS::Data::Size::MB100;  // default value
+  return QS::Data::Size::KB8;  // TODO(jim): for test only, remove it
 }
 
 size_t GetMaxFileMetaDataCount() {

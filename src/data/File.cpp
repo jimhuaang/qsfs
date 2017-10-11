@@ -62,11 +62,12 @@ namespace {
 // @return : string
 //
 // Notes: tmp file path format as following,
-//        e.g: /tmp/basename1024_4096
+//        e.g: /tmp/basename_1024-4096
 //             1024 is offset, 4096 is size in bytes
-string BuildTempFilePath(const string &basename, off_t offset, size_t size){
+string BuildTempFilePath(const string &basename, off_t offset, size_t size) {
   string qsfsTmpDir = GetCacheTemporaryDirectory();
-  return qsfsTmpDir + basename + to_string(offset) + "_" + to_string(size);
+  return qsfsTmpDir + basename + "_" + to_string(offset) + "-" +
+         to_string(size);
 }
 
 // --------------------------------------------------------------------------

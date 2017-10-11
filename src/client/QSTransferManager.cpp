@@ -241,12 +241,17 @@ void QSTransferManager::DoMultiPartDownload(
   auto ipart = queuedParts.begin();
 
   for (; ipart != queuedParts.end() && handle->ShouldContinue(); ++ipart) {
+    const auto &part = ipart->second;
     auto buffer = GetBufferManager()->Acquire();
     if (!buffer) {
       DebugWarning("Unable to acquire resource, stop download");
+      handle->ChangePartToFailed(part);
+      handle->UpdateStatus(TransferStatus::Failed);
+      handle->SetError(ClientError<QSError>(
+          QSError::NO_SUCH_MULTIPART_DOWNLOAD, "DoMultiPartDownload",
+          QSErrorToString(QSError::NO_SUCH_MULTIPART_DOWNLOAD), false));
       break;
     }
-    const auto &part = ipart->second;
     if (handle->ShouldContinue()) {
       part->SetDownloadPartStream(
           make_shared<IOStream>(std::move(buffer), part->GetSize()));
@@ -415,8 +420,6 @@ void QSTransferManager::DoSinglePartUpload(
   assert(queuedParts.size() == 1);
 
   const auto &part = queuedParts.begin()->second;
-  handle->AddPendingPart(part);
-
   auto fileSize = handle->GetBytesTotalSize();
   auto buf = Buffer(new vector<char>(fileSize));
   string objKey = handle->GetObjectKey();
@@ -430,10 +433,17 @@ void QSTransferManager::DoSinglePartUpload(
     DebugError("Fail to read cache [file:offset:len:readsize=" + objKey +
                ":0:" + to_string(fileSize) + ":" + to_string(readSize) +
                "], stop upload");
+    handle->ChangePartToFailed(part);
+    handle->UpdateStatus(TransferStatus::Failed);
+    handle->SetError(
+        ClientError<QSError>(QSError::NO_SUCH_UPLOAD, "DoSinglePartUpload",
+                             QSErrorToString(QSError::NO_SUCH_UPLOAD), false));
+
     return;
   }
 
   auto stream = make_shared<IOStream>(std::move(buf), fileSize);
+  handle->AddPendingPart(part);
   auto ReceivedHandler = [this, handle, part, fileSize,
                           stream](const ClientError<QSError> &err) {
     if (IsGoodQSError(err)) {
@@ -480,13 +490,18 @@ void QSTransferManager::DoMultiPartUpload(
 
   auto ipart = queuedParts.begin();
   for (; ipart != queuedParts.end() && handle->ShouldContinue(); ++ipart) {
+    const auto &part = ipart->second;
     auto buffer = GetBufferManager()->Acquire();
     if (!buffer) {
       DebugWarning("Unable to acquire resource, stop upload");
+      handle->ChangePartToFailed(part);
+      handle->UpdateStatus(TransferStatus::Failed);
+      handle->SetError(ClientError<QSError>(
+          QSError::NO_SUCH_MULTIPART_UPLOAD, "DoMultiPartUpload",
+          QSErrorToString(QSError::NO_SUCH_MULTIPART_UPLOAD), false));
       break;
     }
 
-    const auto &part = ipart->second;
     auto readSize = cache->Read(objKey, part->GetRangeBegin(), part->GetSize(),
                                 &(*buffer)[0], node);
     if (readSize != part->GetSize()) {
@@ -495,6 +510,11 @@ void QSTransferManager::DoMultiPartUpload(
                  to_string(part->GetSize()) + ":" + to_string(readSize) +
                  "], stop upload");
 
+      handle->ChangePartToFailed(part);
+      handle->UpdateStatus(TransferStatus::Failed);
+      handle->SetError(ClientError<QSError>(
+          QSError::NO_SUCH_MULTIPART_UPLOAD, "DoMultiPartUpload",
+          QSErrorToString(QSError::NO_SUCH_MULTIPART_UPLOAD), false));
       GetBufferManager()->Release(std::move(buffer));
       break;
     }
@@ -564,6 +584,7 @@ void QSTransferManager::DoMultiPartUpload(
 
     } else {
       GetBufferManager()->Release(std::move(buffer));
+      break;
     }
   }
 
