@@ -61,7 +61,7 @@ Host StringToHost(const string& name) {
   auto it = nameToHostMap.find(name);
   if (it == nameToHostMap.end()) {
     DebugWarning(
-        "Tring to get host with unrecognized host name, null returned");
+        "Trying to get host with unrecognized host name, null returned");
     return Host::Null;
   }
   return it->second;

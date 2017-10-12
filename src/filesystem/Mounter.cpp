@@ -173,7 +173,7 @@ bool Mounter::DoMount(const Options &options, bool logOn,
       }
       if (logOn) {
         Warning(
-            "MOUNTPOINT is already mounted. Tring to unmount, and mount again " +
+            "MOUNTPOINT is already mounted. Trying to unmount, and mount again " +
             FormatPath(mountPoint));
       }
       string command("umount -l " + mountPoint);  // lazy detach filesystem

@@ -29,7 +29,6 @@ namespace QS {
 
 namespace Data {
 
-  class Cache;
   class File;
 
   class Page {
@@ -133,11 +132,38 @@ namespace Data {
    bool Refresh(off_t offset, size_t len, const char *buffer,
                 const std::string &tmpfile = std::string());
 
+   // Refresh the page's entire content with bytes from buffer,
+   // without checking.
+   // For internal use only.
+   // Refresh the page's entire content
+   //
+   // @param  : buffer
+   // @return : bool
+   bool Refresh(const char *buffer) {
+     return Refresh(m_offset, m_size, buffer);
+   }
+
    // Read the page's content
    //
    // @param  : file offset, len of bytes to read, buffer
    // @return : size of readed bytes
    size_t Read(off_t offset, size_t len, char *buffer);
+
+   // Read the page's partial content
+   // Starting from file offset, all the page's remaining size will be read.
+   size_t Read(off_t offset, char *buffer) {
+     return Read(offset, Next() - offset, buffer);
+   }
+
+   // Read the page's partial content
+   size_t Read(size_t len, char *buffer) {
+     return Read(m_offset, len, buffer);
+   }
+
+   // Read the page's entire content to buffer.
+   size_t Read(char *buffer) {
+     return Read(m_offset, m_size, buffer);
+   }
 
   private:
    // Set stream
@@ -205,7 +231,6 @@ namespace Data {
    }
 
    friend class File;
-   friend class Cache;
  };
 
 

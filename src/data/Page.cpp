@@ -224,9 +224,13 @@ void Page::ResizeToSmallerSize(size_t smallerSize) {
 }
 
 // --------------------------------------------------------------------------
-bool Page::Refresh(off_t offset, size_t len, const char *buffer, const string &tmpfile) {
-  bool isValidInput =
-      offset >= m_offset && buffer != NULL && len > 0 && !tmpfile.empty();
+bool Page::Refresh(off_t offset, size_t len, const char *buffer,
+                   const string &tmpfile) {
+  if (len == 0) {
+    return true;  // do nothing
+  }
+
+  bool isValidInput = offset >= m_offset && buffer != NULL && len > 0;
   assert(isValidInput);
   if (!isValidInput) {
     DebugError("Try to refresh page(" + ToStringLine(m_offset, m_size) +
@@ -273,6 +277,10 @@ bool Page::UnguardedRefresh(off_t offset, size_t len, const char *buffer,
 
 // --------------------------------------------------------------------------
 size_t Page::Read(off_t offset, size_t len, char *buffer) {
+  if (len == 0) {
+    return 0;  // do nothing
+  }
+
   bool isValidInput = (offset >= m_offset && buffer != NULL && len > 0 &&
                        len <= static_cast<size_t>(Next() - offset));
   assert(isValidInput);

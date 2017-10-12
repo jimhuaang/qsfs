@@ -71,12 +71,9 @@ string BuildTempFilePath(const string &basename, off_t offset, size_t size) {
 }
 
 // --------------------------------------------------------------------------
-string PrintFileName(const string& file){
-  return "[file=" + file + "]";
-}
+string PrintFileName(const string &file) { return "[file=" + file + "]"; }
 
 }  // namespace
-
 
 // --------------------------------------------------------------------------
 pair<PageSetConstIterator, PageSetConstIterator> File::ConsecutivePagesAtFront()
@@ -116,7 +113,7 @@ bool File::HasData(off_t start, size_t size) const {
 ContentRangeDeque File::GetUnloadedRanges(uint64_t fileTotalSize) const {
   lock_guard<recursive_mutex> lock(m_mutex);
   ContentRangeDeque ranges;
-  if(fileTotalSize ==0){
+  if (fileTotalSize == 0) {
     return ranges;
   }
 
@@ -247,8 +244,8 @@ pair<size_t, list<shared_ptr<Page>>> File::Read(off_t offset, size_t len,
 }
 
 // --------------------------------------------------------------------------
-pair<bool, size_t> File::Write(off_t offset, size_t len, const char *buffer,
-                               time_t mtime) {
+tuple<bool, size_t, size_t> File::Write(off_t offset, size_t len,
+                                        const char *buffer, time_t mtime) {
   // Cache has checked input.
   // bool isValidInput = = offset >= 0 && len > 0 &&  buffer != NULL;
   // assert(isValidInput);
@@ -259,12 +256,14 @@ pair<bool, size_t> File::Write(off_t offset, size_t len, const char *buffer,
   // }
 
   size_t addedSizeInCache = 0;
-  auto AddPageAndUpdateTime = [this, mtime, &addedSizeInCache](
+  size_t addedSize = 0;
+  auto AddPageAndUpdateTime = [this, mtime, &addedSizeInCache, &addedSize](
       off_t offset, size_t len, const char *buffer) -> bool {
     auto res = this->UnguardedAddPage(offset, len, buffer);
     if (std::get<1>(res)) {
       this->SetTime(mtime);
       addedSizeInCache += std::get<2>(res);
+      addedSize += std::get<3>(res);
     }
     return std::get<1>(res);
   };
@@ -272,7 +271,8 @@ pair<bool, size_t> File::Write(off_t offset, size_t len, const char *buffer,
   lock_guard<recursive_mutex> lock(m_mutex);
   // If pages is empty.
   if (m_pages.empty()) {
-    return {AddPageAndUpdateTime(offset, len, buffer), addedSizeInCache};
+    return make_tuple(AddPageAndUpdateTime(offset, len, buffer),
+                      addedSizeInCache, addedSize);
   }
 
   bool success = true;
@@ -292,9 +292,10 @@ pair<bool, size_t> File::Write(off_t offset, size_t len, const char *buffer,
       auto res = UnguardedAddPage(offset_, lenNewPage, buffer + start_);
       if (!std::get<1>(res)) {
         success = false;
-        return {false, addedSizeInCache};
+        return make_tuple(false, addedSizeInCache, addedSize);
       } else {
         addedSizeInCache += std::get<2>(res);
+        addedSize += std::get<3>(res);
       }
 
       offset_ = page->m_offset;
@@ -304,14 +305,14 @@ pair<bool, size_t> File::Write(off_t offset, size_t len, const char *buffer,
       if (len_ <= static_cast<size_t>(page->Next() - offset_)) {
         SetTime(mtime);
         // refresh parital content of page
-        return {page->UnguardedRefresh(offset_, len_, buffer + start_),
-                addedSizeInCache};
+        return make_tuple(page->Refresh(offset_, len_, buffer + start_),
+                          addedSizeInCache, addedSize);
       } else {
         // refresh entire page
-        auto refresh = page->UnguardedRefresh(buffer + start_);
+        auto refresh = page->Refresh(buffer + start_);
         if (!refresh) {
           success = false;
-          return {false, addedSizeInCache};
+          return make_tuple(false, addedSizeInCache, addedSize);
         }
 
         offset_ = page->Next();
@@ -327,26 +328,28 @@ pair<bool, size_t> File::Write(off_t offset, size_t len, const char *buffer,
     if (std::get<1>(res)) {
       success = true;
       addedSizeInCache += std::get<2>(res);
+      addedSize += std::get<3>(res);
     } else {
       success = false;
     }
   }
   SetTime(mtime);
 
-  return {success, addedSizeInCache};
+  return make_tuple(success, addedSizeInCache, addedSize);
 }
 
 // --------------------------------------------------------------------------
-pair<bool, size_t> File::Write(off_t offset, size_t len,
-                               shared_ptr<iostream> &&stream, time_t mtime) {
+tuple<bool, size_t, size_t> File::Write(off_t offset, size_t len,
+                                        shared_ptr<iostream> &&stream,
+                                        time_t mtime) {
   auto AddPageAndUpdateTime = [this, mtime](
       off_t offset, size_t len,
-      shared_ptr<iostream> &&stream) -> pair<bool, size_t> {
+      shared_ptr<iostream> &&stream) -> tuple<bool, size_t, size_t> {
     auto res = this->UnguardedAddPage(offset, len, std::move(stream));
     if (std::get<1>(res)) {
       this->SetTime(mtime);
     }
-    return {std::get<1>(res), std::get<2>(res)};
+    return make_tuple(std::get<1>(res), std::get<2>(res), std::get<3>(res));
   };
 
   lock_guard<recursive_mutex> lock(m_mutex);
@@ -361,7 +364,7 @@ pair<bool, size_t> File::Write(off_t offset, size_t len,
       // replace old stream
       page->SetStream(std::move(stream));
       SetTime(mtime);
-      return {true, 0};
+      return make_tuple(true, 0, 0);
     } else {
       auto buf = unique_ptr<vector<char>>(new vector<char>(len));
       stream->seekg(0, std::ios_base::beg);
@@ -374,15 +377,15 @@ pair<bool, size_t> File::Write(off_t offset, size_t len,
 
 // --------------------------------------------------------------------------
 void File::ResizeToSmallerSize(size_t smallerSize) {
-  auto curSize = GetCachedSize();
-  if(smallerSize == curSize){
+  auto curSize = GetSize();
+  if (smallerSize == curSize) {
     return;
   }
   if (smallerSize > curSize) {
-    DebugWarning(
-        "File size: " + to_string(curSize) +
-        ", target size: " + to_string(smallerSize) +
-        ". Unable to resize File to a larger size. " + PrintFileName(m_baseName));
+    DebugWarning("File size: " + to_string(curSize) +
+                 ", target size: " + to_string(smallerSize) +
+                 ". Unable to resize File to a larger size. " +
+                 PrintFileName(m_baseName));
     return;
   }
 
@@ -397,6 +400,7 @@ void File::ResizeToSmallerSize(size_t smallerSize) {
         if (!(*page)->UseTempFile()) {
           m_cacheSize -= (*page)->m_size;
         }
+        m_size -= (*page)->m_size;
       }
       m_pages.erase(it, m_pages.end());
     }
@@ -413,6 +417,7 @@ void File::ResizeToSmallerSize(size_t smallerSize) {
         if (!lastPage->UseTempFile()) {
           m_cacheSize -= lastPage->m_size - newSize;
         }
+        m_size -= lastPage->m_size - newSize;
       } else {
         DebugError("After erased pages behind offset " + to_string(offset) +
                    " , last page now with " +
@@ -420,7 +425,7 @@ void File::ResizeToSmallerSize(size_t smallerSize) {
                    ". Should not happen, but go on. " +
                    PrintFileName(m_baseName));
       }
-    } 
+    }
   }
 }
 
@@ -431,6 +436,7 @@ void File::Clear() {
     m_pages.clear();
   }
   m_mtime.store(0);
+  m_size.store(0);
   m_cacheSize.store(0);
   m_useTempFile.store(false);
 }
@@ -463,9 +469,10 @@ pair<PageSetConstIterator, PageSetConstIterator> File::IntesectingRange(
 }
 
 // --------------------------------------------------------------------------
-tuple<PageSetConstIterator, bool, size_t> File::UnguardedAddPage(
+tuple<PageSetConstIterator, bool, size_t, size_t> File::UnguardedAddPage(
     off_t offset, size_t len, const char *buffer) {
   pair<PageSetConstIterator, bool> res;
+  size_t addedSize = 0;
   size_t addedSizeInCache = 0;
   if (UseTempFile()) {
     res = m_pages.emplace(new Page(
@@ -478,18 +485,22 @@ tuple<PageSetConstIterator, bool, size_t> File::UnguardedAddPage(
       m_cacheSize += len;  // count size of data stored in cache
     }
   }
+  if (res.second) {
+    addedSize = 0;
+    m_size += len;
+  } else {
+    DebugError("Fail to new a page from a buffer " +
+               ToStringLine(offset, len, buffer) + PrintFileName(m_baseName));
+  }
 
-  DebugErrorIf(!res.second,
-               "Fail to new a page from a buffer " +
-                   ToStringLine(offset, len, buffer) +
-                   PrintFileName(m_baseName));
-  return make_tuple(res.first, res.second, addedSizeInCache);
+  return make_tuple(res.first, res.second, addedSizeInCache, addedSize);
 }
 
 // --------------------------------------------------------------------------
-tuple<PageSetConstIterator, bool, size_t> File::UnguardedAddPage(
+tuple<PageSetConstIterator, bool, size_t, size_t> File::UnguardedAddPage(
     off_t offset, size_t len, const shared_ptr<iostream> &stream) {
   pair<PageSetConstIterator, bool> res;
+  size_t addedSize = 0;
   size_t addedSizeInCache = 0;
   if (UseTempFile()) {
     res = m_pages.emplace(new Page(
@@ -501,16 +512,22 @@ tuple<PageSetConstIterator, bool, size_t> File::UnguardedAddPage(
       m_cacheSize += len;
     }
   }
-  DebugErrorIf(!res.second,
-               "Fail to new a page from a stream " + ToStringLine(offset, len) +
-                   PrintFileName(m_baseName));
-  return make_tuple(res.first, res.second, addedSizeInCache);
+  if (res.second) {
+    addedSize = len;
+    m_size += len;
+  } else {
+    DebugError("Fail to new a page from a stream " + ToStringLine(offset, len) +
+               PrintFileName(m_baseName));
+  }
+
+  return make_tuple(res.first, res.second, addedSizeInCache, addedSize);
 }
 
 // --------------------------------------------------------------------------
-tuple<PageSetConstIterator, bool, size_t> File::UnguardedAddPage(
+tuple<PageSetConstIterator, bool, size_t, size_t> File::UnguardedAddPage(
     off_t offset, size_t len, shared_ptr<iostream> &&stream) {
   pair<PageSetConstIterator, bool> res;
+  size_t addedSize = 0;
   size_t addedSizeInCache = 0;
   if (UseTempFile()) {
     res = m_pages.emplace(new Page(
@@ -522,10 +539,15 @@ tuple<PageSetConstIterator, bool, size_t> File::UnguardedAddPage(
       m_cacheSize += len;
     }
   }
-  DebugErrorIf(!res.second,
-               "Fail to new a page from a stream " + ToStringLine(offset, len) +
-                   PrintFileName(m_baseName));
-  return make_tuple(res.first, res.second, addedSizeInCache);
+  if (res.second) {
+    addedSize = len;
+    m_size += len;
+  } else {
+    DebugError("Fail to new a page from a stream " + ToStringLine(offset, len) +
+               PrintFileName(m_baseName));
+  }
+
+  return make_tuple(res.first, res.second, addedSizeInCache, addedSize);
 }
 
 }  // namespace Data

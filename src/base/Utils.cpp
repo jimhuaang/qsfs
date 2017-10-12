@@ -73,11 +73,17 @@ bool CreateDirectoryIfNotExistsNoLog(const string &path) {
 
 // --------------------------------------------------------------------------
 bool CreateDirectoryIfNotExists(const string &path) {
-  // Info("Create directory " + FormatPath(path));
-  bool success = CreateDirectoryIfNotExistsNoLog(path);
-
-  DebugErrorIf(!success, "Fail to create directory " + PostErrMsg(path));
-  return success;
+  if (FileExists(path)) {
+    return true;  // do nothing
+  } else {
+    bool success = CreateDirectoryIfNotExistsNoLog(path);
+    if (success) {
+      Info("Create directory " + FormatPath(path));
+    } else {
+      DebugError("Fail to create directory " + PostErrMsg(path));
+    }
+    return success;
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -91,11 +97,17 @@ bool RemoveDirectoryIfExistsNoLog(const string &path) {
 
 // --------------------------------------------------------------------------
 bool RemoveDirectoryIfExists(const string &path) {
-  Info("Delete directory " + FormatPath(path));
-  bool success = RemoveDirectoryIfExistsNoLog(path);
-
-  DebugErrorIf(!success, "Fail to delete directory " + PostErrMsg(path));
-  return success;
+  if (FileExists(path, true)) {
+    bool success = RemoveDirectoryIfExistsNoLog(path);
+    if (success) {
+      Info("Delete directory " + FormatPath(path));
+    } else {
+      DebugError("Fail to delete directory " + PostErrMsg(path));
+    }
+    return success;
+  } else {
+    return true;  // do nothing
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -108,10 +120,17 @@ bool RemoveFileIfExistsNoLog(const string &path) {
 
 // --------------------------------------------------------------------------
 bool RemoveFileIfExists(const string &path) {
-  Info("Remove file " + FormatPath(path));
-  bool success = RemoveFileIfExistsNoLog(path);
-  DebugErrorIf(!success, "Fail to delete file " + PostErrMsg(path));
-  return success;
+  if (FileExists(path, true)) {
+    bool success = RemoveFileIfExistsNoLog(path);
+    if (success) {
+      Info("Remove file " + FormatPath(path));
+    } else {
+      DebugError("Fail to delete file " + PostErrMsg(path));
+    }
+    return success;
+  } else {
+    return true;  // do nothing
+  }
 }
 
 // --------------------------------------------------------------------------

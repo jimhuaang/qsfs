@@ -223,9 +223,8 @@ bool FileMetaDataManager::FreeNoLock(size_t needCount) {
   while (!HasFreeSpaceNoLock(needCount)) {
     // Discards the least recently used meta first, which is put at back
     assert(!m_metaDatas.empty());
-    auto &meta = m_metaDatas.back().second;
-    if (meta) {
-      meta.reset();
+    if (!m_metaDatas.empty() && m_metaDatas.back().second) {
+      m_metaDatas.back().second.reset();
     } else {
       DebugWarning("The last recently used file metadata in manager is null");
     }

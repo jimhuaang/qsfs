@@ -410,7 +410,7 @@ void Drive::MakeDir(const string &dirPath, mode_t mode) {
 }
 
 // --------------------------------------------------------------------------
-void Drive::OpenFile(const string &filePath) {
+void Drive::OpenFile(const string &filePath, bool async) {
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();
   bool modified = res.second;
@@ -425,12 +425,13 @@ void Drive::OpenFile(const string &filePath) {
   if (fileSize == 0) {
     m_cache->Write(filePath, 0, 0, NULL, time(NULL));
   } else if (fileSize > 0) {
-    auto ranges = m_cache->GetUnloadedRanges(filePath, fileSize);
-    time_t mtime = node->GetMTime();
     bool fileContentExist = m_cache->HasFileData(filePath, 0, fileSize);
     if (!fileContentExist || modified) {
-      // TODO(jim): should we do this async?
-      DownloadFileContentRanges(filePath, ranges, mtime, false);
+      auto ranges = m_cache->GetUnloadedRanges(filePath, fileSize);
+      if (!ranges.empty()) {
+        time_t mtime = node->GetMTime();
+        DownloadFileContentRanges(filePath, ranges, mtime, async);
+      }
     }
   }
 
@@ -630,6 +631,9 @@ void Drive::TruncateFile(const string &filePath, size_t newSize) {
   }
 
   if (newSize != node->GetFileSize()) {
+    DebugInfo(
+        "Truncate file [oldsize:newsize=" + to_string(node->GetFileSize()) +
+        ":" + to_string(newSize) + "]" + FormatPath(filePath));
     m_cache->Resize(filePath, newSize, time(NULL));
     node->SetFileSize(newSize);
     node->SetNeedUpload(true);

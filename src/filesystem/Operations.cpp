@@ -1027,7 +1027,7 @@ int qsfs_open(const char* path, struct fuse_file_info* fi) {
       }
   
       // Do Open
-      drive.OpenFile(path);
+      drive.OpenFile(path, false);  // load file synchronizely if not exist
     }
 
   } catch (const QSException& err) {

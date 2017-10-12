@@ -189,25 +189,25 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
 
   // Notice outcome pagelist could has more content than required
   auto &pagelist = outcome.second;
-  auto &page = pagelist.front();
+  auto page = pagelist.front();  // copy instead use reference
   pagelist.pop_front();
   if (pagelist.empty()) {  // Only a single page.
     auto sz = std::min(len, outcome.first);
-    return page->UnguardedRead(offset, sz, buffer);
+    return page->Read(offset, sz, buffer);
   } else {  // Have Multipule pages.
     // read first page
-    auto readSize = page->UnguardedRead(offset, buffer);
+    auto readSize = page->Read(offset, buffer);
     page = pagelist.front();
     pagelist.pop_front();
     // read middle pages
     while (!pagelist.empty()) {
-      readSize += page->UnguardedRead(buffer + readSize);
+      readSize += page->Read(buffer + readSize);
       page = pagelist.front();
       pagelist.pop_front();
     }
     // read last page
     auto sz = std::min(outcome.first - readSize, len - readSize);
-    readSize += page->UnguardedRead(sz, buffer + readSize);
+    readSize += page->Read(sz, buffer + readSize);
     return readSize;
   }
 }
@@ -243,9 +243,9 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
     auto file = res.second;
     assert(file != nullptr);
     auto res = (*file)->Write(offset, len, buffer, mtime);
-    success = res.first;
+    success = std::get<0>(res);
     if (success) {
-      m_size += res.second;
+      m_size += std::get<1>(res);  // added size in cache
     }
   }
   return success;
@@ -291,9 +291,9 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
     auto file = res.second;
     assert(file != nullptr);
     auto res = (*file)->Write(offset, len, std::move(stream), mtime);
-    success = res.first;
+    success = std::get<0>(res);
     if (success) {
-      m_size += res.second;
+      m_size += std::get<1>(res);  // added size in cache
     }
   }
   return success;
@@ -332,6 +332,8 @@ pair<bool, unique_ptr<File> *> Cache::PrepareWrite(const string &fileId,
   auto pfile = &(pos->second);
   if (!availableFreeSpace) {
     (*pfile)->SetUseTempFile(true);
+  } else {
+    (*pfile)->SetUseTempFile(false);
   }
 
   return {true, pfile};
@@ -434,7 +436,8 @@ void Cache::Resize(const string &fileId, size_t newFileSize, time_t mtime) {
   auto it = m_map.find(fileId);
   if (it != m_map.end()) {
     auto pfile = &(it->second->second);
-    auto oldFileSize = (*pfile)->GetCachedSize();
+    auto oldFileSize = (*pfile)->GetSize();
+    auto oldFileCacheSize = (*pfile)->GetCachedSize();
     if (newFileSize == oldFileSize) {
       return;  // do nothing
     } else if (newFileSize > oldFileSize) {
@@ -448,15 +451,13 @@ void Cache::Resize(const string &fileId, size_t newFileSize, time_t mtime) {
       (*pfile)->ResizeToSmallerSize(newFileSize);
       (*pfile)->SetTime(mtime);
     }
+    m_size += (*pfile)->GetCachedSize() - oldFileCacheSize;
 
-    m_size += (*pfile)->GetCachedSize() - oldFileSize;
-    DebugInfoIf(
-        (*pfile)->GetCachedSize() != newFileSize && !(*pfile)->UseTempFile(),
-        "Try to resize file from size " + to_string(oldFileSize) + " to " +
-            to_string(newFileSize) + ". But now file size is " +
-            to_string((*pfile)->GetCachedSize()) + FormatPath(fileId));
-    DebugInfoIf((*pfile)->UseTempFile(),
-                "temp file used " + FormatPath(fileId));
+    DebugInfoIf((*pfile)->GetSize() != newFileSize,
+                "Try to resize file from size " + to_string(oldFileSize) +
+                    " to " + to_string(newFileSize) +
+                    ". But now file size is " + to_string((*pfile)->GetSize()) +
+                    FormatPath(fileId));
   } else {
     DebugWarning("Unable to resize non existing file " + FormatPath(fileId));
   }

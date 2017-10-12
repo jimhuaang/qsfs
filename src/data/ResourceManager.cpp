@@ -50,7 +50,7 @@ Resource ResourceManager::Acquire() {
   // Should not go here
   assert(!m_shutdown.load());
   DebugErrorIf(m_shutdown.load(),
-               "Tring to acquire resouce BUT resouce manager is shutdown");
+               "Trying to acquire resouce BUT resouce manager is shutdown");
 
   Resource resource = std::move(m_resources.back());
   m_resources.pop_back();

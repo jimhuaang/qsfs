@@ -45,6 +45,7 @@ class File {
   explicit File(const std::string &baseName, time_t mtime = 0, size_t size = 0)
       : m_baseName(baseName),
         m_mtime(mtime),
+        m_size(size),
         m_cacheSize(size),
         m_useTempFile(false) {}
 
@@ -56,6 +57,7 @@ class File {
 
  public:
   std::string GetBaseName() const { return m_baseName; }
+  size_t GetSize() const { return m_size.load(); }
   size_t GetCachedSize() const { return m_cacheSize.load(); }
   time_t GetTime() const { return m_mtime.load(); }
   bool UseTempFile() const { return m_useTempFile.load(); }
@@ -100,23 +102,23 @@ class File {
   // Write a block of bytes into pages
   //
   // @param  : file offset, len, buffer, modification time
-  // @return : {success, added size in cache}
+  // @return : {success, added size in cache, added size}
   //
   // From pointer of buffer, number of len bytes will be writen.
   // The owning file's offset is set with 'offset'.
-  std::pair<bool, size_t> Write(off_t offset, size_t len, const char *buffer,
-                                time_t mtime);
+  std::tuple<bool, size_t, size_t> Write(off_t offset, size_t len,
+                                         const char *buffer, time_t mtime);
 
   // Write stream into pages
   //
   // @param  : file offset, len of stream, stream, modification time
-  // @return : {success, added size in cache}
+  // @return : {success, added size in cache, added size}
   //
   // The stream will be moved to the pages.
   // The owning file's offset is set with 'offset'.
-  std::pair<bool, size_t> Write(off_t offset, size_t len,
-                                std::shared_ptr<std::iostream> &&stream,
-                                time_t mtime);
+  std::tuple<bool, size_t, size_t> Write(
+      off_t offset, size_t len, std::shared_ptr<std::iostream> &&stream,
+      time_t mtime);
 
   // Resize the total pages' size to a smaller size.
   void ResizeToSmallerSize(size_t smallerSize);
@@ -157,18 +159,19 @@ class File {
   const std::shared_ptr<Page> &Back() { return *(m_pages.rbegin()); }
 
   // Add a new page from a block of character without checking input.
-  // Return {iterator pointer to added page, success, added size in cache}
+  // Return {pointer to addedpage, success, added size in cache, added size}
   // Not-Synchronized
-  std::tuple<PageSetConstIterator, bool, size_t> UnguardedAddPage(
+  std::tuple<PageSetConstIterator, bool, size_t, size_t> UnguardedAddPage(
       off_t offset, size_t len, const char *buffer);
-  std::tuple<PageSetConstIterator, bool, size_t> UnguardedAddPage(
+  std::tuple<PageSetConstIterator, bool, size_t, size_t> UnguardedAddPage(
       off_t offset, size_t len, const std::shared_ptr<std::iostream> &stream);
-  std::tuple<PageSetConstIterator, bool, size_t> UnguardedAddPage(
+  std::tuple<PageSetConstIterator, bool, size_t, size_t> UnguardedAddPage(
       off_t offset, size_t len, std::shared_ptr<std::iostream> &&stream);
 
  private:
   std::string m_baseName;           // file base name
   std::atomic<time_t> m_mtime;      // time of last modification
+  std::atomic<size_t> m_size;       // record sum of all pages's size
   std::atomic<size_t> m_cacheSize;  // record sum of all pages' size
                                     // stored in cache not including tmp file
 

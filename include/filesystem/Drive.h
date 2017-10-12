@@ -178,9 +178,9 @@ class Drive {
 
   // Open a file
   //
-  // @param  : file path
+  // @param  : file path, asynchronizely download file if not loaded yet
   // @return : void
-  void OpenFile(const std::string &filePath);
+  void OpenFile(const std::string &filePath, bool async = false);
 
   // Read data from a file
   //
