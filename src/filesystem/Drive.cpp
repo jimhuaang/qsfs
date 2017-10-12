@@ -440,11 +440,6 @@ void Drive::OpenFile(const string &filePath) {
 // --------------------------------------------------------------------------
 size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
                        char *buf) {
-  // if (size > GetMaxFileCacheSize()) {
-  //   DebugError("Input size surpass max file cache size");
-  //   return 0;
-  // }
-
   auto res = GetNode(filePath, false);
   auto node = res.first.lock();
   bool modified = res.second;
@@ -717,11 +712,6 @@ void Drive::Utimens(const string &path, time_t mtime) {
 // --------------------------------------------------------------------------
 int Drive::WriteFile(const string &filePath, off_t offset, size_t size,
                      const char *buf) {
-  // if (size > GetMaxFileCacheSize()) {
-  //   DebugError("Input size surpass max file cache size");
-  //   return 0;
-  // }
-
   auto node = GetNodeSimple(filePath).lock();
   if (!(node && *node)) {
     DebugWarning("File not exist " + FormatPath(filePath));

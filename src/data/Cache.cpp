@@ -59,8 +59,8 @@ bool Cache::HasFreeSpace(size_t size) const {
 }
 
 // --------------------------------------------------------------------------
-bool Cache::IsLastFileOpen() const{
-  if(m_cache.empty()) {
+bool Cache::IsLastFileOpen() const {
+  if (m_cache.empty()) {
     return false;
   }
   const string &fileName = m_cache.back().first;
@@ -68,7 +68,7 @@ bool Cache::IsLastFileOpen() const{
   auto &dirTree = drive.GetDirectoryTree();
   assert(dirTree);
   auto node = dirTree->Find(fileName).lock();
-  if(!(node && *node)) {
+  if (!(node && *node)) {
     return false;
   }
   return node->IsFileOpen();
@@ -81,8 +81,8 @@ bool Cache::HasFileData(const string &filePath, off_t start,
     return false;
   }
   auto it = m_map.find(filePath);
-  auto &file = it->second->second;
-  return file->HasData(start, size);
+  auto pfile = &(it->second->second);
+  return (*pfile)->HasData(start, size);
 }
 
 // --------------------------------------------------------------------------
@@ -94,9 +94,10 @@ ContentRangeDeque Cache::GetUnloadedRanges(const string &filePath,
     return ranges;
   }
   auto it = m_map.find(filePath);
-  auto &file = it->second->second;
+  assert(it != m_map.end());
+  auto pfile = &(it->second->second);
 
-  return file->GetUnloadedRanges(fileTotalSize);
+  return (*pfile)->GetUnloadedRanges(fileTotalSize);
 }
 
 // --------------------------------------------------------------------------
@@ -111,8 +112,8 @@ int Cache::GetNumFile() const { return m_map.size(); }
 time_t Cache::GetTime(const string &fileId) const {
   auto it = m_map.find(fileId);
   if (it != m_map.end()) {
-    auto &file = it->second->second;
-    return file->GetTime();
+    auto pfile = &(it->second->second);
+    return (*pfile)->GetTime();
   } else {
     return 0;
   }
@@ -152,38 +153,38 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
 
   DebugInfo("Read cache [offset:len=" + to_string(offset) + ":" +
             to_string(len) + "] " + FormatPath(fileId));
-  memset(buffer, 0, len);  // Clear input buffer.
-  size_t sizeBegin = 0;
+  memset(buffer, 0, len);      // Clear input buffer.
+  size_t cachedSizeBegin = 0;
   auto pos = m_cache.begin();
   auto it = m_map.find(fileId);
   if (it != m_map.end()) {
     pos = UnguardedMakeFileMostRecentlyUsed(it->second);
-    sizeBegin = pos->second->GetSize();
+    cachedSizeBegin = pos->second->GetCachedSize();
   } else {
     DebugInfo("File not exist in cache. Create new one" +
               FormatPath(node->GetFilePath()));
     pos = UnguardedNewEmptyFile(fileId);
-    assert(pos != m_cache.end());
   }
 
-  auto &file = pos->second;
-  auto outcome = file->Read(offset, len, &(node->GetEntry()));
+  assert(pos != m_cache.end());
+  auto pfile = &(pos->second);
+  auto outcome = (*pfile)->Read(offset, len, &(node->GetEntry()));
   if (outcome.first == 0 || outcome.second.empty()) {
     DebugWarning("Read no bytes from file [offset:len=" + to_string(offset) +
                  ":" + to_string(len) + "] " + FormatPath(node->GetFilePath()));
     return 0;
   }
 
-  size_t addedSize = file->GetSize() - sizeBegin;
-  if (addedSize > 0) {
+  size_t addedCacheSize = (*pfile)->GetCachedSize() - cachedSizeBegin;
+  if (addedCacheSize > 0) {
     // Update cache status.
-    bool success = Free(addedSize, fileId);
+    bool success = Free(addedCacheSize, fileId);
     if (!success) {
       DebugWarning("Cache is full. Unable to free added" +
-                   to_string(addedSize) + " bytes when reading file " +
+                   to_string(addedCacheSize) + " bytes when reading file " +
                    FormatPath(fileId));
     }
-    m_size += addedSize;
+    m_size += addedCacheSize;
   }
 
   // Notice outcome pagelist could has more content than required
@@ -328,21 +329,21 @@ pair<bool, unique_ptr<File> *> Cache::PrepareWrite(const string &fileId,
     assert(pos != m_cache.end());
   }
 
-  auto &file = pos->second;
+  auto pfile = &(pos->second);
   if (!availableFreeSpace) {
-    file->SetUseTempFile(true);
+    (*pfile)->SetUseTempFile(true);
   }
 
-  return {true, &file};
+  return {true, pfile};
 }
 
 // --------------------------------------------------------------------------
 bool Cache::Free(size_t size, const string &fileUnfreeable) {
   if (size > QS::FileSystem::Configure::GetMaxFileCacheSize()) {
-    DebugError("Try to free cache of " + to_string(size) +
-               " bytes which surpass the maximum cache size(" +
-               to_string(QS::FileSystem::Configure::GetMaxFileCacheSize()) +
-               "). Do nothing");
+    DebugInfo("Try to free cache of " + to_string(size) +
+              " bytes which surpass the maximum cache size(" +
+              to_string(QS::FileSystem::Configure::GetMaxFileCacheSize()) +
+              " bytes). Do nothing");
     return false;
   }
   if (HasFreeSpace(size)) {
@@ -358,14 +359,14 @@ bool Cache::Free(size_t size, const string &fileUnfreeable) {
     // Notice do NOT store a reference of the File supposed to be removed.
     auto fileId = m_cache.back().first;
     if (m_cache.back().second) {
-      if(IsLastFileOpen()){
+      if (IsLastFileOpen()) {
         return false;
       }
-      if(fileId == fileUnfreeable){
+      if (fileId == fileUnfreeable) {
         return false;
       }
-      freedSpace += m_cache.back().second->GetSize();
-      m_size -= m_cache.back().second->GetSize();
+      freedSpace += m_cache.back().second->GetCachedSize();
+      m_size -= m_cache.back().second->GetCachedSize();
       m_cache.back().second->Clear();
     } else {
       DebugWarning(
@@ -420,8 +421,8 @@ void Cache::Rename(const string &oldFileId, const string &newFileId) {
 void Cache::SetTime(const string &fileId, time_t mtime) {
   auto it = m_map.find(fileId);
   if (it != m_map.end()) {
-    auto &file = it->second->second;
-    file->SetTime(mtime);
+    auto pfile = &(it->second->second);
+    (*pfile)->SetTime(mtime);
   } else {
     DebugWarning("Unable to set time for non existing file " +
                  FormatPath(fileId));
@@ -432,8 +433,8 @@ void Cache::SetTime(const string &fileId, time_t mtime) {
 void Cache::Resize(const string &fileId, size_t newFileSize, time_t mtime) {
   auto it = m_map.find(fileId);
   if (it != m_map.end()) {
-    auto &file = it->second->second;
-    auto oldFileSize = file->GetSize();
+    auto pfile = &(it->second->second);
+    auto oldFileSize = (*pfile)->GetCachedSize();
     if (newFileSize == oldFileSize) {
       return;  // do nothing
     } else if (newFileSize > oldFileSize) {
@@ -444,17 +445,18 @@ void Cache::Resize(const string &fileId, size_t newFileSize, time_t mtime) {
                 to_string(holeSize) + "] " + FormatPath(fileId));
       Write(fileId, oldFileSize, holeSize, &hole[0], mtime);
     } else {
-      file->ResizeToSmallerSize(newFileSize);
-      file->SetTime(mtime);
+      (*pfile)->ResizeToSmallerSize(newFileSize);
+      (*pfile)->SetTime(mtime);
     }
 
-    m_size += file->GetSize() - oldFileSize;
-    DebugInfoIf(file->GetSize() != newFileSize && !file->UseTempFile(),
-                "Try to resize file from size " + to_string(oldFileSize) +
-                    " to " + to_string(newFileSize) +
-                    ". But now file size is " + to_string(file->GetSize()) +
-                    FormatPath(fileId));
-    DebugInfoIf(file->UseTempFile(), "temp file used " + FormatPath(fileId));
+    m_size += (*pfile)->GetCachedSize() - oldFileSize;
+    DebugInfoIf(
+        (*pfile)->GetCachedSize() != newFileSize && !(*pfile)->UseTempFile(),
+        "Try to resize file from size " + to_string(oldFileSize) + " to " +
+            to_string(newFileSize) + ". But now file size is " +
+            to_string((*pfile)->GetCachedSize()) + FormatPath(fileId));
+    DebugInfoIf((*pfile)->UseTempFile(),
+                "temp file used " + FormatPath(fileId));
   } else {
     DebugWarning("Unable to resize non existing file " + FormatPath(fileId));
   }
@@ -477,9 +479,9 @@ CacheListIterator Cache::UnguardedNewEmptyFile(const string &fileId) {
 CacheListIterator Cache::UnguardedErase(
     FileIdToCacheListIteratorMap::iterator pos) {
   auto cachePos = pos->second;
-  auto &file = cachePos->second;
-  m_size -= file->GetSize();
-  file->Clear();
+  auto pfile = &(cachePos->second);
+  m_size -= (*pfile)->GetCachedSize();
+  (*pfile)->Clear();
   auto next = m_cache.erase(cachePos);
   m_map.erase(pos);
   return next;

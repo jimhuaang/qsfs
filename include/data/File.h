@@ -56,7 +56,7 @@ class File {
 
  public:
   std::string GetBaseName() const { return m_baseName; }
-  size_t GetSize() const { return m_cacheSize.load(); }
+  size_t GetCachedSize() const { return m_cacheSize.load(); }
   time_t GetTime() const { return m_mtime.load(); }
   bool UseTempFile() const { return m_useTempFile.load(); }
 

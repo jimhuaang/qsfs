@@ -374,7 +374,7 @@ pair<bool, size_t> File::Write(off_t offset, size_t len,
 
 // --------------------------------------------------------------------------
 void File::ResizeToSmallerSize(size_t smallerSize) {
-  auto curSize = GetSize();
+  auto curSize = GetCachedSize();
   if(smallerSize == curSize){
     return;
   }
