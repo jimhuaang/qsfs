@@ -313,10 +313,12 @@ pair<bool, unique_ptr<File> *> Cache::PrepareWrite(const string &fileId,
         return {false, nullptr};
       }
       if (!QS::Utils::IsSafeDiskSpace(tmpfolder, len)) {
-        DebugError("No available free space for tmp folder " +
-                   FormatPath(tmpfolder));
-        return {false, nullptr};
-      }
+        if (!FreeTmpCacheFiles(tmpfolder, len, fileId)) {
+          DebugError("No available free space for tmp folder " +
+                     FormatPath(tmpfolder));
+          return {false, nullptr};
+        }
+      }  // check safe disk space
     }
   }
 
@@ -378,6 +380,13 @@ bool Cache::Free(size_t size, const string &fileUnfreeable) {
     m_map.erase(fileId);
   }
   DebugInfo("Has freed cache of " + to_string(freedSpace) + " bytes");
+  return true;
+}
+
+// --------------------------------------------------------------------------
+bool Cache::FreeTmpCacheFiles(const string &tmpfolder, size_t size,
+                              const string &fileUnfreeable) {
+  // TODO (jim): 
   return true;
 }
 

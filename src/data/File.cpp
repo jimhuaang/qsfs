@@ -58,16 +58,12 @@ namespace {
 
 // Build a tmp file absolute path
 //
-// @param  : file base name, file offset, file page size
+// @param  : file base name
 // @return : string
 //
-// Notes: tmp file path format as following,
-//        e.g: /tmp/basename_1024-4096
-//             1024 is offset, 4096 is size in bytes
-string BuildTempFilePath(const string &basename, off_t offset, size_t size) {
+string BuildTempFilePath(const string &basename) {
   string qsfsTmpDir = GetCacheTemporaryDirectory();
-  return qsfsTmpDir + basename + "_" + to_string(offset) + "-" +
-         to_string(size);
+  return qsfsTmpDir + basename;
 }
 
 // --------------------------------------------------------------------------
@@ -476,7 +472,7 @@ tuple<PageSetConstIterator, bool, size_t, size_t> File::UnguardedAddPage(
   size_t addedSizeInCache = 0;
   if (UseTempFile()) {
     res = m_pages.emplace(new Page(
-        offset, len, buffer, BuildTempFilePath(GetBaseName(), offset, len)));
+        offset, len, buffer, BuildTempFilePath(GetBaseName())));
     // do not count size of data stored in tmp file
   } else {
     res = m_pages.emplace(new Page(offset, len, buffer));
@@ -504,7 +500,7 @@ tuple<PageSetConstIterator, bool, size_t, size_t> File::UnguardedAddPage(
   size_t addedSizeInCache = 0;
   if (UseTempFile()) {
     res = m_pages.emplace(new Page(
-        offset, len, stream, BuildTempFilePath(GetBaseName(), offset, len)));
+        offset, len, stream, BuildTempFilePath(GetBaseName())));
   } else {
     res = m_pages.emplace(new Page(offset, len, stream));
     if (res.second) {
@@ -531,7 +527,7 @@ tuple<PageSetConstIterator, bool, size_t, size_t> File::UnguardedAddPage(
   size_t addedSizeInCache = 0;
   if (UseTempFile()) {
     res = m_pages.emplace(new Page(
-        offset, len, stream, BuildTempFilePath(GetBaseName(), offset, len)));
+        offset, len, stream, BuildTempFilePath(GetBaseName())));
   } else {
     res = m_pages.emplace(new Page(offset, len, std::move(stream)));
     if (res.second) {

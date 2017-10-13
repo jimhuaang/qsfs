@@ -42,6 +42,7 @@ const static uint64_t GB1 = 1024 * 1024 * 1024;
 
 const static size_t K1 = 1 * 1000;
 const static size_t K10 = 10 * 1000;
+const static size_t K20 = 20 * 1000;
 const static size_t K100 = 100 * 1000;
 const static size_t M1 = 1* 1000 * 1000;
 const static size_t M10 = 10 * 1000 * 1000;

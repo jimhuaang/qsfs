@@ -55,9 +55,7 @@ namespace Data {
    size_t m_size = 0;      // size of bytes this page contains
    std::shared_ptr<std::iostream> m_body;  // stream storing the bytes
    std::string m_tmpFile;  // tmp file is used when qsfs cache is not enough
-                           // it is an absolute file path starting with '/tmp/'
-                           // file format, e.g: /tmp/basename1024_4096
-                           // 1024 is offset, 4096 is size in bytes
+                           // it is an absolute path of /tmp/basename
 
   public:
    // Construct Page from a block of bytes
@@ -176,6 +174,12 @@ namespace Data {
    // - open the tmp file
    // - set stream to fstream assocating with tmp file
    bool SetupTempFile();
+
+   // Open tmp file
+   bool OpenTempFile(std::ios_base::openmode mode);
+
+   // Close tmp file
+   void CloseTempFile();
 
    // Do a lazy resize for page.
    void ResizeToSmallerSize(size_t smallerSize);
