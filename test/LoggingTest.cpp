@@ -89,7 +89,7 @@ void LogNonFatalPossibilities() {
 void VerifyAllNonFatalLogs(LogLevel level) {
   struct stat info;
   int status = stat(infoLogFile.c_str(), &info);
-  ASSERT_EQ(status, 0) << infoLogFile << " is not existed";
+  ASSERT_EQ(status, 0) << infoLogFile << " is not existing";
 
   vector<string> logMsgs;
   {
@@ -183,7 +183,7 @@ void LogDebugFatalIf(bool condition) {
 void VerifyFatalLog(const string &expectedMsg) {
   struct stat info;
   int status = stat(fatalLogFile.c_str(), &info);
-  ASSERT_EQ(status, 0) << fatalLogFile << " is not existed";
+  ASSERT_EQ(status, 0) << fatalLogFile << " is not existing";
 
   string logMsg;
   {

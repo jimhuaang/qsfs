@@ -75,7 +75,9 @@ StreamBuf::pos_type StreamBuf::seekpos(pos_type pos,
       "Streambuf only allow stream to see " + to_string(m_lengthToRead) +
           " bytes, but try to seek to buffer position " + to_string(szPos));
 
-  if (szPos > m_lengthToRead) {
+  DebugErrorIf(!m_buffer, "Streambuf has null buffer");
+
+  if (!m_buffer && szPos > m_lengthToRead) {
     return pos_type(off_type(-1));
   }
 

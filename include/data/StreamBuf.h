@@ -21,6 +21,8 @@
 
 #include <stddef.h>  // for size_t
 
+#include "gtest/gtest_prod.h"  // FRIEND_TEST
+
 #include <memory>
 #include <vector>
 
@@ -77,6 +79,8 @@ class StreamBuf : public std::streambuf {
                           // stream to see 500 b of it.
   friend class IOStream;
   friend class QS::Client::QSTransferManager;
+
+  FRIEND_TEST(StreamBufTest, PrivateFunc);
 };
 
 }  // namespace Data
