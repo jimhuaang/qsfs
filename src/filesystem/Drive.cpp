@@ -463,6 +463,10 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
     remainingSize = fileSize - (offset + size);
   }
 
+  if(downloadSize == 0) {
+    return 0;
+  }
+
   // Download file if not found in cache or if cache need update
   bool fileContentExist = m_cache->HasFileData(filePath, offset, downloadSize);
   time_t mtime = node->GetMTime();

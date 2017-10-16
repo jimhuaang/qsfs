@@ -1065,6 +1065,12 @@ int qsfs_read(const char* path, char* buf, size_t size, off_t offset,
   //   return 0;
   // }
 
+  if (size == 0) {
+    // Test shows fuse may call read with size = 0, offset = file size
+    // For such case, just return
+    return 0;
+  }
+
   int readSize = 0;
   auto& drive = Drive::Instance();
   try {

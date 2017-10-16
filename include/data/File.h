@@ -53,7 +53,7 @@ class File {
   File(const File &) = delete;
   File &operator=(File &&) = delete;
   File &operator=(const File &) = delete;
-  ~File() = default;
+  ~File();
 
  public:
   std::string GetBaseName() const { return m_baseName; }
@@ -61,6 +61,9 @@ class File {
   size_t GetCachedSize() const { return m_cacheSize.load(); }
   time_t GetTime() const { return m_mtime.load(); }
   bool UseTempFile() const { return m_useTempFile.load(); }
+
+  // return tmp file path
+  std::string AskTempFilePath() const;
 
   // Return a pair of iterators pointing to the range of consecutive pages
   // at the front of cache list
@@ -122,6 +125,9 @@ class File {
 
   // Resize the total pages' size to a smaller size.
   void ResizeToSmallerSize(size_t smallerSize);
+
+  // Remove tmp file from disk
+  void RemoveTempFileFromDiskIfExists(bool logOn = true) const;
 
   // Clear pages and reset attributes.
   void Clear();

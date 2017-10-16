@@ -25,6 +25,7 @@
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
+#include "base/Utils.h"
 #include "client/TransferHandle.h"
 #include "client/TransferManager.h"
 #include "data/Directory.h"
@@ -39,6 +40,9 @@ namespace Data {
 using QS::Data::Entry;
 using QS::FileSystem::Configure::GetCacheTemporaryDirectory;
 using QS::StringUtils::PointerAddress;
+using QS::Utils::FileExists;
+using QS::Utils::RemoveFileIfExists;
+using QS::Utils::RemoveFileIfExistsNoLog;
 using std::iostream;
 using std::list;
 using std::lock_guard;
@@ -72,6 +76,16 @@ string PrintFileName(const string &file) { return "[file=" + file + "]"; }
 }  // namespace
 
 // --------------------------------------------------------------------------
+File::~File() {
+  // As pages using tmp file will reference to the same tmp file, so File should
+  // manage the life cycle of the tmp file.
+  RemoveTempFileFromDiskIfExists(true);  // log on
+}
+
+// --------------------------------------------------------------------------
+string File::AskTempFilePath() const { return BuildTempFilePath(m_baseName); }
+
+// --------------------------------------------------------------------------
 pair<PageSetConstIterator, PageSetConstIterator> File::ConsecutivePagesAtFront()
     const {
   lock_guard<recursive_mutex> lock(m_mutex);
@@ -91,6 +105,9 @@ bool File::HasData(off_t start, size_t size) const {
   lock_guard<recursive_mutex> lock(m_mutex);
   auto stop = static_cast<off_t>(start + size);
   auto range = IntesectingRange(start, stop);
+  if(range.first == m_pages.end()){
+    return false;
+  }
   // find the consecutive pages at front [beg to cur]
   auto beg = range.first;
   auto cur = beg;
@@ -426,6 +443,20 @@ void File::ResizeToSmallerSize(size_t smallerSize) {
 }
 
 // --------------------------------------------------------------------------
+void File::RemoveTempFileFromDiskIfExists(bool logOn) const {
+  if (UseTempFile()) {
+    auto tmpFile = AskTempFilePath();
+    if (FileExists(tmpFile, logOn)) {
+      if (logOn) {
+        RemoveFileIfExists(tmpFile);
+      } else {
+        RemoveFileIfExistsNoLog(tmpFile);
+      }
+    }
+  }
+}
+
+// --------------------------------------------------------------------------
 void File::Clear() {
   {
     lock_guard<recursive_mutex> lock(m_mutex);
@@ -434,6 +465,7 @@ void File::Clear() {
   m_mtime.store(0);
   m_size.store(0);
   m_cacheSize.store(0);
+  RemoveTempFileFromDiskIfExists(true);
   m_useTempFile.store(false);
 }
 
@@ -471,8 +503,7 @@ tuple<PageSetConstIterator, bool, size_t, size_t> File::UnguardedAddPage(
   size_t addedSize = 0;
   size_t addedSizeInCache = 0;
   if (UseTempFile()) {
-    res = m_pages.emplace(new Page(
-        offset, len, buffer, BuildTempFilePath(GetBaseName())));
+    res = m_pages.emplace(new Page(offset, len, buffer, AskTempFilePath()));
     // do not count size of data stored in tmp file
   } else {
     res = m_pages.emplace(new Page(offset, len, buffer));
@@ -482,7 +513,7 @@ tuple<PageSetConstIterator, bool, size_t, size_t> File::UnguardedAddPage(
     }
   }
   if (res.second) {
-    addedSize = 0;
+    addedSize = len;
     m_size += len;
   } else {
     DebugError("Fail to new a page from a buffer " +
@@ -499,8 +530,7 @@ tuple<PageSetConstIterator, bool, size_t, size_t> File::UnguardedAddPage(
   size_t addedSize = 0;
   size_t addedSizeInCache = 0;
   if (UseTempFile()) {
-    res = m_pages.emplace(new Page(
-        offset, len, stream, BuildTempFilePath(GetBaseName())));
+    res = m_pages.emplace(new Page(offset, len, stream, AskTempFilePath()));
   } else {
     res = m_pages.emplace(new Page(offset, len, stream));
     if (res.second) {
@@ -526,8 +556,7 @@ tuple<PageSetConstIterator, bool, size_t, size_t> File::UnguardedAddPage(
   size_t addedSize = 0;
   size_t addedSizeInCache = 0;
   if (UseTempFile()) {
-    res = m_pages.emplace(new Page(
-        offset, len, stream, BuildTempFilePath(GetBaseName())));
+    res = m_pages.emplace(new Page(offset, len, stream, AskTempFilePath()));
   } else {
     res = m_pages.emplace(new Page(offset, len, std::move(stream)));
     if (res.second) {

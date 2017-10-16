@@ -102,7 +102,7 @@ namespace Data {
    Page(const Page &) = default;
    Page &operator=(Page &&) = default;
    Page &operator=(const Page &) = default;
-   ~Page();
+   ~Page() = default;
 
    // Return the stop position.
    off_t Stop() const { return 0 < m_size ? m_offset + m_size - 1 : 0; }
@@ -166,9 +166,6 @@ namespace Data {
   private:
    // Set stream
    void SetStream(std::shared_ptr<std::iostream> && stream);
-
-   // Remove tmp file from disk
-   void RemoveTempFileFromDiskIfExists(bool logOn = true) const;
 
    // Setup tmp file on disk
    // - open the tmp file

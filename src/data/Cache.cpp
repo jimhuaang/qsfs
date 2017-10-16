@@ -80,6 +80,10 @@ bool Cache::HasFileData(const string &filePath, off_t start,
   if (!HasFile(filePath)) {
     return false;
   }
+  assert(size > 0);
+  if (size == 0) {
+    return true;
+  }
   auto it = m_map.find(filePath);
   auto pfile = &(it->second->second);
   return (*pfile)->HasData(start, size);
@@ -313,11 +317,9 @@ pair<bool, unique_ptr<File> *> Cache::PrepareWrite(const string &fileId,
         return {false, nullptr};
       }
       if (!QS::Utils::IsSafeDiskSpace(tmpfolder, len)) {
-        if (!FreeTmpCacheFiles(tmpfolder, len, fileId)) {
-          DebugError("No available free space for tmp folder " +
-                     FormatPath(tmpfolder));
-          return {false, nullptr};
-        }
+        DebugError("No available free space (" + to_string(len) +
+                   "bytes) for tmp folder " + FormatPath(tmpfolder));
+        return {false, nullptr};
       }  // check safe disk space
     }
   }
@@ -358,6 +360,7 @@ bool Cache::Free(size_t size, const string &fileUnfreeable) {
 
   assert(!m_cache.empty());
   size_t freedSpace = 0;
+  size_t freedTmpSpace = 0;
   while (!HasFreeSpace(size) && !m_cache.empty()) {
     // Discards the least recently used File first, which is put at back.
     // Notice do NOT store a reference of the File supposed to be removed.
@@ -369,8 +372,10 @@ bool Cache::Free(size_t size, const string &fileUnfreeable) {
       if (fileId == fileUnfreeable) {
         return false;
       }
-      freedSpace += m_cache.back().second->GetCachedSize();
-      m_size -= m_cache.back().second->GetCachedSize();
+      auto fileCacheSz = m_cache.back().second->GetCachedSize();
+      freedSpace += fileCacheSz;
+      m_size -= fileCacheSz;
+      freedTmpSpace += m_cache.back().second->GetSize() - fileCacheSz;
       m_cache.back().second->Clear();
     } else {
       DebugWarning(
@@ -379,14 +384,13 @@ bool Cache::Free(size_t size, const string &fileUnfreeable) {
     m_cache.pop_back();
     m_map.erase(fileId);
   }
-  DebugInfo("Has freed cache of " + to_string(freedSpace) + " bytes");
-  return true;
-}
-
-// --------------------------------------------------------------------------
-bool Cache::FreeTmpCacheFiles(const string &tmpfolder, size_t size,
-                              const string &fileUnfreeable) {
-  // TODO (jim): 
+  if (freedSpace > 0) {
+    DebugInfo("Has freed cache of " + to_string(freedSpace) + " bytes");
+  }
+  if (freedTmpSpace > 0) {
+    DebugInfo("Has freed tmp file of " + to_string(freedTmpSpace) + " bytes" +
+              FormatPath(GetCacheTemporaryDirectory()));
+  }
   return true;
 }
 

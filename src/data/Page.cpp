@@ -39,10 +39,7 @@ using QS::FileSystem::Configure::GetCacheTemporaryDirectory;
 using QS::StringUtils::FormatPath;
 using QS::StringUtils::PointerAddress;
 using QS::Utils::CreateDirectoryIfNotExists;
-using QS::Utils::FileExists;
 using QS::Utils::GetDirName;
-using QS::Utils::RemoveFileIfExists;
-using QS::Utils::RemoveFileIfExistsNoLog;
 using std::fstream;
 using std::make_shared;
 using std::iostream;
@@ -129,8 +126,6 @@ Page::Page(off_t offset, size_t len, shared_ptr<iostream> &&body)
   }
 }
 
-// --------------------------------------------------------------------------
-Page::~Page() { RemoveTempFileFromDiskIfExists(); }
 
 // --------------------------------------------------------------------------
 bool Page::UseTempFile() { return !m_tmpFile.empty(); }
@@ -191,17 +186,6 @@ void Page::UnguardedPutToBody(off_t offset, size_t len,
 // --------------------------------------------------------------------------
 void Page::SetStream(shared_ptr<iostream> &&stream) {
   m_body = std::move(stream);
-}
-
-// --------------------------------------------------------------------------
-void Page::RemoveTempFileFromDiskIfExists(bool logOn) const {
-  if (!m_tmpFile.empty() && FileExists(m_tmpFile, logOn)) {
-    if (logOn) {
-      RemoveFileIfExists(m_tmpFile);
-    } else {
-      RemoveFileIfExistsNoLog(m_tmpFile);
-    }
-  }
 }
 
 // --------------------------------------------------------------------------
