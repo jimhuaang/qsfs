@@ -46,8 +46,8 @@ void InitLog() {
 }
 
 class ResourceManagerTest : public Test {
- public:
-  ResourceManagerTest() { InitLog(); }
+ protected:
+  static void SetUpTestCase() { InitLog(); }
 };
 
 TEST_F(ResourceManagerTest, Default) {

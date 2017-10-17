@@ -71,6 +71,8 @@ class FileMetaData {
   FileMetaData &operator=(const FileMetaData &) = default;
   ~FileMetaData() = default;
 
+  bool operator==(const FileMetaData &rhs) const;
+
 public:
   struct stat ToStat () const;
   mode_t GetFileTypeAndMode() const;
@@ -83,6 +85,7 @@ public:
   // accessor
   const std::string &GetFilePath() const { return m_filePath;}
   time_t GetMTime() const { return m_mtime; }
+  bool IsFileOpen() const { return m_fileOpen; }
 
  private:
   FileMetaData() = default;

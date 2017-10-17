@@ -353,8 +353,8 @@ bool Cache::Free(size_t size, const string &fileUnfreeable) {
     return false;
   }
   if (HasFreeSpace(size)) {
-    DebugInfo("Try to free cache of " + to_string(size) +
-              " bytes while free space is still available. Go on");
+    // DebugInfo("Try to free cache of " + to_string(size) +
+    //           " bytes while free space is still available. Go on");
     return true;
   }
 

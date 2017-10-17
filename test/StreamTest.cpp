@@ -58,8 +58,10 @@ void InitStreamWithOverflowLength() {
 }
 
 class StreamBufTest : public Test {
- public:
-  StreamBufTest() { InitLog(); }
+ protected:
+  static void SetUpTestCase() {
+    InitLog();
+  }
 };
 
 TEST_F(StreamBufTest, DeathTestInitNull) {

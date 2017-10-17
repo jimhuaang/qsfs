@@ -41,7 +41,9 @@ static std::once_flag initOnceFlag;
 
 // --------------------------------------------------------------------------
 FileMetaDataManager &FileMetaDataManager::Instance() {
-  std::call_once(initOnceFlag, [] { instance.reset(new FileMetaDataManager); });
+  std::call_once(initOnceFlag, [] {
+    instance.reset(new FileMetaDataManager(GetMaxFileMetaDataCount()));
+  });
   return *instance.get();
 }
 
@@ -98,7 +100,7 @@ bool FileMetaDataManager::Has(const std::string &filePath) const {
 // --------------------------------------------------------------------------
 bool FileMetaDataManager::HasFreeSpace(size_t needCount) const {
   lock_guard<recursive_mutex> lock(m_mutex);
-  return m_metaDatas.size() + needCount < GetMaxFileMetaDataCount();
+  return m_metaDatas.size() + needCount <= GetMaxCount();
 }
 
 // --------------------------------------------------------------------------
@@ -108,7 +110,7 @@ MetaDataListIterator FileMetaDataManager::AddNoLock(
   auto it = m_map.find(filePath);
   if (it == m_map.end()) {  // not exist in manager
     if (!HasFreeSpaceNoLock(1)) {
-      auto success = FreeNoLock(1);
+      auto success = FreeNoLock(1, filePath);
       if (!success) return m_metaDatas.end();
     }
     m_metaDatas.emplace_front(filePath, std::move(fileMetaData));
@@ -204,39 +206,53 @@ MetaDataListIterator FileMetaDataManager::UnguardedMakeMetaDataMostRecentlyUsed(
 
 // --------------------------------------------------------------------------
 bool FileMetaDataManager::HasFreeSpaceNoLock(size_t needCount) const {
-  return m_metaDatas.size() + needCount < GetMaxFileMetaDataCount();
+  return m_metaDatas.size() + needCount <= GetMaxCount();
 }
 
 // --------------------------------------------------------------------------
-bool FileMetaDataManager::FreeNoLock(size_t needCount) {
-  if (needCount > GetMaxFileMetaDataCount()) {
+bool FileMetaDataManager::FreeNoLock(size_t needCount, string fileUnfreeable) {
+  if (needCount > GetMaxCount()) {
     DebugError("Try to free file meta data manager of " + to_string(needCount) +
                " items which surpass the maximum file meta data count (" +
-               to_string(GetMaxFileMetaDataCount()) + "). Do nothing");
+               to_string(GetMaxCount()) + "). Do nothing");
     return false;
   }
   if (HasFreeSpaceNoLock(needCount)) {
-    DebugInfo("Tre to free file meta data manager of " + to_string(needCount) +
-              " items while free space is still availabe. Go on");
+    // DebugInfo("Try to free file meta data manager of " + to_string(needCount)
+    // + " items while free space is still availabe. Go on");
     return true;
   }
-  while (!HasFreeSpaceNoLock(needCount)) {
+
+  assert(!m_metaDatas.empty());
+  size_t freedCount = 0;
+  while (!HasFreeSpaceNoLock(needCount) && !m_metaDatas.empty()) {
     // Discards the least recently used meta first, which is put at back
-    assert(!m_metaDatas.empty());
-    if (!m_metaDatas.empty() && m_metaDatas.back().second) {
+    auto fileId = m_metaDatas.back().first;
+    if (m_metaDatas.back().second) {
+      if (m_metaDatas.back().second->IsFileOpen()) {
+        return false;
+      }
+      if (fileId == fileUnfreeable) {
+        return false;
+      }
+      ++freedCount;
       m_metaDatas.back().second.reset();
     } else {
       DebugWarning("The last recently used file metadata in manager is null");
     }
     m_metaDatas.pop_back();
+    m_map.erase(fileId);
   }
-  DebugInfo("Has freed file meta data of " + to_string(needCount) + " items");
+  if (freedCount > 0) {
+    DebugInfo("Has freed file meta data of " + to_string(freedCount) +
+              " items");
+  }
   return true;
 }
 
 // --------------------------------------------------------------------------
-FileMetaDataManager::FileMetaDataManager()
-    : m_maxCount(GetMaxFileMetaDataCount()) {}
+FileMetaDataManager::FileMetaDataManager(size_t maxCount)
+    : m_maxCount(maxCount) {}
 
 }  // namespace Data
 }  // namespace QS

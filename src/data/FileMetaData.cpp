@@ -113,6 +113,18 @@ FileMetaData::FileMetaData(const string &filePath, uint64_t fileSize,
 }
 
 // --------------------------------------------------------------------------
+bool FileMetaData::operator==(const FileMetaData &rhs) const {
+  return m_filePath == rhs.m_filePath && m_fileSize == rhs.m_fileSize &&
+         m_atime == rhs.m_atime && m_mtime == rhs.m_mtime &&
+         m_ctime == rhs.m_ctime && m_cachedTime == rhs.m_cachedTime &&
+         m_uid == rhs.m_uid && m_gid == rhs.m_gid &&
+         m_fileMode == rhs.m_fileMode && m_fileType == rhs.m_fileType &&
+         m_mimeType == rhs.m_mimeType && m_eTag == rhs.m_eTag &&
+         m_encrypted == rhs.m_encrypted && m_dev == rhs.m_dev &&
+         m_needUpload == rhs.m_needUpload && m_fileOpen == rhs.m_fileOpen;
+}
+
+// --------------------------------------------------------------------------
 struct stat FileMetaData::ToStat() const {
   struct stat st;
   st.st_size = m_fileSize;

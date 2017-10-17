@@ -29,6 +29,8 @@
 #include <utility>
 #include <vector>
 
+#include "gtest/gtest_prod.h"  // For FRIEND_TEST
+
 #include <base/HashUtils.h>
 
 namespace QS {
@@ -57,6 +59,7 @@ class FileMetaDataManager {
 
  public:
   static FileMetaDataManager &Instance();
+  size_t GetMaxCount() const { return m_maxCount; }
 
  public:
   // Get file meta data
@@ -113,11 +116,11 @@ class FileMetaDataManager {
   MetaDataListIterator UnguardedMakeMetaDataMostRecentlyUsed(
       MetaDataListConstIterator pos);
   bool HasFreeSpaceNoLock(size_t needCount) const;
-  bool FreeNoLock(size_t needCount);
+  bool FreeNoLock(size_t needCount, const std::string fileUnfreeable);
   MetaDataListIterator AddNoLock(std::shared_ptr<FileMetaData> &&fileMetaData);
 
  private:
-  FileMetaDataManager();
+  FileMetaDataManager(size_t maxCount = 0);
 
   // Most recently used meta data is put at front,
   // Least recently used meta data in put at back.
@@ -129,6 +132,11 @@ class FileMetaDataManager {
 
   friend class QS::Data::Entry;
   friend class QS::Data::Node;
+
+  FRIEND_TEST(FileMetaDataManagerTest, Default);
+  FRIEND_TEST(FileMetaDataManagerTest, TestAddRemove);
+  FRIEND_TEST(FileMetaDataManagerTest, TestRename);
+  FRIEND_TEST(FileMetaDataManagerTest, TestOverflow);
 };
 
 }  // namespace Data
