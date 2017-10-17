@@ -25,7 +25,7 @@
 #include "base/Logging.h"
 #include "base/Utils.h"
 #include "data/IOStream.h"
-#include "data/ResourceManager.h"
+
 #include "data/StreamBuf.h"
 #include "data/StreamUtils.h"
 
@@ -155,6 +155,14 @@ TEST(IOStreamTest, Write2) {
   auto streambuf = dynamic_cast<StreamBuf *>(stream.rdbuf());
   EXPECT_TRUE(*(const_cast<const StreamBuf *>(streambuf)->GetBuffer()) ==
               vector<char>({char(0), '0', '1'}));
+}
+
+TEST(StreamUtilsTest, Default) {
+  auto stream =
+      std::make_shared<IOStream>(Buffer(new vector<char>({'0', '1', '2'})), 2);
+  EXPECT_EQ(StreamUtils::GetStreamSize(stream), 2u);
+  EXPECT_EQ(StreamUtils::GetStreamInputSize(stream), 2u);
+  EXPECT_EQ(StreamUtils::GetStreamOutputSize(stream), 2u);
 }
 
 }  // namespace Data

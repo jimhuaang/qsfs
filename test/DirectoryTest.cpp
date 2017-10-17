@@ -115,6 +115,7 @@ class NodeTest : public Test {
   }
 
   static void TearDownTestCase() {
+    delete pRootEntry;
     pRootEntry = nullptr;
     pRootNode = nullptr;
     pFileNode1 = nullptr;
@@ -184,7 +185,7 @@ TEST_F(NodeTest, CustomCtors) {
 
 TEST_F(NodeTest, PublicFunctions) {
   // When sharing resources between tests in test case of NodeTest,
-  // as the test oreder is undefined, so we must restore the state
+  // as the test order is undefined, so we must restore the state
   // to its original value before passing control to the next test.
   EXPECT_FALSE(pRootNode->Find(pFileNode1->GetFilePath()));
   pRootNode->Insert(pFileNode1);
