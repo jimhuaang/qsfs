@@ -18,6 +18,8 @@
 
 #include <assert.h>
 
+#include <iostream>
+
 #include "base/LogMacros.h"
 
 namespace QS {
@@ -26,7 +28,7 @@ namespace Data {
 
 namespace StreamUtils {
 
-using std::iostream;
+using std::iostream;;
 using std::shared_ptr;
 
 size_t GetStreamOutputSize(const shared_ptr<iostream> &stream) {
@@ -34,6 +36,10 @@ size_t GetStreamOutputSize(const shared_ptr<iostream> &stream) {
   assert(stream);
   if (stream) {
     auto curPos = stream->tellp();
+    if(curPos == std::iostream::pos_type(-1)) {
+      DebugError("Fail to get stream current pos");
+      return 0;
+    }
     stream->seekp(0, std::ios_base::end);
     sz = static_cast<size_t>(stream->tellp() - curPos);
     stream->seekp(curPos);
@@ -48,6 +54,10 @@ size_t GetStreamInputSize(const shared_ptr<iostream> &stream) {
   assert(stream);
   if (stream) {
     auto curPos = stream->tellg();
+    if(curPos == std::iostream::pos_type(-1)) {
+      DebugError("Fail to get stream current pos");
+      return 0;
+    }
     stream->seekg(0, std::ios_base::end);
     sz = static_cast<size_t>(stream->tellg() - curPos);
     stream->seekg(curPos);
@@ -62,10 +72,14 @@ size_t GetStreamSize(const shared_ptr<iostream> &stream) {
   assert(stream);
   if (stream) {
     auto curPos = stream->tellg();
+    if(curPos == std::iostream::pos_type(-1)) {
+      DebugError("Fail to get stream current pos");
+      return 0;
+    }
     stream->seekg(0, std::ios_base::end);
     sz = static_cast<size_t>(stream->tellg());
     stream->seekg(curPos);
-  } else {
+  } else { 
     DebugWarning("Try to lookup the size of a null input stream");
   }
   return sz;

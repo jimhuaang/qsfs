@@ -251,7 +251,7 @@ void TransferHandle::WritePartToDownloadStream(
     return;
   }
 
-  partStream->seekg(0);
+  partStream->seekg(0, std::ios_base::beg);
   m_downloadStream->seekp(offset);
   (*m_downloadStream) << partStream->rdbuf();
   m_downloadStream->flush();

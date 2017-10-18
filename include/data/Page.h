@@ -25,6 +25,8 @@
 #include <memory>
 #include <set>
 
+#include "gtest/gtest_prod.h"  // FRIEND_TEST
+
 namespace QS {
 
 namespace Data {
@@ -116,6 +118,9 @@ namespace Data {
    // Return the offset
    off_t Offset() const { return m_offset; }
 
+   // Return body
+   const std::shared_ptr<std::iostream> &GetBody() const { return m_body; }
+   
    // Return if page use temp file
    bool UseTempFile();
 
@@ -173,6 +178,7 @@ namespace Data {
    bool SetupTempFile();
 
    // Open tmp file
+   // NOTICE: need to call CloseTempFile after call OpenTempFile
    bool OpenTempFile(std::ios_base::openmode mode);
 
    // Close tmp file
@@ -232,6 +238,9 @@ namespace Data {
    }
 
    friend class File;
+   FRIEND_TEST(PageTest, CtorWithTmpFile);
+   FRIEND_TEST(PageTest, TestResize);
+   FRIEND_TEST(PageTest, TestResizeTmpFile);
  };
 
 

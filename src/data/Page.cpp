@@ -57,7 +57,7 @@ bool IsTempFile(const string &tmpfilePath) {
 // --------------------------------------------------------------------------
 Page::Page(off_t offset, size_t len, const char *buffer)
     : m_offset(offset), m_size(len), m_body(make_shared<IOStream>(len)) {
-  bool isValidInput = offset >= 0 && len >= 0 && buffer != NULL;
+  bool isValidInput = offset >= 0 && len >= 0 && buffer != nullptr;
   assert(isValidInput);
   if (!isValidInput) {
     DebugError("Try to new a page with invalid input " +
@@ -71,7 +71,7 @@ Page::Page(off_t offset, size_t len, const char *buffer)
 // --------------------------------------------------------------------------
 Page::Page(off_t offset, size_t len, const char *buffer, const string &tmpfile)
     : m_offset(offset), m_size(len), m_tmpFile(tmpfile) {
-  bool isValidInput = offset >= 0 && len >= 0 && buffer != NULL;
+  bool isValidInput = offset >= 0 && len >= 0 && buffer != nullptr;
   assert(isValidInput);
   if (!isValidInput) {
     DebugError("Try to new a page with invalid input " +
@@ -126,7 +126,6 @@ Page::Page(off_t offset, size_t len, shared_ptr<iostream> &&body)
   }
 }
 
-
 // --------------------------------------------------------------------------
 bool Page::UseTempFile() { return !m_tmpFile.empty(); }
 
@@ -161,13 +160,13 @@ void Page::UnguardedPutToBody(off_t offset, size_t len,
     m_size = instreamLen;
   }
 
-  instream->seekg(0, std::ios_base::beg);
   if (UseTempFile()) {
     OpenTempFile(std::ios_base::binary | std::ios_base::out);  // open for write
     m_body->seekp(m_offset, std::ios_base::beg);
   } else {
     m_body->seekp(0, std::ios_base::beg);
   }
+  instream->seekg(0, std::ios_base::beg);
   if (len == instreamLen) {
     (*m_body) << instream->rdbuf();
   } else if (len < instreamLen) {
@@ -226,7 +225,9 @@ bool Page::OpenTempFile(std::ios_base::openmode mode) {
     file->open(m_tmpFile, mode);
     if (!file->is_open()) {
       success = false;
-    }
+    } /* else {
+      file->flush();
+    } */
   }
 
   DebugErrorIf(!success, "Fail to open file " + FormatPath(m_tmpFile));
@@ -238,6 +239,7 @@ void Page::CloseTempFile() {
   if (UseTempFile()) {
     auto file = dynamic_cast<fstream *>(m_body.get());
     if (file != nullptr) {
+      file->flush();
       file->close();
     }
   }
@@ -264,7 +266,7 @@ bool Page::Refresh(off_t offset, size_t len, const char *buffer,
     return true;  // do nothing
   }
 
-  bool isValidInput = offset >= m_offset && buffer != NULL && len > 0;
+  bool isValidInput = offset >= m_offset && buffer != nullptr && len > 0;
   assert(isValidInput);
   if (!isValidInput) {
     DebugError("Try to refresh page(" + ToStringLine(m_offset, m_size) +
@@ -280,7 +282,14 @@ bool Page::UnguardedRefresh(off_t offset, size_t len, const char *buffer,
   auto moreLen = offset + len - Next();
   auto dataLen = moreLen > 0 ? m_size + moreLen : m_size;
   auto data = make_shared<IOStream>(dataLen);
+  if (UseTempFile()) {
+    OpenTempFile(std::ios_base::binary | std::ios_base::in);  // open for read
+    m_body->seekg(offset, std::ios_base::beg);
+  } else {
+    m_body->seekg(0, std::ios_base::beg);
+  }
   (*data) << m_body->rdbuf();
+  CloseTempFile();  // must close temp file after opened
   data->seekp(offset - m_offset, std::ios_base::beg);
   data->write(buffer, len);
 
@@ -301,15 +310,17 @@ bool Page::UnguardedRefresh(off_t offset, size_t len, const char *buffer,
   if (UseTempFile()) {
     OpenTempFile(std::ios_base::binary | std::ios_base::out);  // open for write
     m_body->seekp(m_offset, std::ios_base::beg);
+    data->seekg(0, std::ios_base::beg);
     (*m_body) << data->rdbuf();  // put pages' all content into tmp file
+    CloseTempFile();
   } else {
+    data->seekg(0, std::ios_base::beg);
     m_body = std::move(data);
   }
   if (moreLen > 0) {
     m_size += moreLen;
   }
   if (m_body->good()) {
-    CloseTempFile();
     return true;
   } else {
     DebugError("Fail to refresh page(" + ToStringLine(m_offset, m_size) +
@@ -325,7 +336,7 @@ size_t Page::Read(off_t offset, size_t len, char *buffer) {
   }
 
   bool isValidInput =
-      (offset >= m_offset && offset < Next() && buffer != NULL && len > 0 &&
+      (offset >= m_offset && offset < Next() && buffer != nullptr && len > 0 &&
        len <= static_cast<size_t>(Next() - offset));
   assert(isValidInput);
   DebugErrorIf(!isValidInput,

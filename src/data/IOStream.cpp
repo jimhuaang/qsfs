@@ -35,8 +35,10 @@ IOStream::IOStream(Buffer buf, size_t lengthToRead)
     : Base(new StreamBuf(std::move(buf), lengthToRead)) {}
 
 IOStream::~IOStream() {
-  if (rdbuf()) {
-    auto buf = dynamic_cast<StreamBuf*>(rdbuf())->ReleaseBuffer();
+  seekg(0, std::ios_base::beg);
+  auto streambuf = rdbuf();
+  if (streambuf) {
+    auto buf = dynamic_cast<StreamBuf*>(streambuf)->ReleaseBuffer();
     if (buf) {
       buf.reset();
     }

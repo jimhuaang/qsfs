@@ -93,6 +93,7 @@ TEST_F(StreamBufTest, PrivateFunc) {
 
 TEST(IOStreamTest, Ctor1) {
   IOStream iostream(10);
+  iostream.seekg(0, std::ios_base::beg);
   auto buf = dynamic_cast<StreamBuf *>(iostream.rdbuf());
   EXPECT_EQ(const_cast<const StreamBuf *>(buf)->GetBuffer()->size(), 10u);
   auto buf1 = vector<char>(10);
@@ -102,12 +103,14 @@ TEST(IOStreamTest, Ctor1) {
 TEST(IOStreamTest, Ctor2) {
   auto buf = Buffer(new vector<char>({'0', '1', '2'}));
   IOStream iostream(std::move(buf), 3);
+  iostream.seekg(0, std::ios_base::beg);
   auto streambuf = dynamic_cast<StreamBuf *>(iostream.rdbuf());
   EXPECT_TRUE(*(const_cast<const StreamBuf *>(streambuf)->GetBuffer()) ==
               vector<char>({'0', '1', '2'}));
 
   auto buf1 = Buffer(new vector<char>({'0', '1', '2'}));
   IOStream iostream1(std::move(buf1), 2);
+  iostream1.seekg(0, std::ios_base::beg);
   auto streambuf1 = dynamic_cast<StreamBuf *>(iostream1.rdbuf());
   EXPECT_TRUE(*(const_cast<const StreamBuf *>(streambuf1)->GetBuffer()) ==
               vector<char>({'0', '1', '2'}));
@@ -116,11 +119,13 @@ TEST(IOStreamTest, Ctor2) {
 TEST(IOStreamTest, Read1) {
   IOStream stream(Buffer(new vector<char>({'0', '1', '2'})), 3);
   stringstream ss;
+  stream.seekg(0, std::ios_base::beg);
   ss << stream.rdbuf();
   EXPECT_EQ(ss.str(), string("012"));
 
   IOStream stream1(Buffer(new vector<char>({'0', '1', '2'})), 2);
   stringstream ss1;
+  stream1.seekg(0, std::ios_base::beg);
   ss1 << stream1.rdbuf();
   EXPECT_EQ(ss1.str(), string("01"));
 }
@@ -137,6 +142,7 @@ TEST(IOStreamTest, Write1) {
   IOStream stream(Buffer(new vector<char>(3)), 3);
   stringstream ss("012");
   stream << ss.rdbuf();
+  stream.seekg(0, std::ios_base::beg);
   auto streambuf = dynamic_cast<StreamBuf *>(stream.rdbuf());
   EXPECT_TRUE(*(const_cast<const StreamBuf *>(streambuf)->GetBuffer()) ==
               vector<char>({'0', '1', '2'}));
@@ -144,6 +150,7 @@ TEST(IOStreamTest, Write1) {
   IOStream stream1(Buffer(new vector<char>(2)), 2);
   stringstream ss1("012");
   stream1 << ss1.rdbuf();
+  stream1.seekg(0, std::ios_base::beg);
   auto streambuf1 = dynamic_cast<StreamBuf *>(stream1.rdbuf());
   EXPECT_TRUE(*(const_cast<const StreamBuf *>(streambuf1)->GetBuffer()) ==
               vector<char>({'0', '1'}));
@@ -154,6 +161,7 @@ TEST(IOStreamTest, Write2) {
   stringstream ss("012");
   stream.seekp(1, std::ios_base::beg);
   stream << ss.rdbuf();
+  stream.seekg(0, std::ios_base::beg);
   auto streambuf = dynamic_cast<StreamBuf *>(stream.rdbuf());
   EXPECT_TRUE(*(const_cast<const StreamBuf *>(streambuf)->GetBuffer()) ==
               vector<char>({char(0), '0', '1'}));

@@ -279,6 +279,7 @@ void QSTransferManager::DoMultiPartDownload(
 
         // release part buffer back to resource manager
         if (part->GetDownloadPartStream()) {
+          part->GetDownloadPartStream()->seekg(0, std::ios_base::beg);
           auto partStreamBuf =
               dynamic_cast<StreamBuf *>(part->GetDownloadPartStream()->rdbuf());
           if (partStreamBuf) {
@@ -451,6 +452,7 @@ void QSTransferManager::DoSinglePartUpload(
       handle->ChangePartToCompleted(part);  // without eTag, as sdk
                                             // PutObjectOutput not return etag
       handle->UpdateStatus(TransferStatus::Completed);
+      stream->seekg(0, std::ios_base::beg);
       auto streamBuf = dynamic_cast<StreamBuf *>(stream->rdbuf());
       if (streamBuf) {
         auto buf = streamBuf->ReleaseBuffer();
@@ -535,6 +537,7 @@ void QSTransferManager::DoMultiPartUpload(
         }
 
         // release part buffer back to resouce manager
+        stream->seekg(0, std::ios_base::beg);
         auto partStreamBuf = dynamic_cast<StreamBuf *>(stream->rdbuf());
         if (partStreamBuf) {
           GetBufferManager()->Release(partStreamBuf->ReleaseBuffer());

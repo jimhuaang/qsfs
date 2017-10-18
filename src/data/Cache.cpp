@@ -200,7 +200,7 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
     return page->Read(offset, sz, buffer);
   } else {  // Have Multipule pages.
     // read first page
-    auto readSize = page->Read(offset, buffer);
+    auto readSize = page->Read(static_cast<off_t>(offset), buffer);
     page = pagelist.front();
     pagelist.pop_front();
     // read middle pages
@@ -211,7 +211,7 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
     }
     // read last page
     auto sz = std::min(outcome.first - readSize, len - readSize);
-    readSize += page->Read(sz, buffer + readSize);
+    readSize += page->Read(static_cast<size_t>(sz), buffer + readSize);
     return readSize;
   }
 }
