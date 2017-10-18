@@ -79,7 +79,7 @@ size_t GetStreamSize(const shared_ptr<iostream> &stream) {
     stream->seekg(0, std::ios_base::end);
     sz = static_cast<size_t>(stream->tellg());
     stream->seekg(curPos);
-  } else { 
+  } else {
     DebugWarning("Try to lookup the size of a null input stream");
   }
   return sz;

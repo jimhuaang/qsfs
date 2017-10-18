@@ -55,6 +55,14 @@ namespace Data {
 
    off_t m_offset = 0;     // offset from the begin of owning File
    size_t m_size = 0;      // size of bytes this page contains
+   // NOTICE: body stream should be QS::Data::IOStream which associated with
+   // QS::Data::StreamBuf when not use tmp file; otherwise body stream is a 
+   // fstream assoicated to a tmp file.
+   // With the asssoicated stream buf or tmp file, the body stream support to 
+   // be read/write for multiple times, but keep in mind following things:
+   // 1) always seek to the right postion before to read/write body stream;
+   // 2) if use tmp file, always call OpenTempFile before read/write and call
+   // CloseTempFile after read/write (or operator <<).
    std::shared_ptr<std::iostream> m_body;  // stream storing the bytes
    std::string m_tmpFile;  // tmp file is used when qsfs cache is not enough
                            // it is an absolute path of /tmp/basename

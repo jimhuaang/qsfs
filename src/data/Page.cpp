@@ -225,9 +225,7 @@ bool Page::OpenTempFile(std::ios_base::openmode mode) {
     file->open(m_tmpFile, mode);
     if (!file->is_open()) {
       success = false;
-    } /* else {
-      file->flush();
-    } */
+    }
   }
 
   DebugErrorIf(!success, "Fail to open file " + FormatPath(m_tmpFile));
