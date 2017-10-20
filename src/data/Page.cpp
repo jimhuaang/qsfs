@@ -39,6 +39,7 @@ using QS::FileSystem::Configure::GetCacheTemporaryDirectory;
 using QS::StringUtils::FormatPath;
 using QS::StringUtils::PointerAddress;
 using QS::Utils::CreateDirectoryIfNotExists;
+using QS::Utils::FileExists;
 using QS::Utils::GetDirName;
 using std::fstream;
 using std::make_shared;
@@ -117,12 +118,23 @@ Page::Page(off_t offset, size_t len, const shared_ptr<iostream> &instream,
 
 // --------------------------------------------------------------------------
 Page::Page(off_t offset, size_t len, shared_ptr<iostream> &&body)
-    : m_offset(offset), m_size(len), m_body(std::move(body)) {
-  size_t streamlen = GetStreamSize(m_body);
+    : m_offset(offset), m_size(len) {
+  size_t streamlen = GetStreamSize(body);
   if (streamlen < len) {
     DebugWarning(
         "Input stream buffer len is less than parameter 'len', Ajust it");
     m_size = streamlen;
+  }
+  // To make sure used QS::Data::IOStream to store body, as we need to
+  // support multipule read/write ops.
+  auto instream = std::move(body);
+  IOStream *pInstream = dynamic_cast<IOStream *>(instream.get());
+  if (pInstream != nullptr) {
+    m_body = std::move(instream);
+    pInstream = nullptr;
+  } else {
+    m_body = make_shared<IOStream>(m_size);
+    UnguardedPutToBody(m_offset, m_size, instream);
   }
 }
 
@@ -136,17 +148,21 @@ void Page::UnguardedPutToBody(off_t offset, size_t len, const char *buffer) {
     return;
   }
   if (UseTempFile()) {
-    OpenTempFile(std::ios_base::binary | std::ios_base::out);  // open for write
+    // Notice: need to open in both output and input mode to avoid truncate file
+    // as open in out mode only will actually truncate file.
+    OpenTempFile(std::ios_base::binary | std::ios_base::ate |
+                 std::ios_base::in | std::ios_base::out);  // open for write
     m_body->seekp(m_offset, std::ios_base::beg);
   } else {
     m_body->seekp(0, std::ios_base::beg);
   }
-  m_body->write(buffer, len);
   if (m_body->good()) {
-    CloseTempFile();
-  } else {
-    DebugError("Fail to write buffer " + ToStringLine(offset, len, buffer));
+    m_body->write(buffer, len);
   }
+  CloseTempFile();
+
+  DebugErrorIf(!m_body->good(),
+               "Fail to write buffer " + ToStringLine(offset, len, buffer));
 }
 
 // --------------------------------------------------------------------------
@@ -161,25 +177,26 @@ void Page::UnguardedPutToBody(off_t offset, size_t len,
   }
 
   if (UseTempFile()) {
-    OpenTempFile(std::ios_base::binary | std::ios_base::out);  // open for write
+    OpenTempFile(std::ios_base::binary | std::ios_base::ate |
+                 std::ios_base::in | std::ios_base::out);  // open for write
     m_body->seekp(m_offset, std::ios_base::beg);
   } else {
     m_body->seekp(0, std::ios_base::beg);
   }
-  instream->seekg(0, std::ios_base::beg);
-  if (len == instreamLen) {
-    (*m_body) << instream->rdbuf();
-  } else if (len < instreamLen) {
-    stringstream ss;
-    ss << instream->rdbuf();
-    m_body->write(ss.str().c_str(), len);
-  }
-
   if (m_body->good()) {
-    CloseTempFile();
-  } else {
-    DebugError("Fail to write buffer " + ToStringLine(offset, len));
+    instream->seekg(0, std::ios_base::beg);
+    if (len == instreamLen) {
+      (*m_body) << instream->rdbuf();
+    } else if (len < instreamLen) {
+      stringstream ss;
+      ss << instream->rdbuf();
+      m_body->write(ss.str().c_str(), len);
+    }
   }
+  CloseTempFile();
+
+  DebugErrorIf(!m_body->good(),
+               "Fail to write buffer " + ToStringLine(offset, len));
 }
 
 // --------------------------------------------------------------------------
@@ -195,19 +212,20 @@ bool Page::SetupTempFile() {
     return false;
   }
 
-  // Notice: set open mode with std::ios_base::out to create file in disk if it
-  // is not exist
-  auto file = make_shared<fstream>(m_tmpFile,
-                                   std::ios_base::binary | std::ios_base::out);
-  if (file && *file) {
-    DebugInfo("Open tmp file " + FormatPath(m_tmpFile));
-    file->close();
-    SetStream(std::move(file));
-    return true;
-  } else {
-    DebugError("Fail to open tmp file " + FormatPath(m_tmpFile));
-    return false;
+  std::ios_base::openmode mode = std::ios_base::binary | std::ios_base::ate |
+                                 std::ios_base::in | std::ios_base::out;
+  if (!FileExists(m_tmpFile)) {
+    // Notice: set open mode with std::ios_base::out to create file in disk if
+    // it is not exist
+    mode = std::ios_base::binary | std::ios_base::out;
   }
+  auto file = make_shared<fstream>(m_tmpFile, mode);
+  if(file && file->is_open()){
+    DebugInfo("Open tmp file " + FormatPath(m_tmpFile));
+  }
+  file->close();
+  SetStream(std::move(file));
+  return true;
 }
 
 // --------------------------------------------------------------------------
@@ -306,7 +324,8 @@ bool Page::UnguardedRefresh(off_t offset, size_t len, const char *buffer,
   }
 
   if (UseTempFile()) {
-    OpenTempFile(std::ios_base::binary | std::ios_base::out);  // open for write
+    OpenTempFile(std::ios_base::binary | std::ios_base::ate |
+                 std::ios_base::in | std::ios_base::out);  // open for write
     m_body->seekp(m_offset, std::ios_base::beg);
     data->seekg(0, std::ios_base::beg);
     (*m_body) << data->rdbuf();  // put pages' all content into tmp file
@@ -356,12 +375,12 @@ size_t Page::UnguardedRead(off_t offset, size_t len, char *buffer) {
     m_body->seekg(offset - m_offset, std::ios_base::beg);
   }
   m_body->read(buffer, len);
+  CloseTempFile();
   if (!m_body->good()) {
     DebugError("Fail to read page(" + ToStringLine(m_offset, m_size) +
                ") with input " + ToStringLine(offset, len, buffer));
     return 0;
   } else {
-    CloseTempFile();
     return len;
   }
 }

@@ -29,6 +29,8 @@
 #include <tuple>
 #include <utility>
 
+#include "gtest/gtest_prod.h"  // FRIEND_TEST
+
 #include "data/Page.h"
 
 namespace QS {
@@ -70,8 +72,9 @@ class File {
   //
   // @param  : void
   // @return : pair
+  // Notice: this return a half-closed half open range [page1, page2)
   std::pair<PageSetConstIterator, PageSetConstIterator>
-  ConsecutivePagesAtFront() const;
+  ConsecutivePageRangeAtFront() const;
 
   // Whether the file containing the content
   //
@@ -84,6 +87,15 @@ class File {
   // @param  : file total size
   // @return : a list of pair {range start, range size}
   ContentRangeDeque GetUnloadedRanges(uint64_t fileTotalSize) const;
+
+  // Return begin pos of pages
+  PageSetConstIterator BeginPage() const;
+
+  // Return end pos of pages
+  PageSetConstIterator EndPage() const;
+
+  // Return num of pages
+  size_t GetNumPages() const;
 
  private:
   // Read from the cache (file pages)
@@ -140,33 +152,34 @@ class File {
 
   // Returns an iterator pointing to the first Page that is not ahead of offset.
   // If no such Page is found, a past-the-end iterator is returned.
-  // Not-Synchronized
   PageSetConstIterator LowerBoundPage(off_t offset) const;
+  // internal use only
+  PageSetConstIterator LowerBoundPageNoLock(off_t offset) const;
 
   // Returns an iterator pointing to the first Page that is behind of offset.
   // If no such Page is found, a past-the-end iterator is returned.
-  // Not-Synchronized
   PageSetConstIterator UpperBoundPage(off_t offset) const;
+  //internal use only
+  PageSetConstIterator UpperBoundPageNoLock(off_t offset) const;
 
   // Returns a pair iterators pointing the pages which intesecting with
   // the range (from off1 to off2).
   // The first member pointing to first page not ahead of (could be
   // intersecting with) off1; the second member pointing to the first
   // page not ahead of off2, same as LowerBoundPage(off2).
+  // Notice: this is a half-closed half open range [page1, page2)
   std::pair<PageSetConstIterator, PageSetConstIterator> IntesectingRange(
       off_t off1, off_t off2) const;
 
   // Return the first key in the page set.
-  // Not-Synchronized
-  const std::shared_ptr<Page> &Front() { return *(m_pages.begin()); }
+  const std::shared_ptr<Page> &Front();
 
   // Return the last key in the page set.
-  // Not-Synchronized
-  const std::shared_ptr<Page> &Back() { return *(m_pages.rbegin()); }
+  const std::shared_ptr<Page> &Back();
 
   // Add a new page from a block of character without checking input.
   // Return {pointer to addedpage, success, added size in cache, added size}
-  // Not-Synchronized
+  // internal use only
   std::tuple<PageSetConstIterator, bool, size_t, size_t> UnguardedAddPage(
       off_t offset, size_t len, const char *buffer);
   std::tuple<PageSetConstIterator, bool, size_t, size_t> UnguardedAddPage(
@@ -177,7 +190,7 @@ class File {
  private:
   std::string m_baseName;           // file base name
   std::atomic<time_t> m_mtime;      // time of last modification
-  std::atomic<size_t> m_size;       // record sum of all pages's size
+  std::atomic<size_t> m_size;       // record sum of all pages' size
   std::atomic<size_t> m_cacheSize;  // record sum of all pages' size
                                     // stored in cache not including tmp file
 
@@ -186,6 +199,11 @@ class File {
   PageSet m_pages;              // a set of pages suppose to be successive
 
   friend class Cache;
+
+  FRIEND_TEST(FileTest, TestWrite);
+  FRIEND_TEST(FileTest, TestWriteTmpFile);
+  FRIEND_TEST(FileTest, TestRead);
+  FRIEND_TEST(FileTest, TestReadTmpFile);
 };
 
 }  // namespace Data

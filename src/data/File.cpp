@@ -15,6 +15,8 @@
 // +-------------------------------------------------------------------------
 
 #include "data/File.h"
+
+#include <assert.h>
 #include <stdio.h>  // for pclose
 
 #include <iterator>
@@ -86,9 +88,12 @@ File::~File() {
 string File::AskTempFilePath() const { return BuildTempFilePath(m_baseName); }
 
 // --------------------------------------------------------------------------
-pair<PageSetConstIterator, PageSetConstIterator> File::ConsecutivePagesAtFront()
+pair<PageSetConstIterator, PageSetConstIterator> File::ConsecutivePageRangeAtFront()
     const {
   lock_guard<recursive_mutex> lock(m_mutex);
+  if (m_pages.empty()) {
+    return {m_pages.begin(), m_pages.begin()};
+  }
   auto cur = m_pages.begin();
   auto next = m_pages.begin();
   while (++next != m_pages.end()) {
@@ -105,7 +110,12 @@ bool File::HasData(off_t start, size_t size) const {
   lock_guard<recursive_mutex> lock(m_mutex);
   auto stop = static_cast<off_t>(start + size);
   auto range = IntesectingRange(start, stop);
-  if(range.first == m_pages.end()){
+  if(range.first == range.second) {
+    if (range.first == m_pages.end()) {
+      if (size == 0 && start <= static_cast<off_t>(m_size)) {
+        return true;
+      }
+    }
     return false;
   }
   // find the consecutive pages at front [beg to cur]
@@ -126,7 +136,7 @@ bool File::HasData(off_t start, size_t size) const {
 ContentRangeDeque File::GetUnloadedRanges(uint64_t fileTotalSize) const {
   lock_guard<recursive_mutex> lock(m_mutex);
   ContentRangeDeque ranges;
-  if (fileTotalSize == 0) {
+  if (fileTotalSize == 0 || m_size == 0 || m_pages.empty()) {
     return ranges;
   }
 
@@ -134,6 +144,9 @@ ContentRangeDeque File::GetUnloadedRanges(uint64_t fileTotalSize) const {
   auto next = m_pages.begin();
   while (++next != m_pages.end()) {
     if ((*cur)->Next() < (*next)->Offset()) {
+      if ((*next)->Offset() > static_cast<off_t>(fileTotalSize)) {
+        break;
+      }
       off_t off = (*cur)->Next();
       size_t size = static_cast<size_t>((*next)->Offset() - off);
       ranges.emplace_back(off, size);
@@ -148,6 +161,24 @@ ContentRangeDeque File::GetUnloadedRanges(uint64_t fileTotalSize) const {
   }
 
   return ranges;
+}
+
+// --------------------------------------------------------------------------
+PageSetConstIterator File::BeginPage() const {
+  lock_guard<recursive_mutex> lock(m_mutex);
+  return m_pages.begin();
+}
+
+// --------------------------------------------------------------------------
+PageSetConstIterator File::EndPage() const {
+  lock_guard<recursive_mutex> lock(m_mutex);
+  return m_pages.end();
+}
+
+// --------------------------------------------------------------------------
+size_t File::GetNumPages() const{
+  lock_guard<recursive_mutex> lock(m_mutex);
+  return m_pages.size();
 }
 
 // --------------------------------------------------------------------------
@@ -178,7 +209,9 @@ pair<size_t, list<shared_ptr<Page>>> File::Read(off_t offset, size_t len,
       if (handle->DoneTransfer() && !handle->HasFailedParts()) {
         auto res = UnguardedAddPage(offset, len, stream);
         if (std::get<1>(res)) {
-          SetTime(mtime);
+          if (mtime > m_mtime) {
+            SetTime(mtime);
+          }
           outcomePages.emplace_back(*(std::get<0>(res)));
           outcomeSize += (*(std::get<0>(res)))->m_size;
         }
@@ -186,18 +219,7 @@ pair<size_t, list<shared_ptr<Page>>> File::Read(off_t offset, size_t len,
     }
   };
 
-  if (mtime > 0) {
-    // File is just created, update mtime.
-    if (m_mtime == 0) {
-      SetTime(mtime);
-    } else if (mtime > m_mtime) {
-      // Detected modification in the file, clear file.
-      Clear();
-      entry->SetFileSize(0);
-    }
-  }
-
-  // Adjust the length.
+  // Adjust the input length
   if (entry->GetFileSize() > 0) {
     auto len_ = static_cast<size_t>(entry->GetFileSize() - offset);
     if (len_ < len) {
@@ -211,6 +233,17 @@ pair<size_t, list<shared_ptr<Page>>> File::Read(off_t offset, size_t len,
   {
     lock_guard<recursive_mutex> lock(m_mutex);
 
+    if (mtime > 0) {
+      // File is just created, update mtime.
+      if (m_mtime == 0) {
+        SetTime(mtime);
+      } else if (mtime > m_mtime) {
+        // Detected modification in the file, clear file.
+        Clear();
+        entry->SetFileSize(0);
+      }
+    }
+  
     // If pages is empty.
     if (m_pages.empty()) {
       LoadFileAndAddPage(offset, len);
@@ -241,8 +274,8 @@ pair<size_t, list<shared_ptr<Page>>> File::Read(off_t offset, size_t len,
           outcomePages.emplace_back(page);
           outcomeSize += page->m_size;
 
+          len_ -= page->Next() - offset_;
           offset_ = page->Next();
-          len_ -= page->m_size;
           ++it1;
         }
       }
@@ -274,7 +307,9 @@ tuple<bool, size_t, size_t> File::Write(off_t offset, size_t len,
       off_t offset, size_t len, const char *buffer) -> bool {
     auto res = this->UnguardedAddPage(offset, len, buffer);
     if (std::get<1>(res)) {
-      this->SetTime(mtime);
+      if(mtime > m_mtime) {
+        this->SetTime(mtime);
+      }
       addedSizeInCache += std::get<2>(res);
       addedSize += std::get<3>(res);
     }
@@ -316,18 +351,26 @@ tuple<bool, size_t, size_t> File::Write(off_t offset, size_t len,
       len_ -= lenNewPage;
     } else {  // Refresh the overlapped page's content.
       if (len_ <= static_cast<size_t>(page->Next() - offset_)) {
-        SetTime(mtime);
-        // refresh parital content of page
-        return make_tuple(page->Refresh(offset_, len_, buffer + start_),
-                          addedSizeInCache, addedSize);
-      } else {
-        // refresh entire page
-        auto refresh = page->Refresh(buffer + start_);
-        if (!refresh) {
-          success = false;
-          return make_tuple(false, addedSizeInCache, addedSize);
+        if(mtime >= m_mtime){
+          SetTime(mtime);
+          // refresh parital content of page
+          return make_tuple(page->Refresh(offset_, len_, buffer + start_),
+                            addedSizeInCache, addedSize);
+        } else {
+          // do nothing
+          return make_tuple(true, addedSizeInCache, addedSize);
         }
-
+      } else {
+        if(mtime >= m_mtime) {
+          // refresh entire page
+          auto refresh = page->Refresh(buffer + start_);
+          if (!refresh) {
+            success = false;
+            return make_tuple(false, addedSizeInCache, addedSize);
+          }
+  
+          SetTime(mtime);
+        }
         offset_ = page->Next();
         start_ += page->m_size;
         len_ -= page->m_size;
@@ -340,13 +383,16 @@ tuple<bool, size_t, size_t> File::Write(off_t offset, size_t len,
     auto res = UnguardedAddPage(offset_, len_, buffer + start_);
     if (std::get<1>(res)) {
       success = true;
+
+      if (mtime > m_mtime) {
+        this->SetTime(mtime);
+      }
       addedSizeInCache += std::get<2>(res);
       addedSize += std::get<3>(res);
     } else {
       success = false;
     }
   }
-  SetTime(mtime);
 
   return make_tuple(success, addedSizeInCache, addedSize);
 }
@@ -359,7 +405,7 @@ tuple<bool, size_t, size_t> File::Write(off_t offset, size_t len,
       off_t offset, size_t len,
       shared_ptr<iostream> &&stream) -> tuple<bool, size_t, size_t> {
     auto res = this->UnguardedAddPage(offset, len, std::move(stream));
-    if (std::get<1>(res)) {
+    if (std::get<1>(res) && mtime > m_mtime) {
       this->SetTime(mtime);
     }
     return make_tuple(std::get<1>(res), std::get<2>(res), std::get<3>(res));
@@ -374,9 +420,11 @@ tuple<bool, size_t, size_t> File::Write(off_t offset, size_t len,
     if (it == m_pages.end()) {
       return AddPageAndUpdateTime(offset, len, std::move(stream));
     } else if (page->Offset() == offset && page->Size() == len) {
-      // replace old stream
-      page->SetStream(std::move(stream));
-      SetTime(mtime);
+      if(mtime >= m_mtime){
+        // replace old stream
+        page->SetStream(std::move(stream));
+        SetTime(mtime);
+      }
       return make_tuple(true, 0, 0);
     } else {
       auto buf = unique_ptr<vector<char>>(new vector<char>(len));
@@ -444,6 +492,7 @@ void File::ResizeToSmallerSize(size_t smallerSize) {
 
 // --------------------------------------------------------------------------
 void File::RemoveTempFileFromDiskIfExists(bool logOn) const {
+  lock_guard<recursive_mutex> lock(m_mutex);
   if (UseTempFile()) {
     auto tmpFile = AskTempFilePath();
     if (FileExists(tmpFile, logOn)) {
@@ -471,12 +520,24 @@ void File::Clear() {
 
 // --------------------------------------------------------------------------
 PageSetConstIterator File::LowerBoundPage(off_t offset) const {
+  lock_guard<recursive_mutex> lock(m_mutex);
+  return LowerBoundPageNoLock(offset);
+}
+
+// --------------------------------------------------------------------------
+PageSetConstIterator File::LowerBoundPageNoLock(off_t offset) const {
   auto tmpPage = make_shared<Page>(offset, 0, make_shared<IOStream>(0));
   return m_pages.lower_bound(tmpPage);
 }
 
 // --------------------------------------------------------------------------
 PageSetConstIterator File::UpperBoundPage(off_t offset) const {
+  lock_guard<recursive_mutex> lock(m_mutex);
+  return UpperBoundPageNoLock(offset);
+}
+
+// --------------------------------------------------------------------------
+PageSetConstIterator File::UpperBoundPageNoLock(off_t offset) const {
   auto tmpPage = make_shared<Page>(offset, 0, make_shared<IOStream>(0));
   return m_pages.upper_bound(tmpPage);
 }
@@ -484,8 +545,10 @@ PageSetConstIterator File::UpperBoundPage(off_t offset) const {
 // --------------------------------------------------------------------------
 pair<PageSetConstIterator, PageSetConstIterator> File::IntesectingRange(
     off_t off1, off_t off2) const {
-  auto it1 = LowerBoundPage(off1);
-  auto it2 = LowerBoundPage(off2);
+  assert(off1 <= off2);
+  lock_guard<recursive_mutex> lock(m_mutex);
+  auto it1 = LowerBoundPageNoLock(off1);
+  auto it2 = LowerBoundPageNoLock(off2);
   // Move backward it1 to pointing to the page which maybe intersect with
   // 'offset'.
   reverse_iterator<PageSetConstIterator> reverseIt(it1);
@@ -494,6 +557,20 @@ pair<PageSetConstIterator, PageSetConstIterator> File::IntesectingRange(
             : (++reverseIt).base();
 
   return {it1, it2};
+}
+
+// --------------------------------------------------------------------------
+const std::shared_ptr<Page> &File::Front() {
+  lock_guard<recursive_mutex> lock(m_mutex);
+  assert(!m_pages.empty());
+  return *(m_pages.begin());
+}
+
+// --------------------------------------------------------------------------
+const std::shared_ptr<Page> &File::Back() {
+  lock_guard<recursive_mutex> lock(m_mutex);
+  assert(!m_pages.empty());
+  return *(m_pages.rbegin());
 }
 
 // --------------------------------------------------------------------------
