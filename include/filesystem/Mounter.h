@@ -22,9 +22,12 @@
 
 namespace QS {
 
-namespace FileSystem {
+namespace Configure {
 
 class Options;
+}
+
+namespace FileSystem {
 
 class Mounter {
   using Outcome = std::pair<bool, std::string>;
@@ -40,9 +43,10 @@ class Mounter {
   static Mounter &Instance();
   Outcome IsMountable(const std::string &mountPoint, bool logOn) const;
   bool IsMounted(const std::string &mountPoint, bool logOn) const;
-  bool Mount(const Options &options, bool logOn) const;
+  bool Mount(const QS::Configure::Options &options, bool logOn) const;
   void UnMount(const std::string &mountPoint, bool logOn) const;
-  bool DoMount(const Options &options, bool logOn, void *user_data) const;
+  bool DoMount(const QS::Configure::Options &options, bool logOn,
+               void *user_data) const;
 
  private:
   Mounter() = default;

@@ -33,8 +33,8 @@
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
 #include "base/Utils.h"
+#include "configure/Default.h"
 #include "data/Directory.h"
-#include "filesystem/Configure.h"
 #include "filesystem/Drive.h"
 
 namespace QS {
@@ -43,9 +43,9 @@ namespace FileSystem {
 
 using QS::Data::Node;
 using QS::Exception::QSException;
-using QS::FileSystem::Configure::GetNameMaxLen;
-using QS::FileSystem::Configure::GetPathMaxLen;
-using QS::FileSystem::Configure::GetDefineFileMode;
+using QS::Configure::Default::GetNameMaxLen;
+using QS::Configure::Default::GetPathMaxLen;
+using QS::Configure::Default::GetDefineFileMode;
 using QS::FileSystem::Drive;
 using QS::StringUtils::AccessMaskToString;
 using QS::StringUtils::FormatPath;

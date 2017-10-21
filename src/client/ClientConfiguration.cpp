@@ -34,20 +34,20 @@
 #include "client/RetryStrategy.h"
 #include "client/URI.h"
 #include "client/Zone.h"
-#include "filesystem/Configure.h"
-#include "filesystem/Options.h"
+#include "configure/Default.h"
+#include "configure/Options.h"
 
 namespace QS {
 
 namespace Client {
 
 using QS::Exception::QSException;
-using QS::FileSystem::Configure::GetClientDefaultPoolSize;
-using QS::FileSystem::Configure::GetDefaultLogDirectory;
-using QS::FileSystem::Configure::GetDefineFileMode;
-using QS::FileSystem::Configure::GetQSConnectionDefaultRetries;
-using QS::FileSystem::Configure::GetQingStorSDKLogFileName;
-using QS::FileSystem::Configure::GetTransactionDefaultTimeDuration;
+using QS::Configure::Default::GetClientDefaultPoolSize;
+using QS::Configure::Default::GetDefaultLogDirectory;
+using QS::Configure::Default::GetDefineFileMode;
+using QS::Configure::Default::GetQSConnectionDefaultRetries;
+using QS::Configure::Default::GetQingStorSDKLogFileName;
+using QS::Configure::Default::GetTransactionDefaultTimeDuration;
 using std::call_once;
 using std::string;
 using std::unique_ptr;
@@ -133,7 +133,7 @@ ClientConfiguration::ClientConfiguration(const CredentialsProvider &provider)
     : ClientConfiguration(provider.GetCredentials()) {}
 
 void ClientConfiguration::InitializeByOptions() {
-  const auto &options = QS::FileSystem::Options::Instance();
+  const auto &options = QS::Configure::Options::Instance();
   m_bucket = options.GetBucket();
   m_zone = options.GetZone();
   m_host = Http::StringToHost(options.GetHost());

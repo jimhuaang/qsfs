@@ -25,9 +25,9 @@
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
 #include "base/Utils.h"
+#include "configure/Default.h"
 #include "data/IOStream.h"
 #include "data/StreamUtils.h"
-#include "filesystem/Configure.h"
 
 namespace QS {
 
@@ -35,7 +35,7 @@ namespace Data {
 
 using QS::Data::IOStream;
 using QS::Data::StreamUtils::GetStreamSize;
-using QS::FileSystem::Configure::GetCacheTemporaryDirectory;
+using QS::Configure::Default::GetCacheTemporaryDirectory;
 using QS::StringUtils::FormatPath;
 using QS::StringUtils::PointerAddress;
 using QS::Utils::CreateDirectoryIfNotExists;

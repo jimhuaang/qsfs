@@ -14,7 +14,7 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "filesystem/Options.h"
+#include "configure/Options.h"
 
 #include <iomanip>
 #include <iostream>
@@ -26,7 +26,7 @@
 
 namespace QS {
 
-namespace FileSystem {
+namespace Configure {
 
 using QS::Logging::GetLogLevelName;
 using std::ostream;
@@ -78,5 +78,5 @@ ostream &operator<<(ostream &os, const Options &opts) {
          << "] " << std::noboolalpha;
 }
 
-}  // namespace FileSystem
+}  // namespace Configure
 }  // namespace QS

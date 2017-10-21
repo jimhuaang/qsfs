@@ -26,9 +26,9 @@
 #include "client/RetryStrategy.h"
 #include "client/URI.h"
 #include "client/Zone.h"
-#include "filesystem/Configure.h"
-#include "filesystem/IncludeFuse.h"  // for fuse.h
-#include "filesystem/Options.h"
+#include "configure/Default.h"
+#include "configure/IncludeFuse.h"  // for fuse.h
+#include "configure/Options.h"
 
 namespace QS {
 
@@ -92,7 +92,7 @@ static const struct fuse_opt optionSpec[] = {
 }  // namespace
 
 void Parse(int argc, char **argv) {
-  auto &qsOptions = QS::FileSystem::Options::Instance();
+  auto &qsOptions = QS::Configure::Options::Instance();
   qsOptions.SetFuseArgs(argc, argv);
 
   // Set defaults for const char*.
@@ -102,9 +102,9 @@ void Parse(int argc, char **argv) {
   options.mountPoint     = strdup("");
   options.zone           = strdup(QS::Client::GetDefaultZone());
   options.credentials    = strdup(
-      QS::FileSystem::Configure::GetDefaultCredentialsFile().c_str());
+      QS::Configure::Default::GetDefaultCredentialsFile().c_str());
   options.logDirectory   = strdup(
-      QS::FileSystem::Configure::GetDefaultLogDirectory().c_str());
+      QS::Configure::Default::GetDefaultLogDirectory().c_str());
   options.logLevel       = strdup(
       QS::Logging::GetLogLevelName(QS::Logging::LogLevel::Info).c_str());
   options.host           = strdup(

@@ -56,7 +56,7 @@ using FileIdToCacheListIteratorMap =
 
 class Cache {
  public:
-  Cache() = default;
+  Cache(uint64_t capacity) : m_capacity(capacity) {}
   Cache(Cache &&) = default;
   Cache(const Cache &) = delete;
   Cache &operator=(Cache &&) = default;
@@ -106,7 +106,10 @@ class Cache {
   int GetNumFile() const;
 
   // Get cache size
-  size_t GetSize() const { return m_size; }
+  uint64_t GetSize() const { return m_size; }
+
+  // Get cache Capacity
+  uint64_t GetCapacity() const { return m_capacity; }
 
   // Get file mtime
   time_t GetTime(const std::string &fileId) const;
@@ -189,6 +192,12 @@ class Cache {
   // @return : void
   void SetTime(const std::string &fileId, time_t mtime);
 
+  // Change file open state
+  //
+  // @param  : file id, open state
+  // @return : void
+  void SetFileOpen(const std::string &fileId, bool open);
+
   // Resize a file
   //
   // @param  : file id, new file size, mtime
@@ -210,7 +219,9 @@ class Cache {
 
  private:
   // Record sum of the cache files' size, not including tmp file
-  size_t m_size = 0;
+  uint64_t m_size = 0;
+
+  uint64_t m_capacity = 0;  // in bytes
 
   // Most recently used File is put at front,
   // Least recently used File is put at back.

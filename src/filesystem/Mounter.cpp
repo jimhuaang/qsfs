@@ -33,16 +33,17 @@
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
 #include "base/Utils.h"
+#include "configure/IncludeFuse.h"  // for fuse.h
+#include "configure/Options.h"
 #include "filesystem/Drive.h"
-#include "filesystem/IncludeFuse.h"  // for fuse.h
 #include "filesystem/Operations.h"
-#include "filesystem/Options.h"
 
 namespace QS {
 
 namespace FileSystem {
 
 using QS::StringUtils::FormatPath;
+using QS::Configure::Options;
 using QS::Exception::QSException;
 using std::call_once;
 using std::once_flag;

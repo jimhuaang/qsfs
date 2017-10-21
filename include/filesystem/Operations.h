@@ -19,7 +19,7 @@
 
 #include <sys/stat.h>
 
-#include "filesystem/IncludeFuse.h"  // for fuse.h
+#include "configure/IncludeFuse.h"  // for fuse.h
 
 namespace QS {
 

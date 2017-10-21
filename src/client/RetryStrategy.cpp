@@ -16,7 +16,7 @@
 
 #include "client/RetryStrategy.h"
 
-#include "filesystem/Options.h"
+#include "configure/Options.h"
 
 namespace QS {
 
@@ -38,7 +38,7 @@ RetryStrategy GetDefaultRetryStrategy() {
 }
 
 RetryStrategy GetCustomRetryStrategy() {
-  const auto &options = QS::FileSystem::Options::Instance();
+  const auto &options = QS::Configure::Options::Instance();
   return RetryStrategy(options.GetRetries(), Retry::DefaultScaleFactor);
 }
 

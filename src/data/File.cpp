@@ -30,9 +30,9 @@
 #include "base/Utils.h"
 #include "client/TransferHandle.h"
 #include "client/TransferManager.h"
+#include "configure/Default.h"
 #include "data/Directory.h"
 #include "data/IOStream.h"
-#include "filesystem/Configure.h"
 #include "filesystem/Drive.h"
 
 namespace QS {
@@ -40,7 +40,7 @@ namespace QS {
 namespace Data {
 
 using QS::Data::Entry;
-using QS::FileSystem::Configure::GetCacheTemporaryDirectory;
+using QS::Configure::Default::GetCacheTemporaryDirectory;
 using QS::StringUtils::PointerAddress;
 using QS::Utils::FileExists;
 using QS::Utils::RemoveFileIfExists;

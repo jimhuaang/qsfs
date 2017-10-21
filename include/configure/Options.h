@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_FILESYSTEM_OPTIONS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_FILESYSTEM_OPTIONS_H_  // NOLINT
+#ifndef _QSFS_FUSE_INCLUDED_CONFIGURE_OPTIONS_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_CONFIGURE_OPTIONS_H_  // NOLINT
 
 #include <stdint.h>  // for uint16_t
 
@@ -23,13 +23,20 @@
 #include <string>
 
 #include "base/LogLevel.h"
-#include "filesystem/IncludeFuse.h"  // for fuse.h
-#include "filesystem/Mounter.h"      // for friend function Mounter::Mount
-#include "filesystem/Parser.h"       // for friend function Parser::Parse
-
+#include "configure/IncludeFuse.h"  // for fuse.h
+;
 namespace QS {
 
 namespace FileSystem {
+class Mounter;
+
+namespace Parser {
+void Parse(int argc, char **argv);
+
+}  // namespace Parser
+}  // namespace FileSystem
+
+namespace Configure {
 
 using QS::Logging::LogLevel;
 
@@ -112,15 +119,15 @@ class Options {
   bool m_showVersion;
   struct fuse_args m_fuseArgs;
 
+  friend class QS::FileSystem::Mounter;  // for DoMount
   friend void QS::FileSystem::Parser::Parse(int argc, char **argv);
-  friend bool Mounter::DoMount(const Options &options, bool logOn,
-                               void *userData) const;
   friend std::ostream &operator<<(std::ostream &os, const Options &opts);
 };
 
 std::ostream &operator<<(std::ostream &os, const Options &opts);
-}  // namespace FileSystem
+
+}  // namespace Configure
 }  // namespace QS
 
 // NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_FILESYSTEM_OPTIONS_H_
+#endif  // _QSFS_FUSE_INCLUDED_CONFIGURE_OPTIONS_H_

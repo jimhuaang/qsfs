@@ -26,16 +26,16 @@
 
 #include "base/Logging.h"
 #include "base/Utils.h"
+#include "configure/Default.h"
 #include "data/Directory.h"
 #include "data/File.h"
 #include "data/Page.h"
-#include "filesystem/Configure.h"
 
 namespace QS {
 
 namespace Data {
 
-  using QS::FileSystem::Configure::GetCacheTemporaryDirectory;
+  using QS::Configure::Default::GetCacheTemporaryDirectory;
   using std::array;
   using std::make_shared;
   using std::string;

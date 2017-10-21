@@ -14,21 +14,21 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "filesystem/Configure.h"
+#include "configure/Default.h"
 
 #include <algorithm>
 
 #include <sys/stat.h>
 #include <sys/types.h>
 
+//#include "configure/Options.h"
 #include "data/Size.h"
-#include "filesystem/Options.h"
 
 namespace QS {
 
-namespace FileSystem {
-
 namespace Configure {
+
+namespace Default {
 
 using std::string;
 
@@ -43,19 +43,7 @@ const char* GetProgramName() { return PROGRAM_NAME; }
 const char* GetQSFSVersion() { return VERSION; }
 
 string GetDefaultCredentialsFile() { return QSFS_DEFAULT_CREDENTIALS; }
-string GetCredentialsFile() {
-  auto customCredentials =
-      QS::FileSystem::Options::Instance().GetCredentialsFile();
-  return customCredentials.empty()
-             ? QSFS_DEFAULT_CREDENTIALS
-             : customCredentials;
-}
-
 string GetDefaultLogDirectory() { return QSFS_DEFAULT_LOG_DIR; }
-string GetLogDirectory() {
-  auto customLogDir = QS::FileSystem::Options::Instance().GetLogDirectory();
-  return customLogDir.empty() ? QSFS_DEFAULT_LOG_DIR : customLogDir;
-}
 
 string GetMimeFile() { return QSFS_MIME_FILE; }
 string GetCacheTemporaryDirectory() { return QSFS_TMP_DIR; }
@@ -77,7 +65,7 @@ blkcnt_t GetBlocks(off_t size) {
   return size / 512 + 1; 
 }
 
-uint64_t GetMaxFileCacheSize() {
+uint64_t GetMaxCacheSize() {
   // TODO(Jim) : add option max_cache 
   return QS::Data::Size::MB100;  // default value
 }
@@ -128,13 +116,13 @@ uint64_t GetUploadMultipartMinPartSize(){
 }
 
 uint64_t GetUploadMultipartMaxPartSize(){
-  return std::min(QS::Data::Size::GB1, GetMaxFileCacheSize());
+  return std::min(QS::Data::Size::GB1, GetMaxCacheSize());
 }
 
 uint64_t GetUploadMultipartThresholdSize(){
   return QS::Data::Size::MB20;
 }
 
+}  // namespace Default
 }  // namespace Configure
-}  // namespace FileSystem
 }  // namespace QS

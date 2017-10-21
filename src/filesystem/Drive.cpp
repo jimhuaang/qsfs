@@ -41,11 +41,11 @@
 #include "client/TransferHandle.h"
 #include "client/TransferManager.h"
 #include "client/TransferManagerFactory.h"
+#include "configure/Default.h"
 #include "data/Cache.h"
 #include "data/Directory.h"
 #include "data/FileMetaData.h"
 #include "data/IOStream.h"
-#include "filesystem/Configure.h"
 
 namespace QS {
 
@@ -72,10 +72,10 @@ using QS::Data::FilePathToNodeUnorderedMap;
 using QS::Data::IOStream;
 using QS::Data::Node;
 using QS::Exception::QSException;
-using QS::FileSystem::Configure::GetCacheTemporaryDirectory;
-using QS::FileSystem::Configure::GetDefaultMaxParallelTransfers;
-using QS::FileSystem::Configure::GetDefaultTransferMaxBufSize;
-using QS::FileSystem::Configure::GetMaxFileCacheSize;
+using QS::Configure::Default::GetCacheTemporaryDirectory;
+using QS::Configure::Default::GetDefaultMaxParallelTransfers;
+using QS::Configure::Default::GetDefaultTransferMaxBufSize;
+using QS::Configure::Default::GetMaxCacheSize;
 using QS::StringUtils::FormatPath;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::DeleteFilesInDirectory;
@@ -111,12 +111,12 @@ Drive::Drive()
       m_client(ClientFactory::Instance().MakeClient()),
       m_transferManager(std::move(
           TransferManagerFactory::Create(TransferManagerConfigure()))),
-      m_cache(std::move(unique_ptr<Cache>(new Cache))) {
+      m_cache(std::move(unique_ptr<Cache>(new Cache(GetMaxCacheSize())))) {
   uid_t uid = GetProcessEffectiveUserID();
   gid_t gid = GetProcessEffectiveGroupID();
 
-  m_directoryTree = unique_ptr<DirectoryTree>(
-      new DirectoryTree(time(NULL), uid, gid, Configure::GetRootMode()));
+  m_directoryTree = unique_ptr<DirectoryTree>(new DirectoryTree(
+      time(NULL), uid, gid, QS::Configure::Default::GetRootMode()));
 
   m_transferManager->SetClient(m_client);
 }
@@ -436,6 +436,7 @@ void Drive::OpenFile(const string &filePath, bool async) {
   }
 
   node->SetFileOpen(true);
+  m_cache->SetFileOpen(filePath, true);
 }
 
 // --------------------------------------------------------------------------
@@ -659,6 +660,7 @@ void Drive::UploadFile(const string &filePath, bool async) {
     if (handle) {
       node->SetNeedUpload(false);
       node->SetFileOpen(false);
+      m_cache->SetFileOpen(filePath, false);
       if (handle->IsMultipart()) {
         m_unfinishedMultipartUploadHandles.emplace(handle->GetObjectKey(),
                                                    handle);

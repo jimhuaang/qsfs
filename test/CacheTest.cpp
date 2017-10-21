@@ -16,6 +16,43 @@
 
 #include "gtest/gtest.h"
 
+#include <memory>
+
+#include "base/Logging.h"
+#include "base/Utils.h"
 #include "data/Cache.h"
-#include "data/File.h"
-#include "data/Page.h"
+
+namespace QS {
+
+namespace Data {
+
+using std::unique_ptr;
+using ::testing::Test;
+
+// default log dir
+static const char *defaultLogDir = "/tmp/qsfs.logs/";
+void InitLog() {
+  QS::Utils::CreateDirectoryIfNotExistsNoLog(defaultLogDir);
+  QS::Logging::InitializeLogging(
+      unique_ptr<QS::Logging::Log>(new QS::Logging::DefaultLog(defaultLogDir)));
+  EXPECT_TRUE(QS::Logging::GetLogInstance() != nullptr)
+      << "log instance is null";
+}
+
+class CacheTest : public Test {
+protected:
+  static void SetUpTestCase() { InitLog(); }
+};
+
+TEST_F(CacheTest, Default) {
+  Cache cache(100);
+}
+
+}  // namespace Data
+}  // namespace QS
+
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  int code = RUN_ALL_TESTS();
+  return code;
+}

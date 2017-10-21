@@ -32,7 +32,7 @@
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
 #include "base/Utils.h"
-#include "filesystem/Configure.h"
+#include "configure/Options.h"
 
 namespace QS {
 
@@ -68,7 +68,7 @@ CredentialsProvider& GetCredentialsProviderInstance() {
   call_once(credentialsProviderOnceFlag, [] {
     credentialsProvider =
         unique_ptr<CredentialsProvider>(new DefaultCredentialsProvider(
-            QS::FileSystem::Configure::GetCredentialsFile()));
+            QS::Configure::Options::Instance().GetCredentialsFile()));
   });
   return *credentialsProvider.get();
 }

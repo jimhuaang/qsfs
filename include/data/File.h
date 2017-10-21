@@ -49,7 +49,8 @@ class File {
         m_mtime(mtime),
         m_size(size),
         m_cacheSize(size),
-        m_useTempFile(false) {}
+        m_useTempFile(false),
+        m_open(false) {}
 
   File(File &&) = delete;
   File(const File &) = delete;
@@ -63,6 +64,7 @@ class File {
   size_t GetCachedSize() const { return m_cacheSize.load(); }
   time_t GetTime() const { return m_mtime.load(); }
   bool UseTempFile() const { return m_useTempFile.load(); }
+  bool IsOpen() const { return m_open.load(); }
 
   // return tmp file path
   std::string AskTempFilePath() const;
@@ -150,6 +152,9 @@ class File {
   // Set flag to use temp file
   void SetUseTempFile(bool useTempFile) { m_useTempFile.store(useTempFile); }
 
+  // Set file open state
+  void SetOpen(bool open) { m_open.store(open); }
+
   // Returns an iterator pointing to the first Page that is not ahead of offset.
   // If no such Page is found, a past-the-end iterator is returned.
   PageSetConstIterator LowerBoundPage(off_t offset) const;
@@ -195,6 +200,7 @@ class File {
                                     // stored in cache not including tmp file
 
   std::atomic<bool> m_useTempFile;  // use tmp file when no free cache space
+  std::atomic<bool> m_open;         // file open/close state
   mutable std::recursive_mutex m_mutex;
   PageSet m_pages;              // a set of pages suppose to be successive
 

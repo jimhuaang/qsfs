@@ -27,15 +27,15 @@
 
 #include "base/Logging.h"
 #include "base/Utils.h"
+#include "configure/Default.h"
 #include "data/Page.h"
 #include "data/StreamUtils.h"
-#include "filesystem/Configure.h"
 
 namespace QS {
 
 namespace Data {
 
-using QS::FileSystem::Configure::GetCacheTemporaryDirectory;
+using QS::Configure::Default::GetCacheTemporaryDirectory;
 using QS::Data::StreamUtils::GetStreamSize;
 using QS::Utils::RemoveFileIfExists;
 using std::array;

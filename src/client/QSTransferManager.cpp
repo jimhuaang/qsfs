@@ -34,10 +34,10 @@
 #include "client/QSError.h"
 #include "client/TransferHandle.h"
 #include "client/Utils.h"
+#include "configure/Default.h"
 #include "data/Directory.h"
 #include "data/IOStream.h"
 #include "data/StreamBuf.h"
-#include "filesystem/Configure.h"
 #include "filesystem/Drive.h"
 
 namespace QS {
@@ -48,8 +48,8 @@ using QS::Client::Utils::BuildRequestRange;
 using QS::Data::Buffer;
 using QS::Data::IOStream;
 using QS::Data::StreamBuf;
-using QS::FileSystem::Configure::GetUploadMultipartMinPartSize;
-using QS::FileSystem::Configure::GetUploadMultipartThresholdSize;
+using QS::Configure::Default::GetUploadMultipartMinPartSize;
+using QS::Configure::Default::GetUploadMultipartThresholdSize;
 using std::iostream;
 using std::make_shared;
 using std::pair;

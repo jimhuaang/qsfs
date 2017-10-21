@@ -24,7 +24,6 @@
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
-#include "filesystem/MimeTypes.h"
 
 namespace QS {
 
@@ -32,7 +31,6 @@ namespace Client {
 
 namespace Utils {
 
-using QS::FileSystem::MimeTypes;
 using std::istream;
 using std::make_tuple;
 using std::pair;

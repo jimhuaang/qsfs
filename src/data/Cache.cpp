@@ -27,10 +27,9 @@
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
 #include "base/Utils.h"
+#include "configure/Default.h"
 #include "data/Directory.h"
 #include "data/StreamUtils.h"
-#include "filesystem/Configure.h"
-#include "filesystem/Drive.h"
 
 namespace QS {
 
@@ -38,7 +37,7 @@ namespace Data {
 
 using QS::Data::Node;
 using QS::Data::StreamUtils::GetStreamSize;
-using QS::FileSystem::Configure::GetCacheTemporaryDirectory;
+using QS::Configure::Default::GetCacheTemporaryDirectory;
 using QS::StringUtils::FormatPath;
 using QS::StringUtils::PointerAddress;
 using QS::Utils::CreateDirectoryIfNotExists;
@@ -55,7 +54,7 @@ using std::vector;
 
 // --------------------------------------------------------------------------
 bool Cache::HasFreeSpace(size_t size) const {
-  return GetSize() + size <= QS::FileSystem::Configure::GetMaxFileCacheSize();
+  return GetSize() + size <= GetCapacity();
 }
 
 // --------------------------------------------------------------------------
@@ -63,15 +62,7 @@ bool Cache::IsLastFileOpen() const {
   if (m_cache.empty()) {
     return false;
   }
-  const string &fileName = m_cache.back().first;
-  auto &drive = QS::FileSystem::Drive::Instance();
-  auto &dirTree = drive.GetDirectoryTree();
-  assert(dirTree);
-  auto node = dirTree->Find(fileName).lock();
-  if (!(node && *node)) {
-    return false;
-  }
-  return node->IsFileOpen();
+  return m_cache.back().second->IsOpen();
 }
 
 // --------------------------------------------------------------------------
@@ -345,11 +336,10 @@ pair<bool, unique_ptr<File> *> Cache::PrepareWrite(const string &fileId,
 
 // --------------------------------------------------------------------------
 bool Cache::Free(size_t size, const string &fileUnfreeable) {
-  if (size > QS::FileSystem::Configure::GetMaxFileCacheSize()) {
+  if (size > GetCapacity()) {
     DebugInfo("Try to free cache of " + to_string(size) +
               " bytes which surpass the maximum cache size(" +
-              to_string(QS::FileSystem::Configure::GetMaxFileCacheSize()) +
-              " bytes). Do nothing");
+              to_string(GetCapacity()) + " bytes). Do nothing");
     return false;
   }
   if (HasFreeSpace(size)) {
@@ -439,8 +429,18 @@ void Cache::SetTime(const string &fileId, time_t mtime) {
     auto pfile = &(it->second->second);
     (*pfile)->SetTime(mtime);
   } else {
-    DebugWarning("Unable to set time for non existing file " +
-                 FormatPath(fileId));
+    DebugInfo("File not exists, no set time " + FormatPath(fileId));
+  }
+}
+
+// --------------------------------------------------------------------------
+void Cache::SetFileOpen(const std::string &fileId, bool open) {
+  auto it = m_map.find(fileId);
+  if (it != m_map.end()) {
+    auto pfile = &(it->second->second);
+    (*pfile)->SetOpen(open);
+  } else {
+    DebugInfo("File not exists, no set open" + FormatPath(fileId));
   }
 }
 

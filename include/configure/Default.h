@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_QINGSTOR_CONFIGURE_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_QINGSTOR_CONFIGURE_H_  // NOLINT
+#ifndef _QSFS_FUSE_INCLUDE_CONFIGURE_DEFAULT_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDE_CONFIGURE_DEFAULT_H_  // NOLINT
 
 #include <stddef.h>
 #include <stdint.h>
@@ -26,18 +26,15 @@
 
 namespace QS {
 
-namespace FileSystem {
-
 namespace Configure {
+
+namespace Default {
   
 const char* GetProgramName();
 const char* GetQSFSVersion();
 
-std::string GetConfigureDirectory();
 std::string GetDefaultCredentialsFile();
-std::string GetCredentialsFile();
 std::string GetDefaultLogDirectory();
-std::string GetLogDirectory();
 std::string GetMimeFile();
 std::string GetCacheTemporaryDirectory();
 
@@ -52,7 +49,7 @@ uint16_t GetBlockSize();  // Block size for filesystem I/O
 uint16_t GetFragmentSize();
 blkcnt_t GetBlocks(off_t size);  // Number of 512B blocks allocated
 
-uint64_t GetMaxFileCacheSize();  // File cache size in bytes
+uint64_t GetMaxCacheSize();  // File cache size in bytes
 size_t GetMaxFileMetaDataCount();  // File meta data max count
 
 int GetQSConnectionDefaultRetries();
@@ -68,9 +65,9 @@ uint64_t GetUploadMultipartMinPartSize();
 uint64_t GetUploadMultipartMaxPartSize();
 uint64_t GetUploadMultipartThresholdSize();
 
+}  // namespace Default
 }  // namespace Configure
-}  // namespace FileSystem
 }  // namespace QS
 
 // NOLINTNEXTLIN
-#endif  // _QSFS_FUSE_INCLUDE_QINGSTOR_CONFIGURE_H_
+#endif  // _QSFS_FUSE_INCLUDE_CONFIGURE_DEFAULT_H_

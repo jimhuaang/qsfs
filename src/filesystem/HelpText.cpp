@@ -21,7 +21,7 @@
 #include "client/Protocol.h"
 #include "client/URI.h"
 #include "client/Zone.h"
-#include "filesystem/Configure.h"
+#include "configure/Default.h"
 
 namespace QS {
 
@@ -33,7 +33,7 @@ using std::cout;
 using std::endl;
 
 void ShowQSFSVersion() {
-  cout << "qsfs version: " << QS::FileSystem::Configure::GetQSFSVersion() << endl;
+  cout << "qsfs version: " << QS::Configure::Default::GetQSFSVersion() << endl;
 }
 
 void ShowQSFSHelp() {
@@ -56,9 +56,9 @@ void ShowQSFSHelp() {
   "  -m, --mount        Specify mount point (path)\n"
   "  -z, --zone         Zone or region, default is " << GetDefaultZone() << "\n"
   "  -c, --credentials  Specify credentials file, default is " << 
-                                  Configure::GetDefaultCredentialsFile() << "\n" <<
+                        QS::Configure::Default::GetDefaultCredentialsFile() << "\n" <<
   "  -l, --logdir       Specify log directory, default is " <<
-                                  Configure::GetDefaultLogDirectory() << "\n" <<
+                        QS::Configure::Default::GetDefaultLogDirectory() << "\n" <<
   "  -L, --loglevel     Min log level, message lower than this level don't logged;\n"
   "                     Specify one of following log level: INFO,WARN,ERROR,FATAL;\n"
   "                     INFO is set by default\n"

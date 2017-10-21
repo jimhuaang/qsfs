@@ -23,13 +23,13 @@
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
 #include "base/Utils.h"
-#include "filesystem/Configure.h"
+#include "configure/Default.h"
 
 namespace QS {
 
 namespace Data {
 
-using QS::FileSystem::Configure::GetDefineDirMode;
+using QS::Configure::Default::GetDefineDirMode;
 using QS::StringUtils::AccessMaskToString;
 using QS::StringUtils::FormatPath;
 using QS::StringUtils::ModeToString;
@@ -128,8 +128,8 @@ bool FileMetaData::operator==(const FileMetaData &rhs) const {
 struct stat FileMetaData::ToStat() const {
   struct stat st;
   st.st_size = m_fileSize;
-  st.st_blocks = QS::FileSystem::Configure::GetBlocks(st.st_size);
-  st.st_blksize = QS::FileSystem::Configure::GetBlockSize();
+  st.st_blocks = QS::Configure::Default::GetBlocks(st.st_size);
+  st.st_blksize = QS::Configure::Default::GetBlockSize();
   st.st_atim = {m_atime, 0};
   st.st_mtim = {m_mtime, 0};
   st.st_ctim = {m_ctime, 0};

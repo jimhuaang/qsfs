@@ -21,13 +21,13 @@
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
-#include "filesystem/Configure.h"
+#include "configure/Default.h"
 
 namespace QS {
 
 namespace Data {
 
-using QS::FileSystem::Configure::GetMaxFileMetaDataCount;
+using QS::Configure::Default::GetMaxFileMetaDataCount;
 using QS::StringUtils::FormatPath;
 using std::lock_guard;
 using std::recursive_mutex;

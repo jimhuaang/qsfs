@@ -25,10 +25,10 @@
 #include "base/Utils.h"
 #include "client/ClientConfiguration.h"
 #include "client/Credentials.h"
-#include "filesystem/Configure.h"
+#include "configure/Default.h"
+#include "configure/Options.h"
 #include "filesystem/Initializer.h"
 #include "filesystem/MimeTypes.h"
-#include "filesystem/Options.h"
 
 using QS::Client::ClientConfiguration;
 using QS::Client::CredentialsProvider;
@@ -37,9 +37,7 @@ using QS::Client::GetCredentialsProviderInstance;
 using QS::Client::InitializeClientConfiguration;
 using QS::Client::InitializeCredentialsProvider;
 using QS::Exception::QSException;
-using QS::FileSystem::Configure::GetCredentialsFile;
-using QS::FileSystem::Configure::GetLogDirectory;
-using QS::FileSystem::Configure::GetMimeFile;
+using QS::Configure::Default::GetMimeFile;
 using QS::FileSystem::Initializer;
 using QS::FileSystem::Priority;
 using QS::FileSystem::PriorityInitFuncPair;
@@ -52,11 +50,12 @@ using std::string;
 using std::unique_ptr;
 
 void LoggingInitializer() {
-  const auto &options = QS::FileSystem::Options::Instance();
+  const auto &options = QS::Configure::Options::Instance();
   if (options.IsForeground()) {
     InitializeLogging(unique_ptr<Log>(new ConsoleLog));
   } else {
-    InitializeLogging(unique_ptr<Log>(new DefaultLog(GetLogDirectory())));
+    InitializeLogging(
+        unique_ptr<Log>(new DefaultLog(options.GetLogDirectory())));
   }
   auto log = QS::Logging::GetLogInstance();
   if (log == nullptr) throw QSException("Fail to initialize logging");
@@ -70,12 +69,13 @@ void LoggingInitializer() {
 }
 
 void CredentialsInitializer() {
-  if (!FileExists(GetCredentialsFile())) {
-    throw QSException("qsfs credentials file " + GetCredentialsFile() +
+  const auto &options = QS::Configure::Options::Instance();
+  if (!FileExists(options.GetCredentialsFile())) {
+    throw QSException("qsfs credentials file " + options.GetCredentialsFile() +
                       " does not exist");
   } else {
     InitializeCredentialsProvider(unique_ptr<CredentialsProvider>(
-        new DefaultCredentialsProvider(GetCredentialsFile())));
+        new DefaultCredentialsProvider(options.GetCredentialsFile())));
   }
 }
 
@@ -96,7 +96,7 @@ void MimeTypesInitializer() {
 
 void PrintCommandLineOptions() {
   // Notice: this should only be invoked after logging initialization
-  const auto &options = QS::FileSystem::Options::Instance();
+  const auto &options = QS::Configure::Options::Instance();
   std::stringstream ss;
   ss << "<<Command Line Options>> ";
   ss << options << std::endl;

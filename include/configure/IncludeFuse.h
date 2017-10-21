@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_FILESYSTEM_INCLUDEFUSE_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_FILESYSTEM_INCLUDEFUSE_H_  // NOLINT
+#ifndef _QSFS_FUSE_INCLUDED_CONFIGURE_INCLUDEFUSE_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_CONFIGURE_INCLUDEFUSE_H_  // NOLINT
 
 // To prevent redefining "FUSE_USE_VERSION",
 // include this file instead of fuse.h.
@@ -23,4 +23,4 @@
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
 
-#endif  // _QSFS_FUSE_INCLUDED_FILESYSTEM_INCLUDEFUSE_H_
+#endif  // _QSFS_FUSE_INCLUDED_CONFIGURE_INCLUDEFUSE_H_

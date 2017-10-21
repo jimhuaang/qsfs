@@ -31,7 +31,7 @@
 #include "base/LogMacros.h"
 #include "base/Logging.h"
 #include "base/Utils.h"
-#include "filesystem/Configure.h"
+#include "configure/Default.h"
 
 namespace QS {
 
@@ -46,7 +46,7 @@ namespace Logging {
 // so they can be friends of class Log.
 
 using QS::Logging::LogLevel;
-using QS::FileSystem::Configure::GetProgramName;
+using QS::Configure::Default::GetProgramName;
 using std::fstream;
 using std::ostream;
 using std::string;

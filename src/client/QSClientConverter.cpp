@@ -31,8 +31,8 @@
 
 #include "base/TimeUtils.h"
 #include "base/Utils.h"
+#include "configure/Default.h"
 #include "data/FileMetaData.h"
-#include "filesystem/Configure.h"
 #include "filesystem/MimeTypes.h"
 
 namespace QS {
@@ -48,11 +48,11 @@ using QingStor::ListObjectsOutput;
 using QS::Data::BuildDefaultDirectoryMeta;
 using QS::Data::FileMetaData;
 using QS::Data::FileType;
-using QS::FileSystem::Configure::GetBlockSize;
-using QS::FileSystem::Configure::GetDefineFileMode;
-using QS::FileSystem::Configure::GetDefineDirMode;
-using QS::FileSystem::Configure::GetFragmentSize;
-using QS::FileSystem::Configure::GetNameMaxLen;
+using QS::Configure::Default::GetBlockSize;
+using QS::Configure::Default::GetDefineFileMode;
+using QS::Configure::Default::GetDefineDirMode;
+using QS::Configure::Default::GetFragmentSize;
+using QS::Configure::Default::GetNameMaxLen;
 using QS::FileSystem::GetDirectoryMimeType;
 using QS::FileSystem::GetSymlinkMimeType;
 using QS::TimeUtils::RFC822GMTToSeconds;

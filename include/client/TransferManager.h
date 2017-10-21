@@ -23,7 +23,7 @@
 #include <iostream>
 #include <memory>
 
-#include "filesystem/Configure.h"
+#include "configure/Default.h"
 
 namespace QS {
 
@@ -47,26 +47,26 @@ class TransferHandle;
 struct TransferManagerConfigure {
   // Maximum size of the working buffers to use
   uint64_t m_bufferMaxHeapSize =
-      QS::FileSystem::Configure::GetDefaultTransferMaxBufHeapSize();
+      QS::Configure::Default::GetDefaultTransferMaxBufHeapSize();
 
   // Memory size allocated for one transfer buffer
   // If you are uploading large files(e.g. larger than 50GB), this needs to be
   // specified to be a size larger. And keeping in mind that you may need to
   // increase your max heap size if you plan on increasing buffer size.
   uint64_t m_bufferSize =
-      QS::FileSystem::Configure::GetDefaultTransferMaxBufSize();
+      QS::Configure::Default::GetDefaultTransferMaxBufSize();
 
   // Maximum number of file transfers to run in parallel.
   size_t m_maxParallelTransfers =
-      QS::FileSystem::Configure::GetDefaultMaxParallelTransfers();
+      QS::Configure::Default::GetDefaultMaxParallelTransfers();
 
   TransferManagerConfigure(
       uint64_t bufMaxHeapSize =
-          QS::FileSystem::Configure::GetDefaultTransferMaxBufHeapSize(),
+          QS::Configure::Default::GetDefaultTransferMaxBufHeapSize(),
       uint64_t bufSize =
-          QS::FileSystem::Configure::GetDefaultTransferMaxBufSize(),
+          QS::Configure::Default::GetDefaultTransferMaxBufSize(),
       size_t maxParallelTransfers =
-          QS::FileSystem::Configure::GetDefaultMaxParallelTransfers())
+          QS::Configure::Default::GetDefaultMaxParallelTransfers())
       : m_bufferMaxHeapSize(bufMaxHeapSize),
         m_bufferSize(bufSize),
         m_maxParallelTransfers(maxParallelTransfers) {}

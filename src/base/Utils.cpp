@@ -39,7 +39,7 @@
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
-#include "filesystem/Configure.h"
+#include "configure/Default.h"
 
 namespace QS {
 
@@ -65,7 +65,7 @@ string PostErrMsg(const string &path) {
 // --------------------------------------------------------------------------
 bool CreateDirectoryIfNotExistsNoLog(const string &path) {
   int errorCode =
-      mkdir(path.c_str(), QS::FileSystem::Configure::GetDefineDirMode());
+      mkdir(path.c_str(), QS::Configure::Default::GetDefineDirMode());
   bool success = (errorCode == 0 || errno == EEXIST);
   if (!success) cerr << "Fail to create directory " + PostErrMsg(path) + "\n";
   return success;

@@ -28,12 +28,13 @@
 #include "base/Exception.h"
 #include "base/LogLevel.h"
 #include "base/Utils.h"
-#include "filesystem/Configure.h"
+#include "configure/Default.h"
+#include "configure/Options.h"
 
 namespace {
 
 void InitializeGLog() {
-  google::InitGoogleLogging(QS::FileSystem::Configure::GetProgramName());
+  google::InitGoogleLogging(QS::Configure::Default::GetProgramName());
 }
 
 }  // namespace
@@ -60,7 +61,7 @@ void InitializeLogging(unique_ptr<Log> log) {
 Log* GetLogInstance() {
   std::call_once(logOnceFlag, [] {
     logInstance = unique_ptr<Log>(
-        new DefaultLog(QS::FileSystem::Configure::GetLogDirectory()));
+        new DefaultLog(QS::Configure::Options::Instance().GetLogDirectory()));
     InitializeGLog();
   });
   return logInstance.get();
