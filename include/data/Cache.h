@@ -129,11 +129,14 @@ class Cache {
   // Read file cache into a buffer
   //
   // @param  : file path, offset, len, buffer, node
-  // @return : size of bytes have been writen to buffer
+  // @return : {size of bytes have been writen to buffer, unloaded ranges}
   //
   // If not found fileId in cache, create it in cache and load its pages.
-  size_t Read(const std::string &fileId, off_t offset, size_t len, char *buffer,
-              std::shared_ptr<Node> node);
+  std::pair<size_t, ContentRangeDeque> Read(const std::string &fileId,
+                                            off_t offset, size_t len,
+                                            char *buffer,
+                                            std::shared_ptr<Node> node);
+
  private:
 
   // Write a block of bytes into file cache

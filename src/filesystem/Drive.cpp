@@ -504,7 +504,8 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
   }
 
   // Read from cache
-  return m_cache->Read(filePath, offset, downloadSize, buf, node);
+  auto outcome = m_cache->Read(filePath, offset, downloadSize, buf, node);
+  return std::get<0>(outcome);
 }
 
 // --------------------------------------------------------------------------

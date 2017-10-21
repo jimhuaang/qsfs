@@ -429,7 +429,8 @@ void QSTransferManager::DoSinglePartUpload(
   auto &dirTree = drive.GetDirectoryTree();
   auto node = dirTree->Find(objKey).lock();
   assert(node && *node);
-  auto readSize = cache->Read(objKey, 0, fileSize, &(*buf)[0], node);
+  auto res = cache->Read(objKey, 0, fileSize, &(*buf)[0], node);
+  auto readSize = std::get<0>(res);
   if (readSize != fileSize) {
     DebugError("Fail to read cache [file:offset:len:readsize=" + objKey +
                ":0:" + to_string(fileSize) + ":" + to_string(readSize) +
@@ -504,8 +505,9 @@ void QSTransferManager::DoMultiPartUpload(
       break;
     }
 
-    auto readSize = cache->Read(objKey, part->GetRangeBegin(), part->GetSize(),
-                                &(*buffer)[0], node);
+    auto res = cache->Read(objKey, part->GetRangeBegin(), part->GetSize(),
+                           &(*buffer)[0], node);
+    auto readSize = std::get<0>(res);
     if (readSize != part->GetSize()) {
       DebugError("Fail to read cache [file:offset:len:readsize=" + objKey +
                  ":" + to_string(part->GetRangeBegin()) + ":" +

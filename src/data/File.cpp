@@ -28,12 +28,12 @@
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
 #include "base/Utils.h"
-#include "client/TransferHandle.h"
-#include "client/TransferManager.h"
+//#include "client/TransferHandle.h"
+//#include "client/TransferManager.h"
 #include "configure/Default.h"
 #include "data/Directory.h"
 #include "data/IOStream.h"
-#include "filesystem/Drive.h"
+//#include "filesystem/Drive.h"
 
 namespace QS {
 
@@ -182,8 +182,8 @@ size_t File::GetNumPages() const{
 }
 
 // --------------------------------------------------------------------------
-pair<size_t, list<shared_ptr<Page>>> File::Read(off_t offset, size_t len,
-                                                Entry *entry) {
+tuple<size_t, list<shared_ptr<Page>>, ContentRangeDeque> File::Read(
+    off_t offset, size_t len, Entry *entry) {
   // Cache already check input.
   // bool isValidInput = offset >= 0 && len > 0 && entry != nullptr && (*entry);
   // assert(isValidInput);
@@ -192,32 +192,6 @@ pair<size_t, list<shared_ptr<Page>>> File::Read(off_t offset, size_t len,
   //              ToStringLine(offset, len));
   //   return {0, list<shared_ptr<Page>>()};
   // }
-
-  time_t mtime = entry->GetMTime();
-  string filePath = entry->GetFilePath();
-  size_t outcomeSize = 0;
-  list<shared_ptr<Page>> outcomePages;
-  auto LoadFileAndAddPage = [this, mtime, filePath, &outcomeSize,
-                             &outcomePages](off_t offset, size_t len) {
-    auto stream = make_shared<IOStream>(len);
-    auto handle =
-        QS::FileSystem::Drive::Instance().GetTransferManager()->DownloadFile(
-            filePath, offset, len, stream);
-
-    if (handle) {
-      handle->WaitUntilFinished();
-      if (handle->DoneTransfer() && !handle->HasFailedParts()) {
-        auto res = UnguardedAddPage(offset, len, stream);
-        if (std::get<1>(res)) {
-          if (mtime > m_mtime) {
-            SetTime(mtime);
-          }
-          outcomePages.emplace_back(*(std::get<0>(res)));
-          outcomeSize += (*(std::get<0>(res)))->m_size;
-        }
-      }
-    }
-  };
 
   // Adjust the input length
   if (entry->GetFileSize() > 0) {
@@ -229,6 +203,15 @@ pair<size_t, list<shared_ptr<Page>>> File::Read(off_t offset, size_t len,
                    ToStringLine(offset, len) + " which surpass the file size");
     }
   }
+
+  ContentRangeDeque unloadedRanges;
+  auto AddUnloadedPages = [&unloadedRanges](off_t offset, size_t len) {
+    unloadedRanges.emplace_back(offset, len);
+  };
+  time_t mtime = entry->GetMTime();
+  string filePath = entry->GetFilePath();
+  size_t outcomeSize = 0;
+  list<shared_ptr<Page>> outcomePages;
 
   {
     lock_guard<recursive_mutex> lock(m_mutex);
@@ -246,8 +229,8 @@ pair<size_t, list<shared_ptr<Page>>> File::Read(off_t offset, size_t len,
   
     // If pages is empty.
     if (m_pages.empty()) {
-      LoadFileAndAddPage(offset, len);
-      return {outcomeSize, outcomePages};
+      AddUnloadedPages(offset, len);
+      make_tuple(outcomeSize, outcomePages, unloadedRanges);
     }
 
     auto range = IntesectingRange(offset, offset + len);
@@ -262,14 +245,14 @@ pair<size_t, list<shared_ptr<Page>>> File::Read(off_t offset, size_t len,
       auto &page = *it1;
       if (offset_ < page->m_offset) {  // Load new page for bytes not present.
         auto lenNewPage = page->m_offset - offset_;
-        LoadFileAndAddPage(offset_, lenNewPage);
+        AddUnloadedPages(offset_, lenNewPage);
         offset_ = page->m_offset;
         len_ -= lenNewPage;
       } else {  // Collect existing pages.
         if (len_ <= static_cast<size_t>(page->Next() - offset_)) {
           outcomePages.emplace_back(page);
           outcomeSize += page->m_size;
-          return {outcomeSize, outcomePages};
+          return make_tuple(outcomeSize, outcomePages, unloadedRanges);
         } else {
           outcomePages.emplace_back(page);
           outcomeSize += page->m_size;
@@ -282,11 +265,11 @@ pair<size_t, list<shared_ptr<Page>>> File::Read(off_t offset, size_t len,
     }  // end of while
     // Load new page for bytes not present.
     if (len_ > 0) {
-      LoadFileAndAddPage(offset_, len_);
+      AddUnloadedPages(offset_, len_);
     }
   }  // end of lock_guard
 
-  return {outcomeSize, outcomePages};
+  return make_tuple(outcomeSize, outcomePages, unloadedRanges);
 }
 
 // --------------------------------------------------------------------------

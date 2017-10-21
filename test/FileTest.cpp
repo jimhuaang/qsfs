@@ -251,17 +251,19 @@ namespace Data {
     gid_, fileMode_);
     
     auto res1 = file1.Read(off1, len1, &entry1);
-    EXPECT_EQ(res1.first, len1);
-    auto &pages1 = res1.second;
+    EXPECT_EQ(std::get<0>(res1), len1);
+    auto &pages1 = std::get<1>(res1);
     EXPECT_EQ(pages1.size(), 1u);
     array<char, len1> buf1;
     pages1.front()->Read(&buf1[0]);
     array<char, len1> arr1{'0', '1', '2'};
     EXPECT_EQ(buf1, arr1);
+    auto &unloadPages1 = std::get<2>(res1);
+    EXPECT_TRUE(unloadPages1.empty());
 
     auto res2 = file1.Read(off1 + 1, len1, &entry1);
-    EXPECT_EQ(res2.first, len1 + len2);
-    auto &pages2 = res2.second;
+    EXPECT_EQ(std::get<0>(res2), len1 + len2);
+    auto &pages2 = std::get<1>(res2);
     EXPECT_EQ(pages2.size(), 2u);
     array<char, len1> buf2;
     pages2.front()->Read(&buf2[0]);
@@ -270,21 +272,26 @@ namespace Data {
     pages2.back()->Read(&buf3[0]);
     array<char, len2> arr2{'a', 'b', 'c'};
     EXPECT_EQ(buf3, arr2);
+    auto &unloadPages2 = std::get<2>(res2);
+    EXPECT_TRUE(unloadPages2.empty());
 
-    //TODO(jim): enable following test after refactor File::Read
-    //auto res3 = file1.Read(off2 + len2, holeLen, &entry1);
-    //EXPECT_EQ(res3.first, 0u);
-    //auto &pages3 = res2.second;
-    //EXPECT_TRUE(pages3.empty());
+    auto res3 = file1.Read(off2 + len2, holeLen, &entry1);
+    EXPECT_EQ(std::get<0>(res3), 0u);
+    auto &pages3 = std::get<1>(res3);
+    EXPECT_TRUE(pages3.empty());
+    auto &unloadPages3= std::get<2>(res3);
+    EXPECT_FALSE(unloadPages3.empty());
 
     auto res4 = file1.Read(off3, len3, &entry1);
-    EXPECT_EQ(res4.first, len3);
-    auto &pages4 = res4.second;
+    EXPECT_EQ(std::get<0>(res4), len3);
+    auto &pages4 = std::get<1>(res4);
     EXPECT_EQ(pages4.size(), 1u);
     array<char, len3> buf4;
     pages4.front()->Read(&buf4[0]);
     array<char, len3> arr3{'A', 'B', 'C'};
     EXPECT_EQ(buf4, arr3);
+    auto &unloadPages4 = std::get<2>(res4);
+    EXPECT_TRUE(unloadPages4.empty());
   }
 
   TEST_F(FileTest, TestReadTmpFile) {
@@ -312,8 +319,8 @@ namespace Data {
     gid_, fileMode_);
     
     auto res1 = file1.Read(off1, len1, &entry1);
-    EXPECT_EQ(res1.first, len1);
-    auto &pages1 = res1.second;
+    EXPECT_EQ(std::get<0>(res1), len1);
+    auto &pages1 = std::get<1>(res1);
     EXPECT_EQ(pages1.size(), 1u);
     array<char, len1> buf1;
     pages1.front()->Read(&buf1[0]);
@@ -321,8 +328,8 @@ namespace Data {
     EXPECT_EQ(buf1, arr1);
 
     auto res2 = file1.Read(off1 + 1, len1, &entry1);
-    EXPECT_EQ(res2.first, len1 + len2);
-    auto &pages2 = res2.second;
+    EXPECT_EQ(std::get<0>(res2), len1 + len2);
+    auto &pages2 = std::get<1>(res2);
     EXPECT_EQ(pages2.size(), 2u);
     array<char, len1> buf2;
     pages2.front()->Read(&buf2[0]);

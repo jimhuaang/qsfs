@@ -103,7 +103,7 @@ class File {
   // Read from the cache (file pages)
   //
   // @param  : file offset, len of bytes, entry(meta data of file)
-  // @return : a pair of {read size, page list containing data}
+  // @return : a pair of {read size, page list containing data, unloaded ranges}
   //
   // If the file mtime is newer than m_mtime, clear cache and download file.
   // If any bytes is not present, download it as a new page.
@@ -112,9 +112,8 @@ class File {
   // Notes: the pagelist of outcome could containing more bytes than given
   // input asking for, for example, the 1st page of outcome could has a
   // offset which is ahead of input 'offset'.
-  std::pair<size_t, std::list<std::shared_ptr<Page>>> Read(off_t offset,
-                                                           size_t len,
-                                                           Entry *entry);
+  std::tuple<size_t, std::list<std::shared_ptr<Page>>, ContentRangeDeque> Read(
+      off_t offset, size_t len, Entry *entry);
 
   // Write a block of bytes into pages
   //

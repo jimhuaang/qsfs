@@ -127,10 +127,13 @@ CacheListIterator Cache::Begin() { return m_cache.begin(); }
 CacheListIterator Cache::End() { return m_cache.end(); }
 
 // --------------------------------------------------------------------------
-size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
-                   shared_ptr<Node> node) {
+pair<size_t, ContentRangeDeque> Cache::Read(const string &fileId, off_t offset,
+                                            size_t len, char *buffer,
+                                            shared_ptr<Node> node) {
+  ContentRangeDeque unloadedRanges;
   if (len == 0) {
-    return 0;  // do nothing, this case could happen for truncate file to empty
+    return {0, unloadedRanges};  // do nothing, this case could happen for
+                                 // truncate file to empty
   }
 
   bool validInput =
@@ -139,11 +142,11 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
   if (!validInput) {
     DebugError("Try to read cache with invalid input " +
                ToStringLine(fileId, offset, len, buffer));
-    return 0;
+    return {0, unloadedRanges};
   }
   if (!(node && *node)) {
     DebugError("Null input node parameter");
-    return 0;
+    return {0, unloadedRanges};
   }
 
   DebugInfo("Read cache [offset:len=" + to_string(offset) + ":" +
@@ -163,11 +166,15 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
 
   assert(pos != m_cache.end());
   auto pfile = &(pos->second);
+  // TODO(jim): ref
   auto outcome = (*pfile)->Read(offset, len, &(node->GetEntry()));
-  if (outcome.first == 0 || outcome.second.empty()) {
+  auto readedFileSize = std::get<0>(outcome);
+  auto &pagelist = std::get<1>(outcome);
+  unloadedRanges = std::move(std::get<2>(outcome));
+  if (readedFileSize == 0 || pagelist.empty()) {
     DebugWarning("Read no bytes from file [offset:len=" + to_string(offset) +
                  ":" + to_string(len) + "] " + FormatPath(node->GetFilePath()));
-    return 0;
+    return {0, unloadedRanges};
   }
 
   size_t addedCacheSize = (*pfile)->GetCachedSize() - cachedSizeBegin;
@@ -183,12 +190,11 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
   }
 
   // Notice outcome pagelist could has more content than required
-  auto &pagelist = outcome.second;
   auto page = pagelist.front();  // copy instead use reference
   pagelist.pop_front();
   if (pagelist.empty()) {  // Only a single page.
-    auto sz = std::min(len, outcome.first);
-    return page->Read(offset, sz, buffer);
+    auto sz = std::min(len, readedFileSize);
+    return {page->Read(offset, sz, buffer), unloadedRanges};
   } else {  // Have Multipule pages.
     // read first page
     auto readSize = page->Read(static_cast<off_t>(offset), buffer);
@@ -201,9 +207,9 @@ size_t Cache::Read(const string &fileId, off_t offset, size_t len, char *buffer,
       pagelist.pop_front();
     }
     // read last page
-    auto sz = std::min(outcome.first - readSize, len - readSize);
+    auto sz = std::min(readedFileSize - readSize, len - readSize);
     readSize += page->Read(static_cast<size_t>(sz), buffer + readSize);
-    return readSize;
+    return {readSize, unloadedRanges};
   }
 }
 
