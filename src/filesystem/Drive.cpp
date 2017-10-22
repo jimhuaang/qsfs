@@ -427,7 +427,7 @@ void Drive::OpenFile(const string &filePath, bool async) {
   } else if (fileSize > 0) {
     bool fileContentExist = m_cache->HasFileData(filePath, 0, fileSize);
     if (!fileContentExist || modified) {
-      auto ranges = m_cache->GetUnloadedRanges(filePath, fileSize);
+      auto ranges = m_cache->GetUnloadedRanges(filePath, 0, fileSize);
       if (!ranges.empty()) {
         time_t mtime = node->GetMTime();
         DownloadFileContentRanges(filePath, ranges, mtime, async);
@@ -468,9 +468,12 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
     return 0;
   }
 
+  time_t mtime = node->GetMTime();
+  if (mtime > m_cache->GetTime(filePath)) {
+    m_cache->Erase(filePath);
+  }
   // Download file if not found in cache or if cache need update
   bool fileContentExist = m_cache->HasFileData(filePath, offset, downloadSize);
-  time_t mtime = node->GetMTime();
   if (!fileContentExist || modified) {
     // download synchronizely for request file part
     auto stream = make_shared<IOStream>(downloadSize);
@@ -497,14 +500,14 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
   // download asynchronizely for unloaded part // TODO(jim): consider not 
   // download all remaining unloaded large range
   if (remainingSize > 0) {
-    auto ranges = m_cache->GetUnloadedRanges(filePath, fileSize);
+    auto ranges = m_cache->GetUnloadedRanges(filePath, 0, fileSize);
     if(!ranges.empty()){
       DownloadFileContentRanges(filePath, ranges, mtime, true);
     }
   }
 
   // Read from cache
-  auto outcome = m_cache->Read(filePath, offset, downloadSize, buf, node);
+  auto outcome = m_cache->Read(filePath, offset, downloadSize, buf, mtime);
   return std::get<0>(outcome);
 }
 
@@ -688,7 +691,7 @@ void Drive::UploadFile(const string &filePath, bool async) {
 
   auto fileSize = node->GetFileSize();
   time_t mtime = node->GetMTime();
-  auto ranges = m_cache->GetUnloadedRanges(filePath, fileSize);
+  auto ranges = m_cache->GetUnloadedRanges(filePath, 0, fileSize);
   if(async){
     GetTransferManager()->GetExecutor()->SubmitAsync(
         Callback, [this, filePath, fileSize, ranges, mtime]() {

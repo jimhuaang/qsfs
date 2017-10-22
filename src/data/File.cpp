@@ -28,18 +28,13 @@
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
 #include "base/Utils.h"
-//#include "client/TransferHandle.h"
-//#include "client/TransferManager.h"
 #include "configure/Default.h"
-#include "data/Directory.h"
 #include "data/IOStream.h"
-//#include "filesystem/Drive.h"
 
 namespace QS {
 
 namespace Data {
 
-using QS::Data::Entry;
 using QS::Configure::Default::GetCacheTemporaryDirectory;
 using QS::StringUtils::PointerAddress;
 using QS::Utils::FileExists;
@@ -133,18 +128,25 @@ bool File::HasData(off_t start, size_t size) const {
 }
 
 // --------------------------------------------------------------------------
-ContentRangeDeque File::GetUnloadedRanges(uint64_t fileTotalSize) const {
+ContentRangeDeque File::GetUnloadedRanges(off_t start, size_t size) const {
   lock_guard<recursive_mutex> lock(m_mutex);
   ContentRangeDeque ranges;
-  if (fileTotalSize == 0 || m_size == 0 || m_pages.empty()) {
+  if (size == 0 || m_size == 0 || m_pages.empty()) {
     return ranges;
   }
 
-  auto cur = m_pages.begin();
-  auto next = m_pages.begin();
-  while (++next != m_pages.end()) {
+  off_t stop = static_cast<off_t>(start + size);
+  auto range = IntesectingRange(start, stop);
+
+  if (range.first == range.second) {
+    return ranges;
+  }
+
+  auto cur = range.first;
+  auto next = range.first;
+  while (++next != range.second) {
     if ((*cur)->Next() < (*next)->Offset()) {
-      if ((*next)->Offset() > static_cast<off_t>(fileTotalSize)) {
+      if ((*next)->Offset() > static_cast<off_t>(size)) {
         break;
       }
       off_t off = (*cur)->Next();
@@ -154,9 +156,9 @@ ContentRangeDeque File::GetUnloadedRanges(uint64_t fileTotalSize) const {
     ++cur;
   }
 
-  if (static_cast<size_t>((*cur)->Next()) < fileTotalSize) {
+  if ((*cur)->Next() < stop) {
     off_t off = (*cur)->Next();
-    size_t size = static_cast<size_t>(fileTotalSize - off);
+    size_t size = static_cast<size_t>(stop - off);
     ranges.emplace_back(off, size);
   }
 
@@ -183,7 +185,7 @@ size_t File::GetNumPages() const{
 
 // --------------------------------------------------------------------------
 tuple<size_t, list<shared_ptr<Page>>, ContentRangeDeque> File::Read(
-    off_t offset, size_t len, Entry *entry) {
+    off_t offset, size_t len, time_t mtimeSince) {
   // Cache already check input.
   // bool isValidInput = offset >= 0 && len > 0 && entry != nullptr && (*entry);
   // assert(isValidInput);
@@ -193,44 +195,37 @@ tuple<size_t, list<shared_ptr<Page>>, ContentRangeDeque> File::Read(
   //   return {0, list<shared_ptr<Page>>()};
   // }
 
-  // Adjust the input length
-  if (entry->GetFileSize() > 0) {
-    auto len_ = static_cast<size_t>(entry->GetFileSize() - offset);
-    if (len_ < len) {
-      len = len_;
-      DebugWarning("Try to read file([fileId:size] = [" + entry->GetFilePath() +
-                   ":" + to_string(entry->GetFileSize()) + "]) with input " +
-                   ToStringLine(offset, len) + " which surpass the file size");
-    }
-  }
-
   ContentRangeDeque unloadedRanges;
   auto AddUnloadedPages = [&unloadedRanges](off_t offset, size_t len) {
     unloadedRanges.emplace_back(offset, len);
   };
-  time_t mtime = entry->GetMTime();
-  string filePath = entry->GetFilePath();
+
   size_t outcomeSize = 0;
   list<shared_ptr<Page>> outcomePages;
+
+  if (len == 0) {
+    AddUnloadedPages(offset, len);
+    return make_tuple(outcomeSize, outcomePages, unloadedRanges);
+  }
 
   {
     lock_guard<recursive_mutex> lock(m_mutex);
 
-    if (mtime > 0) {
+    if (mtimeSince > 0) {
       // File is just created, update mtime.
       if (m_mtime == 0) {
-        SetTime(mtime);
-      } else if (mtime > m_mtime) {
-        // Detected modification in the file, clear file.
-        Clear();
-        entry->SetFileSize(0);
+        SetTime(mtimeSince);
+      } else if (mtimeSince > m_mtime) {
+        // Detected modification in the file
+        AddUnloadedPages(offset, len);
+        return make_tuple(outcomeSize, outcomePages, unloadedRanges);
       }
     }
   
     // If pages is empty.
     if (m_pages.empty()) {
       AddUnloadedPages(offset, len);
-      make_tuple(outcomeSize, outcomePages, unloadedRanges);
+      return make_tuple(outcomeSize, outcomePages, unloadedRanges);
     }
 
     auto range = IntesectingRange(offset, offset + len);
@@ -243,7 +238,7 @@ tuple<size_t, list<shared_ptr<Page>>, ContentRangeDeque> File::Read(
     while (it1 != it2) {
       if (len_ <= 0) break;
       auto &page = *it1;
-      if (offset_ < page->m_offset) {  // Load new page for bytes not present.
+      if (offset_ < page->m_offset) {  // Add unloaded page for bytes not present.
         auto lenNewPage = page->m_offset - offset_;
         AddUnloadedPages(offset_, lenNewPage);
         offset_ = page->m_offset;
@@ -263,7 +258,7 @@ tuple<size_t, list<shared_ptr<Page>>, ContentRangeDeque> File::Read(
         }
       }
     }  // end of while
-    // Load new page for bytes not present.
+    // Add unloaded range for bytes not present.
     if (len_ > 0) {
       AddUnloadedPages(offset_, len_);
     }
@@ -433,41 +428,27 @@ void File::ResizeToSmallerSize(size_t smallerSize) {
     return;
   }
 
-  off_t offset = static_cast<off_t>(smallerSize - 1);
   {
     lock_guard<recursive_mutex> lock(m_mutex);
 
-    // Erase pages behind offset
-    auto it = UpperBoundPage(offset);
-    if (it != m_pages.end()) {
-      for (auto page = it; page != m_pages.end(); ++page) {
-        if (!(*page)->UseTempFile()) {
-          m_cacheSize -= (*page)->m_size;
+    while (!m_pages.empty() && smallerSize < m_size) {
+      auto lastPage = --m_pages.end();
+      auto lastPageSize = (*lastPage)->Size();
+      if(smallerSize + lastPageSize <= m_size) {
+        if (!(*lastPage)->UseTempFile()) {
+          m_cacheSize -= lastPageSize;
         }
-        m_size -= (*page)->m_size;
-      }
-      m_pages.erase(it, m_pages.end());
-    }
-
-    if (!m_pages.empty()) {
-      auto &lastPage = Back();
-      if (offset == lastPage->Stop()) {
-        // Do nothing.
-        return;
-      } else if (lastPage->m_offset <= offset && offset < lastPage->Stop()) {
-        auto newSize = smallerSize - lastPage->m_offset;
-        // Do a lazy remove for last page.
-        lastPage->ResizeToSmallerSize(newSize);
-        if (!lastPage->UseTempFile()) {
-          m_cacheSize -= lastPage->m_size - newSize;
-        }
-        m_size -= lastPage->m_size - newSize;
+        m_size -= lastPageSize;
+        m_pages.erase(lastPage);
       } else {
-        DebugError("After erased pages behind offset " + to_string(offset) +
-                   " , last page now with " +
-                   ToStringLine(lastPage->m_offset, lastPage->m_size) +
-                   ". Should not happen, but go on. " +
-                   PrintFileName(m_baseName));
+        auto newSize = lastPageSize - (m_size - smallerSize);
+        // Do a lazy remove for last page.
+        (*lastPage)->ResizeToSmallerSize(newSize);
+        if (!(*lastPage)->UseTempFile()) {
+          m_cacheSize -= lastPageSize - newSize;
+        }
+        m_size -= lastPageSize - newSize;
+        break;
       }
     }
   }

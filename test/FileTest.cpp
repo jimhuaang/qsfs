@@ -27,7 +27,6 @@
 #include "base/Logging.h"
 #include "base/Utils.h"
 #include "configure/Default.h"
-#include "data/Directory.h"
 #include "data/File.h"
 #include "data/Page.h"
 
@@ -66,17 +65,17 @@ namespace Data {
   TEST_F(FileTest, Default) {
     string filename = "file1";
     string tmpfilepath = GetCacheTemporaryDirectory() + filename;
-    File file1(filename);
+    File file1(filename, mtime_);
     EXPECT_EQ(file1.GetBaseName(), filename);
     EXPECT_EQ(file1.GetSize(), 0u);
     EXPECT_EQ(file1.GetCachedSize(), 0u);
-    EXPECT_EQ(file1.GetTime(), 0);
+    EXPECT_EQ(file1.GetTime(), mtime_);
     EXPECT_FALSE(file1.UseTempFile());
     EXPECT_EQ(file1.AskTempFilePath(), tmpfilepath);
     EXPECT_TRUE(file1.HasData(0, 0));
     EXPECT_FALSE(file1.HasData(0, 1));
-    EXPECT_TRUE(file1.GetUnloadedRanges(0).empty());
-    EXPECT_TRUE(file1.GetUnloadedRanges(1).empty());
+    EXPECT_TRUE(file1.GetUnloadedRanges(0, 0).empty());
+    EXPECT_TRUE(file1.GetUnloadedRanges(0, 1).empty());
     auto consecutivePagesAtFront = file1.ConsecutivePageRangeAtFront();
     EXPECT_TRUE(consecutivePagesAtFront.first == file1.BeginPage());
     EXPECT_TRUE(consecutivePagesAtFront.second == file1.EndPage());
@@ -86,7 +85,7 @@ namespace Data {
 
   TEST_F(FileTest, TestWrite) {
     string filename = "file1";
-    File file1(filename);  // empty file
+    File file1(filename, mtime_);  // empty file
 
     constexpr const char *page1 = "012";
     constexpr size_t len1 = strlen(page1);
@@ -98,8 +97,8 @@ namespace Data {
     EXPECT_TRUE(file1.HasData(0, len1 - 1));
     EXPECT_TRUE(file1.HasData(0, len1));
     EXPECT_FALSE(file1.HasData(0, len1 + 1));
-    EXPECT_TRUE(file1.GetUnloadedRanges(len1).empty());
-    EXPECT_FALSE(file1.GetUnloadedRanges(len1 + 1).empty());
+    EXPECT_TRUE(file1.GetUnloadedRanges(0, len1).empty());
+    EXPECT_FALSE(file1.GetUnloadedRanges(0, len1 + 1).empty());
     EXPECT_EQ(file1.GetNumPages(), 1u);
 
     constexpr const char * data = "abc";
@@ -112,8 +111,8 @@ namespace Data {
     EXPECT_TRUE(file1.HasData(0, len1 + len2 - 1));
     EXPECT_TRUE(file1.HasData(0, len1 + len2));
     EXPECT_FALSE(file1.HasData(0, len1 + len2 + 1));
-    EXPECT_TRUE(file1.GetUnloadedRanges(len1 + len2).empty());
-    EXPECT_FALSE(file1.GetUnloadedRanges(len1 + len2+ 1).empty());
+    EXPECT_TRUE(file1.GetUnloadedRanges(0, len1 + len2).empty());
+    EXPECT_FALSE(file1.GetUnloadedRanges(0, len1 + len2+ 1).empty());
     EXPECT_EQ(file1.GetNumPages(), 2u);
 
     auto consecutivePages = file1.ConsecutivePageRangeAtFront();
@@ -158,11 +157,11 @@ namespace Data {
     EXPECT_TRUE(file1.HasData(off3, len3));
     EXPECT_FALSE(file1.HasData(off2 + len3, len3));
     EXPECT_FALSE(file1.HasData(off3 - 1, len3));
-    EXPECT_TRUE(file1.GetUnloadedRanges(len1 + len2).empty());
+    EXPECT_TRUE(file1.GetUnloadedRanges(0, len1 + len2).empty());
     ContentRangeDeque d1{{len1 + len2, len3}};
-    EXPECT_EQ(file1.GetUnloadedRanges(len1 + len2 + len3), d1);
+    EXPECT_EQ(file1.GetUnloadedRanges(0, len1 + len2 + len3), d1);
     ContentRangeDeque d2{{len1 + len2, holeLen}, {off3 + len3, 1}};
-    EXPECT_EQ(file1.GetUnloadedRanges(off3 + len3 + 1), d2);
+    EXPECT_EQ(file1.GetUnloadedRanges(0, off3 + len3 + 1), d2);
 
     EXPECT_TRUE(file1.LowerBoundPage(len1 + len2 + len3) == --file1.EndPage());
     EXPECT_TRUE(file1.LowerBoundPage(off3) == --file1.EndPage());
@@ -180,7 +179,7 @@ namespace Data {
 
   TEST_F(FileTest, TestWriteTmpFile) {
     string filename = "file1";
-    File file1(filename);  // empty file
+    File file1(filename, mtime_);  // empty file
     file1.SetUseTempFile(true);
 
     constexpr const char *page1 = "012";
@@ -193,8 +192,8 @@ namespace Data {
     EXPECT_TRUE(file1.HasData(0, len1 - 1));
     EXPECT_TRUE(file1.HasData(0, len1));
     EXPECT_FALSE(file1.HasData(0, len1 + 1));
-    EXPECT_TRUE(file1.GetUnloadedRanges(len1).empty());
-    EXPECT_FALSE(file1.GetUnloadedRanges(len1 + 1).empty());
+    EXPECT_TRUE(file1.GetUnloadedRanges(0, len1).empty());
+    EXPECT_FALSE(file1.GetUnloadedRanges(0, len1 + 1).empty());
     EXPECT_EQ(file1.GetNumPages(), 1u);
 
     constexpr const char * data = "abc";
@@ -207,8 +206,8 @@ namespace Data {
     EXPECT_TRUE(file1.HasData(0, len1 + len2 - 1));
     EXPECT_TRUE(file1.HasData(0, len1 + len2));
     EXPECT_FALSE(file1.HasData(0, len1 + len2 + 1));
-    EXPECT_TRUE(file1.GetUnloadedRanges(len1 + len2).empty());
-    EXPECT_FALSE(file1.GetUnloadedRanges(len1 + len2+ 1).empty());
+    EXPECT_TRUE(file1.GetUnloadedRanges(0, len1 + len2).empty());
+    EXPECT_FALSE(file1.GetUnloadedRanges(0, len1 + len2+ 1).empty());
     EXPECT_EQ(file1.GetNumPages(), 2u);
 
     auto consecutivePages = file1.ConsecutivePageRangeAtFront();
@@ -229,7 +228,7 @@ namespace Data {
 
   TEST_F(FileTest, TestRead) {
     string filename = "file1";
-    File file1(filename);  // empty file
+    File file1(filename, mtime_);  // empty file
 
     constexpr const char *page1 = "012";
     constexpr size_t len1 = strlen(page1);
@@ -247,10 +246,7 @@ namespace Data {
     off_t off3 = off2 + holeLen + len3;
     file1.Write(off3, len3, page3, mtime_);
 
-    Entry entry1(filename, file1.GetSize(), mtime_, mtime_, uid_,
-    gid_, fileMode_);
-    
-    auto res1 = file1.Read(off1, len1, &entry1);
+    auto res1 = file1.Read(off1, len1, 0);
     EXPECT_EQ(std::get<0>(res1), len1);
     auto &pages1 = std::get<1>(res1);
     EXPECT_EQ(pages1.size(), 1u);
@@ -261,7 +257,7 @@ namespace Data {
     auto &unloadPages1 = std::get<2>(res1);
     EXPECT_TRUE(unloadPages1.empty());
 
-    auto res2 = file1.Read(off1 + 1, len1, &entry1);
+    auto res2 = file1.Read(off1 + 1, len1, 0);
     EXPECT_EQ(std::get<0>(res2), len1 + len2);
     auto &pages2 = std::get<1>(res2);
     EXPECT_EQ(pages2.size(), 2u);
@@ -275,14 +271,14 @@ namespace Data {
     auto &unloadPages2 = std::get<2>(res2);
     EXPECT_TRUE(unloadPages2.empty());
 
-    auto res3 = file1.Read(off2 + len2, holeLen, &entry1);
+    auto res3 = file1.Read(off2 + len2, holeLen, 0);
     EXPECT_EQ(std::get<0>(res3), 0u);
     auto &pages3 = std::get<1>(res3);
     EXPECT_TRUE(pages3.empty());
     auto &unloadPages3= std::get<2>(res3);
     EXPECT_FALSE(unloadPages3.empty());
 
-    auto res4 = file1.Read(off3, len3, &entry1);
+    auto res4 = file1.Read(off3, len3, 0);
     EXPECT_EQ(std::get<0>(res4), len3);
     auto &pages4 = std::get<1>(res4);
     EXPECT_EQ(pages4.size(), 1u);
@@ -296,7 +292,7 @@ namespace Data {
 
   TEST_F(FileTest, TestReadTmpFile) {
     string filename = "file2";
-    File file1(filename);  // empty file
+    File file1(filename, mtime_);  // empty file
     file1.SetUseTempFile(true);
 
     constexpr const char *page1 = "012";
@@ -315,10 +311,7 @@ namespace Data {
     off_t off3 = off2 + holeLen + len3;
     file1.Write(off3, len3, page3, mtime_);
 
-    Entry entry1(filename, file1.GetSize(), mtime_, mtime_, uid_,
-    gid_, fileMode_);
-    
-    auto res1 = file1.Read(off1, len1, &entry1);
+    auto res1 = file1.Read(off1, len1, 0);
     EXPECT_EQ(std::get<0>(res1), len1);
     auto &pages1 = std::get<1>(res1);
     EXPECT_EQ(pages1.size(), 1u);
@@ -327,7 +320,7 @@ namespace Data {
     array<char, len1> arr1{'0', '1', '2'};
     EXPECT_EQ(buf1, arr1);
 
-    auto res2 = file1.Read(off1 + 1, len1, &entry1);
+    auto res2 = file1.Read(off1 + 1, len1, 0);
     EXPECT_EQ(std::get<0>(res2), len1 + len2);
     auto &pages2 = std::get<1>(res2);
     EXPECT_EQ(pages2.size(), 2u);

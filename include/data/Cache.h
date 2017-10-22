@@ -29,6 +29,8 @@
 #include <unordered_map>
 #include <utility>
 
+#include "gtest/gtest_prod.h"  // for FRIEND_TEST
+
 #include "base/HashUtils.h"
 #include "data/File.h"
 #include "data/Page.h"
@@ -44,8 +46,6 @@ class Drive;
 }  // namespace FileSystem
 
 namespace Data {
-
-class Node;
 
 using FileIdToFilePair = std::pair<std::string, std::unique_ptr<File>>;
 using CacheList = std::list<FileIdToFilePair>;
@@ -97,13 +97,13 @@ class Cache {
 
   // Return the unexisting content ranges for a given file
   //
-  // @param  : file path, file total size
+  // @param  : file path, content range start, content range size
   // @return : a list of {range start, range size}
-  ContentRangeDeque GetUnloadedRanges(const std::string &filePath,
-                                      uint64_t fileTotalSize) const;
+  ContentRangeDeque GetUnloadedRanges(const std::string &filePath, off_t start,
+                                      size_t size) const;
 
   // Return the number of files in cache
-  int GetNumFile() const;
+  size_t GetNumFile() const;
 
   // Get cache size
   uint64_t GetSize() const { return m_size; }
@@ -113,6 +113,9 @@ class Cache {
 
   // Get file mtime
   time_t GetTime(const std::string &fileId) const;
+
+  // Get file size in cache
+  uint64_t GetFileSize(const std::string &filePath) const;
 
   // Find the file
   //
@@ -128,14 +131,13 @@ class Cache {
 
   // Read file cache into a buffer
   //
-  // @param  : file path, offset, len, buffer, node
+  // @param  : file path, offset, len, buffer, modified time since from
   // @return : {size of bytes have been writen to buffer, unloaded ranges}
   //
   // If not found fileId in cache, create it in cache and load its pages.
   std::pair<size_t, ContentRangeDeque> Read(const std::string &fileId,
                                             off_t offset, size_t len,
-                                            char *buffer,
-                                            std::shared_ptr<Node> node);
+                                            char *buffer, time_t mtimeSince = 0);
 
  private:
 
@@ -163,8 +165,10 @@ class Cache {
   //
   // @param  : file id, content data len
   // @return : {falg of success, pointer to File}
+  //
+  // internal use only
   std::pair<bool, std::unique_ptr<File> *> PrepareWrite(
-      const std::string &fileId, size_t len);
+      const std::string &fileId, size_t len, time_t mtime);
 
   // Free cache space
   //
@@ -210,7 +214,8 @@ class Cache {
  private:
   // Create an empty File with fileId in cache, without checking input.
   // If success return reference to insert file, else return m_cache.end().
-  CacheListIterator UnguardedNewEmptyFile(const std::string &fileId);
+  CacheListIterator UnguardedNewEmptyFile(const std::string &fileId,
+                                          time_t mtime);
 
   // Erase the file denoted by pos, without checking input.
   CacheListIterator UnguardedErase(FileIdToCacheListIteratorMap::iterator pos);
@@ -234,6 +239,14 @@ class Cache {
 
   friend class QS::Client::QSClient;
   friend class QS::FileSystem::Drive;
+
+  FRIEND_TEST(CacheTest, Default);
+  FRIEND_TEST(CacheTest, Write);
+  FRIEND_TEST(CacheTest, WriteTmpFile);
+  FRIEND_TEST(CacheTest, Resize);
+  FRIEND_TEST(CacheTest, ResizeTmpFile);
+  FRIEND_TEST(CacheTest, Read);
+  FRIEND_TEST(CacheTest, ReadTmpFile);
 };
 
 }  // namespace Data

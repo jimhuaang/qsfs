@@ -23,6 +23,7 @@
 
 #include <dirent.h>  // for opendir readdir
 #include <grp.h>
+#include <libgen.h>
 #include <pwd.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
@@ -240,11 +241,11 @@ string GetPathDelimiter() { return string(1, PATH_DELIM); }
 
 // --------------------------------------------------------------------------
 std::string GetDirName(const std::string &path) {
-  if(IsRootDirectory(path) || path == "." || path == ".."){
+  if(IsRootDirectory(path)){
     return path;
   }
 
-  string cpy(path);
+/*   string cpy(path);
   if (cpy.back() == '/') cpy.pop_back();
   auto pos = cpy.find_last_of('/');
   if (pos != string::npos) {
@@ -253,12 +254,15 @@ std::string GetDirName(const std::string &path) {
     DebugWarning("Unable to find dirname, Null path returned  " +
                  FormatPath(cpy));
     return string();
-  }
+    return string(".");
+  } */
+  char *cpy = strdup(path.c_str());
+  return AppendPathDelim(dirname(cpy));
 }
 
 // --------------------------------------------------------------------------
 std::string GetBaseName(const std::string &path) {
-  if(IsRootDirectory(path) || path == "." || path == ".."){
+/*   if(IsRootDirectory(path) || path == "." || path == ".."){
     return path;
   }
   
@@ -268,9 +272,13 @@ std::string GetBaseName(const std::string &path) {
   if (pos != string::npos) {
     return cpy.substr(pos + 1);  // not including "/"
   } else {
-    DebugWarning("Null basename " + FormatPath(cpy));
-    return string();
-  }
+    // DebugWarning("Null basename " + FormatPath(cpy));
+    // return string();
+    return path;
+  } */
+
+  char *cpy = strdup(path.c_str());
+  return basename(cpy);
 }
 
 // --------------------------------------------------------------------------

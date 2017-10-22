@@ -26,20 +26,20 @@
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
+#include "base/TimeUtils.h"
 #include "base/Utils.h"
 #include "configure/Default.h"
-#include "data/Directory.h"
 #include "data/StreamUtils.h"
 
 namespace QS {
 
 namespace Data {
 
-using QS::Data::Node;
 using QS::Data::StreamUtils::GetStreamSize;
 using QS::Configure::Default::GetCacheTemporaryDirectory;
 using QS::StringUtils::FormatPath;
 using QS::StringUtils::PointerAddress;
+using QS::TimeUtils::SecondsToRFC822GMT;
 using QS::Utils::CreateDirectoryIfNotExists;
 using QS::Utils::GetBaseName;
 using std::deque;
@@ -81,18 +81,18 @@ bool Cache::HasFileData(const string &filePath, off_t start,
 }
 
 // --------------------------------------------------------------------------
-ContentRangeDeque Cache::GetUnloadedRanges(const string &filePath,
-                                           uint64_t fileTotalSize) const {
+ContentRangeDeque Cache::GetUnloadedRanges(const string &filePath, off_t start,
+                                           size_t size) const {
   ContentRangeDeque ranges;
   if (!HasFile(filePath)) {
-    ranges.emplace_back(0, fileTotalSize);
+    ranges.emplace_back(start, size);
     return ranges;
   }
   auto it = m_map.find(filePath);
   assert(it != m_map.end());
   auto pfile = &(it->second->second);
 
-  return (*pfile)->GetUnloadedRanges(fileTotalSize);
+  return (*pfile)->GetUnloadedRanges(start, size);
 }
 
 // --------------------------------------------------------------------------
@@ -101,7 +101,7 @@ bool Cache::HasFile(const string &filePath) const {
 }
 
 // --------------------------------------------------------------------------
-int Cache::GetNumFile() const { return m_map.size(); }
+size_t Cache::GetNumFile() const { return m_map.size(); }
 
 // --------------------------------------------------------------------------
 time_t Cache::GetTime(const string &fileId) const {
@@ -109,6 +109,17 @@ time_t Cache::GetTime(const string &fileId) const {
   if (it != m_map.end()) {
     auto pfile = &(it->second->second);
     return (*pfile)->GetTime();
+  } else {
+    return 0;
+  }
+}
+
+// --------------------------------------------------------------------------
+uint64_t Cache::GetFileSize(const std::string &filePath) const{
+  auto it = m_map.find(filePath);
+  if (it != m_map.end()) {
+    auto pfile = &(it->second->second);
+    return (*pfile)->GetSize();
   } else {
     return 0;
   }
@@ -129,7 +140,7 @@ CacheListIterator Cache::End() { return m_cache.end(); }
 // --------------------------------------------------------------------------
 pair<size_t, ContentRangeDeque> Cache::Read(const string &fileId, off_t offset,
                                             size_t len, char *buffer,
-                                            shared_ptr<Node> node) {
+                                            time_t mtimeSince) {
   ContentRangeDeque unloadedRanges;
   if (len == 0) {
     return {0, unloadedRanges};  // do nothing, this case could happen for
@@ -144,10 +155,6 @@ pair<size_t, ContentRangeDeque> Cache::Read(const string &fileId, off_t offset,
                ToStringLine(fileId, offset, len, buffer));
     return {0, unloadedRanges};
   }
-  if (!(node && *node)) {
-    DebugError("Null input node parameter");
-    return {0, unloadedRanges};
-  }
 
   DebugInfo("Read cache [offset:len=" + to_string(offset) + ":" +
             to_string(len) + "] " + FormatPath(fileId));
@@ -159,21 +166,28 @@ pair<size_t, ContentRangeDeque> Cache::Read(const string &fileId, off_t offset,
     pos = UnguardedMakeFileMostRecentlyUsed(it->second);
     cachedSizeBegin = pos->second->GetCachedSize();
   } else {
-    DebugInfo("File not exist in cache. Create new one" +
-              FormatPath(node->GetFilePath()));
-    pos = UnguardedNewEmptyFile(fileId);
+    DebugInfo("File not exist in cache. Create new one" + fileId);
+    pos = UnguardedNewEmptyFile(fileId, mtimeSince);
+    unloadedRanges.emplace_back(offset, len);
+    return {0, unloadedRanges};
   }
 
   assert(pos != m_cache.end());
   auto pfile = &(pos->second);
-  // TODO(jim): ref
-  auto outcome = (*pfile)->Read(offset, len, &(node->GetEntry()));
+  if (mtimeSince > (*pfile)->GetTime()) {
+    DebugWarning("File too old, read no bytes " + FormatPath(fileId) +
+                 "[mtime]" + SecondsToRFC822GMT(mtimeSince) + " [file time]" +
+                 SecondsToRFC822GMT((*pfile)->GetTime()));
+    unloadedRanges.emplace_back(offset, len);
+    return {0, unloadedRanges};
+  }
+  auto outcome = (*pfile)->Read(offset, len, mtimeSince);
   auto readedFileSize = std::get<0>(outcome);
   auto &pagelist = std::get<1>(outcome);
   unloadedRanges = std::move(std::get<2>(outcome));
   if (readedFileSize == 0 || pagelist.empty()) {
     DebugWarning("Read no bytes from file [offset:len=" + to_string(offset) +
-                 ":" + to_string(len) + "] " + FormatPath(node->GetFilePath()));
+                 ":" + to_string(len) + "] " + FormatPath(fileId));
     return {0, unloadedRanges};
   }
 
@@ -202,13 +216,14 @@ pair<size_t, ContentRangeDeque> Cache::Read(const string &fileId, off_t offset,
     pagelist.pop_front();
     // read middle pages
     while (!pagelist.empty()) {
-      readSize += page->Read(buffer + readSize);
+      readSize += page->Read(buffer + page->Offset() - offset);
       page = pagelist.front();
       pagelist.pop_front();
     }
     // read last page
     auto sz = std::min(readedFileSize - readSize, len - readSize);
-    readSize += page->Read(static_cast<size_t>(sz), buffer + readSize);
+    readSize +=
+        page->Read(static_cast<size_t>(sz), buffer + page->Offset() - offset);
     return {readSize, unloadedRanges};
   }
 }
@@ -221,7 +236,7 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
     if (it != m_map.end()) {
       UnguardedMakeFileMostRecentlyUsed(it->second);
     } else {
-      auto pos = UnguardedNewEmptyFile(fileId);
+      auto pos = UnguardedNewEmptyFile(fileId, mtime);
       assert(pos != m_cache.end());
     }
     return true;  // do nothing
@@ -238,7 +253,7 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
 
   DebugInfo("Write cache [offset:len=" + to_string(offset) + ":" +
             to_string(len) + "] " + FormatPath(fileId));
-  auto res = PrepareWrite(fileId, len);
+  auto res = PrepareWrite(fileId, len, mtime);
   auto success = res.first;
   if (success) {
     auto file = res.second;
@@ -260,7 +275,7 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
     if (it != m_map.end()) {
       UnguardedMakeFileMostRecentlyUsed(it->second);
     } else {
-      auto pos = UnguardedNewEmptyFile(fileId);
+      auto pos = UnguardedNewEmptyFile(fileId, mtime);
       assert(pos != m_cache.end());
     }
     return true;  // do nothing
@@ -286,7 +301,7 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
 
   DebugInfo("Write cache [offset:len=" + to_string(offset) + ":" +
             to_string(len) + "] " + FormatPath(fileId));
-  auto res = PrepareWrite(fileId, len);
+  auto res = PrepareWrite(fileId, len, mtime);
   auto success = res.first;
   if (success) {
     auto file = res.second;
@@ -302,7 +317,7 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
 
 // --------------------------------------------------------------------------
 pair<bool, unique_ptr<File> *> Cache::PrepareWrite(const string &fileId,
-                                                   size_t len) {
+                                                   size_t len, time_t mtime) {
   bool availableFreeSpace = true;
   if (!HasFreeSpace(len)) {
     availableFreeSpace = Free(len, fileId);
@@ -326,7 +341,7 @@ pair<bool, unique_ptr<File> *> Cache::PrepareWrite(const string &fileId,
   if (it != m_map.end()) {
     pos = UnguardedMakeFileMostRecentlyUsed(it->second);
   } else {
-    pos = UnguardedNewEmptyFile(fileId);
+    pos = UnguardedNewEmptyFile(fileId, mtime);
     assert(pos != m_cache.end());
   }
 
@@ -483,9 +498,10 @@ void Cache::Resize(const string &fileId, size_t newFileSize, time_t mtime) {
 }
 
 // --------------------------------------------------------------------------
-CacheListIterator Cache::UnguardedNewEmptyFile(const string &fileId) {
+CacheListIterator Cache::UnguardedNewEmptyFile(const string &fileId,
+                                               time_t mtime) {
   m_cache.emplace_front(fileId,
-                        unique_ptr<File>(new File(GetBaseName(fileId))));
+                        unique_ptr<File>(new File(GetBaseName(fileId), mtime)));
   if (m_cache.begin()->first == fileId) {  // insert to cache sucessfully
     m_map.emplace(fileId, m_cache.begin());
     return m_cache.begin();

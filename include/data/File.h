@@ -37,14 +37,13 @@ namespace QS {
 
 namespace Data {
 class Cache;
-class Entry;
 
 // Range represented by a pair of {offset, size}
 using ContentRangeDeque = std::deque<std::pair<off_t, size_t>>;
 
 class File {
  public:
-  explicit File(const std::string &baseName, time_t mtime = 0, size_t size = 0)
+  explicit File(const std::string &baseName, time_t mtime, size_t size = 0)
       : m_baseName(baseName),
         m_mtime(mtime),
         m_size(size),
@@ -86,9 +85,9 @@ class File {
 
   // Return the unexisting content ranges
   //
-  // @param  : file total size
+  // @param  : content range start, content range size
   // @return : a list of pair {range start, range size}
-  ContentRangeDeque GetUnloadedRanges(uint64_t fileTotalSize) const;
+  ContentRangeDeque GetUnloadedRanges(off_t start, size_t size) const;
 
   // Return begin pos of pages
   PageSetConstIterator BeginPage() const;
@@ -102,7 +101,7 @@ class File {
  private:
   // Read from the cache (file pages)
   //
-  // @param  : file offset, len of bytes, entry(meta data of file)
+  // @param  : file offset, len of bytes, modified time since from
   // @return : a pair of {read size, page list containing data, unloaded ranges}
   //
   // If the file mtime is newer than m_mtime, clear cache and download file.
@@ -113,7 +112,7 @@ class File {
   // input asking for, for example, the 1st page of outcome could has a
   // offset which is ahead of input 'offset'.
   std::tuple<size_t, std::list<std::shared_ptr<Page>>, ContentRangeDeque> Read(
-      off_t offset, size_t len, Entry *entry);
+      off_t offset, size_t len, time_t mtimeSince = 0);
 
   // Write a block of bytes into pages
   //
