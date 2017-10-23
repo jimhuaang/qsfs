@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include <cmath>
+#include <iterator>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -42,6 +43,7 @@ using QS::StringUtils::PointerAddress;
 using QS::TimeUtils::SecondsToRFC822GMT;
 using QS::Utils::CreateDirectoryIfNotExists;
 using QS::Utils::GetBaseName;
+using QS::Utils::IsSafeDiskSpace;
 using std::deque;
 using std::iostream;
 using std::make_shared;
@@ -328,10 +330,12 @@ pair<bool, unique_ptr<File> *> Cache::PrepareWrite(const string &fileId,
         DebugError("Unable to mkdir for tmp folder " + FormatPath(tmpfolder));
         return {false, nullptr};
       }
-      if (!QS::Utils::IsSafeDiskSpace(tmpfolder, len)) {
-        DebugError("No available free space (" + to_string(len) +
-                   "bytes) for tmp folder " + FormatPath(tmpfolder));
-        return {false, nullptr};
+      if (!IsSafeDiskSpace(tmpfolder, len)) {
+        if (!FreeTmpCacheFiles(tmpfolder, len, fileId)) {
+          DebugError("No available free space (" + to_string(len) +
+                     "bytes) for tmp folder " + FormatPath(tmpfolder));
+          return {false, nullptr};
+        }
       }  // check safe disk space
     }
   }
@@ -372,29 +376,31 @@ bool Cache::Free(size_t size, const string &fileUnfreeable) {
   assert(!m_cache.empty());
   size_t freedSpace = 0;
   size_t freedTmpSpace = 0;
-  while (!HasFreeSpace(size) && !m_cache.empty()) {
-    // Discards the least recently used File first, which is put at back.
+
+  auto it = m_cache.rbegin();
+  // Discards the least recently used File first, which is put at back.
+  while (it != m_cache.rend() && !HasFreeSpace(size)) {
     // Notice do NOT store a reference of the File supposed to be removed.
-    auto fileId = m_cache.back().first;
-    if (m_cache.back().second) {
-      if (IsLastFileOpen()) {
-        return false;
-      }
-      if (fileId == fileUnfreeable) {
-        return false;
-      }
-      auto fileCacheSz = m_cache.back().second->GetCachedSize();
+    auto fileId = it->first;
+    if (fileId != fileUnfreeable && it->second && !it->second->IsOpen()) {
+      auto fileCacheSz = it->second->GetCachedSize();
       freedSpace += fileCacheSz;
+      freedTmpSpace += it->second->GetSize() - fileCacheSz;
       m_size -= fileCacheSz;
-      freedTmpSpace += m_cache.back().second->GetSize() - fileCacheSz;
-      m_cache.back().second->Clear();
+      it->second->Clear();
+      m_cache.erase((++it).base());
+      m_map.erase(fileId);
     } else {
-      DebugWarning(
-          "The last recently used file (put at the end of cache) is null");
+      if (!it->second) {
+        DebugInfo("file in cache is null " + FormatPath(fileId));
+        m_cache.erase((++it).base());
+        m_map.erase(fileId);
+      } else {
+        ++it;
+      }
     }
-    m_cache.pop_back();
-    m_map.erase(fileId);
   }
+
   if (freedSpace > 0) {
     DebugInfo("Has freed cache of " + to_string(freedSpace) + " bytes");
   }
@@ -402,7 +408,54 @@ bool Cache::Free(size_t size, const string &fileUnfreeable) {
     DebugInfo("Has freed tmp file of " + to_string(freedTmpSpace) + " bytes" +
               FormatPath(GetCacheTemporaryDirectory()));
   }
-  return true;
+  return HasFreeSpace(size);
+}
+
+// --------------------------------------------------------------------------
+bool Cache::FreeTmpCacheFiles(const string &tmpfolder, size_t size,
+                              const string &fileUnfreeable) {
+  assert(tmpfolder == GetCacheTemporaryDirectory());
+  // tmpfolder should be cache tmp dir
+  if (IsSafeDiskSpace(tmpfolder, size)) {
+    return true;
+  }
+
+  assert(!m_cache.empty());
+  size_t freedSpace = 0;
+  size_t freedTmpSpace = 0;
+
+  auto it = m_cache.rbegin();
+  // Discards the least recently used File first, which is put at back.
+  while (it != m_cache.rend() && !IsSafeDiskSpace(tmpfolder, size)) {
+    // Notice do NOT store a reference of the File supposed to be removed.
+    auto fileId = it->first;
+    if (fileId != fileUnfreeable && it->second && !it->second->IsOpen()) {
+      auto fileCacheSz = it->second->GetCachedSize();
+      freedSpace += fileCacheSz;
+      freedTmpSpace += it->second->GetSize() - fileCacheSz;
+      m_size -= fileCacheSz;
+      it->second->Clear();
+      m_cache.erase((++it).base());
+      m_map.erase(fileId);
+    } else {
+      if (!it->second) {
+        DebugInfo("file in cache is null " + FormatPath(fileId));
+        m_cache.erase((++it).base());
+        m_map.erase(fileId);
+      } else {
+        ++it;
+      }
+    }
+  }
+
+  if (freedSpace > 0) {
+    DebugInfo("Has freed cache of " + to_string(freedSpace) + " bytes");
+  }
+  if (freedTmpSpace > 0) {
+    DebugInfo("Has freed tmp file of " + to_string(freedTmpSpace) + " bytes" +
+              FormatPath(GetCacheTemporaryDirectory()));
+  }
+  return IsSafeDiskSpace(tmpfolder, size);
 }
 
 // --------------------------------------------------------------------------

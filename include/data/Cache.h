@@ -114,7 +114,7 @@ class Cache {
   // Get file mtime
   time_t GetTime(const std::string &fileId) const;
 
-  // Get file size in cache
+  // Get file size
   uint64_t GetFileSize(const std::string &filePath) const;
 
   // Find the file
@@ -179,6 +179,15 @@ class Cache {
   // there will be number of size avaiable cache space.
   bool Free(size_t size, const std::string &fileUnfreeable);  // size in byte
 
+  // Remove tmp files used to cache file content
+  //
+  // @param  : tmp folder path, size need to be freed, file should not be freed
+  // @return : bool
+  //
+  // Discard the least recently used File which cache data in tmp file to make
+  // sure there will be number of size avaiable disk free space in tmp foler.
+  bool FreeTmpCacheFiles(const std::string &tmpfolder, size_t size,
+                         const std::string &fileUnfreeable);
 
   // Remove file from cache
   //

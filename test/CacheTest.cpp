@@ -320,6 +320,24 @@ TEST_F(CacheTest, Read) {
   arr3.push_back('A');
   EXPECT_EQ(buf3, arr3);
 
+  auto newFile1Sz_ = len1 + len2 + len3;
+  cache.Resize("file1", newFile1Sz_, 0);  // resize to larger
+  EXPECT_EQ(cache.GetFileSize("file1"), newFile1Sz_);
+  vector<char> buf1_(newFile1Sz_);
+  cache.Read("file1", 0, newFile1Sz_, &buf1_[0]);
+  vector<char> arr1_{'0', '1', '2', 'a', 'b', 'c', '\0', '\0', '\0'};
+  EXPECT_EQ(buf1_, arr1_);
+  vector<char> buf2_(newFile1Sz_ + holeLen);
+  cache.Read("file1", 0, newFile1Sz_ + holeLen, &buf2_[0]);
+  vector<char> arr2_{'0', '1', '2', 'a', 'b', 'c'};
+  for (size_t i = 0; i < holeLen; ++i) {
+    arr2_.push_back('\0');
+  }
+  arr2_.push_back('A');
+  arr2_.push_back('\0');
+  arr2_.push_back('\0');
+  EXPECT_EQ(buf2_, arr2_);
+
   auto newFile2Sz = len1 - 1;
   cache.Resize("file2", newFile2Sz, 0);
   EXPECT_EQ(cache.GetFileSize("file2"), newFile2Sz);
