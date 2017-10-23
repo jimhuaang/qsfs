@@ -21,7 +21,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-//#include "configure/Options.h"
 #include "data/Size.h"
 
 namespace QS {

@@ -24,7 +24,7 @@
 
 #include "base/LogLevel.h"
 #include "configure/IncludeFuse.h"  // for fuse.h
-;
+
 namespace QS {
 
 namespace FileSystem {

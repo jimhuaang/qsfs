@@ -20,25 +20,16 @@
 #include <string>
 
 #include "base/Exception.h"
-#include "filesystem/Configure.h"
+#include "configure/Default.h"
+#include "configure/Options.h"
 #include "filesystem/HelpText.h"
 #include "filesystem/Initializer.h"
 #include "filesystem/Mounter.h"
-#include "filesystem/Options.h"
 #include "filesystem/Parser.h"
 
-//TODO(jim): remove folloiwng
-#include "base/TimeUtils.h"
-#include "filesystem/Drive.h"
-#include "client/Client.h"
-#include "client/QSClient.h"
-#include "client/QSClientImpl.h"
-#include "qingstor-sdk-cpp/Types.h"     // for sdk QsOutput
-#include <sstream>
-#include <memory>
-
 using QS::Exception::QSException;
-using QS::FileSystem::Configure::GetProgramName;
+using QS::Configure::Options;
+using QS::Configure::Default::GetProgramName;
 using QS::FileSystem::HelpText::ShowQSFSHelp;
 using QS::FileSystem::HelpText::ShowQSFSUsage;
 using QS::FileSystem::HelpText::ShowQSFSVersion;
@@ -66,7 +57,7 @@ int main(int argc, char **argv) {
     return ret;
   }
 
-  const auto &options = QS::FileSystem::Options::Instance();
+  const Options &options = QS::Configure::Options::Instance();
   auto &mounter = QS::FileSystem::Mounter::Instance();
   try {
     if (options.IsNoMount()) {
@@ -91,36 +82,6 @@ int main(int argc, char **argv) {
       // Notice: DO NOT use logging before initialization done.
       // Do initializations.
       Initializer::RunInitializers();
-
-
-      // TODO(jim): remvoe following testing code
-      auto &drive = QS::FileSystem::Drive::Instance();
-      auto client = drive.GetClient().get();
-      auto qsClient = dynamic_cast<QS::Client::QSClient*>(client);
-      auto &qsClientImpl = const_cast<const QS::Client::QSClient*>(qsClient)->GetQSClientImpl();
-      //QingStor::PutObjectInput iPut;
-      //iPut.SetContentLength(0);  // create empty file
-      //iPut.SetContentType("symlink2file");
-      //auto resPut = qsClientImpl->PutObject("/symfile", &iPut);
-      //
-      //QingStor::HeadObjectInput iHead;
-      ////auto zeroTIme = QS::TimeUtils::SecondsToRFC822GMT(0);
-      ////input.SetIfModifiedSince(zeroTIme);
-      ////input.SetIfModifiedSince("Sun, 14 May 2017 02:35:09 GMT");
-      //auto resHead = qsClientImpl->HeadObject("/symfile", &iHead);
-
-      QingStor::GetObjectInput iGet;
-      auto resGet = qsClientImpl->GetObject("/symlink", &iGet);
-      auto bodyStream = resGet.GetResult().GetBody();
-      std::stringstream buffer;
-      bodyStream->seekg(0, std::ios_base::beg);
-      buffer.seekp(0, std::ios_base::beg);
-      buffer << bodyStream->rdbuf();
-      string content = buffer.str();
-
-      int a = 1;
-      int b = 2;
-      int c = a + b;
 
       // Mount the file system.
       try {
@@ -153,7 +114,7 @@ namespace {
 static const char *illegalChars = "/:\\;!@#$%^&*?|+=";
 
 void CheckBucketName() {
-  const auto &options = QS::FileSystem::Options::Instance();
+  const auto &options = QS::Configure::Options::Instance();
   if (options.GetBucket().empty()) {
     ShowQSFSUsage();
     throw "Missing BUCKET parameter";
@@ -166,7 +127,7 @@ void CheckBucketName() {
 }
 
 void CheckMountPoint() {
-  const auto &options = QS::FileSystem::Options::Instance();
+  const auto &options = QS::Configure::Options::Instance();
   if (options.GetMountPoint().empty()) {
     ShowQSFSUsage();
     throw "Missing MOUNTPOINT parameter. Please provide mount directory";

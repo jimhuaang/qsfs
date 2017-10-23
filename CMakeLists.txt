@@ -15,14 +15,12 @@ cmake_minimum_required(VERSION 3.0)
 if(CMAKE_MAJOR_VERSION LESS 3)
   message(WARNING "Building with CMake 3.0 or higher is strongly suggested; current version is ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 endif()
-project(qsfs)
 
-enable_testing ()
+project(qsfs)
 
 set(QSFS_MAJOR_VERSION 1)
 set(QSFS_MINOR_VERSION 0)
 set(QSFS_PATCH_VERSION 0)
-
 set(QSFS_VERSION
   ${QSFS_MAJOR_VERSION}.${QSFS_MINOR_VERSION}.${QSFS_PATCH_VERSION})
 
@@ -30,8 +28,9 @@ set(QSFS_VERSION
 option(BUILD_SHARED_LIBS "If enabled, all qsfs libraries will be build as shared objects;
 otherwise all qsfs will be build as static objects" ON)
 
-include(CTest)
-
+#
+# download gtest
+#
 if (CMAKE_VERSION VERSION_LESS 3.2)
     set(UPDATE_DISCONNECTED_IF_AVAILABLE "")
 else()
@@ -90,51 +89,28 @@ endif()
 
 #configure_file (src/config.h.cmake.in config.h)
 
-file(GLOB QSFS_HEADERS "include/*.h")
-file(GLOB QSFS_BASE_HEADERS "include/base/*.h")
-MESSAGE(STATUS "QSFS_HEADERS: ${QSFS_HEADERS}")
 
-file(GLOB QSFS_SOURCES "src/*.cpp")
-file(GLOB QSFS_BASE_SOURCES "src/*.cpp")
-
-file(GLOB QSFS_UNIFIED_HEADERS
-  ${QSFS_HEADERS}
-  ${QSFS_BASE_HEADERS}
-)
-
-file(GLOB QSFS_UNIFIED_SOURCES
-  ${QSFS_SOURCES}
-  ${QSFS_BASE_SOURCES}
-)
-
-file(GLOB QSFS_SRC
-  ${QSFS_UNIFIED_HEADERS}
-  ${QSFS_UNIFIED_SOURCES}
-)
+#
+# compile set up
+#
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 set(QSFS_INCLUDES ${PROJECT_SOURCE_DIR}/include/)
 include_directories(${QSFS_INCLUDES})
 
+set(QSFS_LIBS ${PROJECT_SOURCE_DIR}/lib/)
+link_directories(${QSFS_LIBS})
+
 include_directories(${PROJECT_SOURCE_DIR}/external/include)
 include_directories(${PROJECT_SOURCE_DIR}/external/include/qingstor-sdk-cpp)
 link_directories(${PROJECT_SOURCE_DIR}/external/lib)
-link_directories("/home/jim/workspaces/qingstor-sdk-c-and-cpp/lib")
 
-#SET(CMAKE_CXX_FLAGS "-std=c++11")
 add_compile_options(-g -std=c++11 -Wall -D_FILE_OFFSET_BITS=64)
+#add_compile_options(--enable-threads)
 #add_compile_options(-I${PROJECT_SOURCE_DIR}/external/include/)
 #add_compile_options(-I${PROJECT_SOURCE_DIR}/external/include/qingstor-sdk-cpp)
 #add_compile_options(-L${PROJECT_SOURCE_DIR}/external/lib/)
-
-add_library(${PROJECT_NAME} ${QSFS_SRC})
-target_link_libraries(${PROJECT_NAME} gtest glog fuse)
-
-#set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
-set_target_properties(${PROJECT_NAME} PROPERTIES SOVERSION ${QSFS_VERSION})
-set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 
 #target_include_directories ( ${PROJECT_NAME} BEFORE PUBLIC
 #  "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>"
@@ -143,131 +119,229 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 #  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
 #  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
+
+#
+# make libs
+#
+
+# configure
+add_library(
+  Configure
+  src/configure/Default.cpp
+  src/configure/Options.cpp
+  )
+target_link_libraries(Configure fuse)
+
+# base
+add_library(
+  Logging
+  src/base/Logging.cpp 
+  src/base/LogLevel.cpp
+  )
+target_link_libraries(Logging gtest glog Configure)  # FRIEND_TEST
+
+add_library(
+  ThreadPool
+  src/base/ThreadPool.cpp
+  src/base/TaskHandle.cpp
+  )
+target_link_libraries(ThreadPool gtest)  # FRIEND_TEST
+
+add_library(
+  BaseUtils
+  src/base/StringUtils.cpp
+  src/base/TimeUtils.cpp
+  src/base/Utils.cpp
+  )
+target_link_libraries(BaseUtils Logging)
+
+# data
+add_library(
+  Directory 
+  src/data/Directory.cpp 
+  src/data/FileMetaData.cpp
+  src/data/FileMetaDataManager.cpp
+  )
+target_link_libraries(Directory gtest)  # FRIEND_TEST
+
+add_library(
+  Cache
+  src/data/Cache.cpp
+  src/data/File.cpp
+  src/data/Page.cpp
+  )
+target_link_libraries(Cache gtest)  # FRIEND_TEST
+
+add_library(
+  Resource
+  src/data/IOStream.cpp
+  src/data/ResourceManager.cpp
+  src/data/StreamBuf.cpp
+  src/data/StreamUtils.cpp
+  )
+target_link_libraries(Resource gtest)  # FRIEND_TEST
+
+# client
+add_library(
+  Client 
+  src/client/Client.cpp
+  src/client/ClientConfiguration.cpp
+  src/client/ClientImpl.cpp
+  src/client/ClientFactory.cpp
+  src/client/Credentials.cpp
+  src/client/NullClient.cpp
+  src/client/Protocol.cpp
+  src/client/QSClientImpl.cpp 
+  src/client/QSClient.cpp 
+  src/client/QSClientConverter.cpp
+  src/client/QSError.cpp
+  src/client/RetryStrategy.cpp
+  src/client/URI.cpp
+  src/client/Utils.cpp
+  src/client/Zone.cpp
+  )
+target_link_libraries(Client Logging qingstor)
+
+add_library(
+  Transfer
+  src/client/QSTransferManager.cpp
+  src/client/TransferHandle.cpp
+  src/client/TransferManager.cpp
+  src/client/TransferManagerFactory.cpp
+  )
+target_link_libraries(Transfer Logging)
+
+# filesystem
+add_library(
+  FileSystem
+  src/filesystem/Drive.cpp
+  src/filesystem/HelpText.cpp
+  src/filesystem/Initializer.cpp
+  src/filesystem/Mounter.cpp
+  src/filesystem/MimeTypes.cpp
+  src/filesystem/Operations.cpp
+  src/filesystem/Parser.cpp
+  src/filesystem/RegisterInitializers.cpp
+)
+target_link_libraries(FileSystem fuse Logging)
+
+#
+# main
+#
+
+file(GLOB QSFS_HEADERS ${PROJECT_SOURCE_DIR}/include/*/*.h)
+file(GLOB QSFS_SOURCES ${PROJECT_SOURCE_DIR}/src/*/*.cpp)
+file(GLOB QSFS_SRC ${QSFS_HEADERS} ${QSFS_SOURCES})
+add_executable(
+  ${PROJECT_NAME} 
+  src/main.cpp
+  ${QSFS_SRC}
+  )
+target_link_libraries(${PROJECT_NAME} fuse glog gtest qingstor)
+set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
+set_target_properties(${PROJECT_NAME} PROPERTIES SOVERSION ${QSFS_VERSION})
+#set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
+#target_link_libraries(${PROJECT_NAME} FileSystem)
+#target_link_libraries(${PROJECT_NAME} Client Transfer )
+#target_link_libraries(${PROJECT_NAME} Cache Resource Directory)
+#target_link_libraries(${PROJECT_NAME} Configure)
+#target_link_libraries(${PROJECT_NAME} BaseUtils ThreadPool Logging)
+
+add_executable(sample1 test/sample1.cpp)
+target_link_libraries(sample1 gtest)
+add_test(NAME sample1_test COMMAND sample1)
+
+#
+# unit testing
+#
+
 # Unit testing
 #if (BUILD_TESTING)
 #  add_executable ( ${PROJECT_NAME}_unittest
 #    src/test/QSFSUnitTest.cpp
 #  )
 #endif (BUILD_TESTING)
-
-#add_library(Directory src/base/Directory.cpp src/base/Logging.cpp src/base/LogLevel.cpp)
-#target_link_libraries(Directory glog)
-add_library(Logging src/base/Logging.cpp src/base/LogLevel.cpp src/base/Utils.cpp)
-target_link_libraries(Logging gtest)
-add_library(ThreadPool src/base/ThreadPool.cpp src/base/TaskHandle.cpp)
-target_link_libraries(ThreadPool gtest)
-add_library(Semaphore src/base/Semaphore.cpp)
-add_library(BaseUtils src/base/Utils.cpp)
-target_link_libraries(BaseUtils gtest) # for logging
-add_library(StringUtils src/base/StringUtils.cpp)
-
-add_library(QSClient src/client/QSClient.cpp 
-                     src/client/QSClientImpl.cpp 
-                     src/client/Client.cpp
-                     src/client/ClientFactory.cpp)
-target_link_libraries(QSClient gtest) # for logging
-add_library(Credentials src/client/Credentials.cpp)
-target_link_libraries(Credentials gtest) # for logging
-add_library(QSError src/client/QSError.cpp)
-add_library(RetryStrategy src/client/RetryStrategy.cpp)
-add_library(ClientConfiguration src/client/ClientConfiguration.cpp)
-add_library(Zone src/client/Zone.cpp)
-target_link_libraries(Zone gtest) # for logging
-add_library(Protocol src/client/Protocol.cpp)
-target_link_libraries(Protocol gtest)
-add_library(URI src/client/URI.cpp)
-target_link_libraries(URI gtest)  # for logging
-add_library(Transfer src/client/TransferHandle.cpp
-                     src/client/TransferManager.cpp
-                     src/client/QSTransferManager.cpp
-                     src/client/TransferManagerFactory.cpp)
-target_link_libraries(Transfer gtest) # for logging
-
-add_library(Cache src/data/Cache.cpp)
-target_link_libraries(Cache gtest) # for logging
-add_library(Directory src/data/Directory.cpp)
-target_link_libraries(Directory gtest)
-add_library(StreamBuf src/data/StreamBuf.cpp)
-target_link_libraries(StreamBuf gtest)
-add_library(ResourceManager src/data/ResourceManager.cpp)
-target_link_libraries(ResourceManager gtest)
-
-add_library(Configure src/filesystem/Configure.cpp)
-add_library(Drive src/filesystem/Drive.cpp)
-target_link_libraries(Drive gtest) # for logging
-add_library(Operations src/filesystem/Operations.cpp)
-#target_link_libraries(Operations fuse)
-add_library(Mount src/filesystem/Mounter.cpp)
-target_link_libraries(Mount gtest) # for logging
-add_library(Options src/filesystem/Options.cpp)
-#target_link_libraries(Options fuse)
-add_library(Parser src/filesystem/Parser.cpp )
-#target_link_libraries(Parser fuse)
-#add_library(QingStorUtils src/filesystem/Utils.cpp)
-#target_link_libraries(QingStorUtils gtest)  # for logging.h FREND_TEST
-add_library(Initializer src/filesystem/Initializer.cpp
-                        src/filesystem/RegisterInitializers.cpp)
-target_link_libraries(Initializer gtest) # for logging.h
-
-
-add_executable(qsfs-fuse src/main.cpp 
-               src/base/Logging.cpp
-               src/base/LogLevel.cpp
-               src/base/Utils.cpp
-               src/base/StringUtils.cpp
-               src/data/Cache.cpp
-               src/data/Directory.cpp
-               src/client/ClientConfiguration.cpp
-               src/client/ClientFactory.cpp
-               src/client/Credentials.cpp
-               src/client/Protocol.cpp
-               src/client/URI.cpp
-               src/client/Zone.cpp
-               src/filesystem/Configure.cpp
-               src/filesystem/Drive.cpp
-               src/filesystem/HelpText.cpp
-               src/filesystem/Initializer.cpp
-               src/filesystem/Mounter.cpp
-               src/filesystem/Operations.cpp
-               src/filesystem/Options.cpp
-               src/filesystem/Parser.cpp
-               src/filesystem/RegisterInitializers.cpp) # must compile this together
-target_link_libraries(qsfs-fuse glog gtest fuse qingstor)
-target_link_libraries(qsfs-fuse QSClient Transfer ThreadPool RetryStrategy ResourceManager)
-
-add_executable(sample1 test/sample1.cpp)
-target_link_libraries(sample1 gtest)
-add_test(NAME sample1_test COMMAND sample1)
+enable_testing ()
+include(CTest)
 
 add_executable(ExceptionTest test/ExceptionTest.cpp)
 target_link_libraries(ExceptionTest gtest)
 add_test(NAME exception_test COMMAND ExceptionTest)
 
-add_executable(LoggingTest test/LoggingTest.cpp 
-               src/base/Logging.cpp 
-               src/base/LogLevel.cpp
-               src/base/Utils.cpp
-               src/filesystem/Configure.cpp
-               src/filesystem/Options.cpp)
-target_link_libraries(LoggingTest gtest glog fuse)
+add_executable(
+  LoggingTest
+  test/LoggingTest.cpp 
+  )
+target_link_libraries(LoggingTest gtest Logging BaseUtils)
 add_test(NAME logging_test COMMAND LoggingTest)
 
-add_executable(DirectoryTest test/DirectoryTest.cpp
-               src/data/Directory.cpp
-               src/base/Logging.cpp 
-               src/base/LogLevel.cpp
-               src/base/Utils.cpp
-               src/filesystem/Configure.cpp
-               src/filesystem/Options.cpp)
-target_link_libraries(DirectoryTest gtest glog fuse)
-add_test(NAME directory_test COMMAND DirectoryTest)
-
-add_executable(ThreadPoolTest test/ThreadPoolTest.cpp
-               src/base/ThreadPool.cpp
-               src/base/TaskHandle.cpp)
-target_link_libraries(ThreadPoolTest gtest)
+add_executable(
+  ThreadPoolTest 
+  test/ThreadPoolTest.cpp
+  )
+target_link_libraries(ThreadPoolTest ThreadPool gtest)
 add_test(NAME threadpool_test COMMAND ThreadPoolTest)
 
+add_executable(
+  DirectoryTest
+  test/DirectoryTest.cpp
+  )
+target_link_libraries(DirectoryTest gtest Directory)
+target_link_libraries(DirectoryTest Logging BaseUtils)
+add_test(NAME directory_test COMMAND DirectoryTest)
+
+add_executable(
+  FileMetaDataManagerTest
+  test/FileMetaDataManagerTest.cpp
+  )
+target_link_libraries(FileMetaDataManagerTest gtest Directory)
+target_link_libraries(FileMetaDataManagerTest Logging BaseUtils)
+add_test(NAME metadata_manager_test COMMAND FileMetaDataManagerTest)
+
+add_executable(
+  StreamTest
+  test/StreamTest.cpp
+  )
+target_link_libraries(StreamTest gtest Resource)
+target_link_libraries(StreamTest Logging BaseUtils)
+add_test(NAME stream_test COMMAND StreamTest)
+
+add_executable(
+  ResourceManagerTest
+  test/ResourceManagerTest.cpp
+  )
+target_link_libraries(ResourceManagerTest gtest Resource)
+target_link_libraries(ResourceManagerTest Logging BaseUtils)
+add_test(NAME resource_manager_test COMMAND ResourceManagerTest)
+
+add_executable(
+  PageTest
+  test/PageTest.cpp
+  )
+target_link_libraries(PageTest gtest Cache Resource)
+target_link_libraries(PageTest Logging BaseUtils)
+add_test(NAME page_test COMMAND PageTest)
+
+add_executable(
+  FileTest
+  test/FileTest.cpp
+  )
+target_link_libraries(FileTest gtest Cache Resource)
+target_link_libraries(FileTest Logging BaseUtils)
+add_test(NAME file_test COMMAND FileTest)
+
+add_executable(
+  CacheTest
+  test/CacheTest.cpp
+  )
+target_link_libraries(CacheTest gtest Cache Resource)
+target_link_libraries(CacheTest Logging BaseUtils)
+add_test(NAME cache_test COMMAND CacheTest)
+
+#
+# install
+#
 install (TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION lib/static
   LIBRARY DESTINATION lib
