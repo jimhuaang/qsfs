@@ -22,6 +22,7 @@
 #include "client/URI.h"
 #include "client/Zone.h"
 #include "configure/Default.h"
+#include "configure/Version.h"
 
 namespace QS {
 
@@ -33,7 +34,7 @@ using std::cout;
 using std::endl;
 
 void ShowQSFSVersion() {
-  cout << "qsfs version: " << QS::Configure::Default::GetQSFSVersion() << endl;
+  cout << "qsfs version: " << QS::Configure::Version::GetVersionString() << endl;
 }
 
 void ShowQSFSHelp() {

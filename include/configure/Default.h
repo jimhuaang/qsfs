@@ -31,7 +31,6 @@ namespace Configure {
 namespace Default {
   
 const char* GetProgramName();
-const char* GetQSFSVersion();
 
 std::string GetDefaultCredentialsFile();
 std::string GetDefaultLogDirectory();

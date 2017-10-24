@@ -32,14 +32,12 @@ namespace Default {
 using std::string;
 
 static const char* const PROGRAM_NAME = "qsfs";
-static const char* const VERSION = "1.0.0";
 static const char* const QSFS_DEFAULT_CREDENTIALS = "/opt/qsfs/qsfs.cred";
 static const char* const QSFS_DEFAULT_LOG_DIR = "/opt/qsfs/qsfs_log/";  // log dir
 static const char* const QSFS_MIME_FILE = "/etc/mime.types";
 static const char* const QSFS_TMP_DIR = "/tmp/qsfs_cache/";  // tmp cache dir
 
 const char* GetProgramName() { return PROGRAM_NAME; }
-const char* GetQSFSVersion() { return VERSION; }
 
 string GetDefaultCredentialsFile() { return QSFS_DEFAULT_CREDENTIALS; }
 string GetDefaultLogDirectory() { return QSFS_DEFAULT_LOG_DIR; }
