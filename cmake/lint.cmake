@@ -13,15 +13,25 @@ foreach(ext ${SRC_FILE_EXTENSIONS})
     endforeach()
 endforeach()
 
+# find all files that should be excluded
+set(EXCLUDE_FILE_NAMES HelpText.cpp QSError.cpp)
+foreach(file ${EXCLUDE_FILE_NAMES})
+    file(GLOB_RECURSE FOUND_FILES ${CMAKE_SOURCE_DIR}/${file})
+    set(EXCLUDED_FILES ${EXCLUDED_FILES} ${FOUND_FILES})
+endforeach()
+
+# exclude generated pb files
+list(REMOVE_ITEM LINT_SOURCES ${EXCLUDED_FILES})
+
 execute_process(
     COMMAND ${LINT_COMMAND} ${LINT_SOURCES}
-    ERROR_VARIABLE LINT_OUTPUT0
+    ERROR_VARIABLE LINT_OUTPUT
     ERROR_STRIP_TRAILING_WHITESPACE
 )
 
-message(STATUS "cpplint output: ${LINT_OUTPUT}")
+#message(STATUS "cpplint output: ${LINT_OUTPUT}")
 
-string(REPLACE "\n" ";" LINT_OUTPUT ${LINT_OUTPUT0})
+string(REPLACE "\n" ";" LINT_OUTPUT ${LINT_OUTPUT})
 
 list(GET LINT_OUTPUT -1 LINT_RESULT)
 list(REMOVE_AT LINT_OUTPUT -1)

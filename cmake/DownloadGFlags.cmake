@@ -1,6 +1,3 @@
-# Distributed under the OSI-approved MIT License.  See accompanying
-# file LICENSE or https://github.com/Crascit/DownloadProject for details.
-
 if (CMAKE_VERSION VERSION_LESS 3.2)
   set(UPDATE_DISCONNECTED_IF_AVAILABLE "")
 else()

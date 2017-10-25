@@ -30,17 +30,20 @@ namespace FileSystem {
 
 namespace HelpText {
 
+using QS::Client::GetDefaultZone;
+using QS::Client::Http::GetDefaultHostName;
+using QS::Client::Http::GetDefaultProtocolName;
+using QS::Configure::Default::GetDefaultCredentialsFile;
+using QS::Configure::Default::GetDefaultLogDirectory;
 using std::cout;
 using std::endl;
 
 void ShowQSFSVersion() {
-  cout << "qsfs version: " << QS::Configure::Version::GetVersionString() << endl;
+  cout << "qsfs version: " << QS::Configure::Version::GetVersionString()
+       << endl;
 }
 
 void ShowQSFSHelp() {
-  using namespace QS::Client;        // NOLINT
-  using namespace QS::Client::Http;  // NOLINT
-  using namespace QS::FileSystem;    // NOLINT
   cout <<
   "Mount a QingStor bucket as a file system.\n";
   ShowQSFSUsage();
@@ -57,9 +60,9 @@ void ShowQSFSHelp() {
   "  -m, --mount        Specify mount point (path)\n"
   "  -z, --zone         Zone or region, default is " << GetDefaultZone() << "\n"
   "  -c, --credentials  Specify credentials file, default is " << 
-                        QS::Configure::Default::GetDefaultCredentialsFile() << "\n" <<
+                          GetDefaultCredentialsFile() << "\n" <<
   "  -l, --logdir       Specify log directory, default is " <<
-                        QS::Configure::Default::GetDefaultLogDirectory() << "\n" <<
+                          GetDefaultLogDirectory() << "\n" <<
   "  -L, --loglevel     Min log level, message lower than this level don't logged;\n"
   "                     Specify one of following log level: INFO,WARN,ERROR,FATAL;\n"
   "                     INFO is set by default\n"

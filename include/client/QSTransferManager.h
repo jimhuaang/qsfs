@@ -17,9 +17,10 @@
 #ifndef _QSFS_FUSE_INCLUDED_CLIENT_QSTRANSFERMANAGER_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_CLIENT_QSTRANSFERMANAGER_H_  // NOLINT
 
-#include "client/TransferManager.h"
-
 #include <memory>
+#include <string>
+
+#include "client/TransferManager.h"
 
 namespace QS {
 
@@ -29,7 +30,7 @@ class TransferHandle;
 
 class QSTransferManager : public TransferManager {
  public:
-  QSTransferManager(const TransferManagerConfigure &config)
+  explicit QSTransferManager(const TransferManagerConfigure &config)
       : TransferManager(config) {}
   QSTransferManager(QSTransferManager &&) = delete;
   QSTransferManager(const QSTransferManager &) = delete;

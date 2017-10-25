@@ -16,6 +16,10 @@
 
 #include "client/NullClient.h"
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "client/ClientError.h"
 #include "client/QSError.h"
 
@@ -31,9 +35,7 @@ ClientError<QSError> GoodState() {
 
 using std::string;
 
-ClientError<QSError> NullClient::HeadBucket() {
-  return GoodState();
-}
+ClientError<QSError> NullClient::HeadBucket() { return GoodState(); }
 
 ClientError<QSError> NullClient::DeleteFile(const string &filePath) {
   return GoodState();

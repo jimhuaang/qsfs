@@ -41,8 +41,8 @@ Client::Client(std::shared_ptr<ClientImpl> impl,
       m_retryStrategy(std::move(retryStratety)) {}
 
 // --------------------------------------------------------------------------
-Client::~Client(){
-// do nothing
+Client::~Client() {
+  // do nothing
 }
 
 // --------------------------------------------------------------------------

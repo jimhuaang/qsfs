@@ -32,13 +32,13 @@ class Outcome {
  public:
   Outcome() : m_success(false) {}
 
-  Outcome(Result &&result)
+  explicit Outcome(Result &&result)
       : m_result(std::forward<Result>(result)), m_success(true) {}
-  Outcome(const Result &result) : m_result(result), m_success(true) {}
+  explicit Outcome(const Result &result) : m_result(result), m_success(true) {}
 
-  Outcome(Error &&error)
+  explicit Outcome(Error &&error)
       : m_error(std::forward<Error>(error)), m_success(false) {}
-  Outcome(const Error &error) : m_error(error), m_success(false) {}
+  explicit Outcome(const Error &error) : m_error(error), m_success(false) {}
 
   Outcome(Outcome &&rhs) : Outcome() { this->swap(rhs); }
   Outcome(const Outcome &rhs)

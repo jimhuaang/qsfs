@@ -22,6 +22,7 @@
 #include <iostream>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <utility>
 
 #include "glog/logging.h"
 

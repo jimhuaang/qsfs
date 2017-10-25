@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "client/Client.h"
 #include "client/QSClientOutcome.h"
@@ -43,7 +44,6 @@ class QSClient : public Client {
   ~QSClient();
 
  public:
-
   // Head bucket
   //
   // @param  : void
@@ -162,7 +162,6 @@ class QSClient : public Client {
   // Notice the dirPath should end with delimiter.
   ClientError<QSError> ListDirectory(const std::string &dirPath) override;
 
-
   // Create a symbolic link to a file
   //
   // @param  : file path to link to, link path
@@ -188,7 +187,7 @@ class QSClient : public Client {
   // Notes: the meta will be return if object is modified, otherwise
   // the response code will be 304 (NOT MODIFIED) and no meta returned.
   ClientError<QSError> Stat(const std::string &path, time_t modifiedSince = 0,
-                            bool *modified = nullptr ) override;
+                            bool *modified = nullptr) override;
 
   // Get information about mounted bucket
   //
@@ -214,7 +213,7 @@ class QSClient : public Client {
   // @param  : source file path, target file path
   // @return : ClientError
   //
-  // This only submit sdk put(move) object request, no ops on dir tree and cache.
+  // This only submit sdk put(move) object request, no ops on dir tree and cache
   ClientError<QSError> MoveObject(const std::string &sourcePath,
                                   const std::string &targetPath);
 

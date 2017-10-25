@@ -32,7 +32,7 @@ class CredentialsProvider;
 
 void InitializeCredentialsProvider(
     std::unique_ptr<CredentialsProvider> provider);
-  
+
 CredentialsProvider &GetCredentialsProviderInstance();
 
 class Credentials {
@@ -119,8 +119,8 @@ class DefaultCredentialsProvider : public CredentialsProvider {
 
  private:
   using KeyIdToKeyPair = std::pair<std::string, std::string>;
-  using BucketToKeyPairMap =
-      std::unordered_map<std::string, KeyIdToKeyPair, QS::HashUtils::StringHash>;
+  using BucketToKeyPairMap = std::unordered_map<std::string, KeyIdToKeyPair,
+                                                QS::HashUtils::StringHash>;
 
   std::string m_credentialsFile;
   std::string m_defaultAccessKeyId;

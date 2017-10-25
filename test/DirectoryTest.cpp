@@ -102,7 +102,7 @@ class NodeTest : public Test {
     InitLog();
     pRootEntry = new Entry(
         "/", 0, mtime_, mtime_, uid_, gid_, fileMode_, FileType::Directory);
-    pRootNode = make_shared<Node>( Entry(*pRootEntry), nullptr);
+    pRootNode = make_shared<Node>(Entry(*pRootEntry), nullptr);
     pFileNode1 = make_shared<Node>(
          Entry("file1", 1024, mtime_, mtime_, uid_, gid_,
                                     fileMode_, FileType::File),

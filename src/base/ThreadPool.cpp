@@ -39,7 +39,7 @@ ThreadPool::~ThreadPool() { StopProcessing(); }
 void ThreadPool::SubmitToThread(Task &&task, bool prioritized) {
   {
     lock_guard<mutex> lock(m_queueLock);
-    if(prioritized){
+    if (prioritized) {
       m_tasks.push_front(std::move(task));
     } else {
       m_tasks.push_back(std::move(task));

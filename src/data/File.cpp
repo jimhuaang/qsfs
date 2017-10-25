@@ -22,6 +22,8 @@
 #include <iterator>
 #include <list>
 #include <memory>
+#include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -83,8 +85,8 @@ File::~File() {
 string File::AskTempFilePath() const { return BuildTempFilePath(m_baseName); }
 
 // --------------------------------------------------------------------------
-pair<PageSetConstIterator, PageSetConstIterator> File::ConsecutivePageRangeAtFront()
-    const {
+pair<PageSetConstIterator, PageSetConstIterator>
+File::ConsecutivePageRangeAtFront() const {
   lock_guard<recursive_mutex> lock(m_mutex);
   if (m_pages.empty()) {
     return {m_pages.begin(), m_pages.begin()};
@@ -105,7 +107,7 @@ bool File::HasData(off_t start, size_t size) const {
   lock_guard<recursive_mutex> lock(m_mutex);
   auto stop = static_cast<off_t>(start + size);
   auto range = IntesectingRange(start, stop);
-  if(range.first == range.second) {
+  if (range.first == range.second) {
     if (range.first == m_pages.end()) {
       if (size == 0 && start <= static_cast<off_t>(m_size)) {
         return true;
@@ -178,7 +180,7 @@ PageSetConstIterator File::EndPage() const {
 }
 
 // --------------------------------------------------------------------------
-size_t File::GetNumPages() const{
+size_t File::GetNumPages() const {
   lock_guard<recursive_mutex> lock(m_mutex);
   return m_pages.size();
 }
@@ -221,7 +223,7 @@ tuple<size_t, list<shared_ptr<Page>>, ContentRangeDeque> File::Read(
         return make_tuple(outcomeSize, outcomePages, unloadedRanges);
       }
     }
-  
+
     // If pages is empty.
     if (m_pages.empty()) {
       AddUnloadedPages(offset, len);
@@ -238,7 +240,8 @@ tuple<size_t, list<shared_ptr<Page>>, ContentRangeDeque> File::Read(
     while (it1 != it2) {
       if (len_ <= 0) break;
       auto &page = *it1;
-      if (offset_ < page->m_offset) {  // Add unloaded page for bytes not present.
+      if (offset_ <
+          page->m_offset) {  // Add unloaded page for bytes not present.
         auto lenNewPage = page->m_offset - offset_;
         AddUnloadedPages(offset_, lenNewPage);
         offset_ = page->m_offset;
@@ -285,7 +288,7 @@ tuple<bool, size_t, size_t> File::Write(off_t offset, size_t len,
       off_t offset, size_t len, const char *buffer) -> bool {
     auto res = this->UnguardedAddPage(offset, len, buffer);
     if (std::get<1>(res)) {
-      if(mtime > m_mtime) {
+      if (mtime > m_mtime) {
         this->SetTime(mtime);
       }
       addedSizeInCache += std::get<2>(res);
@@ -329,7 +332,7 @@ tuple<bool, size_t, size_t> File::Write(off_t offset, size_t len,
       len_ -= lenNewPage;
     } else {  // Refresh the overlapped page's content.
       if (len_ <= static_cast<size_t>(page->Next() - offset_)) {
-        if(mtime >= m_mtime){
+        if (mtime >= m_mtime) {
           SetTime(mtime);
           // refresh parital content of page
           return make_tuple(page->Refresh(offset_, len_, buffer + start_),
@@ -339,14 +342,14 @@ tuple<bool, size_t, size_t> File::Write(off_t offset, size_t len,
           return make_tuple(true, addedSizeInCache, addedSize);
         }
       } else {
-        if(mtime >= m_mtime) {
+        if (mtime >= m_mtime) {
           // refresh entire page
           auto refresh = page->Refresh(buffer + start_);
           if (!refresh) {
             success = false;
             return make_tuple(false, addedSizeInCache, addedSize);
           }
-  
+
           SetTime(mtime);
         }
         offset_ = page->Next();
@@ -398,7 +401,7 @@ tuple<bool, size_t, size_t> File::Write(off_t offset, size_t len,
     if (it == m_pages.end()) {
       return AddPageAndUpdateTime(offset, len, std::move(stream));
     } else if (page->Offset() == offset && page->Size() == len) {
-      if(mtime >= m_mtime){
+      if (mtime >= m_mtime) {
         // replace old stream
         page->SetStream(std::move(stream));
         SetTime(mtime);
@@ -434,7 +437,7 @@ void File::ResizeToSmallerSize(size_t smallerSize) {
     while (!m_pages.empty() && smallerSize < m_size) {
       auto lastPage = --m_pages.end();
       auto lastPageSize = (*lastPage)->Size();
-      if(smallerSize + lastPageSize <= m_size) {
+      if (smallerSize + lastPageSize <= m_size) {
         if (!(*lastPage)->UseTempFile()) {
           m_cacheSize -= lastPageSize;
         }

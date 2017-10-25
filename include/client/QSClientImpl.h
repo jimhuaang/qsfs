@@ -17,17 +17,16 @@
 #ifndef _QSFS_FUSE_INCLUDED_CLIENT_QSCLIENTIMPL_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_CLIENT_QSCLIENTIMPL_H_  // NOLINT
 
-#include "client/ClientImpl.h"
-
 #include <stdint.h>  // for uint64_t
-
-#include "qingstor-sdk-cpp/Bucket.h"  // for instantiation of QSClientImpl
 
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "qingstor-sdk-cpp/Bucket.h"  // for instantiation of QSClientImpl
+
 #include "client/ClientConfiguration.h"
+#include "client/ClientImpl.h"
 #include "client/QSClientOutcome.h"
 
 namespace QS {

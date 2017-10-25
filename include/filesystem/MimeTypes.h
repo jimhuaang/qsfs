@@ -20,6 +20,7 @@
 #include <string.h>  // for strcasecmp
 
 #include <map>
+#include <string>
 
 namespace QS {
 

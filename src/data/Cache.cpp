@@ -19,9 +19,11 @@
 #include <assert.h>
 #include <string.h>
 
+#include <algorithm>
 #include <cmath>
 #include <iterator>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -117,7 +119,7 @@ time_t Cache::GetTime(const string &fileId) const {
 }
 
 // --------------------------------------------------------------------------
-uint64_t Cache::GetFileSize(const std::string &filePath) const{
+uint64_t Cache::GetFileSize(const std::string &filePath) const {
   auto it = m_map.find(filePath);
   if (it != m_map.end()) {
     auto pfile = &(it->second->second);
@@ -160,7 +162,7 @@ pair<size_t, ContentRangeDeque> Cache::Read(const string &fileId, off_t offset,
 
   DebugInfo("Read cache [offset:len=" + to_string(offset) + ":" +
             to_string(len) + "] " + FormatPath(fileId));
-  memset(buffer, 0, len);      // Clear input buffer.
+  memset(buffer, 0, len);  // Clear input buffer.
   size_t cachedSizeBegin = 0;
   auto pos = m_cache.begin();
   auto it = m_map.find(fileId);

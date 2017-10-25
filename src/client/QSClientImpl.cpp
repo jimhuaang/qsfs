@@ -19,8 +19,9 @@
 #include <assert.h>
 
 #include <chrono>  // NOLINT
-#include <memory>
 #include <future>  // NOLINT
+#include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -30,7 +31,6 @@
 #include "qingstor-sdk-cpp/QsConfig.h"
 #include "qingstor-sdk-cpp/QsErrors.h"  // for sdk QsError
 #include "qingstor-sdk-cpp/Types.h"     // for sdk QsOutput
-//#include "qingstor-sdk-cpp/types/ObjectPartType.h"
 
 #include "base/LogMacros.h"
 #include "base/ThreadPool.h"
@@ -479,8 +479,7 @@ HeadObjectOutcome QSClientImpl::HeadObject(const string &objKey,
   };
 
   auto fHeadObject = GetExecutor()->SubmitCallablePrioritized(DoHeadObject);
-  auto fStatus =
-      fHeadObject.wait_for(milliseconds(msTimeDuration));
+  auto fStatus = fHeadObject.wait_for(milliseconds(msTimeDuration));
   if (fStatus == std::future_status::ready) {
     auto res = fHeadObject.get();
     auto &sdkErr = res.first;
@@ -549,8 +548,7 @@ InitiateMultipartUploadOutcome QSClientImpl::InitiateMultipartUpload(
   exceptionName.append(objKey);
 
   auto DoInitiateMultipartUpload =
-      [this, objKey,
-       input]() -> pair<QsError, InitiateMultipartUploadOutput> {
+      [this, objKey, input]() -> pair<QsError, InitiateMultipartUploadOutput> {
     InitiateMultipartUploadOutput output;
     auto sdkErr = m_bucket->initiateMultipartUpload(objKey, *input, output);
     return {sdkErr, std::move(output)};
@@ -628,8 +626,7 @@ CompleteMultipartUploadOutcome QSClientImpl::CompleteMultipartUpload(
   exceptionName.append(objKey);
 
   auto DoCompleteMultipartUpload =
-      [this, objKey,
-       input]() -> pair<QsError, CompleteMultipartUploadOutput> {
+      [this, objKey, input]() -> pair<QsError, CompleteMultipartUploadOutput> {
     CompleteMultipartUploadOutput output;
     auto sdkErr = m_bucket->completeMultipartUpload(objKey, *input, output);
     return {sdkErr, std::move(output)};

@@ -18,6 +18,8 @@
 
 #include <string.h>  // for memset
 
+#include <string>
+
 #include "base/LogMacros.h"
 
 namespace QS {
@@ -42,7 +44,7 @@ time_t RFC822GMTToSeconds(const string &date) {
 }
 
 // --------------------------------------------------------------------------
-string SecondsToRFC822GMT(time_t time){
+string SecondsToRFC822GMT(time_t time) {
   char date[100];
   memset(date, 0, sizeof(date));
 

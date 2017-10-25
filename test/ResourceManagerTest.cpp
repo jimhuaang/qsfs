@@ -14,12 +14,13 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "gtest/gtest.h"
-
 #include <chrono>  // NOLINT
 #include <future>  // NOLINT
 #include <memory>
+#include <utility>
 #include <vector>
+
+#include "gtest/gtest.h"
 
 #include "base/Logging.h"
 #include "base/Utils.h"

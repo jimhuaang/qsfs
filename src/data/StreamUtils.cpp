@@ -19,6 +19,7 @@
 #include <assert.h>
 
 #include <iostream>
+#include <memory>
 
 #include "base/LogMacros.h"
 
@@ -28,7 +29,7 @@ namespace Data {
 
 namespace StreamUtils {
 
-using std::iostream;;
+using std::iostream;
 using std::shared_ptr;
 
 size_t GetStreamOutputSize(const shared_ptr<iostream> &stream) {
@@ -36,7 +37,7 @@ size_t GetStreamOutputSize(const shared_ptr<iostream> &stream) {
   assert(stream);
   if (stream) {
     auto curPos = stream->tellp();
-    if(curPos == std::iostream::pos_type(-1)) {
+    if (curPos == std::iostream::pos_type(-1)) {
       DebugError("Fail to get stream current pos");
       return 0;
     }
@@ -54,7 +55,7 @@ size_t GetStreamInputSize(const shared_ptr<iostream> &stream) {
   assert(stream);
   if (stream) {
     auto curPos = stream->tellg();
-    if(curPos == std::iostream::pos_type(-1)) {
+    if (curPos == std::iostream::pos_type(-1)) {
       DebugError("Fail to get stream current pos");
       return 0;
     }
@@ -72,7 +73,7 @@ size_t GetStreamSize(const shared_ptr<iostream> &stream) {
   assert(stream);
   if (stream) {
     auto curPos = stream->tellg();
-    if(curPos == std::iostream::pos_type(-1)) {
+    if (curPos == std::iostream::pos_type(-1)) {
       DebugError("Fail to get stream current pos");
       return 0;
     }

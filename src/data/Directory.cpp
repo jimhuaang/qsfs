@@ -25,8 +25,8 @@
 #include <queue>
 #include <set>
 #include <string>
-
 #include <utility>
+#include <vector>
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
@@ -489,7 +489,7 @@ void DirectoryTree::Remove(const string &path) {
     return;
   }
 
-  DebugInfo("Remove node " + FormatPath(path));  
+  DebugInfo("Remove node " + FormatPath(path));
   auto parent = node->GetParent();
   if (parent) {
     // if path is a directory, when go out of this function, destructor
@@ -524,7 +524,6 @@ void DirectoryTree::Remove(const string &path) {
       }
     }
   }
-
 }
 
 // --------------------------------------------------------------------------
@@ -549,8 +548,7 @@ shared_ptr<Node> DirectoryTree::HardLink(const string &filePath,
 
   auto lnkNode = make_shared<Node>(Entry(node->GetEntry()), node);
   if (!(lnkNode && *lnkNode)) {
-    DebugWarning("Fail to hard link " +
-                 FormatPath(filePath, hardlinkPath));
+    DebugWarning("Fail to hard link " + FormatPath(filePath, hardlinkPath));
     return shared_ptr<Node>(nullptr);
   }
   lnkNode->SetHardLink(true);

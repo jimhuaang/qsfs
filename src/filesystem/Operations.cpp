@@ -26,6 +26,7 @@
 #include <unistd.h>     // for R_OK
 
 #include <memory>
+#include <string>
 #include <tuple>
 #include <utility>
 
@@ -95,19 +96,19 @@ shared_ptr<Node> CheckParentDir(const string& path, int amode, int* ret,
   }
 
   if (!(parent && *parent)) {
-    *ret = -EINVAL;  // invalid argument
+    *ret = -EINVAL;
     throw QSException("No parent directory " + FormatPath(path));
   }
 
   // Check whether parent is directory
   if (!parent->IsDirectory()) {
-    *ret = -EINVAL;  // invalid argument
+    *ret = -EINVAL;
     throw QSException("Parent is not a directory " + FormatPath(dirName));
   }
 
   // Check access permission
   if (!parent->FileAccess(GetFuseContextUID(), GetFuseContextGID(), amode)) {
-    *ret = -EACCES;  // Permission denied
+    *ret = -EACCES;
     throw QSException("No access permission (" + AccessMaskToString(amode) +
                       ") for directory" + FormatPath(dirName));
   }
@@ -129,7 +130,7 @@ void CheckStickyBit(const shared_ptr<Node>& dir, const shared_ptr<Node>& file,
   uid_t uid = GetFuseContextUID();
   if ((S_ISVTX & dir->GetFileMode()) &&
       !(uid == 0 || uid == file->GetUID() || uid == dir->GetUID())) {
-    *ret = -EPERM;  // operation not permitted
+    *ret = -EPERM;
     throw QSException(
         "sticky bit set: only the owner/root user can delete the file [user=" +
         to_string(uid) + ", file owner=" + to_string(file->GetUID()) +
@@ -174,7 +175,7 @@ void FillStatvfs(const struct statvfs& source, struct statvfs* target) {
 //          - 1st member is the node;
 //          - 2nd member is the path maybe appended with "/"
 //
-pair<weak_ptr<Node>, string> GetFileSimple(const char *path) {
+pair<weak_ptr<Node>, string> GetFileSimple(const char* path) {
   string appendPath = path;
   auto& drive = Drive::Instance();
   auto node = drive.GetNodeSimple(path).lock();
@@ -195,7 +196,7 @@ pair<weak_ptr<Node>, string> GetFileSimple(const char *path) {
 //          moment before this operation.
 //          - 3rd member is the path maybe appended with "/"
 //
-// Note: GetFile will connect to object storage to retrive the object and 
+// Note: GetFile will connect to object storage to retrive the object and
 // update the local dir tree if the object is modified.
 tuple<weak_ptr<Node>, bool, string> GetFile(const char* path,
                                             bool updateIfIsDir = false,
@@ -274,7 +275,7 @@ void InitializeFUSECallbacks(struct fuse_operations* fuseOps) {
 int qsfs_getattr(const char* path, struct stat* statbuf) {
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    return -EINVAL;
   }
   if (statbuf == nullptr) {
     Error("Null statbuf parameter from fuse");
@@ -296,13 +297,13 @@ int qsfs_getattr(const char* path, struct stat* statbuf) {
     if (node && *node) {
       auto st = const_cast<const Node&>(*node).GetEntry().ToStat();
       FillStat(st, statbuf);
-    } else {          // node not existing
-      ret = -ENOENT;  // No such file or directory
+    } else {
+      ret = -ENOENT;
       throw QSException("No such file or directory " + FormatPath(path));
     }
   } catch (const QSException& err) {
     Warning(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -324,7 +325,7 @@ int qsfs_getattr(const char* path, struct stat* statbuf) {
 int qsfs_readlink(const char* path, char* link, size_t size) {
   // if (!IsValidPath(path)) {
   //   Error("Null path parameter from fuse");
-  //   return -EINVAL;  // invalid argument
+  //   return -EINVAL;
   // }
   // if (link == nullptr) {
   //   Error("Null buffer parameter from fuse");
@@ -332,7 +333,7 @@ int qsfs_readlink(const char* path, char* link, size_t size) {
   // }
   // if (IsRootDirectory(path)) {
   //   Error("Unable to link on root directory");
-  //   return -EPERM;  // operation not permitted
+  //   return -EPERM;
   // }
 
   memset(link, 0, size);
@@ -341,7 +342,7 @@ int qsfs_readlink(const char* path, char* link, size_t size) {
     auto res = GetFileSimple(path);
     auto node = res.first.lock();
     string path_ = res.second;
-    
+
     if (!(node && *node)) {
       ret = -ENOLINK;  // Link has been severed
       throw QSException("No such file " + FormatPath(path_));
@@ -350,13 +351,13 @@ int qsfs_readlink(const char* path, char* link, size_t size) {
     // Check whether it is a symlink
     if (!node->IsSymLink()) {
       assert(false);  // should not happen
-      ret = -EINVAL;  // invalid argument
+      ret = -EINVAL;
       throw QSException("Not a symlink " + FormatPath(path));
     }
 
     // Check access permission
     if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), R_OK)) {
-      ret = -EACCES;  // Permission denied
+      ret = -EACCES;
       throw QSException("No read permission " + FormatPath(path_));
     }
 
@@ -369,10 +370,9 @@ int qsfs_readlink(const char* path, char* link, size_t size) {
     }
     memcpy(link, symlink.c_str(), size_);
     link[size_] = '\0';
-
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -390,22 +390,22 @@ int qsfs_readlink(const char* path, char* link, size_t size) {
 int qsfs_mknod(const char* path, mode_t mode, dev_t dev) {
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    return -EINVAL;
   }
   if (IsRootDirectory(path)) {
     Error("Unable to create root directory");
-    return -EPERM;  // operation not permitted
+    return -EPERM;
   }
   // Check whether filename is too long
   string filename = GetBaseName(path);
   if (filename.size() > GetNameMaxLen()) {
     Error("File name too long [name=" + filename + "]");
-    return -ENAMETOOLONG;  // file name too long
+    return -ENAMETOOLONG;
   }
   // Check whether the pathname is too long
   if (strlen(path) > GetPathMaxLen()) {
     Error("Path name too long " + FormatPath(path));
-    return -ENAMETOOLONG;  // name too long
+    return -ENAMETOOLONG;
   }
 
   int ret = 0;
@@ -413,19 +413,18 @@ int qsfs_mknod(const char* path, mode_t mode, dev_t dev) {
   try {
     // Check parent directory permission
     CheckParentDir(path, W_OK | X_OK, &ret, false);
-    
+
     auto node = drive.GetNodeSimple(path).lock();
     if (node && *node) {
-      ret = -EEXIST;  // File exist
+      ret = -EEXIST;
       throw QSException("File already exists " + FormatPath(path));
     }
 
     // Create the new node
     drive.MakeFile(path, mode | GetDefineFileMode(), dev);
-
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -443,22 +442,22 @@ int qsfs_mknod(const char* path, mode_t mode, dev_t dev) {
 int qsfs_mkdir(const char* path, mode_t mode) {
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    return -EINVAL;
   }
   if (IsRootDirectory(path)) {
     Error("Unable to create root directory");
-    return -EPERM;  // operation not permitted
+    return -EPERM;
   }
   // Check whether filename is too long
   string filename = GetBaseName(path);
   if (filename.size() > GetNameMaxLen()) {
     Error("File name too long [name=" + filename + "]");
-    return -ENAMETOOLONG;  // file name too long
+    return -ENAMETOOLONG;
   }
   // Check whether the pathname is too long
   if (strlen(path) > GetPathMaxLen()) {
     Error("Path name too long " + FormatPath(path));
-    return -ENAMETOOLONG;  // file name too long
+    return -ENAMETOOLONG;
   }
 
   int ret = 0;
@@ -471,16 +470,15 @@ int qsfs_mkdir(const char* path, mode_t mode) {
     auto node = res.first.lock();
     string path_ = res.second;
     if (node && *node) {
-      ret = -EEXIST;  // File exist
+      ret = -EEXIST;
       throw QSException("File already exists " + FormatPath(path_));
     }
 
     // Create the directory
     drive.MakeDir(AppendPathDelim(path), mode | S_IFDIR);
-
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -494,11 +492,11 @@ int qsfs_mkdir(const char* path, mode_t mode) {
 int qsfs_unlink(const char* path) {
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    return -EINVAL;
   }
   if (IsRootDirectory(path)) {
     Error("Unable to remove root directory");
-    return -EPERM;  // operation not permitted
+    return -EPERM;
   }
 
   int ret = 0;
@@ -509,7 +507,7 @@ int qsfs_unlink(const char* path) {
 
     auto node = drive.GetNodeSimple(path).lock();  // getattr synchornized node
     if (!(node && *node)) {
-      ret = -ENOENT;  // No such file or directory
+      ret = -ENOENT;
       throw QSException("No such file " + FormatPath(path));
     }
 
@@ -518,15 +516,14 @@ int qsfs_unlink(const char* path) {
 
     // Remove the file
     if (node->IsDirectory()) {
-      ret = -EINVAL;  // invalid argument
+      ret = -EINVAL;
       throw QSException("Not a file, but a directory " + FormatPath(path));
     } else {
       drive.RemoveFile(path);
     }
-
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -540,11 +537,11 @@ int qsfs_unlink(const char* path) {
 int qsfs_rmdir(const char* path) {
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    return -EINVAL;
   }
   if (IsRootDirectory(path)) {
     Error("Unable to remove root directory");
-    return -EPERM;  // operation not permitted
+    return -EPERM;
   }
 
   int ret = 0;
@@ -557,12 +554,12 @@ int qsfs_rmdir(const char* path) {
     auto res = drive.GetNode(path_, true);  // update dir synchronizely
     auto node = res.first.lock();
     if (!(node && *node)) {
-      ret = -ENOENT;  // No such file or directory
+      ret = -ENOENT;
       throw QSException("No such directory " + FormatPath(path_));
     }
 
     if (!node->IsDirectory()) {
-      ret = -EINVAL;  // invalid argument
+      ret = -EINVAL;
       throw QSException("Not a directory " + FormatPath(path_));
     }
 
@@ -578,10 +575,9 @@ int qsfs_rmdir(const char* path) {
 
     // Do delete empty directory
     drive.RemoveFile(path_);
-
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -599,26 +595,26 @@ int qsfs_rmdir(const char* path) {
 // requested linkname.
 int qsfs_symlink(const char* path, const char* link) {
   //
-    // if (!IsValidPath(path)) {
-    //   Error("Null path parameter from fuse");
-    //   return -EINVAL;  // invalid argument
-    // }
-    // if (!IsValidPath(link)) {
-    //   Error("Null link parameter from fuse");
-    //   return -EINVAL;  // invalid argument
-    // }
-    // if (IsRootDirectory(path)) {
-    //   Error("Unable to symlink root directory");
-    //   return -EPERM;  // operation not permitted
-    // }
+  // if (!IsValidPath(path)) {
+  //   Error("Null path parameter from fuse");
+  //   return -EINVAL;
+  // }
+  // if (!IsValidPath(link)) {
+  //   Error("Null link parameter from fuse");
+  //   return -EINVAL;
+  // }
+  // if (IsRootDirectory(path)) {
+  //   Error("Unable to symlink root directory");
+  //   return -EPERM;
+  // }
 
   string filename = GetBaseName(link);
   if (filename.empty()) {
     Error("Invalid link parameter " + FormatPath(link));
     return -EINVAL;
   } else if (filename.size() > GetNameMaxLen()) {
-    Error("filename too long [name=" + filename +"]");
-    return -ENAMETOOLONG;  // file name too long
+    Error("filename too long [name=" + filename + "]");
+    return -ENAMETOOLONG;
   }
 
   int ret = 0;
@@ -631,16 +627,15 @@ int qsfs_symlink(const char* path, const char* link) {
     auto node = res.first.lock();
     string link_ = res.second;
     if (node && *node) {
-      ret = -EEXIST;  // File exist
+      ret = -EEXIST;
       throw QSException("File already exists " + FormatPath(link_));
     }
 
     // Create a symbolic link
     drive.SymLink(path, link);
-
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -658,19 +653,19 @@ int qsfs_symlink(const char* path, const char* link) {
 int qsfs_rename(const char* path, const char* newpath) {
   if (!IsValidPath(path) || !IsValidPath(newpath)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    return -EINVAL;
   }
   if (IsRootDirectory(path) || IsRootDirectory(newpath)) {
     Error("Unable to rename on root directory");
-    return -EPERM;  // operation not permitted
+    return -EPERM;
   }
   string newPathBaseName = GetBaseName(newpath);
   if (newPathBaseName.empty()) {
     Error("Invalid new file path " + FormatPath(newpath));
     return -EINVAL;
   } else if (newPathBaseName.size() > GetNameMaxLen()) {
-    Error("File name too long [name=" + newPathBaseName +"]");
-    return -ENAMETOOLONG;  // file name too long
+    Error("File name too long [name=" + newPathBaseName + "]");
+    return -ENAMETOOLONG;
   }
 
   int ret = 0;
@@ -682,7 +677,7 @@ int qsfs_rename(const char* path, const char* newpath) {
     auto node = std::get<0>(res).lock();
     string path_ = std::get<2>(res);
     if (!(node && *node)) {
-      ret = -ENOENT;  // No such file or directory
+      ret = -ENOENT;
       throw QSException("No such file or directory " + FormatPath(path_));
     }
 
@@ -715,10 +710,9 @@ int qsfs_rename(const char* path, const char* newpath) {
     } else {
       Drive::Instance().RenameFile(path_, newpath);
     }
-
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -732,16 +726,16 @@ int qsfs_rename(const char* path, const char* newpath) {
 int qsfs_link(const char* path, const char* linkpath) {
   DebugError("Hard link not permitted [from=" + string(path) +
              " to=" + string(linkpath));
-  return -EPERM;  // operation not permitted
+  return -EPERM;
 
-//  Not support hard link currently.
+  // Not support hard link currently.
   // if (!IsValidPath(path) || !IsValidPath(linkpath)) {
   //   Error("Null path parameter from fuse");
-  //   return -EINVAL;  // invalid argument
+  //   return -EINVAL;
   // }
   // if (IsRootDirectory(path) || IsRootDirectory(linkpath)) {
   //   Error("Unable to link on root directory");
-  //   return -EPERM;  // operation not permitted
+  //   return -EPERM;
   // }
   // string linkPathBaseName = GetBaseName(linkpath);
   // if (linkPathBaseName.empty()) {
@@ -749,59 +743,58 @@ int qsfs_link(const char* path, const char* linkpath) {
   //   return -EINVAL;
   // } else if (linkPathBaseName.size() > GetNameMaxLen()) {
   //   Error("file name too long [name=" + linkPathBaseName + "]");
-  //   return -ENAMETOOLONG;  // file name too long
+  //   return -ENAMETOOLONG;
   // }
-  // 
+  //
   // int ret = 0;
   // auto& drive = Drive::Instance();
   // try {
   //   auto node = drive.GetNodeSimple(path).lock();
   //   if (!(node && *node)) {
-  //     ret = -ENOENT;  // No such file or directory
+  //     ret = -ENOENT;
   //     throw QSException("No such file or directory " + FormatPath(path));
   //   }
-  // 
+  //
   //   // Check if it is a directory
   //   if (node->IsDirectory()) {
-  //     ret = -EPERM;  // operation not permitted
+  //     ret = -EPERM;
   //     throw QSException("Unable to hard link to a directory " +
   //                       FormatPath(path));
   //   }
-  // 
+  //
   //   // Check access permission
   //   if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(),
   //                         (W_OK | R_OK))) {
-  //     ret = -EACCES;  // Permission denied
+  //     ret = -EACCES;
   //     throw QSException("No read and write permission for path " +
   //                       FormatPath(path));
   //   }
-  // 
+  //
   //   // Check the directory where link is to be created
   //   CheckParentDir(linkpath, W_OK | X_OK, &ret, false);
-  // 
+  //
   //   // Check if linkpath existing
   //   auto lnkRes = GetFileSimple(linkpath);
   //   auto lnkNode = lnkRes.first.lock();
-  //   string linkpath_ = lnkRes.second;  
+  //   string linkpath_ = lnkRes.second;
   //   if (lnkNode && *lnkNode) {
   //     ret = -EEXIST;
   //     throw QSException("File already exists for link path " +
   //                       FormatPath(linkpath_));
   //   }
-  // 
+  //
   //   // Create hard link
   //   drive.HardLink(path, linkpath_);
-  // 
+  //
   // } catch (const QSException& err) {
   //   Error(err.get());
-  //   if (ret == 0) {  // catch exception from lower level
+  //   if (ret == 0) {
   //     ret = -errno;
   //   }
   //   return ret;
   // }
-  // 
+  //
   // return ret;
-
 }
 
 // --------------------------------------------------------------------------
@@ -811,16 +804,16 @@ int qsfs_chmod(const char* path, mode_t mode) {
             " for path" + FormatPath(path));
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    return -EINVAL;
   }
   if (IsRootDirectory(path)) {
     Error("Unable to chmod on root directory");
-    return -EPERM;  // operation not permitted
+    return -EPERM;
   }
   // Check whether the pathname is too long
   if (strlen(path) > GetPathMaxLen()) {
     Error("Path name too long " + FormatPath(path));
-    return -ENAMETOOLONG;  // file name too long
+    return -ENAMETOOLONG;
   }
 
   int ret = 0;
@@ -834,13 +827,13 @@ int qsfs_chmod(const char* path, mode_t mode) {
     auto node = res.first.lock();
     string path_ = res.second;
     if (!(node && *node)) {
-      ret = -ENOENT;  // No such file or directory
+      ret = -ENOENT;
       throw QSException("No such file or directory " + FormatPath(path));
     }
 
     // Check owner
     if (!CheckOwner(node->GetUID())) {
-      ret = -EPERM;  // operation not permitted
+      ret = -EPERM;
       throw QSException("Only owner/root can change file permissions [user=" +
                         to_string(GetFuseContextUID()) + ",owner=" +
                         to_string(node->GetUID()) + "] " + FormatPath(path_));
@@ -848,10 +841,9 @@ int qsfs_chmod(const char* path, mode_t mode) {
 
     // Change the file permission
     drive.Chmod(path_, mode);
-
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -867,11 +859,11 @@ int qsfs_chown(const char* path, uid_t uid, gid_t gid) {
             ", gid=" + to_string(gid) + "]" + FormatPath(path));
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    return -EINVAL;
   }
   if (IsRootDirectory(path)) {
     Error("Unable to chown on root directory");
-    return -EPERM;  // operation not permitted
+    return -EPERM;
   }
 
   int ret = 0;
@@ -886,13 +878,13 @@ int qsfs_chown(const char* path, uid_t uid, gid_t gid) {
     auto node = res.first.lock();
     string path_ = res.second;
     if (!(node && *node)) {
-      ret = -ENOENT;  // No such file or directory
+      ret = -ENOENT;
       throw QSException("No such file or directory " + FormatPath(path));
     }
 
     // Check owner
     if (!CheckOwner(node->GetUID())) {
-      ret = -EPERM;  // operation not permitted
+      ret = -EPERM;
       throw QSException(
           "Only owner/root can change file owner and group [user=" +
           to_string(GetFuseContextUID()) +
@@ -901,10 +893,9 @@ int qsfs_chown(const char* path, uid_t uid, gid_t gid) {
 
     // Change owner and group
     drive.Chown(path_, uid, gid);
-
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -918,10 +909,10 @@ int qsfs_chown(const char* path, uid_t uid, gid_t gid) {
 int qsfs_truncate(const char* path, off_t newsize) {
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    return -EINVAL;
   }
   if (newsize < 0) {
-    Error("Invalid new size parameter [size=" + to_string(newsize) +"]");
+    Error("Invalid new size parameter [size=" + to_string(newsize) + "]");
     return -EINVAL;
   }
 
@@ -934,28 +925,27 @@ int qsfs_truncate(const char* path, off_t newsize) {
 
     auto node = drive.GetNodeSimple(path).lock();
     if (!(node && *node)) {
-      ret = -ENOENT;  // No such file or directory
+      ret = -ENOENT;
       throw QSException("No such file or directory " + FormatPath(path));
     }
 
     // Check if it is a directory
     if (node->IsDirectory()) {
-      ret = -EPERM;  // operation not permitted
+      ret = -EPERM;
       throw QSException("Unable to truncate a directory " + FormatPath(path));
     }
 
     // Check access permission
     if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), W_OK)) {
-      ret = -EACCES;  // Permission denied
+      ret = -EACCES;
       throw QSException("No write permission for path " + FormatPath(path));
     }
 
     // Do truncating
     drive.TruncateFile(path, newsize);
-
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -982,23 +972,23 @@ int qsfs_truncate(const char* path, off_t newsize) {
 int qsfs_open(const char* path, struct fuse_file_info* fi) {
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    return -EINVAL;
   }
 
   int ret = 0;
   auto& drive = Drive::Instance();
   try {
-    if(static_cast<unsigned int>(fi->flags) & O_TRUNC){
+    if (static_cast<unsigned int>(fi->flags) & O_TRUNC) {
       drive.TruncateFile(path, 0);
     } else {
       // Check parent directory
       string dirName = GetDirName(path);
       auto parent = drive.GetNodeSimple(dirName).lock();
       if (!(parent && *parent)) {
-        ret = -EINVAL;  // invalid argument
+        ret = -EINVAL;
         throw QSException("No parent directory " + FormatPath(path));
       }
-  
+
       // "Getattr()" is called before this callback, which already checked X_OK
       // Check parent permission
       // CheckParentDir(path, X_OK, &ret, false);
@@ -1007,32 +997,31 @@ int qsfs_open(const char* path, struct fuse_file_info* fi) {
       if (node && *node) {
         // Check if it is a directory
         if (node->IsDirectory()) {
-          ret = -EPERM;  // operation not permitted
+          ret = -EPERM;
           throw QSException("Not a file, but a directory " + FormatPath(path));
         }
-  
+
         // Check access permission
         if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), R_OK)) {
-          ret = -EACCES;  // Permission denied
+          ret = -EACCES;
           throw QSException("No read permission for path " + FormatPath(path));
         }
       } else {
         // Check access permission
         if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), W_OK)) {
-          ret = -EACCES;  // Permission denied
+          ret = -EACCES;
           throw QSException("No write permission for path " + FormatPath(path));
         }
         // Create a empty file
         drive.MakeFile(path, GetDefineFileMode());
       }
-  
+
       // Do Open
       drive.OpenFile(path, false);  // load file synchronizely if not exist
     }
-
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -1056,7 +1045,7 @@ int qsfs_read(const char* path, char* buf, size_t size, off_t offset,
               struct fuse_file_info* fi) {
   // if (!IsValidPath(path)) {
   //   Error("Null path parameter from fuse");
-  //   errno = EINVAL;  // invalid argument
+  //   errno = EINVAL;
   //   return 0;
   // }
   // if (buf == nullptr) {
@@ -1077,19 +1066,19 @@ int qsfs_read(const char* path, char* buf, size_t size, off_t offset,
     // Check if file exists
     auto node = drive.GetNodeSimple(path).lock();
     if (!(node && *node)) {
-      errno = ENOENT;  // No such file or directory
+      errno = ENOENT;
       throw QSException("No such file " + FormatPath(path));
     }
 
     // Check if it is a directory
     if (node->IsDirectory()) {
-      errno = EPERM;  // operation not permitted
+      errno = EPERM;
       throw QSException("Not a file, but a directory " + FormatPath(path));
     }
 
     // Check access permission
     if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), R_OK)) {
-      errno = EACCES;  // Permission denied
+      errno = EACCES;
       throw QSException("No read permission for path " + FormatPath(path));
     }
 
@@ -1100,7 +1089,6 @@ int qsfs_read(const char* path, char* buf, size_t size, off_t offset,
       errno = EAGAIN;  // try again
       throw;           // rethrow
     }
-
   } catch (const QSException& err) {
     Error(err.get());
     return readSize;
@@ -1123,7 +1111,7 @@ int qsfs_write(const char* path, const char* buf, size_t size, off_t offset,
   // if (!IsValidPath(path)) {
   //   Error("Null path parameter from fuse");
   //   errno = EINVAL;
-  //   return 0;  // invalid argument
+  //   return 0;
   // }
   // if (buf == nullptr) {
   //   Error("Null buf parameter from fuse");
@@ -1137,19 +1125,19 @@ int qsfs_write(const char* path, const char* buf, size_t size, off_t offset,
     // Check if file exists
     auto node = drive.GetNodeSimple(path).lock();
     if (!(node && *node)) {
-      errno = ENOENT;  // No such file or directory
+      errno = ENOENT;
       throw QSException("No such file " + FormatPath(path));
     }
 
     // Check if it is a directory
     if (node->IsDirectory()) {
-      errno = EPERM;  // operation not permitted
+      errno = EPERM;
       throw QSException("Not a file, but a directory " + FormatPath(path));
     }
 
     // Check access permission
     if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), W_OK)) {
-      errno = EACCES;  // Permission denied
+      errno = EACCES;
       throw QSException("No write permission for path " + FormatPath(path));
     }
 
@@ -1160,7 +1148,6 @@ int qsfs_write(const char* path, const char* buf, size_t size, off_t offset,
       errno = EAGAIN;  // try again
       throw;           // rethrow
     }
-
   } catch (const QSException& err) {
     Error(err.get());
     return writeSize;
@@ -1176,7 +1163,7 @@ int qsfs_write(const char* path, const char* buf, size_t size, off_t offset,
 int qsfs_statfs(const char* path, struct statvfs* statv) {
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    return -EINVAL;
   }
   if (statv == nullptr) {
     Error("Null statvfs parameter from fuse");
@@ -1193,13 +1180,13 @@ int qsfs_statfs(const char* path, struct statvfs* statv) {
       // Set qsfs parameters
       struct statvfs stfs = Drive::Instance().GetFilesystemStatistics();
       FillStatvfs(stfs, statv);
-    } else {          // node not existing
-      ret = -ENOENT;  // No such file or directory
+    } else {
+      ret = -ENOENT;
       throw QSException("No such file or directory " + FormatPath(path));
     }
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -1240,7 +1227,7 @@ int qsfs_flush(const char* path, struct fuse_file_info* fi) {
 int qsfs_release(const char* path, struct fuse_file_info* fi) {
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    return -EINVAL;
   }
 
   int ret = 0;
@@ -1254,13 +1241,13 @@ int qsfs_release(const char* path, struct fuse_file_info* fi) {
     auto node = res.first.lock();
     string path_ = res.second;
     if (!(node && *node)) {
-      ret = -ENOENT;  // No such file or directory
+      ret = -ENOENT;
       throw QSException("No such file or directory " + FormatPath(path_));
     }
 
     // Check access permission
     if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), R_OK)) {
-      ret = -EACCES;  // Permission denied
+      ret = -EACCES;
       throw QSException("No read permission " + FormatPath(path_));
     }
 
@@ -1273,10 +1260,9 @@ int qsfs_release(const char* path, struct fuse_file_info* fi) {
         return -EAGAIN;  // Try again
       }
     }
-
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -1335,7 +1321,7 @@ int qsfs_removexattr(const char* path, const char* name) {
 int qsfs_opendir(const char* path, struct fuse_file_info* fi) {
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    return -EINVAL;
   }
 
   int mask = (O_RDONLY != (fi->flags & O_ACCMODE) ? W_OK : R_OK) | X_OK;
@@ -1351,19 +1337,19 @@ int qsfs_opendir(const char* path, struct fuse_file_info* fi) {
     auto node = drive.GetNodeSimple(dirPath).lock();
 
     if (!(node && *node)) {
-      ret = -ENOENT;  // No such file or directory
+      ret = -ENOENT;
       throw QSException("No such directory " + FormatPath(path));
     }
 
     // Check if file is dir
     if (!node->IsDirectory()) {
-      ret = -ENOTDIR;  // Not a directory
+      ret = -ENOTDIR;
       throw QSException("Not a directory " + FormatPath(dirPath));
     }
 
     // Check access permission
     if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), mask)) {
-      ret = -EACCES;  // Permission denied
+      ret = -EACCES;
       throw QSException("No read permission " + FormatPath(dirPath));
     }
 
@@ -1372,7 +1358,7 @@ int qsfs_opendir(const char* path, struct fuse_file_info* fi) {
     }
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -1394,7 +1380,7 @@ int qsfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                  off_t offset, struct fuse_file_info* fi) {
   // if (!IsValidPath(path)) {
   //   Error("Null path parameter from fuse");
-  //   return -EINVAL;  // invalid argument
+  //   return -EINVAL;
   // }
   // if (buf == nullptr) {
   //   Error("Null buffer parameter from fuse");
@@ -1409,19 +1395,19 @@ int qsfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     // As opendir get called before readdir, no need to update dir again.
     auto node = drive.GetNodeSimple(dirPath).lock();
     if (!(node && *node)) {
-      ret = -ENOENT;  // No such file or directory
+      ret = -ENOENT;
       throw QSException("No such directory " + FormatPath(path));
     }
 
     // Check if file is dir
     if (!node->IsDirectory()) {
-      ret = -ENOTDIR;  // Not a directory
+      ret = -ENOTDIR;
       throw QSException("Not a directory " + FormatPath(dirPath));
     }
 
     // Check access permission
     if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), R_OK)) {
-      ret = -EACCES;  // Permission denied
+      ret = -EACCES;
       throw QSException("No read permission " + FormatPath(dirPath));
     }
 
@@ -1433,7 +1419,7 @@ int qsfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
     // Put the children into filler
     auto childs = drive.FindChildren(dirPath, false);
-    for (auto &child : childs){
+    for (auto& child : childs) {
       if (auto childNode = child.lock()) {
         auto filename = childNode->MyBaseName();
         assert(!filename.empty());
@@ -1445,10 +1431,9 @@ int qsfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
         }
       }
     }
-
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -1507,7 +1492,7 @@ void qsfs_destroy(void* userdata) {
 int qsfs_access(const char* path, int mask) {
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    return -EINVAL;
   }
 
   int ret = 0;
@@ -1523,14 +1508,13 @@ int qsfs_access(const char* path, int mask) {
 
     // Check access permission
     if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), mask)) {
-      ret = -EACCES;  // Permission denied
+      ret = -EACCES;
       throw QSException("No access permission(" + AccessMaskToString(mask) +
                         ") for path " + FormatPath(path_));
     }
-
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -1550,17 +1534,17 @@ int qsfs_access(const char* path, int mask) {
 int qsfs_create(const char* path, mode_t mode, struct fuse_file_info* fi) {
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    return -EINVAL;
   }
   if (IsRootDirectory(path)) {
     Error("Unable to create root directory");
-    return -EPERM;  // operation not permitted
+    return -EPERM;
   }
   // Check whether filename is too long
   string filename = GetBaseName(path);
   if (filename.size() > GetNameMaxLen()) {
-    Error("File name too long [name=" + filename +"]");
-    return -ENAMETOOLONG;  // file name too long
+    Error("File name too long [name=" + filename + "]");
+    return -ENAMETOOLONG;
   }
 
   int ret = 0;
@@ -1572,16 +1556,15 @@ int qsfs_create(const char* path, mode_t mode, struct fuse_file_info* fi) {
     // Check whether path exists
     auto node = drive.GetNodeSimple(path).lock();
     if (node && *node) {
-      ret = -EEXIST;  // File exist
+      ret = -EEXIST;
       throw QSException("File already exists " + FormatPath(path));
     }
 
     // Create the new node
     drive.MakeFile(path, mode);
-
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;
@@ -1639,11 +1622,11 @@ int qsfs_lock(const char* path, struct fuse_file_info* fi, int cmd,
 int qsfs_utimens(const char* path, const struct timespec tv[2]) {
   if (!IsValidPath(path)) {
     Error("Null path parameter from fuse");
-    return -EINVAL;  // invalid argument
+    return -EINVAL;
   }
   if (IsRootDirectory(path)) {
     Error("Unable to change mtime for root directory");
-    return -EPERM;  // operation not permitted
+    return -EPERM;
   }
 
   int ret = 0;
@@ -1664,7 +1647,7 @@ int qsfs_utimens(const char* path, const struct timespec tv[2]) {
     // Check file access permission
     if (!node->FileAccess(GetFuseContextUID(), GetFuseContextGID(), W_OK) &&
         !CheckOwner(node->GetUID())) {
-      ret = -EPERM;  // Operation not permitted
+      ret = -EPERM;
       throw QSException("No write permission and No owner/root user [user=" +
                         to_string(GetFuseContextUID()) + ",owner=" +
                         to_string(node->GetUID()) + "] " + FormatPath(path_));
@@ -1672,10 +1655,9 @@ int qsfs_utimens(const char* path, const struct timespec tv[2]) {
 
     time_t mtime = tv[1].tv_sec;
     Drive::Instance().Utimens(path_, mtime);
-
   } catch (const QSException& err) {
     Error(err.get());
-    if (ret == 0) {  // catch exception from lower level
+    if (ret == 0) {
       ret = -errno;
     }
     return ret;

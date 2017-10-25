@@ -14,4 +14,10 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
+#ifndef _QSFS_FUSE_INCLUDE_CONFIGURE_VERSIONCONFIG_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDE_CONFIGURE_VERSIONCONFIG_H_  // NOLINT
+
 #define QSFS_VERSION_STRING "1.0.0"
+
+// NOLINTNEXTLINE
+#endif  // _QSFS_FUSE_INCLUDE_CONFIGURE_VERSIONCONFIG_H_

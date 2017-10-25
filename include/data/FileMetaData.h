@@ -73,8 +73,8 @@ class FileMetaData {
 
   bool operator==(const FileMetaData &rhs) const;
 
-public:
-  struct stat ToStat () const;
+ public:
+  struct stat ToStat() const;
   mode_t GetFileTypeAndMode() const;
   bool IsDirectory() const { return m_fileType == FileType::Directory; }
   // Return the directory path (ending with "/") this file belongs to
@@ -83,7 +83,7 @@ public:
   bool FileAccess(uid_t uid, gid_t gid, int amode) const;
 
   // accessor
-  const std::string &GetFilePath() const { return m_filePath;}
+  const std::string &GetFilePath() const { return m_filePath; }
   time_t GetMTime() const { return m_mtime; }
   bool IsFileOpen() const { return m_fileOpen; }
 

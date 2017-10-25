@@ -19,6 +19,7 @@
 #include <assert.h>
 
 #include <utility>
+#include <vector>
 
 #include "base/LogMacros.h"
 
@@ -37,7 +38,7 @@ bool ResourceManager::ResourcesAvailable() {
 }
 
 void ResourceManager::PutResource(Resource resource) {
-  if(resource){
+  if (resource) {
     m_resources.emplace_back(std::move(resource));
   }
 }
@@ -60,7 +61,7 @@ Resource ResourceManager::Acquire() {
 
 void ResourceManager::Release(Resource resource) {
   unique_lock<mutex> lock(m_queueLock);
-  if(resource){
+  if (resource) {
     m_resources.emplace_back(std::move(resource));
   }
   lock.unlock();
@@ -70,7 +71,9 @@ void ResourceManager::Release(Resource resource) {
 vector<Resource> ResourceManager::ShutdownAndWait(size_t resourceCount) {
   unique_lock<mutex> lock(m_queueLock);
   m_shutdown.store(true);
-  m_semaphore.wait(lock, [this, resourceCount] { return m_resources.size() >= resourceCount; });
+  m_semaphore.wait(lock, [this, resourceCount] {
+    return m_resources.size() >= resourceCount;
+  });
   auto resources = std::move(m_resources);
   m_resources.clear();
   return resources;

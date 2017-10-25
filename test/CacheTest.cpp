@@ -14,13 +14,14 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "gtest/gtest.h"
-
 #include <string.h>
 
 #include <memory>
 #include <sstream>
+#include <utility>
 #include <vector>
+
+#include "gtest/gtest.h"
 
 #include "base/Logging.h"
 #include "base/Utils.h"
@@ -51,7 +52,7 @@ gid_t gid_ = 1000U;
 mode_t fileMode_ = S_IRWXU | S_IRWXG | S_IROTH;
 
 class CacheTest : public Test {
-protected:
+ protected:
   static void SetUpTestCase() { InitLog(); }
 };
 
@@ -150,7 +151,7 @@ TEST_F(CacheTest, Write) {
 
   cache.Write("file2", off1, len1, page1, 0);
   EXPECT_EQ(cache.GetNumFile(), 2u);
-  EXPECT_EQ(cache.GetSize(), 2*len1 + len2 + len3);
+  EXPECT_EQ(cache.GetSize(), 2 * len1 + len2 + len3);
   EXPECT_EQ(cache.Find("file2"), cache.Begin());
   EXPECT_TRUE(cache.HasFile("file1"));
   EXPECT_EQ(cache.Find("file1"), ++cache.Begin());
@@ -168,7 +169,7 @@ TEST_F(CacheTest, WriteTmpFile) {
   constexpr size_t len1 = strlen(page1);
   off_t off1 = 0;
   cache.Write("file1", off1, len1, page1, 0);
-  
+
   auto pfile = cache.Find("file1");
   EXPECT_EQ(pfile, cache.Begin());
 
@@ -203,7 +204,6 @@ TEST_F(CacheTest, WriteTmpFile) {
   EXPECT_TRUE(cache.Free(cacheCap, ""));
   EXPECT_FALSE(cache.HasFile("file2"));
   EXPECT_EQ(cache.GetSize(), 0u);
-
 }
 
 // --------------------------------------------------------------------------
@@ -233,7 +233,7 @@ TEST_F(CacheTest, Resize) {
   auto newFile1Sz = len1 + len2 + 1;
   cache.Resize("file1", newFile1Sz, 0);
   EXPECT_EQ(cache.GetFileSize("file1"), newFile1Sz);
-  auto newFile2Sz = len1 -1;
+  auto newFile2Sz = len1 - 1;
   cache.Resize("file2", newFile2Sz, 0);
   EXPECT_EQ(cache.GetFileSize("file2"), newFile2Sz);
 }
@@ -265,7 +265,7 @@ TEST_F(CacheTest, ResizeTmpFile) {
   cache.Write("file2", off1, len1, page1, 0);
   EXPECT_FALSE(cache.HasFile("file1"));
   EXPECT_EQ(cache.GetFileSize("file2"), len1);
-  auto newFile2Sz = len1 -1;
+  auto newFile2Sz = len1 - 1;
   cache.Resize("file2", newFile2Sz, 0);
   EXPECT_EQ(cache.GetFileSize("file2"), newFile2Sz);
 }
@@ -311,7 +311,7 @@ TEST_F(CacheTest, Read) {
   arr2.push_back('A');
   EXPECT_EQ(buf2, arr2);
 
-  vector<char>buf3(len2 + holeLen + 1);
+  vector<char> buf3(len2 + holeLen + 1);
   cache.Read("file1", off2, len2 + holeLen + 1, &buf3[0]);
   vector<char> arr3{'a', 'b', 'c'};
   for (size_t i = 0; i < holeLen; ++i) {
@@ -390,7 +390,7 @@ TEST_F(CacheTest, ReadTmpFile) {
   arr2.push_back('A');
   EXPECT_EQ(buf2, arr2);
 
-  vector<char>buf3(len2 + holeLen + 1);
+  vector<char> buf3(len2 + holeLen + 1);
   cache.Read("file1", off2, len2 + holeLen + 1, &buf3[0]);
   vector<char> arr3{'a', 'b', 'c'};
   for (size_t i = 0; i < holeLen; ++i) {

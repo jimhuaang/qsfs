@@ -18,6 +18,9 @@
 
 #include <memory>
 #include <mutex>  // NOLINT
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"

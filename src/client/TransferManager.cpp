@@ -89,11 +89,11 @@ void TransferManager::SetClient(const std::shared_ptr<Client> &client) {
 
 // --------------------------------------------------------------------------
 void TransferManager::InitializeResources() {
-  if(!m_bufferManager){
+  if (!m_bufferManager) {
     DebugError("Buffer Manager is null");
     return;
   }
-  for(uint64_t i = 0; i < GetBufferMaxHeapSize(); i += GetBufferSize()){
+  for (uint64_t i = 0; i < GetBufferMaxHeapSize(); i += GetBufferSize()) {
     m_bufferManager->PutResource(Resource(new vector<char>(GetBufferSize())));
   }
 }

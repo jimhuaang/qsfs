@@ -19,7 +19,7 @@
 #include <assert.h>
 #include <stdint.h>  // for uint64_t
 
-#include <chrono>
+#include <chrono>  // NOLINT
 #include <cmath>
 #include <iostream>
 #include <memory>
@@ -113,7 +113,8 @@ string BuildXQSSourceString(const string &objKey) {
 uint32_t CalculateTransferTimeForFile(uint64_t fileSize) {
   // 2000 milliseconds per MB1
   return std::ceil(static_cast<long double>(fileSize) / QS::Data::Size::MB1) *
-             2000 + 1000;
+             2000 +
+         1000;
 }
 
 // --------------------------------------------------------------------------
@@ -517,7 +518,7 @@ ClientError<QSError> QSClient::UploadMultipart(
   input.SetUploadID(uploadId);
   input.SetPartNumber(partNumber);
   input.SetContentLength(contentLength);
-  if(contentLength > 0){
+  if (contentLength > 0) {
     input.SetBody(buffer);
   }
 
@@ -611,7 +612,7 @@ ClientError<QSError> QSClient::UploadFile(const string &filePath,
   PutObjectInput input;
   input.SetContentLength(fileSize);
   input.SetContentType(LookupMimeType(filePath));
-  if(fileSize > 0){
+  if (fileSize > 0) {
     input.SetBody(buffer);
   }
 

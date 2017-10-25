@@ -18,6 +18,9 @@ list (GET VERSION_LIST 0 QSFS_MAJOR_VERSION)
 list (GET VERSION_LIST 1 QSFS_MINOR_VERSION)
 list (GET VERSION_LIST 2 QSFS_PATCH_VERSION)
 
+#
+# main program
+#
 file(GLOB QSFS_SRCS "*.cpp")
 file(GLOB QSFS_BASE_SRCS "base/*.cpp")
 file(GLOB QSFS_CLIENT_SRCS "client/*.cpp")

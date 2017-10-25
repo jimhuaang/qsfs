@@ -30,6 +30,7 @@
 #include <sys/types.h>
 #include <unistd.h>  // for access
 
+#include <algorithm>
 #include <exception>
 #include <iostream>
 #include <memory>
@@ -201,7 +202,7 @@ bool FileExists(const string &path, bool logOn) {
   if (errorCode == 0) {
     return true;
   } else {
-    if(logOn){
+    if (logOn) {
       DebugInfo("File not exists " + PostErrMsg(path));
     }
     return false;
@@ -212,7 +213,7 @@ bool FileExists(const string &path, bool logOn) {
 bool IsDirectory(const string &path, bool logOn) {
   struct stat stBuf;
   if (stat(path.c_str(), &stBuf) != 0) {
-    if(logOn){
+    if (logOn) {
       DebugWarning("Unable to access path " + PostErrMsg(path));
     }
     return false;
@@ -241,7 +242,7 @@ string GetPathDelimiter() { return string(1, PATH_DELIM); }
 
 // --------------------------------------------------------------------------
 std::string GetDirName(const std::string &path) {
-  if(IsRootDirectory(path)){
+  if (IsRootDirectory(path)) {
     return path;
   }
 
@@ -273,7 +274,7 @@ pair<bool, string> GetParentDirectory(const string &path) {
         success = true;
         str = str.substr(0, pos + 1);  // including the ending "/"
       } else {
-        str.assign("Unable to find parent directory " +  FormatPath(path));
+        str.assign("Unable to find parent directory " + FormatPath(path));
       }
     }
   } else {
@@ -325,7 +326,7 @@ string GetUserName(uid_t uid, bool logOn) {
 
   if (result == NULL) {
     if (logOn) {
-      DebugInfo("No data in passwd [uid= " + to_string(uid) +"]");
+      DebugInfo("No data in passwd [uid= " + to_string(uid) + "]");
     }
     return string();
   }
@@ -414,7 +415,7 @@ bool HavePermission(const std::string &path, bool logOn) {
 // --------------------------------------------------------------------------
 bool HavePermission(struct stat *st, bool logOn) {
   // Check type
-  if(st == nullptr){
+  if (st == nullptr) {
     DebugInfo("Null stat input");
     return false;
   }
@@ -424,8 +425,8 @@ bool HavePermission(struct stat *st, bool logOn) {
 
   if (logOn) {
     DebugInfo("[Process uid:gid=" + to_string(uidProcess) + ":" +
-              to_string(gidProcess) + ", File uid:gid=" + to_string(st->st_uid) +
-              ":" + to_string(st->st_gid) + "]");
+              to_string(gidProcess) + ", File uid:gid=" +
+              to_string(st->st_uid) + ":" + to_string(st->st_gid) + "]");
   }
 
   // Check owner
@@ -450,7 +451,7 @@ bool HavePermission(struct stat *st, bool logOn) {
 }
 
 // --------------------------------------------------------------------------
-uint64_t GetFreeDiskSpace(const string& absolutePath) {
+uint64_t GetFreeDiskSpace(const string &absolutePath) {
   struct statvfs vfsbuf;
   int ret = statvfs(absolutePath.c_str(), &vfsbuf);
   if (ret != 0) {
@@ -461,7 +462,7 @@ uint64_t GetFreeDiskSpace(const string& absolutePath) {
 }
 
 // --------------------------------------------------------------------------
-bool IsSafeDiskSpace(const string& absolutePath, uint64_t freeSpace){
+bool IsSafeDiskSpace(const string &absolutePath, uint64_t freeSpace) {
   uint64_t totalFreeSpace = GetFreeDiskSpace(absolutePath);
   return totalFreeSpace > freeSpace;
 }

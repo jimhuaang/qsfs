@@ -16,6 +16,7 @@
 
 #include "client/ClientImpl.h"
 
+#include <memory>
 #include <utility>
 
 namespace QS {
@@ -27,9 +28,9 @@ ClientImpl::ClientImpl(std::unique_ptr<QS::Threading::ThreadPool> executor)
     : m_executor(std::move(executor)) {}
 
 // --------------------------------------------------------------------------
-ClientImpl::~ClientImpl(){
+ClientImpl::~ClientImpl() {
   // do nothing
 }
-  
+
 }  // namespace Client
 }  // namespace QS

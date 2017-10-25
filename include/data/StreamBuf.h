@@ -17,14 +17,13 @@
 #ifndef _QSFS_FUSE_INCLUDED_DATA_STREAMBUF_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_DATA_STREAMBUF_H_  // NOLINT
 
-#include <streambuf>  // NOLINT
-
 #include <stddef.h>  // for size_t
 
-#include "gtest/gtest_prod.h"  // FRIEND_TEST
-
 #include <memory>
+#include <streambuf>  // NOLINT
 #include <vector>
+
+#include "gtest/gtest_prod.h"  // FRIEND_TEST
 
 namespace QS {
 

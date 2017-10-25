@@ -18,12 +18,13 @@
 #define _QSFS_FUSE_INCLUDED_CLIENT_TRANSFERMANAGER_H_  // NOLINT
 
 #include <stdint.h>
-#include "data/ResourceManager.h"
 
 #include <iostream>
 #include <memory>
+#include <string>
 
 #include "configure/Default.h"
+#include "data/ResourceManager.h"
 
 namespace QS {
 
@@ -63,8 +64,7 @@ struct TransferManagerConfigure {
   TransferManagerConfigure(
       uint64_t bufMaxHeapSize =
           QS::Configure::Default::GetDefaultTransferMaxBufHeapSize(),
-      uint64_t bufSize =
-          QS::Configure::Default::GetDefaultTransferMaxBufSize(),
+      uint64_t bufSize = QS::Configure::Default::GetDefaultTransferMaxBufSize(),
       size_t maxParallelTransfers =
           QS::Configure::Default::GetDefaultMaxParallelTransfers())
       : m_bufferMaxHeapSize(bufMaxHeapSize),
@@ -74,7 +74,7 @@ struct TransferManagerConfigure {
 
 class TransferManager {
  public:
-  TransferManager(const TransferManagerConfigure &config);
+  explicit TransferManager(const TransferManagerConfigure &config);
   TransferManager(TransferManager &&) = delete;
   TransferManager(const TransferManager &) = delete;
   TransferManager &operator=(TransferManager &&) = delete;

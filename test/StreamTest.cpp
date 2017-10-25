@@ -14,18 +14,18 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "gtest/gtest.h"
-
 #include <functional>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
+
+#include "gtest/gtest.h"
 
 #include "base/Logging.h"
 #include "base/Utils.h"
 #include "data/IOStream.h"
-
 #include "data/StreamBuf.h"
 #include "data/StreamUtils.h"
 
@@ -59,9 +59,7 @@ void InitStreamWithOverflowLength() {
 
 class StreamBufTest : public Test {
  protected:
-  static void SetUpTestCase() {
-    InitLog();
-  }
+  static void SetUpTestCase() { InitLog(); }
 };
 
 TEST_F(StreamBufTest, DeathTestInitNull) {
@@ -83,8 +81,8 @@ TEST_F(StreamBufTest, PrivateFunc) {
   StreamBuf streamBuf(Buffer(new vector<char>(buf)), buf.size() - 1);
   EXPECT_TRUE(*(streamBuf.GetBuffer()) == buf);
 
-  EXPECT_TRUE(*(streamBuf.begin()) == '0');
-  EXPECT_TRUE(*(streamBuf.end()) == '2');
+  EXPECT_EQ(*(streamBuf.begin()), '0');
+  EXPECT_EQ(*(streamBuf.end()), '2');
 
   auto buf1 = streamBuf.ReleaseBuffer();
   EXPECT_TRUE(*(buf1) == buf);
@@ -164,7 +162,7 @@ TEST(IOStreamTest, Write2) {
   stream.seekg(0, std::ios_base::beg);
   auto streambuf = dynamic_cast<StreamBuf *>(stream.rdbuf());
   EXPECT_TRUE(*(const_cast<const StreamBuf *>(streambuf)->GetBuffer()) ==
-              vector<char>({char(0), '0', '1'}));
+              vector<char>({static_cast<char>(0), '0', '1'}));
 }
 
 TEST(StreamUtilsTest, Default) {

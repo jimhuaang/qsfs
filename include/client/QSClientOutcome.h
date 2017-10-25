@@ -17,6 +17,8 @@
 #ifndef _QSFS_FUSE_INCLUDED_CLIENT_QSCLIENTOUTCOME_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_CLIENT_QSCLIENTOUTCOME_H_  // NOLINT
 
+#include <vector>
+
 #include "qingstor-sdk-cpp/Bucket.h"
 
 #include "client/ClientError.h"

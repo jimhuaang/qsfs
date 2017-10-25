@@ -1,5 +1,5 @@
 #
-# install head
+# install headers
 #
 
 file(GLOB QSFS_BASE_HEADERS "base/*.h")

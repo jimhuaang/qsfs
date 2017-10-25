@@ -33,9 +33,8 @@ using QS::Exception::QSException;
 using std::string;
 using std::unique_ptr;
 
-
 static const char *CONTENT_TYPE_STREAM1 = "application/octet-stream";
-//static const char *CONTENT_TYPE_STREAM2 = "binary/octet-stream";
+// static const char *CONTENT_TYPE_STREAM2 = "binary/octet-stream";
 static const char *CONTENT_TYPE_DIR = "application/x-directory";
 static const char *CONTENT_TYPE_TXT = "text/plain";
 // Simulate a symbolic link mime type
@@ -45,7 +44,7 @@ static unique_ptr<MimeTypes> instance(nullptr);
 static std::once_flag flag;
 
 // --------------------------------------------------------------------------
-void InitializeMimeTypes(const std::string& mimeFile) {
+void InitializeMimeTypes(const std::string &mimeFile) {
   std::call_once(flag, [&mimeFile] {
     instance = unique_ptr<MimeTypes>(new MimeTypes);
     instance->Initialize(mimeFile);
@@ -53,7 +52,7 @@ void InitializeMimeTypes(const std::string& mimeFile) {
 }
 
 // --------------------------------------------------------------------------
-MimeTypes& MimeTypes::Instance() {
+MimeTypes &MimeTypes::Instance() {
   std::call_once(flag, [] {
     instance = unique_ptr<MimeTypes>(new MimeTypes);
     instance->Initialize(QS::Configure::Default::GetMimeFile());
@@ -63,30 +62,30 @@ MimeTypes& MimeTypes::Instance() {
 }
 
 // --------------------------------------------------------------------------
-string MimeTypes::Find(const string& ext) {
+string MimeTypes::Find(const string &ext) {
   auto it = m_extToMimeTypeMap.find(ext);
   return it != m_extToMimeTypeMap.end() ? it->second : string();
 }
 
 // --------------------------------------------------------------------------
-void MimeTypes::Initialize(const std::string& mimeFile) {
+void MimeTypes::Initialize(const std::string &mimeFile) {
   std::ifstream file(mimeFile);
-  if(!file){
+  if (!file) {
     throw QSException("Unable to open file " + mimeFile);
   }
-  
+
   string line;
-  while(getline(file, line)){
-    if(line.empty()) continue;
-    if(line.front() == '#') continue;
+  while (getline(file, line)) {
+    if (line.empty()) continue;
+    if (line.front() == '#') continue;
 
     std::stringstream ss(line);
     string mimeType;
     ss >> mimeType;
-    while(ss){
+    while (ss) {
       string ext;
       ss >> ext;
-      if(ext.empty()) continue;
+      if (ext.empty()) continue;
       m_extToMimeTypeMap.emplace(ext, mimeType);
     }
   }

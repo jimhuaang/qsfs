@@ -28,7 +28,9 @@
 #include <memory>
 #include <mutex>  // NOLINT
 #include <sstream>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include "base/Exception.h"
 #include "base/LogMacros.h"
@@ -131,7 +133,7 @@ Drive::~Drive() {
   }
   // remove temp folder if existing
   auto tmpfolder = GetCacheTemporaryDirectory();
-  if(FileExists(tmpfolder, true) && IsDirectory(tmpfolder, true)){  // log on
+  if (FileExists(tmpfolder, true) && IsDirectory(tmpfolder, true)) {  // log on
     DeleteFilesInDirectory(tmpfolder, true);  // delete folder itself
   }
 
@@ -160,7 +162,7 @@ void Drive::SetDirectoryTree(unique_ptr<DirectoryTree> dirTree) {
 
 // --------------------------------------------------------------------------
 bool Drive::IsMountable() const {
-  m_mountable.store(Connect(false));  //synchronizely
+  m_mountable.store(Connect(false));  // synchronizely
   return m_mountable.load();
 }
 
@@ -185,7 +187,7 @@ bool Drive::Connect(bool buildupDirTreeAsync) const {
   if (buildupDirTreeAsync) {  // asynchronizely
     GetClient()->GetExecutor()->SubmitAsyncPrioritized(
         ReceivedHandler, [this] { return GetClient()->ListDirectory("/"); });
-  } else { // synchronizely
+  } else {  // synchronizely
     ReceivedHandler(GetClient()->ListDirectory("/"));
   }
 
@@ -369,7 +371,7 @@ void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
 
   if (type == FileType::File) {
     auto err = GetClient()->MakeFile(filePath);
-    if(!IsGoodQSError(err)){
+    if (!IsGoodQSError(err)) {
       DebugError(GetMessageForQSError(err));
       return;
     }
@@ -378,7 +380,7 @@ void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
 
     // QSClient::MakeFile doesn't update directory tree (refer it for details)
     // with the created file node, So we call Stat synchronizely.
-    err = GetClient()->Stat(filePath); 
+    err = GetClient()->Stat(filePath);
     DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
   } else {
     DebugError(
@@ -396,7 +398,7 @@ void Drive::MakeFile(const string &filePath, mode_t mode, dev_t dev) {
 // --------------------------------------------------------------------------
 void Drive::MakeDir(const string &dirPath, mode_t mode) {
   auto err = GetClient()->MakeDirectory(dirPath);
-  if(!IsGoodQSError(err)){
+  if (!IsGoodQSError(err)) {
     DebugError(GetMessageForQSError(err));
     return;
   }
@@ -464,7 +466,7 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
     remainingSize = fileSize - (offset + size);
   }
 
-  if(downloadSize == 0) {
+  if (downloadSize == 0) {
     return 0;
   }
 
@@ -497,11 +499,11 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
     }
   }
 
-  // download asynchronizely for unloaded part // TODO(jim): consider not 
+  // download asynchronizely for unloaded part // TODO(jim): consider not
   // download all remaining unloaded large range
   if (remainingSize > 0) {
     auto ranges = m_cache->GetUnloadedRanges(filePath, 0, fileSize);
-    if(!ranges.empty()){
+    if (!ranges.empty()) {
       DownloadFileContentRanges(filePath, ranges, mtime, true);
     }
   }
@@ -621,7 +623,7 @@ void Drive::SymLink(const string &filePath, const string &linkPath) {
   // QSClient::Symlink doesn't update directory tree (refer it for details)
   // with the created symlink node, So we call Stat synchronizely.
   err = GetClient()->Stat(linkPath);
-  if(!IsGoodQSError(err)){
+  if (!IsGoodQSError(err)) {
     DebugError(GetMessageForQSError(err));
     return;
   }
@@ -660,7 +662,8 @@ void Drive::UploadFile(const string &filePath, bool async) {
     return;
   }
 
-  auto Callback = [this, node, filePath](const shared_ptr<TransferHandle> &handle) {
+  auto Callback = [this, node,
+                   filePath](const shared_ptr<TransferHandle> &handle) {
     if (handle) {
       node->SetNeedUpload(false);
       node->SetFileOpen(false);
@@ -692,7 +695,7 @@ void Drive::UploadFile(const string &filePath, bool async) {
   auto fileSize = node->GetFileSize();
   time_t mtime = node->GetMTime();
   auto ranges = m_cache->GetUnloadedRanges(filePath, 0, fileSize);
-  if(async){
+  if (async) {
     GetTransferManager()->GetExecutor()->SubmitAsync(
         Callback, [this, filePath, fileSize, ranges, mtime]() {
           // download unloaded pages for file
@@ -710,7 +713,6 @@ void Drive::UploadFile(const string &filePath, bool async) {
     }
     Callback(m_transferManager->UploadFile(filePath, fileSize));
   }
-
 }
 
 // --------------------------------------------------------------------------

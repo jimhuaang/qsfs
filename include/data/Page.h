@@ -24,6 +24,7 @@
 #include <iostream>
 #include <memory>
 #include <set>
+#include <string>
 
 #include "gtest/gtest_prod.h"  // FRIEND_TEST
 
@@ -31,228 +32,223 @@ namespace QS {
 
 namespace Data {
 
-  class File;
+class File;
 
-  class Page {
-  private:
-   // Page attributes
-   //
-   // +-----------------------------------------+
-   // | A File composed of two successive pages |
-   // +-----------------------------------------+
-   //
-   // offset  stop  next   <= 1st page
-   //   ^        ^  ^
-   //   |________|__|________
-   //   |<- size  ->|        |
-   //   |___________|________|
-   //   0  1  2  3  4  5  6  7
-   //               ^     ^  ^
-   //          offset  stop  next   <= 2nd page
-   //
-   // 1st Page: offset = 0, size = 4, stop = 3, next = 4
-   // 2nd Page: offset = 4, size = 3, stop = 6, next = 7
+class Page {
+ private:
+  // Page attributes
+  //
+  // +-----------------------------------------+
+  // | A File composed of two successive pages |
+  // +-----------------------------------------+
+  //
+  // offset  stop  next   <= 1st page
+  //   ^        ^  ^
+  //   |________|__|________
+  //   |<- size  ->|        |
+  //   |___________|________|
+  //   0  1  2  3  4  5  6  7
+  //               ^     ^  ^
+  //          offset  stop  next   <= 2nd page
+  //
+  // 1st Page: offset = 0, size = 4, stop = 3, next = 4
+  // 2nd Page: offset = 4, size = 3, stop = 6, next = 7
 
-   off_t m_offset = 0;     // offset from the begin of owning File
-   size_t m_size = 0;      // size of bytes this page contains
-   // NOTICE: body stream should be QS::Data::IOStream which associated with
-   // QS::Data::StreamBuf when not use tmp file; otherwise body stream is a 
-   // fstream assoicated to a tmp file.
-   // With the asssoicated stream buf or tmp file, the body stream support to 
-   // be read/write for multiple times, but keep in mind following things:
-   // 1) always seek to the right postion before to read/write body stream;
-   // 2) if use tmp file, always call OpenTempFile before read/write and call
-   // CloseTempFile after read/write (or operator <<).
-   std::shared_ptr<std::iostream> m_body;  // stream storing the bytes
-   std::string m_tmpFile;  // tmp file is used when qsfs cache is not enough
-                           // it is an absolute path of /tmp/basename
+  off_t m_offset = 0;  // offset from the begin of owning File
+  size_t m_size = 0;   // size of bytes this page contains
 
-  public:
-   // Construct Page from a block of bytes
-   //
-   // @param  : file offset, len of bytes, buffer
-   // @return :
-   //
-   // From pointer of buffer, number of len bytes will be writen.
-   // The owning file's offset is 'offset'.
-   Page(off_t offset, size_t len, const char *buffer);
+  // NOTICE: body stream should be QS::Data::IOStream which associated with
+  // QS::Data::StreamBuf when not use tmp file; otherwise body stream is a
+  // fstream assoicated to a tmp file.
+  // With the asssoicated stream buf or tmp file, the body stream support to
+  // be read/write for multiple times, but keep in mind following things:
+  // 1) always seek to the right postion before to read/write body stream;
+  // 2) if use tmp file, always call OpenTempFile before read/write and call
+  // CloseTempFile after read/write (or operator <<).
+  std::shared_ptr<std::iostream> m_body;  // stream storing the bytes
 
-   // Construct Page from a block of bytes (store it in tmp file)
-   //
-   // @param  : file offset, len, buffer, tmp file path
-   // @return : 
-   Page(off_t offset, size_t len, const char *buffer,
-        const std::string &tmpfile);
+  std::string m_tmpFile;  // tmp file is used when qsfs cache is not enough
+                          // it is an absolute path of /tmp/basename
 
-   // Construct Page from a stream
-   //
-   // @param  : file offset, len of bytes, stream
-   // @return :
-   //
-   // From stream, number of len bytes will be writen.
-   // The owning file's offset is 'offset'.
-   Page(off_t offset, size_t len, const std::shared_ptr<std::iostream> &stream);
+ public:
+  // Construct Page from a block of bytes
+  //
+  // @param  : file offset, len of bytes, buffer
+  // @return :
+  //
+  // From pointer of buffer, number of len bytes will be writen.
+  // The owning file's offset is 'offset'.
+  Page(off_t offset, size_t len, const char *buffer);
 
-   // Construct Page from a stream (store it in tmp file)
-   //
-   // @param  : file offset, len of bytes, stream, tmp file
-   // @return :
-   Page(off_t offset, size_t len, const std::shared_ptr<std::iostream> &stream,
-        const std::string &tmpfile);
+  // Construct Page from a block of bytes (store it in tmp file)
+  //
+  // @param  : file offset, len, buffer, tmp file path
+  // @return :
+  Page(off_t offset, size_t len, const char *buffer,
+       const std::string &tmpfile);
 
-   // Construct Page from a stream by moving
-   //
-   // @param  : file offset, file len, stream to moving
-   // @return : 
-   Page(off_t offset, size_t len, std::shared_ptr<std::iostream> &&body);
+  // Construct Page from a stream
+  //
+  // @param  : file offset, len of bytes, stream
+  // @return :
+  //
+  // From stream, number of len bytes will be writen.
+  // The owning file's offset is 'offset'.
+  Page(off_t offset, size_t len, const std::shared_ptr<std::iostream> &stream);
 
-  public:
-   Page() = delete;
-   Page(Page &&) = default;
-   Page(const Page &) = default;
-   Page &operator=(Page &&) = default;
-   Page &operator=(const Page &) = default;
-   ~Page() = default;
+  // Construct Page from a stream (store it in tmp file)
+  //
+  // @param  : file offset, len of bytes, stream, tmp file
+  // @return :
+  Page(off_t offset, size_t len, const std::shared_ptr<std::iostream> &stream,
+       const std::string &tmpfile);
 
-   // Return the stop position.
-   off_t Stop() const { return 0 < m_size ? m_offset + m_size - 1 : 0; }
+  // Construct Page from a stream by moving
+  //
+  // @param  : file offset, file len, stream to moving
+  // @return :
+  Page(off_t offset, size_t len, std::shared_ptr<std::iostream> &&body);
 
-   // Return the offset of the next successive page.
-   off_t Next() const { return m_offset + m_size; }
+ public:
+  Page() = delete;
+  Page(Page &&) = default;
+  Page(const Page &) = default;
+  Page &operator=(Page &&) = default;
+  Page &operator=(const Page &) = default;
+  ~Page() = default;
 
-   // Return the size
-   size_t Size() const { return m_size; }
+  // Return the stop position.
+  off_t Stop() const { return 0 < m_size ? m_offset + m_size - 1 : 0; }
 
-   // Return the offset
-   off_t Offset() const { return m_offset; }
+  // Return the offset of the next successive page.
+  off_t Next() const { return m_offset + m_size; }
 
-   // Return body
-   const std::shared_ptr<std::iostream> &GetBody() const { return m_body; }
-   
-   // Return if page use temp file
-   bool UseTempFile();
+  // Return the size
+  size_t Size() const { return m_size; }
 
-   // Refresh the page's partial content
-   //
-   // @param  : file offset, len of bytes to update, buffer, tmp file
-   // @return : bool
-   //
-   // May enlarge the page's size depended on 'len', and when the len
-   // is larger than page's size and using tmp file, then all page's data
-   // will be put to tmp file.
-   bool Refresh(off_t offset, size_t len, const char *buffer,
-                const std::string &tmpfile = std::string());
+  // Return the offset
+  off_t Offset() const { return m_offset; }
 
-   // Refresh the page's entire content with bytes from buffer,
-   // without checking.
-   // For internal use only.
-   // Refresh the page's entire content
-   //
-   // @param  : buffer
-   // @return : bool
-   bool Refresh(const char *buffer) {
-     return Refresh(m_offset, m_size, buffer);
-   }
+  // Return body
+  const std::shared_ptr<std::iostream> &GetBody() const { return m_body; }
 
-   // Read the page's content
-   //
-   // @param  : file offset, len of bytes to read, buffer
-   // @return : size of readed bytes
-   size_t Read(off_t offset, size_t len, char *buffer);
+  // Return if page use temp file
+  bool UseTempFile();
 
-   // Read the page's partial content
-   // Starting from file offset, all the page's remaining size will be read.
-   size_t Read(off_t offset, char *buffer) {
-     return Read(offset, Next() - offset, buffer);
-   }
+  // Refresh the page's partial content
+  //
+  // @param  : file offset, len of bytes to update, buffer, tmp file
+  // @return : bool
+  //
+  // May enlarge the page's size depended on 'len', and when the len
+  // is larger than page's size and using tmp file, then all page's data
+  // will be put to tmp file.
+  bool Refresh(off_t offset, size_t len, const char *buffer,
+               const std::string &tmpfile = std::string());
 
-   // Read the page's partial content
-   size_t Read(size_t len, char *buffer) {
-     return Read(m_offset, len, buffer);
-   }
+  // Refresh the page's entire content with bytes from buffer,
+  // without checking.
+  // For internal use only.
+  // Refresh the page's entire content
+  //
+  // @param  : buffer
+  // @return : bool
+  bool Refresh(const char *buffer) { return Refresh(m_offset, m_size, buffer); }
 
-   // Read the page's entire content to buffer.
-   size_t Read(char *buffer) {
-     return Read(m_offset, m_size, buffer);
-   }
+  // Read the page's content
+  //
+  // @param  : file offset, len of bytes to read, buffer
+  // @return : size of readed bytes
+  size_t Read(off_t offset, size_t len, char *buffer);
 
-  private:
-   // Set stream
-   void SetStream(std::shared_ptr<std::iostream> && stream);
+  // Read the page's partial content
+  // Starting from file offset, all the page's remaining size will be read.
+  size_t Read(off_t offset, char *buffer) {
+    return Read(offset, Next() - offset, buffer);
+  }
 
-   // Setup tmp file on disk
-   // - open the tmp file
-   // - set stream to fstream assocating with tmp file
-   bool SetupTempFile();
+  // Read the page's partial content
+  size_t Read(size_t len, char *buffer) { return Read(m_offset, len, buffer); }
 
-   // Open tmp file
-   // NOTICE: need to call CloseTempFile after call OpenTempFile
-   bool OpenTempFile(std::ios_base::openmode mode);
+  // Read the page's entire content to buffer.
+  size_t Read(char *buffer) { return Read(m_offset, m_size, buffer); }
 
-   // Close tmp file
-   void CloseTempFile();
+ private:
+  // Set stream
+  void SetStream(std::shared_ptr<std::iostream> &&stream);
 
-   // Do a lazy resize for page.
-   void ResizeToSmallerSize(size_t smallerSize);
+  // Setup tmp file on disk
+  // - open the tmp file
+  // - set stream to fstream assocating with tmp file
+  bool SetupTempFile();
 
-   // Put data to body
-   // For internal use only
-   void UnguardedPutToBody(off_t offset, size_t len, const char *buffer);
-   void UnguardedPutToBody(off_t offset, size_t len,
-                           const std::shared_ptr<std::iostream> &stream);
+  // Open tmp file
+  // NOTICE: need to call CloseTempFile after call OpenTempFile
+  bool OpenTempFile(std::ios_base::openmode mode);
 
-   // Refreseh the page's partial content without checking.
-   // Starting from file offset, len of bytes will be updated.
-   // For internal use only.
-   bool UnguardedRefresh(off_t offset, size_t len, const char *buffer,
-                         const std::string &tmpfile = std::string());
+  // Close tmp file
+  void CloseTempFile();
 
-   // Refresh the page's partial content without checking.
-   // Starting from file offset, all the page's remaining size will be updated.
-   // For internal use only.
-   bool UnguardedRefresh(off_t offset, const char *buffer) {
-     return UnguardedRefresh(offset, Next() - offset, buffer);
-   }
+  // Do a lazy resize for page.
+  void ResizeToSmallerSize(size_t smallerSize);
 
-   // Refresh the page's entire content with bytes from buffer,
-   // without checking.
-   // For internal use only.
-   bool UnguardedRefresh(const char *buffer) {
-     return UnguardedRefresh(m_offset, m_size, buffer);
-   }
+  // Put data to body
+  // For internal use only
+  void UnguardedPutToBody(off_t offset, size_t len, const char *buffer);
+  void UnguardedPutToBody(off_t offset, size_t len,
+                          const std::shared_ptr<std::iostream> &stream);
 
-   // Read the page's partial content without checking
-   // Starting from file offset, len of bytes will be read.
-   // For internal use only.
-   size_t UnguardedRead(off_t offset, size_t len, char *buffer);
+  // Refreseh the page's partial content without checking.
+  // Starting from file offset, len of bytes will be updated.
+  // For internal use only.
+  bool UnguardedRefresh(off_t offset, size_t len, const char *buffer,
+                        const std::string &tmpfile = std::string());
 
-   // Read the page's partial content without checking
-   // Starting from file offset, all the page's remaining size will be read.
-   // For internal use only.
-   size_t UnguardedRead(off_t offset, char *buffer) {
-     return UnguardedRead(offset, Next() - offset, buffer);
-   }
+  // Refresh the page's partial content without checking.
+  // Starting from file offset, all the page's remaining size will be updated.
+  // For internal use only.
+  bool UnguardedRefresh(off_t offset, const char *buffer) {
+    return UnguardedRefresh(offset, Next() - offset, buffer);
+  }
 
-   // Read the page's partial content without checking
-   // For internal use only.
-   size_t UnguardedRead(size_t len, char *buffer) {
-     return UnguardedRead(m_offset, len, buffer);
-   }
+  // Refresh the page's entire content with bytes from buffer,
+  // without checking.
+  // For internal use only.
+  bool UnguardedRefresh(const char *buffer) {
+    return UnguardedRefresh(m_offset, m_size, buffer);
+  }
 
-   // Read the page's entire content to buffer.
-   // For internal use only.
-   size_t UnguardedRead(char *buffer) {
-     return UnguardedRead(m_offset, m_size, buffer);
-   }
+  // Read the page's partial content without checking
+  // Starting from file offset, len of bytes will be read.
+  // For internal use only.
+  size_t UnguardedRead(off_t offset, size_t len, char *buffer);
 
-   friend class File;
-   FRIEND_TEST(PageTest, CtorWithTmpFile);
-   FRIEND_TEST(PageTest, TestResize);
-   FRIEND_TEST(PageTest, TestResizeTmpFile);
- };
+  // Read the page's partial content without checking
+  // Starting from file offset, all the page's remaining size will be read.
+  // For internal use only.
+  size_t UnguardedRead(off_t offset, char *buffer) {
+    return UnguardedRead(offset, Next() - offset, buffer);
+  }
 
+  // Read the page's partial content without checking
+  // For internal use only.
+  size_t UnguardedRead(size_t len, char *buffer) {
+    return UnguardedRead(m_offset, len, buffer);
+  }
 
- struct PageCmp {
+  // Read the page's entire content to buffer.
+  // For internal use only.
+  size_t UnguardedRead(char *buffer) {
+    return UnguardedRead(m_offset, m_size, buffer);
+  }
+
+  friend class File;
+  FRIEND_TEST(PageTest, CtorWithTmpFile);
+  FRIEND_TEST(PageTest, TestResize);
+  FRIEND_TEST(PageTest, TestResizeTmpFile);
+};
+
+struct PageCmp {
   bool operator()(const std::shared_ptr<Page> &a,
                   const std::shared_ptr<Page> &b) const {
     return a->Offset() < b->Offset();
@@ -263,7 +259,7 @@ using PageSet = std::set<std::shared_ptr<Page>, PageCmp>;
 using PageSetConstIterator = PageSet::const_iterator;
 
 std::string ToStringLine(const std::string &fileId, off_t offset, size_t len,
-                    const char *buffer);
+                         const char *buffer);
 std::string ToStringLine(off_t offset, size_t len, const char *buffer);
 std::string ToStringLine(off_t offset, size_t size);
 

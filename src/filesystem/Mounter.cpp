@@ -27,6 +27,7 @@
 
 #include <memory>
 #include <mutex>  // NOLINT
+#include <string>
 #include <utility>
 
 #include "base/Exception.h"
@@ -126,8 +127,9 @@ void Mounter::UnMount(const string &mountPoint, bool logOn) const {
     FILE *pFile = popen(command.c_str(), "r");
     if (pFile != NULL && fgetc(pFile) != '0') {
       if (logOn) {
-        Error("Unable to unmout filesystem at MOUNTPOINT. Trying lazy unmount " +
-              FormatPath(mountPoint));
+        Error(
+            "Unable to unmout filesystem at MOUNTPOINT. Trying lazy unmount " +
+            FormatPath(mountPoint));
       }
       command.assign("fusermount -uqz " + mountPoint);
       system(command.c_str());
@@ -174,7 +176,8 @@ bool Mounter::DoMount(const Options &options, bool logOn,
       }
       if (logOn) {
         Warning(
-            "MOUNTPOINT is already mounted. Trying to unmount, and mount again " +
+            "MOUNTPOINT is already mounted. Trying to unmount, and mount "
+            "again " +
             FormatPath(mountPoint));
       }
       string command("umount -l " + mountPoint);  // lazy detach filesystem

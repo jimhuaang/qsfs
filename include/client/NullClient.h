@@ -17,6 +17,10 @@
 #ifndef _QSFS_FUSE_INCLUDED_CLIENT_NULLCLIENT_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_CLIENT_NULLCLIENT_H_  // NOLINT
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "client/Client.h"
 
 namespace QS {
@@ -35,7 +39,6 @@ class NullClient : public Client {
   ~NullClient() = default;
 
  public:
-
   ClientError<QSError> HeadBucket() override;
 
   ClientError<QSError> DeleteFile(const std::string &filePath) override;

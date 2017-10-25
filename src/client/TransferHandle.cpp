@@ -19,6 +19,7 @@
 #include <assert.h>
 
 #include <mutex>  // NOLINT
+#include <memory>
 #include <string>
 
 #include "base/LogMacros.h"
@@ -158,7 +159,7 @@ TransferStatus TransferHandle::GetStatus() const {
 }
 
 // --------------------------------------------------------------------------
-bool TransferHandle::DoneTransfer() const{
+bool TransferHandle::DoneTransfer() const {
   return m_bytesTransferred == m_bytesTotalSize;
 }
 // --------------------------------------------------------------------------
@@ -264,7 +265,7 @@ void TransferHandle::ReleaseDownloadStream() {
     m_downloadStream->flush();
     m_downloadStream = nullptr;
   }
-} 
+}
 
 }  // namespace Client
 }  // namespace QS

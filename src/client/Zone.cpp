@@ -16,10 +16,11 @@
 
 #include "client/Zone.h"
 
+#include <string>
 #include <unordered_map>
 
-#include "base/LogMacros.h"
 #include "base/HashUtils.h"
+#include "base/LogMacros.h"
 
 namespace QS {
 
@@ -34,17 +35,20 @@ string FromEndPoint(const string &zoneName) {
     return string();
   }
 
-  unordered_map<string, string, QS::HashUtils::StringHash> zoneNameToEndPointMap = {
-      {QSZone::AP_1, "ap1.qingstor.com"},     {QSZone::PEK_2, "pek2.qingstor.com"},
-      {QSZone::PEK_3A, "pek3a.qingstor.com"}, {QSZone::GD_1, "gd1.qingstor.com"},
-      {QSZone::GD_2A, "gd2a.qingstor.com"},   {QSZone::SH_1A, "sh1a.qingstor.com"}
-  };
+  unordered_map<string, string, QS::HashUtils::StringHash>
+      zoneNameToEndPointMap = {{QSZone::AP_1, "ap1.qingstor.com"},
+                               {QSZone::PEK_2, "pek2.qingstor.com"},
+                               {QSZone::PEK_3A, "pek3a.qingstor.com"},
+                               {QSZone::GD_1, "gd1.qingstor.com"},
+                               {QSZone::GD_2A, "gd2a.qingstor.com"},
+                               {QSZone::SH_1A, "sh1a.qingstor.com"}};
 
   auto it = zoneNameToEndPointMap.find(zoneName);
   if (it != zoneNameToEndPointMap.end()) {
     return it->second;
   } else {
-    DebugError("Try to get end point with an unrecognized zone name " + zoneName);
+    DebugError("Try to get end point with an unrecognized zone name " +
+               zoneName);
     return string();
   }
 }

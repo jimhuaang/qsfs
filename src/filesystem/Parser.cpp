@@ -69,23 +69,23 @@ static struct options {
   { t, offsetof(struct options, p), 1 }
 
 static const struct fuse_opt optionSpec[] = {
-    OPTION("-b=%s",  bucket),         OPTION("--bucket=%s",      bucket),
-    OPTION("-m=%s",  mountPoint),     OPTION("--mount=%s",       mountPoint),
-    OPTION("-z=%s",  zone),           OPTION("--zone=%s",        zone),
-    OPTION("-c=%s",  credentials),    OPTION("--credentials=%s", credentials),
-    OPTION("-l=%s",  logDirectory),   OPTION("--logdir=%s",      logDirectory),
-    OPTION("-L=%s",  logLevel),       OPTION("--loglevel=%s",    logLevel),
-    OPTION("-r=%u",  retries),        OPTION("--retries=%u",     retries),
-    OPTION("-H=%s",  host),           OPTION("--host=%s",        host),
-    OPTION("-p=%s",  protocol),       OPTION("--protocol=%s",    protocol),
-    OPTION("-P=%u",  port),           OPTION("--port=%u",        port),
-    OPTION("-a=%s",  addtionalAgent), OPTION("--agent=%s",       addtionalAgent),
-    OPTION("-C",     clearLogDir),    OPTION("--clearlogdir",    clearLogDir),
-    OPTION("-f",     foreground),     OPTION("--foreground",     foreground),
-    OPTION("-s",     singleThread),   OPTION("--single",         singleThread),
-    OPTION("-d",     debug),          OPTION("--debug",          debug),
-    OPTION("-h",     showHelp),       OPTION("--help",           showHelp),
-    OPTION("-V",     showVersion),    OPTION("--version",        showVersion),
+    OPTION("-b=%s", bucket),         OPTION("--bucket=%s",      bucket),
+    OPTION("-m=%s", mountPoint),     OPTION("--mount=%s",       mountPoint),
+    OPTION("-z=%s", zone),           OPTION("--zone=%s",        zone),
+    OPTION("-c=%s", credentials),    OPTION("--credentials=%s", credentials),
+    OPTION("-l=%s", logDirectory),   OPTION("--logdir=%s",      logDirectory),
+    OPTION("-L=%s", logLevel),       OPTION("--loglevel=%s",    logLevel),
+    OPTION("-r=%u", retries),        OPTION("--retries=%u",     retries),
+    OPTION("-H=%s", host),           OPTION("--host=%s",        host),
+    OPTION("-p=%s", protocol),       OPTION("--protocol=%s",    protocol),
+    OPTION("-P=%u", port),           OPTION("--port=%u",        port),
+    OPTION("-a=%s", addtionalAgent), OPTION("--agent=%s",       addtionalAgent),
+    OPTION("-C",    clearLogDir),    OPTION("--clearlogdir",    clearLogDir),
+    OPTION("-f",    foreground),     OPTION("--foreground",     foreground),
+    OPTION("-s",    singleThread),   OPTION("--single",         singleThread),
+    OPTION("-d",    debug),          OPTION("--debug",          debug),
+    OPTION("-h",    showHelp),       OPTION("--help",           showHelp),
+    OPTION("-V",    showVersion),    OPTION("--version",        showVersion),
     FUSE_OPT_END
 };
 
@@ -137,11 +137,11 @@ void Parse(int argc, char **argv) {
   qsOptions.setShowVerion(options.showVersion !=0);
 
   // Put signals for fuse_main.
-  if(!qsOptions.GetMountPoint().empty()){
+  if (!qsOptions.GetMountPoint().empty()) {
     assert(fuse_opt_add_arg(&args, qsOptions.GetMountPoint().c_str()) == 0);
   }
   if (qsOptions.IsShowHelp()) {
-    assert(fuse_opt_add_arg(&args, "-ho") == 0); // without FUSE usage line
+    assert(fuse_opt_add_arg(&args, "-ho") == 0);  // without FUSE usage line
   }
   if (qsOptions.IsShowVersion()) {
     assert(fuse_opt_add_arg(&args, "--version") == 0);
@@ -155,7 +155,6 @@ void Parse(int argc, char **argv) {
   if (qsOptions.IsDebug()) {
     assert(fuse_opt_add_arg(&args, "-d") == 0);
   }
-  
 }
 
 }  // namespace Parser

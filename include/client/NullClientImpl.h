@@ -17,6 +17,8 @@
 #ifndef _QSFS_FUSE_INCLUDED_CLIENT_NULLCLIENTIMPL_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_CLIENT_NULLCLIENTIMPL_H_  // NOLINT
 
+#include <memory>
+
 #include "client/ClientImpl.h"
 
 namespace QS {
@@ -32,7 +34,6 @@ class NullClientImpl : public ClientImpl {
   NullClientImpl &operator=(NullClientImpl &&) = default;
   NullClientImpl &operator=(const NullClientImpl &) = default;
   ~NullClientImpl() = default;
-
 };
 
 }  // namespace Client

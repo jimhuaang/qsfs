@@ -52,13 +52,12 @@ using std::call_once;
 using std::string;
 using std::unique_ptr;
 
-
 string GetClientLogLevelName(ClientLogLevel level) {
   string name;
   switch (level) {
     case ClientLogLevel::Debug:
-    name = "debug";
-    break;
+      name = "debug";
+      break;
     case ClientLogLevel::Info:
       name = "info";
       break;
@@ -79,18 +78,18 @@ string GetClientLogLevelName(ClientLogLevel level) {
 
 ClientLogLevel GetClientLogLevelByName(const string &name) {
   ClientLogLevel level = ClientLogLevel::Warn;
-  if(name.empty()) {
+  if (name.empty()) {
     return level;
   }
 
   auto name_lowercase = QS::StringUtils::ToLower(name);
-  if(name_lowercase == "debug"){
+  if (name_lowercase == "debug") {
     level = ClientLogLevel::Debug;
-  } else if (name_lowercase == "info"){
+  } else if (name_lowercase == "info") {
     level = ClientLogLevel::Info;
-  }else if (name_lowercase == "error"){
+  } else if (name_lowercase == "error") {
     level = ClientLogLevel::Error;
-  } else if(name_lowercase == "fatal"){
+  } else if (name_lowercase == "fatal") {
     level = ClientLogLevel::Fatal;
   }
 

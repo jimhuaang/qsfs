@@ -19,8 +19,10 @@
 #include <assert.h>
 
 #include <fstream>
+#include <memory>
 #include <sstream>
 #include <string>
+#include <utility>
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
@@ -113,7 +115,7 @@ Page::Page(off_t offset, size_t len, const shared_ptr<iostream> &instream,
 
   if (SetupTempFile()) {
     UnguardedPutToBody(offset, len, instream);
-  };
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -220,7 +222,7 @@ bool Page::SetupTempFile() {
     mode = std::ios_base::binary | std::ios_base::out;
   }
   auto file = make_shared<fstream>(m_tmpFile, mode);
-  if(file && file->is_open()){
+  if (file && file->is_open()) {
     DebugInfo("Open tmp file " + FormatPath(m_tmpFile));
   }
   file->close();

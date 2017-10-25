@@ -17,17 +17,16 @@
 #ifndef _QSFS_FUSE_INCLUDED_CLIENT_CLIENT_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_CLIENT_CLIENT_H_  // NOLINT
 
+#include <sys/statvfs.h>
 #include <time.h>
 
-#include <chrono>
+#include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
 #include <iostream>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
 #include <vector>
-
-#include <sys/statvfs.h>
 
 #include "base/ThreadPool.h"
 #include "client/ClientConfiguration.h"
@@ -66,7 +65,6 @@ class Client {
   virtual ~Client();
 
  public:
-
   // Head bucket
   //
   // @param  : void

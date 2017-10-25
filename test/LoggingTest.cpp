@@ -31,7 +31,6 @@
 #include "base/LogMacros.h"
 #include "base/Logging.h"
 #include "base/Utils.h"
-#include "configure/Default.h"
 
 namespace QS {
 
@@ -46,7 +45,6 @@ namespace Logging {
 // so they can be friends of class Log.
 
 using QS::Logging::LogLevel;
-using QS::Configure::Default::GetProgramName;
 using std::fstream;
 using std::ostream;
 using std::string;
@@ -56,8 +54,8 @@ using ::testing::Values;
 using ::testing::WithParamInterface;
 
 static const char *defaultLogDir = "/tmp/qsfs.logs/";
-const string infoLogFile = defaultLogDir + string(GetProgramName()) + ".INFO";
-const string fatalLogFile = defaultLogDir + string(GetProgramName()) + ".FATAL";
+const char* infoLogFile = "/tmp/qsfs.logs/qsfs.INFO";
+const char* fatalLogFile = "/tmp/qsfs.logs/qsfs.FATAL";
 
 void MakeDefaultLogDir() {
   auto success = QS::Utils::CreateDirectoryIfNotExistsNoLog(defaultLogDir);
@@ -88,7 +86,7 @@ void LogNonFatalPossibilities() {
 
 void VerifyAllNonFatalLogs(LogLevel level) {
   struct stat info;
-  int status = stat(infoLogFile.c_str(), &info);
+  int status = stat(infoLogFile, &info);
   ASSERT_EQ(status, 0) << infoLogFile << " is not existing";
 
   vector<string> logMsgs;
@@ -182,7 +180,7 @@ void LogDebugFatalIf(bool condition) {
 
 void VerifyFatalLog(const string &expectedMsg) {
   struct stat info;
-  int status = stat(fatalLogFile.c_str(), &info);
+  int status = stat(fatalLogFile, &info);
   ASSERT_EQ(status, 0) << fatalLogFile << " is not existing";
 
   string logMsg;

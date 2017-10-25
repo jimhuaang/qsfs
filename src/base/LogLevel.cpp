@@ -16,6 +16,8 @@
 
 #include "base/LogLevel.h"
 
+#include <string>
+
 #include "base/StringUtils.h"
 
 namespace QS {
@@ -46,23 +48,21 @@ string GetLogLevelName(LogLevel logLevel) {
 }
 
 LogLevel GetLogLevelByName(const std::string &name) {
- 
   LogLevel level = LogLevel::Info;
-  if(name.empty()) {
+  if (name.empty()) {
     return level;
   }
 
   auto name_lowercase = QS::StringUtils::ToLower(name);
-  if(name_lowercase == "warn" || name_lowercase == "warning"){
+  if (name_lowercase == "warn" || name_lowercase == "warning") {
     level = LogLevel::Warn;
-  } else if (name_lowercase == "error"){
+  } else if (name_lowercase == "error") {
     level = LogLevel::Error;
-  } else if(name_lowercase == "fatal"){
+  } else if (name_lowercase == "fatal") {
     level = LogLevel::Fatal;
   }
 
   return level;
-
 }
 
 string GetLogLevelPrefix(LogLevel logLevel) {

@@ -16,10 +16,11 @@
 
 #include "configure/Default.h"
 
-#include <algorithm>
-
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#include <algorithm>
+#include <string>
 
 #include "data/Size.h"
 
@@ -33,7 +34,7 @@ using std::string;
 
 static const char* const PROGRAM_NAME = "qsfs";
 static const char* const QSFS_DEFAULT_CREDENTIALS = "/opt/qsfs/qsfs.cred";
-static const char* const QSFS_DEFAULT_LOG_DIR = "/opt/qsfs/qsfs_log/";  // log dir
+static const char* const QSFS_DEFAULT_LOG_DIR = "/opt/qsfs/qsfs_log/";
 static const char* const QSFS_MIME_FILE = "/etc/mime.types";
 static const char* const QSFS_TMP_DIR = "/tmp/qsfs_cache/";  // tmp cache dir
 
@@ -57,13 +58,13 @@ mode_t GetDefineDirMode() {
 // 4096 byte is the default allocation block for ext2/ext3/ext4 filesystem
 uint16_t GetBlockSize() { return 4096; }
 uint16_t GetFragmentSize() { return 4096; }
-blkcnt_t GetBlocks(off_t size) { 
+blkcnt_t GetBlocks(off_t size) {
   // A directory reserves one block for meta-data
-  return size / 512 + 1; 
+  return size / 512 + 1;
 }
 
 uint64_t GetMaxCacheSize() {
-  // TODO(Jim) : add option max_cache 
+  // TODO(Jim) : add option max_cache
   return QS::Data::Size::MB100;  // default value
 }
 
@@ -74,31 +75,21 @@ size_t GetMaxFileMetaDataCount() {
 
 static const int CLIENT_DEFAULT_POOL_SIZE = 5;
 static const int QS_CONNECTION_DEFAULT_RETRIES = 3;  // qs sdk parameter
-static const char *QS_SDK_LOG_FILE_NAME = "qingstor_sdk_log.txt";  // qs sdk log
+static const char* QS_SDK_LOG_FILE_NAME = "qingstor_sdk_log.txt";  // qs sdk log
 
-int GetClientDefaultPoolSize(){
-  return CLIENT_DEFAULT_POOL_SIZE;
-}
+int GetClientDefaultPoolSize() { return CLIENT_DEFAULT_POOL_SIZE; }
 
 uint32_t GetTransactionDefaultTimeDuration() {
   return 500;  // in milliseconds
 }
 
-int GetQSConnectionDefaultRetries(){
-  return QS_CONNECTION_DEFAULT_RETRIES;
-}
+int GetQSConnectionDefaultRetries() { return QS_CONNECTION_DEFAULT_RETRIES; }
 
-const char* GetQingStorSDKLogFileName(){
-  return QS_SDK_LOG_FILE_NAME;
-}
+const char* GetQingStorSDKLogFileName() { return QS_SDK_LOG_FILE_NAME; }
 
-size_t GetDefaultMaxParallelTransfers(){
-  return 5;
-}
+size_t GetDefaultMaxParallelTransfers() { return 5; }
 
-uint64_t GetDefaultTransferMaxBufHeapSize(){
-  return QS::Data::Size::MB50;
-}
+uint64_t GetDefaultTransferMaxBufHeapSize() { return QS::Data::Size::MB50; }
 
 uint64_t GetDefaultTransferMaxBufSize() {
   // should be larger than 2 * MB4 (min part size),
@@ -107,18 +98,16 @@ uint64_t GetDefaultTransferMaxBufSize() {
   return QS::Data::Size::MB10;
 }
 
-uint64_t GetUploadMultipartMinPartSize(){
+uint64_t GetUploadMultipartMinPartSize() {
   // qs qingstor sepcific
   return QS::Data::Size::MB4;
 }
 
-uint64_t GetUploadMultipartMaxPartSize(){
+uint64_t GetUploadMultipartMaxPartSize() {
   return std::min(QS::Data::Size::GB1, GetMaxCacheSize());
 }
 
-uint64_t GetUploadMultipartThresholdSize(){
-  return QS::Data::Size::MB20;
-}
+uint64_t GetUploadMultipartThresholdSize() { return QS::Data::Size::MB20; }
 
 }  // namespace Default
 }  // namespace Configure

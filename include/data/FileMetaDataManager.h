@@ -17,13 +17,11 @@
 #ifndef _QSFS_FUSE_INCLUDED_DATA_FILEMETADATAMANAGER_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_DATA_FILEMETADATAMANAGER_H_  // NOLINT
 
-#include "data/FileMetaData.h"
-
 #include <assert.h>
 
 #include <list>
 #include <memory>
-#include <mutex>
+#include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -31,7 +29,8 @@
 
 #include "gtest/gtest_prod.h"  // For FRIEND_TEST
 
-#include <base/HashUtils.h>
+#include "base/HashUtils.h"
+#include "data/FileMetaData.h"
 
 namespace QS {
 
@@ -120,7 +119,7 @@ class FileMetaDataManager {
   MetaDataListIterator AddNoLock(std::shared_ptr<FileMetaData> &&fileMetaData);
 
  private:
-  FileMetaDataManager(size_t maxCount = 0);
+  explicit FileMetaDataManager(size_t maxCount = 0);
 
   // Most recently used meta data is put at front,
   // Least recently used meta data in put at back.

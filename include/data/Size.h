@@ -26,32 +26,31 @@ namespace Data {
 
 namespace Size {
 
-const static uint64_t KB1 = 1 * 1024;
-const static uint64_t KB8 = 8 * 1024;
-const static uint64_t KB10 = 10 * 1024;
-const static uint64_t KB100 = 100 *1024;
+static const uint64_t KB1 = 1 * 1024;
+static const uint64_t KB8 = 8 * 1024;
+static const uint64_t KB10 = 10 * 1024;
+static const uint64_t KB100 = 100 * 1024;
 
-const static uint64_t MB1 = 1 * 1024 * 1024;
-const static uint64_t MB4 = 4 * 1024 * 1024;
-const static uint64_t MB5 = 5 * 1024 * 1024;
-const static uint64_t MB10 = 10 * 1024 * 1024;
-const static uint64_t MB20 = 20 * 1024 * 1024;
-const static uint64_t MB50 = 50 * 1024 * 1024;
-const static uint64_t MB100 = 100 * 1024 * 1024;
-const static uint64_t GB1 = 1024 * 1024 * 1024;
+static const uint64_t MB1 = 1 * 1024 * 1024;
+static const uint64_t MB4 = 4 * 1024 * 1024;
+static const uint64_t MB5 = 5 * 1024 * 1024;
+static const uint64_t MB10 = 10 * 1024 * 1024;
+static const uint64_t MB20 = 20 * 1024 * 1024;
+static const uint64_t MB50 = 50 * 1024 * 1024;
+static const uint64_t MB100 = 100 * 1024 * 1024;
+static const uint64_t GB1 = 1024 * 1024 * 1024;
 
-const static size_t K1 = 1 * 1000;
-const static size_t K10 = 10 * 1000;
-const static size_t K20 = 20 * 1000;
-const static size_t K100 = 100 * 1000;
-const static size_t M1 = 1* 1000 * 1000;
-const static size_t M10 = 10 * 1000 * 1000;
-const static size_t M100 = 100 * 1000 * 1000;
+static const size_t K1 = 1 * 1000;
+static const size_t K10 = 10 * 1000;
+static const size_t K20 = 20 * 1000;
+static const size_t K100 = 100 * 1000;
+static const size_t M1 = 1 * 1000 * 1000;
+static const size_t M10 = 10 * 1000 * 1000;
+static const size_t M100 = 100 * 1000 * 1000;
 
 }  // namespace Size
 }  // namespace Data
 }  // namespace QS
-
 
 // NOLINTNEXTLINE
 #endif  // _QSFS_FUSE_INCLUDED_DATA_SIZE_H_

@@ -26,6 +26,7 @@
 #include <list>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <string>
 #include <tuple>
 #include <utility>
 
@@ -162,7 +163,7 @@ class File {
   // Returns an iterator pointing to the first Page that is behind of offset.
   // If no such Page is found, a past-the-end iterator is returned.
   PageSetConstIterator UpperBoundPage(off_t offset) const;
-  //internal use only
+  // internal use only
   PageSetConstIterator UpperBoundPageNoLock(off_t offset) const;
 
   // Returns a pair iterators pointing the pages which intesecting with

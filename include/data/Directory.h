@@ -73,9 +73,9 @@ class Entry {
         const std::string &eTag = std::string(), bool encrypted = false,
         dev_t dev = 0);
 
-  Entry(std::shared_ptr<FileMetaData> &&fileMetaData);
+  explicit Entry(std::shared_ptr<FileMetaData> &&fileMetaData);
 
-  Entry(const std::shared_ptr<FileMetaData> &fileMetaData)
+  explicit Entry(const std::shared_ptr<FileMetaData> &fileMetaData)
       : m_metaData(fileMetaData) {}
 
   Entry() = default;
@@ -239,13 +239,15 @@ class Node {
       m_entry.SetNeedUpload(needUpload);
     }
   }
+
   void SetFileOpen(bool fileOpen) {
     if (m_entry) {
       m_entry.SetFileOpen(fileOpen);
     }
   }
-  void SetFileSize(size_t sz){
-    if(m_entry){
+
+  void SetFileSize(size_t sz) {
+    if (m_entry) {
       m_entry.SetFileSize(sz);
     }
   }
@@ -298,7 +300,7 @@ class DirectoryTree {
   // Get root
   std::shared_ptr<Node> GetRoot() const;
 
-  // Get current node 
+  // Get current node
   // removed as this may has effect on remove
   // std::shared_ptr<Node> GetCurrentNode() const;
 

@@ -56,7 +56,7 @@ using FileIdToCacheListIteratorMap =
 
 class Cache {
  public:
-  Cache(uint64_t capacity) : m_capacity(capacity) {}
+  explicit Cache(uint64_t capacity) : m_capacity(capacity) {}
   Cache(Cache &&) = default;
   Cache(const Cache &) = delete;
   Cache &operator=(Cache &&) = default;
@@ -79,7 +79,7 @@ class Cache {
   // @return : bool
   //
   // NOTES:
-  // we put least recently used File at back and free the cache starting 
+  // we put least recently used File at back and free the cache starting
   // from back, so IsLastFileOpen can be used as a condition when freeing cache.
   bool IsLastFileOpen() const;
 
@@ -137,10 +137,10 @@ class Cache {
   // If not found fileId in cache, create it in cache and load its pages.
   std::pair<size_t, ContentRangeDeque> Read(const std::string &fileId,
                                             off_t offset, size_t len,
-                                            char *buffer, time_t mtimeSince = 0);
+                                            char *buffer,
+                                            time_t mtimeSince = 0);
 
  private:
-
   // Write a block of bytes into file cache
   //
   // @param  : file path, file offset, len, buffer, modification time
@@ -192,8 +192,8 @@ class Cache {
   // Remove file from cache
   //
   // @param  : file id
-  // @return : iterator pointing to next file in cache list if remove sucessfully,
-  //           otherwise return past-the-end iterator.
+  // @return : iterator pointing to next file in cache list if remove
+  // sucessfully, otherwise return past-the-end iterator.
   CacheListIterator Erase(const std::string &fildId);
 
   // Rename a file

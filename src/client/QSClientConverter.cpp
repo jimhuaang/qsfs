@@ -20,12 +20,13 @@
 #include <stdint.h>  // for uint64_t
 #include <time.h>
 
+#include <sys/stat.h>  // for mode_t
+
 #include <algorithm>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
-
-#include <sys/stat.h>  // for mode_t
 
 #include "qingstor-sdk-cpp/HttpCommon.h"
 
@@ -64,7 +65,6 @@ using std::string;
 using std::shared_ptr;
 using std::vector;
 
-
 // --------------------------------------------------------------------------
 void GetBucketStatisticsOutputToStatvfs(
     const GetBucketStatisticsOutput &bucketStatsOutput, struct statvfs *statv) {
@@ -74,15 +74,14 @@ void GetBucketStatisticsOutputToStatvfs(
   auto output = const_cast<GetBucketStatisticsOutput &>(bucketStatsOutput);
   uint64_t numObjs = output.GetCount();
   uint64_t bytesUsed = output.GetSize();
-  uint64_t bytesTotal = UINT64_MAX; // object storage is unlimited
+  uint64_t bytesTotal = UINT64_MAX;  // object storage is unlimited
   uint64_t bytesFree = bytesTotal - bytesUsed;
 
   statv->f_bsize = GetBlockSize();      // Filesystem block size
   statv->f_frsize = GetFragmentSize();  // Fragment size
   statv->f_blocks =
-      (bytesTotal / statv->f_frsize);   // Size of fs in f_frsize units
-  statv->f_bfree = 
-      (bytesFree / statv->f_frsize);    // Number of free blocks
+      (bytesTotal / statv->f_frsize);  // Size of fs in f_frsize units
+  statv->f_bfree = (bytesFree / statv->f_frsize);  // Number of free blocks
   statv->f_bavail =
       statv->f_bfree;        // Number of free blocks for unprivileged users
   statv->f_files = numObjs;  // Number of inodes
@@ -118,10 +117,10 @@ shared_ptr<FileMetaData> HeadObjectOutputToFileMetaData(
   time_t atime = time(NULL);
   time_t mtime = lastModified.empty() ? 0 : RFC822GMTToSeconds(lastModified);
   bool encrypted = !output.GetXQSEncryptionCustomerAlgorithm().empty();
-  return make_shared<FileMetaData>(
-      objKey, size, atime, mtime, GetProcessEffectiveUserID(),
-      GetProcessEffectiveGroupID(), mode, type, mimeType,
-      output.GetETag(), encrypted);
+  return make_shared<FileMetaData>(objKey, size, atime, mtime,
+                                   GetProcessEffectiveUserID(),
+                                   GetProcessEffectiveGroupID(), mode, type,
+                                   mimeType, output.GetETag(), encrypted);
 }
 
 // --------------------------------------------------------------------------
@@ -161,7 +160,7 @@ shared_ptr<FileMetaData> ObjectKeyToDirMetaData(const KeyType &objectKey,
 // --------------------------------------------------------------------------
 shared_ptr<FileMetaData> CommonPrefixToFileMetaData(const string &commonPrefix,
                                                     time_t atime) {
-  auto fullPath = "/"+ commonPrefix;
+  auto fullPath = "/" + commonPrefix;
   // Walk aroud, as ListObject return no meta for a dir, so set mtime=0.
   // This is ok, as any update based on the condition that if dir is modified
   // should still be available.
@@ -202,10 +201,10 @@ vector<shared_ptr<FileMetaData>> ListObjectsOutputToFileMetaDatas(
   if (addSelf) {
     auto dirPath = AppendPathDelim("/" + prefix);
     if (std::find_if(metas.begin(), metas.end(),
-                  [dirPath](const shared_ptr<FileMetaData> &meta) {
-                    return meta->GetFilePath() == dirPath;
-                  }) == metas.end()) {
-      if(dirItselfAsKey != nullptr){
+                     [dirPath](const shared_ptr<FileMetaData> &meta) {
+                       return meta->GetFilePath() == dirPath;
+                     }) == metas.end()) {
+      if (dirItselfAsKey != nullptr) {
         metas.push_back(ObjectKeyToDirMetaData(*dirItselfAsKey, atime));
       } else {
         metas.push_back(BuildDefaultDirectoryMeta(dirPath));  // mtime = 0

@@ -20,6 +20,8 @@
 
 #include <iostream>
 #include <sstream>
+#include <string>
+#include <tuple>
 #include <utility>
 
 #include "base/LogMacros.h"
@@ -64,7 +66,7 @@ std::string BuildRequestRange(off_t start, size_t size) {
 }
 
 // --------------------------------------------------------------------------
-string BuildRequestRangeStart(off_t start){
+string BuildRequestRangeStart(off_t start) {
   // format of "bytes=start_offset-"
   string range = "bytes=";
   range += to_string(start);
@@ -73,7 +75,7 @@ string BuildRequestRangeStart(off_t start){
 }
 
 // --------------------------------------------------------------------------
-string BuildRequestRangeEnd(off_t suffixLen){
+string BuildRequestRangeEnd(off_t suffixLen) {
   // format of "bytes=-suffix_length"
   string range = "bytes=-";
   range += to_string(suffixLen);

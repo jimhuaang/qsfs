@@ -14,9 +14,9 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "gtest/gtest.h"
-
 #include <memory>
+
+#include "gtest/gtest.h"
 
 #include "base/Logging.h"
 #include "base/Utils.h"

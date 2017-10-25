@@ -17,9 +17,10 @@
 #ifndef _QSFS_FUSE_INCLUDED_CLIENT_NULLTRANSFERMANAGER_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_CLIENT_NULLTRANSFERMANAGER_H_  // NOLINT
 
-#include "client/TransferManager.h"
-
 #include <memory>
+#include <string>
+
+#include "client/TransferManager.h"
 
 namespace QS {
 
@@ -38,7 +39,7 @@ class TransferHandle;
 
 class NullTransferManager : public TransferManager {
  public:
-  NullTransferManager(const TransferManagerConfigure &config)
+  explicit NullTransferManager(const TransferManagerConfigure &config)
       : TransferManager(config) {}
   NullTransferManager(NullTransferManager &&) = delete;
   NullTransferManager(const NullTransferManager &) = delete;

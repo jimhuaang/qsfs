@@ -14,8 +14,6 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "gtest/gtest.h"
-
 #include <assert.h>
 #include <string.h>
 
@@ -24,6 +22,8 @@
 #include <sstream>
 #include <string>
 #include <utility>
+
+#include "gtest/gtest.h"
 
 #include "base/Logging.h"
 #include "base/Utils.h"
@@ -73,7 +73,7 @@ TEST_F(PageTest, Ctor) {
   EXPECT_FALSE(p1.UseTempFile());
 
   auto ss = make_shared<stringstream>(str);
-  Page p2(0,len, ss);
+  Page p2(0, len, ss);
   EXPECT_EQ(p2.Stop(), (off_t)(len - 1));
   EXPECT_EQ(p2.Next(), (off_t)len);
   EXPECT_EQ(p2.Size(), len);
@@ -81,7 +81,7 @@ TEST_F(PageTest, Ctor) {
   EXPECT_EQ(GetStreamSize(p2.GetBody()), len);
   EXPECT_FALSE(p2.UseTempFile());
 
-  Page p3(0,len, std::move(ss));
+  Page p3(0, len, std::move(ss));
   EXPECT_EQ(p3.Stop(), (off_t)(len - 1));
   EXPECT_EQ(p3.Next(), (off_t)len);
   EXPECT_EQ(p3.Size(), len);
@@ -106,7 +106,7 @@ TEST_F(PageTest, CtorWithTmpFile) {
   // Strang thing is that gtest (PageTest) runs ok under debug mode, but
   // assert fail when run gtest (PageTest) exe directly.
   // assert(body);  // fail when run PageTest exe, but success under debug mode
-  if(body1) {
+  if (body1) {
     p1.OpenTempFile(std::ios_base::binary | std::ios_base::in);
     EXPECT_EQ(GetStreamSize(body1), len);
     p1.CloseTempFile();
@@ -116,13 +116,13 @@ TEST_F(PageTest, CtorWithTmpFile) {
 
   auto ss = make_shared<stringstream>(str);
   string tmpfile2 = GetCacheTemporaryDirectory() + "test_page2";
-  Page p2(0,len, ss, tmpfile2);
+  Page p2(0, len, ss, tmpfile2);
   EXPECT_EQ(p2.Stop(), (off_t)(len - 1));
   EXPECT_EQ(p2.Next(), (off_t)len);
   EXPECT_EQ(p2.Size(), len);
   EXPECT_EQ(p2.Offset(), (off_t)0);
   auto body2 = p2.GetBody();
-  if(body2) {
+  if (body2) {
     p2.OpenTempFile(std::ios_base::binary | std::ios_base::in);
     EXPECT_EQ(GetStreamSize(body2), len);
     p2.CloseTempFile();
@@ -133,9 +133,9 @@ TEST_F(PageTest, CtorWithTmpFile) {
 
 // --------------------------------------------------------------------------
 TEST_F(PageTest, TestRead) {
-  constexpr const char * str = "123";
+  constexpr const char *str = "123";
   constexpr size_t len = strlen(str);
-  array<char, len> arr{'1','2','3'};
+  array<char, len> arr{'1', '2', '3'};
   Page p1(0, len, str);
 
   array<char, len> buf1;
@@ -143,20 +143,20 @@ TEST_F(PageTest, TestRead) {
   EXPECT_TRUE(buf1 == arr);
 
   array<char, len> buf2;
-  p1.Read(off_t(0), &buf2[0]); // read page trailing chars start from off
+  p1.Read(off_t(0), &buf2[0]);  // read page trailing chars start from off
   EXPECT_TRUE(buf2 == arr);
 
   array<char, len> buf3;
-  p1.Read(len, &buf3[0]); // read page first len chars
+  p1.Read(len, &buf3[0]);  // read page first len chars
   EXPECT_TRUE(buf3 == arr);
 
   array<char, len> buf4;
   p1.Read(&buf4[0]);  // read entire page
   EXPECT_TRUE(buf4 == arr);
 
-  constexpr size_t len1 = len -1;
-  array<char, len1> arr1{'1','2'};
-  array<char, len1> arr2{'2','3'};
+  constexpr size_t len1 = len - 1;
+  array<char, len1> arr1{'1', '2'};
+  array<char, len1> arr2{'2', '3'};
 
   array<char, len1> buf5;
   p1.Read(0, len1, &buf5[0]);
@@ -165,7 +165,6 @@ TEST_F(PageTest, TestRead) {
   array<char, len1> buf6;
   p1.Read(1, len1, &buf6[0]);
   EXPECT_TRUE(buf6 == arr2);
-
 
   array<char, len1> buf7;
   p1.Read(off_t(1), &buf7[0]);
@@ -178,9 +177,9 @@ TEST_F(PageTest, TestRead) {
 
 // --------------------------------------------------------------------------
 TEST_F(PageTest, TestReadTmpFile) {
-  constexpr const char * str = "123";
+  constexpr const char *str = "123";
   constexpr size_t len = strlen(str);
-  array<char, len> arr{'1','2','3'};
+  array<char, len> arr{'1', '2', '3'};
   string tmpfile1 = GetCacheTemporaryDirectory() + "test_page1";
   Page p1(0, len, str, tmpfile1);
 
@@ -192,18 +191,18 @@ TEST_F(PageTest, TestReadTmpFile) {
 }
 
 // --------------------------------------------------------------------------
-TEST_F (PageTest, TestRefresh) {
-  constexpr const char * str = "123";
+TEST_F(PageTest, TestRefresh) {
+  constexpr const char *str = "123";
   constexpr size_t len = strlen(str);
   Page p1(0, len, str);
-  
-  array<char, len> arrNew1{'4','5','6'};
+
+  array<char, len> arrNew1{'4', '5', '6'};
   p1.Refresh(&arrNew1[0]);
   array<char, len> buf1;
   p1.Read(0, len, &buf1[0]);
   EXPECT_TRUE(buf1 == arrNew1);
 
-  array<char, len> arrNew2{'7','8','9'};
+  array<char, len> arrNew2{'7', '8', '9'};
   p1.Refresh(off_t(0), len, &arrNew2[0]);
   array<char, len> buf2;
   p1.Read(0, len, &buf2[0]);
@@ -211,19 +210,19 @@ TEST_F (PageTest, TestRefresh) {
 }
 
 // --------------------------------------------------------------------------
-TEST_F (PageTest, TestRefreshTmpFile) {
-  constexpr const char * str = "123";
+TEST_F(PageTest, TestRefreshTmpFile) {
+  constexpr const char *str = "123";
   constexpr size_t len = strlen(str);
   string tmpfile1 = GetCacheTemporaryDirectory() + "test_page1";
   Page p1(0, len, str, tmpfile1);
-  
-  array<char, len> arrNew1{'4','5','6'};
+
+  array<char, len> arrNew1{'4', '5', '6'};
   p1.Refresh(&arrNew1[0]);
   array<char, len> buf1;
   p1.Read(0, len, &buf1[0]);
   EXPECT_TRUE(buf1 == arrNew1);
 
-  array<char, len> arrNew2{'7','8','9'};
+  array<char, len> arrNew2{'7', '8', '9'};
   p1.Refresh(off_t(0), len, &arrNew2[0]);
   array<char, len> buf2;
   p1.Read(0, len, &buf2[0]);
@@ -246,7 +245,7 @@ TEST_F(PageTest, TestResize) {
 }
 
 // --------------------------------------------------------------------------
-TEST_F (PageTest, TestResizeTmpFile) {
+TEST_F(PageTest, TestResizeTmpFile) {
   constexpr const char *str = "123";
   constexpr size_t len = strlen(str);
   string tmpfile1 = GetCacheTemporaryDirectory() + "test_page1";

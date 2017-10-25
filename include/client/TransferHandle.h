@@ -129,7 +129,7 @@ class TransferHandle {
   TransferHandle &operator=(TransferHandle &&) = delete;
   TransferHandle &operator=(const TransferHandle &) = delete;
 
-  ~TransferHandle() { ReleaseDownloadStream(); };
+  ~TransferHandle() { ReleaseDownloadStream(); }
 
  public:
   bool IsMultipart() const { return m_isMultipart; }
@@ -162,7 +162,7 @@ class TransferHandle {
 
   const ClientError<QSError> &GetError() const { return m_error; }
 
-public:
+ public:
   void WaitUntilFinished() const;
   bool DoneTransfer() const;
 
@@ -224,7 +224,7 @@ public:
   mutable std::mutex m_partsLock;
 
   std::atomic<uint64_t> m_bytesTransferred;  // size have been transferred
-  std::atomic<uint64_t> m_bytesTotalSize;    // the total size need 
+  std::atomic<uint64_t> m_bytesTotalSize;    // the total size need
                                              // to be transferred
   TransferDirection m_direction;
   std::atomic<bool> m_cancel;

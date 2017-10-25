@@ -17,14 +17,15 @@
 #ifndef _QSFS_FUSE_INCLUDED_FILESYSTEM_DRIVE_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDED_FILESYSTEM_DRIVE_H_  // NOLINT
 
-#include <atomic>  // NOLINT
-#include <memory>
-#include <utility>
-#include <unordered_map>
-#include <vector>
-
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+
+#include <atomic>  // NOLINT
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "base/HashUtils.h"
 #include "data/Cache.h"
@@ -63,7 +64,7 @@ class Drive {
  public:
   static Drive &Instance();
   bool IsMountable() const;
-  
+
   // accessor
   const std::shared_ptr<QS::Client::Client> &GetClient() const {
     return m_client;
@@ -101,7 +102,7 @@ class Drive {
   // asynchronizely if node is directory, which means the children of the
   // directory will be add to the tree.
   //
-  // Notes: GetNode will connect to object storage to retrive the object and 
+  // Notes: GetNode will connect to object storage to retrive the object and
   // update the local dir tree
   std::pair<std::weak_ptr<QS::Data::Node>, bool> GetNode(
       const std::string &path, bool updateIfDirectory = false,
@@ -124,7 +125,7 @@ class Drive {
   //
 
   // Return information about the mounted bucket.
-  struct statvfs GetFilesystemStatistics();  
+  struct statvfs GetFilesystemStatistics();
 
   // Find the children
   //
@@ -188,9 +189,9 @@ class Drive {
   // @return : number of bytes has been read
   //
   // If cannot find or file need update, download it, otherwise read from cache.
-  // For download, if besides the size need to be download for this time, the file
-  // has more data need to be download, in this case, an asynchronize task will
-  // be submit to download extra partial data of the file.
+  // For download, if besides the size need to be download for this time, the
+  // file has more data need to be download, in this case, an asynchronize task
+  // will be submit to download extra partial data of the file.
   //
   // Flag doCheck control whether to check the file existence and file type.
   size_t ReadFile(const std::string &filePath, off_t offset, size_t size,
@@ -260,8 +261,7 @@ class Drive {
   // @return : void
   void DownloadFileContentRanges(const std::string &filePath,
                                  const QS::Data::ContentRangeDeque &ranges,
-                                 time_t mtime,
-                                 bool async = false);
+                                 time_t mtime, bool async = false);
 
  private:
   std::shared_ptr<QS::Client::Client> &GetClient() { return m_client; }
@@ -292,10 +292,8 @@ class Drive {
 
   friend class QS::Client::QSClient;
   friend class QS::Client::QSTransferManager;  // for cache
-  friend class QS::Data::Cache;  // for directory
-  friend class QS::Data::File;   // for transfer manager
-
-  friend int ::main(int argc, char **argv);  // TODO(jim): test to remove
+  friend class QS::Data::Cache;                // for directory  // TODO(jim): r
+  friend class QS::Data::File;                 // for transfer manager
 };
 
 }  // namespace FileSystem

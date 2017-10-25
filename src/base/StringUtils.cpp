@@ -16,11 +16,12 @@
 
 #include "base/StringUtils.h"
 
-#include <algorithm>
-#include <cctype>
-
 #include <sys/stat.h>  // for S_ISUID
 #include <unistd.h>    // for R_OK
+
+#include <algorithm>
+#include <cctype>
+#include <string>
 
 namespace QS {
 
@@ -47,7 +48,7 @@ string ToUpper(const string &str) {
 }
 
 // --------------------------------------------------------------------------
-string LTrim(const string &str , unsigned char ch) {
+string LTrim(const string &str, unsigned char ch) {
   string copy(str);
   auto pos = std::find_if_not(copy.begin(), copy.end(),
                               [&ch](unsigned char c) { return ch == c; });
@@ -65,23 +66,25 @@ string RTrim(const string &str, unsigned char ch) {
 }
 
 // --------------------------------------------------------------------------
-string Trim(const string &str, unsigned char ch) { return LTrim(RTrim(str, ch), ch); }
+string Trim(const string &str, unsigned char ch) {
+  return LTrim(RTrim(str, ch), ch);
+}
 
 // --------------------------------------------------------------------------
 string AccessMaskToString(int amode) {
   string ret;
-  if(amode & R_OK){
+  if (amode & R_OK) {
     ret.append("R_OK ");
   }
-  if(amode & W_OK){
+  if (amode & W_OK) {
     ret.append("W_OK ");
   }
-  if(amode & X_OK){
+  if (amode & X_OK) {
     ret.append("X_OK");
   }
-  ret = QS::StringUtils::RTrim(ret,' ');
+  ret = QS::StringUtils::RTrim(ret, ' ');
   string::size_type pos = 0;
-  while((pos = ret.find(' ')) != string::npos){
+  while ((pos = ret.find(' ')) != string::npos) {
     ret.replace(pos, 1, "&");
   }
   return ret;
@@ -156,9 +159,7 @@ char GetFileTypeLetter(mode_t mode) {
 }
 
 // --------------------------------------------------------------------------
-string FormatPath(const string &path) {
-  return "[path=" + path +"]";
-}
+string FormatPath(const string &path) { return "[path=" + path + "]"; }
 
 // --------------------------------------------------------------------------
 string FormatPath(const string &from, const string &to) {

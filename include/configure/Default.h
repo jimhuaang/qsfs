@@ -29,7 +29,7 @@ namespace QS {
 namespace Configure {
 
 namespace Default {
-  
+
 const char* GetProgramName();
 
 std::string GetDefaultCredentialsFile();
@@ -48,7 +48,7 @@ uint16_t GetBlockSize();  // Block size for filesystem I/O
 uint16_t GetFragmentSize();
 blkcnt_t GetBlocks(off_t size);  // Number of 512B blocks allocated
 
-uint64_t GetMaxCacheSize();  // File cache size in bytes
+uint64_t GetMaxCacheSize();        // File cache size in bytes
 size_t GetMaxFileMetaDataCount();  // File meta data max count
 
 int GetQSConnectionDefaultRetries();
