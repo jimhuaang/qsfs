@@ -13,8 +13,8 @@
 // | See the License for the specific language governing permissions and
 // | limitations under the License.
 // +-------------------------------------------------------------------------
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_TRANSFER_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_TRANSFER_H_  // NOLINT
+#ifndef _QSFS_FUSE_INCLUDED_CLIENT_TRANSFERHANDLE_H_  // NOLINT
+#define _QSFS_FUSE_INCLUDED_CLIENT_TRANSFERHANDLE_H_  // NOLINT
 
 #include <stddef.h>  // for size_t
 #include <stdint.h>  // for uint16_t uint64_t
@@ -258,4 +258,4 @@ class TransferHandle {
 }  // namespace QS
 
 // NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_TRANSFER_H_
+#endif  // _QSFS_FUSE_INCLUDED_CLIENT_TRANSFERHANDLE_H_
