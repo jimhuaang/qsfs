@@ -17,11 +17,14 @@
 #include "base/Logging.h"
 
 #include <assert.h>
+#include <errno.h>
+#include <string.h>  // for strerr
 
 #include <exception>
 #include <iostream>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <string>
 #include <utility>
 
 #include "glog/logging.h"
@@ -45,6 +48,7 @@ namespace QS {
 namespace Logging {
 
 using QS::Exception::QSException;
+using std::string;
 using std::once_flag;
 using std::unique_ptr;
 
@@ -88,7 +92,8 @@ void DefaultLog::Initialize() {
   FLAGS_log_dir = m_path.c_str();
 
   if (!QS::Utils::CreateDirectoryIfNotExistsNoLog(m_path)) {
-    throw QSException("Unable to create log directory " + m_path);
+    throw QSException("Unable to create log directory " + m_path + " : " +
+                      strerror(errno));
   }
 
   // Check log directory with logOn=false.

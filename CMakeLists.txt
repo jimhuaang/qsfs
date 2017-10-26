@@ -19,13 +19,19 @@ if(CMAKE_MAJOR_VERSION LESS 3)
       ${CMAKE_PATCH_VERSION}")
 endif()
 
+option(BUILD_SHARED_LIBS "Build shared libraries." ON)
+
+option(QSFS_BUILD_TESTS "Build all of qsfs's own tests." ON)
+
 #
 # project
 #
 project (qsfs)
 
-include(CTest)
-enable_testing ()
+if (QSFS_BUILD_TESTS)
+  include(CTest)
+  enable_testing ()
+endif (QSFS_BUILD_TESTS)
 
 #
 # configure version
@@ -37,24 +43,29 @@ configure_file(
   cmake/templates/VersionConfig.h.in
   "${CMAKE_SOURCE_DIR}/include/configure/VersionConfig.h")
 
+# extract version string from the existing generated header file
+file(
+    STRINGS "${CMAKE_SOURCE_DIR}/include/configure/VersionConfig.h" 
+    __QSFS_VERSION_LINE LIMIT_COUNT 1 
+    REGEX "QSFS_VERSION_STRING.*[0-9]+\\.[0-9]+\\.[0-9]+")
+string(
+  REGEX MATCH "([0-9]+\\.[0-9]+\\.[0-9]+)"
+  VERSION_STRING "${__QSFS_VERSION_LINE}")
+set(QSFS_VERSION "${VERSION_STRING}")
+
+message(STATUS "Building project version: ${QSFS_VERSION}")
+string(REPLACE "." ";" VERSION_LIST ${VERSION_STRING})
+list (GET VERSION_LIST 0 QSFS_MAJOR_VERSION)
+list (GET VERSION_LIST 1 QSFS_MINOR_VERSION)
+list (GET VERSION_LIST 2 QSFS_PATCH_VERSION)
+
 # 
 # dependencies
 #
-# As not all systems support '-shared' option to produce a shared
-# object which can then ben linked with other object to form an executable.
-# For predictable results, explicitly specify the -fPIC option.
-# For example, on Debain (gcc 6.3.0), without explicit set -fPIC, cmake
-# raise error: 
-#   EXPORT glog-target requires target gflags_nothreads_static 
-#   which is not in export set.
-add_compile_options(-fPIC)
-
 # Using cmake scripts and modules
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
-#include(cmake/DownloadProject.cmake)
+#list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
 include(cmake/gtest.cmake)
 include(cmake/gflags.cmake)
-# glog depend on gflag, should be put after gfalgs
 include(cmake/glog.cmake)
 
 #
@@ -68,11 +79,19 @@ include(cmake/glog.cmake)
 #ADD_DEFINITIONS(-DENABLE_DEBUG -DABC)
 ##ifdef ENABLE_DEBUG /*code will be active #endif
 
+# glog is built statically, and we want to link it into the qsfs's shared
+# library, this requires position-independent code.
+# As not all systems support '-shared' option to produce a shared
+# object which can then ben linked with other object to form an executable.
+# For predictable results, explicitly specify the -fPIC option.
+# For example, on Debain (gcc 6.3.0), without explicit set -fPIC, cmake
+# raise error: 
+#   EXPORT glog-target requires target gflags_nothreads_static 
+#   which is not in export set.
+add_compile_options(-fPIC)
+
 add_compile_options(-g -std=c++11 -Wall -D_FILE_OFFSET_BITS=64)
-option(
-    BUILD_SHARED_LIBS "If enabled, all qsfs libraries will be build 
-    as shared objects; otherwise all qsfs will be build as static objects" ON)
-set(BUILD_SHARED_LIBS ON)
+
 if(BUILD_SHARED_LIBS)
     set(LIBTYPE SHARED)
 else(BUILD_SHARED_LIBS)

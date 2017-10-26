@@ -29,6 +29,7 @@
 
 #include "base/Exception.h"
 #include "base/StringUtils.h"
+#include "base/Utils.h"
 #include "client/Credentials.h"
 #include "client/Protocol.h"
 #include "client/RetryStrategy.h"
@@ -48,6 +49,7 @@ using QS::Configure::Default::GetDefineFileMode;
 using QS::Configure::Default::GetQSConnectionDefaultRetries;
 using QS::Configure::Default::GetQingStorSDKLogFileName;
 using QS::Configure::Default::GetTransactionDefaultTimeDuration;
+using QS::StringUtils::FormatPath;
 using std::call_once;
 using std::string;
 using std::unique_ptr;
@@ -144,6 +146,12 @@ void ClientConfiguration::InitializeByOptions() {
     m_logLevel = ClientLogLevel::Debug;
   }
 
+  if (!QS::Utils::CreateDirectoryIfNotExistsNoLog(options.GetLogDirectory())) {
+    throw QSException(string("Unable to create log directory : ") +
+                      strerror(errno) + " " +
+                      FormatPath(options.GetLogDirectory()));
+  }
+
   m_logFile = options.GetLogDirectory() + GetQingStorSDKLogFileName();
   FILE *log = nullptr;
   if (options.IsClearLogDir()) {
@@ -155,7 +163,8 @@ void ClientConfiguration::InitializeByOptions() {
     fclose(log);
     chmod(m_logFile.c_str(), GetDefineFileMode());
   } else {
-    throw(string("File to create log file for sdk : ") + strerror(errno));
+    throw(string("Fail to create log file for sdk : ") + strerror(errno) + " " +
+          FormatPath(m_logFile));
   }
 
   m_transactionRetries = options.GetRetries();

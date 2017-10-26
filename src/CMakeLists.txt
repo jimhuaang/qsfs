@@ -1,22 +1,3 @@
-#
-# main
-#
-
-# extract version string from the existing generated header file
-file(
-  STRINGS "${CMAKE_SOURCE_DIR}/include/configure/VersionConfig.h" 
-  __QSFS_VERSION_LINE LIMIT_COUNT 1 
-  REGEX "QSFS_VERSION_STRING.*[0-9]+\\.[0-9]+\\.[0-9]+")
-string(
-  REGEX MATCH "([0-9]+\\.[0-9]+\\.[0-9]+)"
-  VERSION_STRING "${__QSFS_VERSION_LINE}")
-set(QSFS_VERSION "${VERSION_STRING}")
-
-message(STATUS "Building project version: ${QSFS_VERSION}")
-string(REPLACE "." ";" VERSION_LIST ${VERSION_STRING})
-list (GET VERSION_LIST 0 QSFS_MAJOR_VERSION)
-list (GET VERSION_LIST 1 QSFS_MINOR_VERSION)
-list (GET VERSION_LIST 2 QSFS_PATCH_VERSION)
 
 #
 # main program

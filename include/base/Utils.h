@@ -29,7 +29,7 @@ namespace QS {
 
 namespace Utils {
 
-// Create directory if it doesn't exists
+// Create directory recursively if it doesn't exists
 //
 // @param  : dir path
 // @return : bool

@@ -133,7 +133,7 @@ Drive::~Drive() {
   }
   // remove temp folder if existing
   auto tmpfolder = GetCacheTemporaryDirectory();
-  if (FileExists(tmpfolder, true) && IsDirectory(tmpfolder, true)) {  // log on
+  if (FileExists(tmpfolder, false) && IsDirectory(tmpfolder, true)) {  // log on
     DeleteFilesInDirectory(tmpfolder, true);  // delete folder itself
   }
 

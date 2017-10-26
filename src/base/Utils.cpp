@@ -66,17 +66,29 @@ string PostErrMsg(const string &path) {
 
 // --------------------------------------------------------------------------
 bool CreateDirectoryIfNotExistsNoLog(const string &path) {
-  int errorCode =
-      mkdir(path.c_str(), QS::Configure::Default::GetDefineDirMode());
-  bool success = (errorCode == 0 || errno == EEXIST);
-  if (!success) cerr << "Fail to create directory " + PostErrMsg(path) + "\n";
-  return success;
+  if(IsRootDirectory(path)){
+    return true;
+  }
+  if(FileExists(path, false)) {
+    return IsDirectory(path);
+  } else {
+    // if parent dir exist or created
+    if (CreateDirectoryIfNotExistsNoLog(GetDirName(path))) {
+      int errorCode =
+        mkdir(path.c_str(), QS::Configure::Default::GetDefineDirMode());
+      bool success = (errorCode == 0 || errno == EEXIST);
+      if (!success) cerr << "Fail to create directory " + PostErrMsg(path) + "\n";
+      return success;
+    } else {
+      return false;
+    }
+  }
 }
 
 // --------------------------------------------------------------------------
 bool CreateDirectoryIfNotExists(const string &path) {
   if (FileExists(path)) {
-    return true;  // do nothing
+    return IsDirectory(path);  // do nothing
   } else {
     bool success = CreateDirectoryIfNotExistsNoLog(path);
     if (success) {

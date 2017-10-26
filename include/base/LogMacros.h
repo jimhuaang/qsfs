@@ -17,7 +17,7 @@
 #ifndef _QSFS_FUSE_INCLUDE_BASE_LOGMACROS_H_  // NOLINT
 #define _QSFS_FUSE_INCLUDE_BASE_LOGMACROS_H_  // NOLINT
 
-#include "glog/logging.h"  // TODO(Jim): Replace with "" after download glog
+#include "glog/logging.h"
 
 #include "base/LogLevel.h"
 #include "base/Logging.h"
