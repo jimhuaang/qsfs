@@ -40,10 +40,22 @@ configure_file(
 # 
 # dependencies
 #
-include(cmake/DownloadProject.cmake)
-include(cmake/DownloadGTest.cmake)
-include(cmake/DownloadGFlags.cmake)
-include(cmake/DownloadGLog.cmake)
+# As not all systems support '-shared' option to produce a shared
+# object which can then ben linked with other object to form an executable.
+# For predictable results, explicitly specify the -fPIC option.
+# For example, on Debain (gcc 6.3.0), without explicit set -fPIC, cmake
+# raise error: 
+#   EXPORT glog-target requires target gflags_nothreads_static 
+#   which is not in export set.
+add_compile_options(-fPIC)
+
+# Using cmake scripts and modules
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
+#include(cmake/DownloadProject.cmake)
+include(cmake/gtest.cmake)
+include(cmake/gflags.cmake)
+# glog depend on gflag, should be put after gfalgs
+include(cmake/glog.cmake)
 
 #
 # Linter target
@@ -63,25 +75,26 @@ option(
 set(BUILD_SHARED_LIBS ON)
 if(BUILD_SHARED_LIBS)
     set(LIBTYPE SHARED)
-    message(STATUS "Building qsfs libraries as shared objects")
 else(BUILD_SHARED_LIBS)
     set(LIBTYPE STATIC)
-    message(STATUS "Building qsfs libraries as static objects")
 endif(BUILD_SHARED_LIBS)
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
-set(QSFS_INCLUDES ${PROJECT_SOURCE_DIR}/include/)
-include_directories(${QSFS_INCLUDES})
+
+# Where qsfs's .h files can be found.
+include_directories(${PROJECT_SOURCE_DIR}/include)
+
+# Where qsfs's targets can be found.
+link_directories(${PROJECT_SOURCE_DIR}/lib)
+
+# Where qingstor-cpp's .h files can be found
 include_directories(${PROJECT_SOURCE_DIR}/external/include)
 include_directories(${PROJECT_SOURCE_DIR}/external/include/qingstor-sdk-cpp)
-set(QSFS_LIBS ${PROJECT_SOURCE_DIR}/lib/)
-link_directories(${QSFS_LIBS})
+# Where qingstor-cpp's libs
 link_directories(${PROJECT_SOURCE_DIR}/external/lib)
 
-#
-# sub dir
-#
+
 #add_subdirectory(doc)
 add_subdirectory(include)
 add_subdirectory(src)
