@@ -151,7 +151,7 @@ GetBucketStatisticsOutcome QSClientImpl::GetBucketStatistics(
     return {sdkErr, std::move(output)};
   };
   auto fGetBucketStatistics =
-      GetExecutor()->SubmitCallablePrioritized(DoGetBucketStatistics);
+      std::async(std::launch::async, DoGetBucketStatistics);
   auto fStatus = fGetBucketStatistics.wait_for(milliseconds(msTimeDuration));
   if (fStatus == std::future_status::ready) {
     auto res = fGetBucketStatistics.get();
@@ -179,7 +179,7 @@ HeadBucketOutcome QSClientImpl::HeadBucket(uint32_t msTimeDuration) const {
     auto sdkErr = m_bucket->headBucket(input, output);
     return {sdkErr, std::move(output)};
   };
-  auto fHeadBucket = GetExecutor()->SubmitCallablePrioritized(DoHeadBucket);
+  auto fHeadBucket = std::async(std::launch::async, DoHeadBucket);
   auto fStatus = fHeadBucket.wait_for(milliseconds(msTimeDuration));
   if (fStatus == std::future_status::ready) {
     auto res = fHeadBucket.get();
@@ -232,7 +232,7 @@ ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
       auto sdkErr = m_bucket->listObjects(*input, output);
       return {sdkErr, std::move(output)};
     };
-    auto fListObjects = GetExecutor()->SubmitCallablePrioritized(DoListObjects);
+    auto fListObjects = std::async(std::launch::async, DoListObjects);
     auto fStatus = fListObjects.wait_for(milliseconds(msTimeDuration));
     if (fStatus == std::future_status::ready) {
       auto res = fListObjects.get();
@@ -279,8 +279,7 @@ DeleteMultipleObjectsOutcome QSClientImpl::DeleteMultipleObjects(
     auto sdkErr = m_bucket->deleteMultipleObjects(*input, output);
     return {sdkErr, std::move(output)};
   };
-  auto fDeleteMultiObject =
-      GetExecutor()->SubmitCallablePrioritized(DoDeleteMultiObject);
+  auto fDeleteMultiObject = std::async(std::launch::async, DoDeleteMultiObject);
   auto fStatus = fDeleteMultiObject.wait_for(milliseconds(msTimeDuration));
   if (fStatus == std::future_status::ready) {
     auto res = fDeleteMultiObject.get();
@@ -338,7 +337,7 @@ ListMultipartUploadsOutcome QSClientImpl::ListMultipartUploads(
       return {sdkErr, std::move(output)};
     };
     auto fListMultiPartUploads =
-        GetExecutor()->SubmitCallablePrioritized(DoListMultipartUploads);
+        std::async(std::launch::async, DoListMultipartUploads);
     auto fStatus = fListMultiPartUploads.wait_for(milliseconds(msTimeDuration));
     if (fStatus == std::future_status::ready) {
       auto res = fListMultiPartUploads.get();
@@ -385,7 +384,7 @@ DeleteObjectOutcome QSClientImpl::DeleteObject(const string &objKey,
     return {sdkErr, std::move(output)};
   };
 
-  auto fDeleteObject = GetExecutor()->SubmitCallablePrioritized(DoDeleteObject);
+  auto fDeleteObject = std::async(std::launch::async, DoDeleteObject);
   auto fStatus = fDeleteObject.wait_for(milliseconds(msTimeDuration));
   if (fStatus == std::future_status::ready) {
     auto res = fDeleteObject.get();
@@ -424,7 +423,7 @@ GetObjectOutcome QSClientImpl::GetObject(const std::string &objKey,
     return {sdkErr, std::move(output)};
   };
 
-  auto fGetObject = GetExecutor()->SubmitCallablePrioritized(DoGetObject);
+  auto fGetObject = std::async(std::launch::async, DoGetObject);
   auto fStatus = fGetObject.wait_for(milliseconds(msTimeDuration));
   if (fStatus == std::future_status::ready) {
     auto res = fGetObject.get();
@@ -478,7 +477,7 @@ HeadObjectOutcome QSClientImpl::HeadObject(const string &objKey,
     return {sdkErr, std::move(output)};
   };
 
-  auto fHeadObject = GetExecutor()->SubmitCallablePrioritized(DoHeadObject);
+  auto fHeadObject = std::async(std::launch::async, DoHeadObject);
   auto fStatus = fHeadObject.wait_for(milliseconds(msTimeDuration));
   if (fStatus == std::future_status::ready) {
     auto res = fHeadObject.get();
@@ -516,7 +515,7 @@ PutObjectOutcome QSClientImpl::PutObject(const string &objKey,
     return {sdkErr, std::move(output)};
   };
 
-  auto fPutObject = GetExecutor()->SubmitCallablePrioritized(DoPutObject);
+  auto fPutObject = std::async(std::launch::async, DoPutObject);
   auto fStatus = fPutObject.wait_for(milliseconds(msTimeDuration));
   if (fStatus == std::future_status::ready) {
     auto res = fPutObject.get();
@@ -554,7 +553,7 @@ InitiateMultipartUploadOutcome QSClientImpl::InitiateMultipartUpload(
     return {sdkErr, std::move(output)};
   };
   auto fInitMultipartUpload =
-      GetExecutor()->SubmitCallablePrioritized(DoInitiateMultipartUpload);
+      std::async(std::launch::async, DoInitiateMultipartUpload);
   auto fStatus = fInitMultipartUpload.wait_for(milliseconds(msTimeDuration));
   if (fStatus == std::future_status::ready) {
     auto res = fInitMultipartUpload.get();
@@ -592,8 +591,7 @@ UploadMultipartOutcome QSClientImpl::UploadMultipart(
     auto sdkErr = m_bucket->uploadMultipart(objKey, *input, output);
     return {sdkErr, std::move(output)};
   };
-  auto fUploadMultipart =
-      GetExecutor()->SubmitCallablePrioritized(DoUploadMultipart);
+  auto fUploadMultipart = std::async(std::launch::async, DoUploadMultipart);
   auto fStatus = fUploadMultipart.wait_for(milliseconds(msTimeDuration));
   if (fStatus == std::future_status::ready) {
     auto res = fUploadMultipart.get();
@@ -632,7 +630,7 @@ CompleteMultipartUploadOutcome QSClientImpl::CompleteMultipartUpload(
     return {sdkErr, std::move(output)};
   };
   auto fCompleteMultipartUpload =
-      GetExecutor()->SubmitCallablePrioritized(DoCompleteMultipartUpload);
+      std::async(std::launch::async, DoCompleteMultipartUpload);
   auto fStatus =
       fCompleteMultipartUpload.wait_for(milliseconds(msTimeDuration));
   if (fStatus == std::future_status::ready) {
@@ -672,7 +670,7 @@ AbortMultipartUploadOutcome QSClientImpl::AbortMultipartUpload(
     return {sdkErr, std::move(output)};
   };
   auto fAbortMultipartUpload =
-      GetExecutor()->SubmitCallablePrioritized(DoAbortMultipartUpload);
+      std::async(std::launch::async, DoAbortMultipartUpload);
   auto fStatus = fAbortMultipartUpload.wait_for(milliseconds(msTimeDuration));
   if (fStatus == std::future_status::ready) {
     auto res = fAbortMultipartUpload.get();
@@ -726,8 +724,7 @@ ListMultipartOutcome QSClientImpl::ListMultipart(
       auto sdkErr = m_bucket->listMultipart(objKey, *input, output);
       return {sdkErr, std::move(output)};
     };
-    auto fListMultipart =
-        GetExecutor()->SubmitCallablePrioritized(DoListMultipart);
+    auto fListMultipart = std::async(std::launch::async, DoListMultipart);
     auto fStatus = fListMultipart.wait_for(milliseconds(msTimeDuration));
     if (fStatus == std::future_status::ready) {
       auto res = fListMultipart.get();

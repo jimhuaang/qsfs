@@ -58,14 +58,6 @@ class ThreadPool {
   template <typename F, typename... Args>
   void SubmitPrioritized(F &&f, Args &&... args);
 
-  template <typename F, typename... Args>
-  auto SubmitCallable(F &&f, Args &&... args)
-      -> std::future<typename std::result_of<F(Args...)>::type>;
-
-  template <typename F, typename... Args>
-  auto SubmitCallablePrioritized(F &&f, Args &&... args)
-      -> std::future<typename std::result_of<F(Args...)>::type>;
-
   template <typename ReceivedHandler, typename F, typename... Args>
   void SubmitAsync(ReceivedHandler &&handler, F &&f, Args &&... args);
 
@@ -115,40 +107,6 @@ template <typename F, typename... Args>
 void ThreadPool::SubmitPrioritized(F &&f, Args &&... args) {
   auto fun = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
   return SubmitToThread(fun, true);
-}
-
-template <typename F, typename... Args>
-auto ThreadPool::SubmitCallable(F &&f, Args &&... args)
-    -> std::future<typename std::result_of<F(Args...)>::type> {
-  using ReturnType = typename std::result_of<F(Args...)>::type;
-
-  auto task = std::make_shared<std::packaged_task<ReturnType()>>(
-      std::bind(std::forward<F>(f), std::forward<Args>(args)...));
-
-  std::future<ReturnType> res = task->get_future();
-  {
-    std::lock_guard<std::mutex> lock(m_queueLock);
-    m_tasks.emplace_back([task]() { (*task)(); });
-  }
-  m_syncConditionVar.notify_one();
-  return res;
-}
-
-template <typename F, typename... Args>
-auto ThreadPool::SubmitCallablePrioritized(F &&f, Args &&... args)
-    -> std::future<typename std::result_of<F(Args...)>::type> {
-  using ReturnType = typename std::result_of<F(Args...)>::type;
-
-  auto task = std::make_shared<std::packaged_task<ReturnType()>>(
-      std::bind(std::forward<F>(f), std::forward<Args>(args)...));
-
-  std::future<ReturnType> res = task->get_future();
-  {
-    std::lock_guard<std::mutex> lock(m_queueLock);
-    m_tasks.emplace_front([task]() { (*task)(); });
-  }
-  m_syncConditionVar.notify_one();
-  return res;
 }
 
 template <typename ReceivedHandler, typename F, typename... Args>

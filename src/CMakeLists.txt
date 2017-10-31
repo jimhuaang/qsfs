@@ -34,7 +34,9 @@ add_library(
   )
 target_link_libraries(qsfsConfigure fuse)
 set_target_properties(qsfsConfigure PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
-set_target_properties(qsfsConfigure PROPERTIES SOVERSION ${QSFS_VERSION})
+if (BUILD_SHARED_LIBS)
+  set_target_properties(qsfsConfigure PROPERTIES SOVERSION ${QSFS_VERSION})
+endif (BUILD_SHARED_LIBS)
 
 add_library(
   qsfsLogging ${LIBTYPE}
@@ -43,7 +45,9 @@ add_library(
   )
 target_link_libraries(qsfsLogging gtest glog qsfsConfigure)  # FRIEND_TEST
 set_target_properties(qsfsLogging PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
-set_target_properties(qsfsLogging PROPERTIES SOVERSION ${QSFS_VERSION})
+if (BUILD_SHARED_LIBS)
+  set_target_properties(qsfsLogging PROPERTIES SOVERSION ${QSFS_VERSION})
+endif (BUILD_SHARED_LIBS)
 
 add_library(
   qsfsBaseUtils ${LIBTYPE}
@@ -53,7 +57,9 @@ add_library(
   )
 target_link_libraries(qsfsBaseUtils qsfsLogging)
 set_target_properties(qsfsBaseUtils PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
-set_target_properties(qsfsBaseUtils PROPERTIES SOVERSION ${QSFS_VERSION})
+if (BUILD_SHARED_LIBS)
+  set_target_properties(qsfsBaseUtils PROPERTIES SOVERSION ${QSFS_VERSION})
+endif (BUILD_SHARED_LIBS)
 
 add_library(
   qsfsThreadPool ${LIBTYPE}
@@ -62,7 +68,9 @@ add_library(
 )
 target_link_libraries(qsfsThreadPool gtest)
 set_target_properties(qsfsThreadPool PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
-set_target_properties(qsfsThreadPool PROPERTIES SOVERSION ${QSFS_VERSION})
+if (BUILD_SHARED_LIBS)
+  set_target_properties(qsfsThreadPool PROPERTIES SOVERSION ${QSFS_VERSION})
+endif (BUILD_SHARED_LIBS)
 
 add_library(
   qsfsDirectory ${LIBTYPE}
@@ -72,7 +80,9 @@ add_library(
   )
 target_link_libraries(qsfsDirectory gtest)  # FRIEND_TEST
 set_target_properties(qsfsDirectory PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
-set_target_properties(qsfsDirectory PROPERTIES SOVERSION ${QSFS_VERSION})
+if (BUILD_SHARED_LIBS)
+  set_target_properties(qsfsDirectory PROPERTIES SOVERSION ${QSFS_VERSION})
+endif (BUILD_SHARED_LIBS)
 
 add_library(
   qsfsCache ${LIBTYPE}
@@ -82,7 +92,9 @@ add_library(
   )
 target_link_libraries(qsfsCache gtest)  # FRIEND_TEST
 set_target_properties(qsfsCache PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
-set_target_properties(qsfsCache PROPERTIES SOVERSION ${QSFS_VERSION})
+if (BUILD_SHARED_LIBS)
+  set_target_properties(qsfsCache PROPERTIES SOVERSION ${QSFS_VERSION})
+endif (BUILD_SHARED_LIBS)
 
 add_library(
   qsfsResource ${LIBTYPE}
@@ -93,7 +105,9 @@ add_library(
   )
 target_link_libraries(qsfsResource gtest)  # FRIEND_TEST
 set_target_properties(qsfsResource PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
-set_target_properties(qsfsResource PROPERTIES SOVERSION ${QSFS_VERSION})
+if (BUILD_SHARED_LIBS)
+  set_target_properties(qsfsResource PROPERTIES SOVERSION ${QSFS_VERSION})
+endif (BUILD_SHARED_LIBS)
 
 #
 # install

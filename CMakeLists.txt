@@ -1,16 +1,3 @@
-# +-------------------------------------------------------------------------
-# | Licensed under the Apache License, Version 2.0 (the "License");
-# | You may not use this work except in compliance with the License.
-# | You may obtain a copy of the License in the LICENSE file, or at:
-# |
-# | http://www.apache.org/licenses/LICENSE-2.0
-# |
-# | Unless required by applicable law or agreed to in writing, software
-# | distributed under the License is distributed on an "AS IS" BASIS,
-# | WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# | See the License for the specific language governing permissions and
-# | limitations under the License.
-# +-------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.0)
 if(CMAKE_MAJOR_VERSION LESS 3)
   message(
@@ -79,10 +66,11 @@ include(cmake/glog.cmake)
 #ADD_DEFINITIONS(-DENABLE_DEBUG -DABC)
 ##ifdef ENABLE_DEBUG /*code will be active #endif
 
-# glog is built statically, and we want to link it into the qsfs's shared
-# library, this requires position-independent code.
-# As not all systems support '-shared' option to produce a shared
-# object which can then ben linked with other object to form an executable.
+# As we build gflags as a subproject and gflags is built as static single-threaded
+# library by default. As glog depend on the gflags library and should link to gfalgs
+# target, and this requires position-independent code.
+# As not all systems support '-shared' option to produce a shared object
+# which can then be linked with other object to form an executable.
 # For predictable results, explicitly specify the -fPIC option.
 # For example, on Debain (gcc 6.3.0), without explicit set -fPIC, cmake
 # raise error: 

@@ -139,7 +139,7 @@ void ClientConfiguration::InitializeByOptions() {
   m_zone = options.GetZone();
   m_host = Http::StringToHost(options.GetHost());
   m_protocol = Http::StringToProtocol(options.GetProtocol());
-  m_port = options.GetPort();
+  m_port = GetDefaultPort(m_protocol);
   m_additionalUserAgent = options.GetAdditionalAgent();
   m_logLevel = static_cast<ClientLogLevel>(options.GetLogLevel());
   if (options.IsDebug()) {
