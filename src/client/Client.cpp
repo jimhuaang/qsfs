@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "base/ThreadPool.h"
+#include "base/ThreadPoolInitializer.h"
 #include "client/ClientImpl.h"
 
 namespace QS {
@@ -38,7 +39,9 @@ Client::Client(std::shared_ptr<ClientImpl> impl,
                RetryStrategy retryStratety)
     : m_impl(std::move(impl)),
       m_executor(std::move(executor)),
-      m_retryStrategy(std::move(retryStratety)) {}
+      m_retryStrategy(std::move(retryStratety)) {
+  QS::Threading::ThreadPoolInitializer::Instance().Register(m_executor.get());
+}
 
 // --------------------------------------------------------------------------
 Client::~Client() {

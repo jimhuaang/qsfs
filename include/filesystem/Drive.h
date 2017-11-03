@@ -81,12 +81,12 @@ class Drive {
  public:
   // Connect to object storage
   //
-  // @param  : flag to build up dir tree asynchornizely or synchronizely
+  // @param  : void
   // @return : flag of success
   //
-  // Notes: By default, Connect will build up the root level of directory tree
+  // Notes: Connect will build up the root level of directory tree
   // asynchornizely
-  bool Connect(bool buildupDirTreeAsync = true) const;
+  bool Connect() const;
 
   // Return the drive root node.
   std::shared_ptr<QS::Data::Node> GetRoot();
@@ -280,8 +280,11 @@ class Drive {
   void SetDirectoryTree(std::unique_ptr<QS::Data::DirectoryTree> dirTree);
 
  private:
+  void CleanUp();
   Drive();
+
   mutable std::atomic<bool> m_mountable;
+  mutable std::atomic<bool> m_cleanup;  // denote if drive get cleaned up
   std::shared_ptr<QS::Client::Client> m_client;
   std::unique_ptr<QS::Client::TransferManager> m_transferManager;
   std::unique_ptr<QS::Data::Cache> m_cache;
@@ -292,8 +295,9 @@ class Drive {
 
   friend class QS::Client::QSClient;
   friend class QS::Client::QSTransferManager;  // for cache
-  friend class QS::Data::Cache;                // for directory  // TODO(jim): r
-  friend class QS::Data::File;                 // for transfer manager
+  //friend class QS::Data::Cache;                // for directory  // TODO(jim): r
+  //friend class QS::Data::File;                 // for transfer manager
+  friend void qsfs_destroy(void* userdata);
 };
 
 }  // namespace FileSystem

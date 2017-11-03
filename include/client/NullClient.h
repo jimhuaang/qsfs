@@ -39,7 +39,7 @@ class NullClient : public Client {
   ~NullClient() = default;
 
  public:
-  ClientError<QSError> HeadBucket() override;
+  ClientError<QSError> HeadBucket(bool useThreadPool) override;
 
   ClientError<QSError> DeleteFile(const std::string &filePath) override;
   ClientError<QSError> MakeFile(const std::string &filePath) override;
@@ -76,7 +76,8 @@ class NullClient : public Client {
       const std::string &filePath, uint64_t fileSize,
       const std::shared_ptr<std::iostream> &buffer) override;
 
-  ClientError<QSError> ListDirectory(const std::string &dirPath) override;
+  ClientError<QSError> ListDirectory(const std::string &dirPath,
+                                     bool useThreadPool) override;
 
   ClientError<QSError> Stat(const std::string &path, time_t modifiedSince = 0,
                             bool *modified = nullptr) override;

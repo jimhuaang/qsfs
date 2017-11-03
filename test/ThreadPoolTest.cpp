@@ -69,13 +69,34 @@ class ThreadPoolTest : public Test {
   }
 
  protected:
-  void SetUp() override { m_pThreadPool = new ThreadPool(poolSize_); }
+  void SetUp() override { 
+    m_pThreadPool = new ThreadPool(poolSize_);
+    m_pThreadPool->Initialize();
+  }
 
   void TearDown() override { delete m_pThreadPool; }
 
  protected:
   ThreadPool *m_pThreadPool;
 };
+
+TEST_F(ThreadPoolTest, TestInterrupt) {
+  EXPECT_FALSE(m_pThreadPool->HasTasks());
+
+  m_pThreadPool->StopProcessing();
+  auto f = m_pThreadPool->SubmitCallable(Factorial, 5);
+  EXPECT_TRUE(m_pThreadPool->HasTasks());
+
+  auto fStatus = f.wait_for(std::chrono::milliseconds(100));
+  ASSERT_EQ(fStatus, std::future_status::timeout);
+
+  auto task = m_pThreadPool->PopTask();
+  EXPECT_FALSE(m_pThreadPool->HasTasks());
+
+  // Should never invoke f.get(), as after stoping thredpool, task will never
+  // get a chance to execute, so this will hang the program there.
+  // f.get();
+}
 
 TEST_F(ThreadPoolTest, TestSubmit) {
   int num = 5;
@@ -88,6 +109,21 @@ TEST_F(ThreadPoolTest, TestSubmit) {
   auto fStatus1 = f1.wait_for(std::chrono::milliseconds(100));
   ASSERT_EQ(fStatus1, std::future_status::ready);
   EXPECT_EQ(f1.get(), 120);
+}
+
+TEST_F(ThreadPoolTest, TestSubmitCallable) {
+  int num = 5;
+  auto f1 = m_pThreadPool->SubmitCallable(Factorial, num);
+  auto fStatus1 = f1.wait_for(std::chrono::milliseconds(100));
+  ASSERT_EQ(fStatus1, std::future_status::ready);
+  EXPECT_EQ(f1.get(), 120);
+
+  int a = 1;
+  int b = 11;
+  auto f2 = m_pThreadPool->SubmitCallablePrioritized(Add, a, b);
+  auto fStatus2 = f2.wait_for(std::chrono::milliseconds(100));
+  ASSERT_EQ(fStatus2, std::future_status::ready);
+  EXPECT_EQ(f2.get(), 12);
 }
 
 TEST_F(ThreadPoolTest, TestSubmitAsync) {

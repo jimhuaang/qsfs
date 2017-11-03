@@ -26,6 +26,7 @@
 
 #include "base/LogMacros.h"
 #include "base/ThreadPool.h"
+#include "base/ThreadPoolInitializer.h"
 #include "client/NullClient.h"
 #include "data/ResourceManager.h"
 #include "data/Size.h"
@@ -52,6 +53,7 @@ TransferManager::TransferManager(const TransferManagerConfigure &config)
   if (GetMaxParallelTransfers() > 0) {
     m_executor =
         unique_ptr<ThreadPool>(new ThreadPool(config.m_maxParallelTransfers));
+    QS::Threading::ThreadPoolInitializer::Instance().Register(m_executor.get());
   }
 }
 

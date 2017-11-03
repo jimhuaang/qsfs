@@ -14,27 +14,43 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#include "client/ClientImpl.h"
-
-#include <memory>
-#include <utility>
-
 #include "base/ThreadPoolInitializer.h"
 
+#include <memory>
+#include <mutex>  // NOLINT
+
+#include "base/ThreadPool.h"
 namespace QS {
 
-namespace Client {
+namespace Threading {
+
+static std::unique_ptr<ThreadPoolInitializer> instance(nullptr);
+static std::once_flag flag;
 
 // --------------------------------------------------------------------------
-ClientImpl::ClientImpl(std::unique_ptr<QS::Threading::ThreadPool> executor)
-    : m_executor(std::move(executor)) {
-  QS::Threading::ThreadPoolInitializer::Instance().Register(m_executor.get());
+ThreadPoolInitializer &ThreadPoolInitializer::Instance() {
+  std::call_once(flag, [] { instance.reset(new ThreadPoolInitializer); });
+  return *instance.get();
 }
 
 // --------------------------------------------------------------------------
-ClientImpl::~ClientImpl() {
-  // do nothing
+void ThreadPoolInitializer::DoInitialize() {
+  for (auto threadpool : m_threadPools) {
+    if (threadpool != nullptr) {
+      threadpool->Initialize();
+    }
+  }
 }
 
-}  // namespace Client
+// --------------------------------------------------------------------------
+void ThreadPoolInitializer::Register(ThreadPool *threadpool) {
+  m_threadPools.insert(threadpool);
+}
+
+// --------------------------------------------------------------------------
+void ThreadPoolInitializer::UnRegister(ThreadPool *threadpool) {
+  m_threadPools.erase(threadpool);
+}
+
+}  // namespace Threading
 }  // namespace QS

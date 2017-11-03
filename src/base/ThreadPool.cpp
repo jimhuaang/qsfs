@@ -28,11 +28,7 @@ using std::lock_guard;
 using std::mutex;
 using std::unique_ptr;
 
-ThreadPool::ThreadPool(size_t poolSize) : m_poolSize(poolSize) {
-  for (size_t i = 0; i < poolSize; ++i) {
-    m_taskHandles.emplace_back(new TaskHandle(*this));
-  }
-}
+ThreadPool::ThreadPool(size_t poolSize) : m_poolSize(poolSize) {}
 
 ThreadPool::~ThreadPool() { StopProcessing(); }
 
@@ -66,6 +62,12 @@ Task ThreadPool::PopTask() {
 bool ThreadPool::HasTasks() {
   lock_guard<mutex> lock(m_queueLock);
   return !m_tasks.empty();
+}
+
+void ThreadPool::Initialize() {
+  for (size_t i = 0; i < m_poolSize; ++i) {
+    m_taskHandles.emplace_back(new TaskHandle(*this));
+  }
 }
 
 void ThreadPool::StopProcessing() {

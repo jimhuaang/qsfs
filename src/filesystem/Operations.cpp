@@ -33,6 +33,7 @@
 #include "base/Exception.h"
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
+#include "base/ThreadPoolInitializer.h"
 #include "base/Utils.h"
 #include "configure/Default.h"
 #include "data/Directory.h"
@@ -1467,10 +1468,13 @@ int qsfs_fsyncdir(const char* path, int datasync, struct fuse_file_info* fi) {
 //
 // It overrides the initial value provided to fuse_main() / fuse_new().
 void* qsfs_init(struct fuse_conn_info* conn) {
-  // Initialization and checking are done when mounting, and we design Drive
-  // as a singleton. So just print info here.
   Info("Connecting qsfs...");
-  return NULL;
+
+  // Threads should be started from the init() method. Threads started
+  // before fuse_main will exit when the process goes into the background.
+  QS::Threading::ThreadPoolInitializer::Instance().DoInitialize();
+
+  return static_cast<QS::FileSystem::Drive *>(fuse_get_context()->private_data);
 }
 
 // --------------------------------------------------------------------------
@@ -1480,6 +1484,11 @@ void* qsfs_init(struct fuse_conn_info* conn) {
 void qsfs_destroy(void* userdata) {
   // Drive get clean by itself. Just print an info here.
   Info("Disconnecting qsfs...");
+
+  auto drive = static_cast<QS::FileSystem::Drive*>(userdata);
+  if (drive != nullptr) {
+    drive->CleanUp();
+  }
 }
 
 // --------------------------------------------------------------------------

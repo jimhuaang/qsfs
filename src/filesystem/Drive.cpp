@@ -110,6 +110,7 @@ Drive &Drive::Instance() {
 // --------------------------------------------------------------------------
 Drive::Drive()
     : m_mountable(true),
+      m_cleanup(false),
       m_client(ClientFactory::Instance().MakeClient()),
       m_transferManager(std::move(
           TransferManagerFactory::Create(TransferManagerConfigure()))),
@@ -124,24 +125,32 @@ Drive::Drive()
 }
 
 // --------------------------------------------------------------------------
-Drive::~Drive() {
-  // abort unfinished multipart uploads
-  if (!m_unfinishedMultipartUploadHandles.empty()) {
-    for (auto &fileToHandle : m_unfinishedMultipartUploadHandles) {
-      m_transferManager->AbortMultipartUpload(fileToHandle.second);
-    }
-  }
-  // remove temp folder if existing
-  auto tmpfolder = GetCacheTemporaryDirectory();
-  if (FileExists(tmpfolder, false) && IsDirectory(tmpfolder, true)) {  // log on
-    DeleteFilesInDirectory(tmpfolder, true);  // delete folder itself
-  }
+Drive::~Drive() { CleanUp(); }
 
-  m_client.reset();
-  m_transferManager.reset();
-  m_cache.reset();
-  m_directoryTree.reset();
-  m_unfinishedMultipartUploadHandles.clear();
+// --------------------------------------------------------------------------
+void Drive::CleanUp() {
+  if (!m_cleanup) {
+    // abort unfinished multipart uploads
+    if (!m_unfinishedMultipartUploadHandles.empty()) {
+      for (auto &fileToHandle : m_unfinishedMultipartUploadHandles) {
+        m_transferManager->AbortMultipartUpload(fileToHandle.second);
+      }
+    }
+    // remove temp folder if existing
+    auto tmpfolder = GetCacheTemporaryDirectory();
+    if (FileExists(tmpfolder, false) &&
+        IsDirectory(tmpfolder, true)) {         // log on
+      DeleteFilesInDirectory(tmpfolder, true);  // delete folder itself
+    }
+
+    m_client.reset();
+    m_transferManager.reset();
+    m_cache.reset();
+    m_directoryTree.reset();
+    m_unfinishedMultipartUploadHandles.clear();
+
+    m_cleanup.store(true);
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -162,13 +171,16 @@ void Drive::SetDirectoryTree(unique_ptr<DirectoryTree> dirTree) {
 
 // --------------------------------------------------------------------------
 bool Drive::IsMountable() const {
-  m_mountable.store(Connect(false));  // synchronizely
+  m_mountable.store(Connect());
   return m_mountable.load();
 }
 
 // --------------------------------------------------------------------------
-bool Drive::Connect(bool buildupDirTreeAsync) const {
-  auto err = GetClient()->HeadBucket();
+bool Drive::Connect() const {
+  // Connect is call before fuse_main and thread pools are initialized in
+  // fuse init, so at the time the thread pool is still not been initialized.
+  bool notUseThreadPool = false;
+  auto err = GetClient()->HeadBucket(notUseThreadPool);
   if (!IsGoodQSError(err)) {
     DebugError(GetMessageForQSError(err));
     return false;
@@ -180,16 +192,11 @@ bool Drive::Connect(bool buildupDirTreeAsync) const {
   }
 
   // Build up the root level of directory tree asynchornizely.
-  auto ReceivedHandler = [](const ClientError<QSError> &err) {
+  auto DoListDirectory = [this, notUseThreadPool] {
+    auto err = GetClient()->ListDirectory("/", notUseThreadPool);
     DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
   };
-
-  if (buildupDirTreeAsync) {  // asynchronizely
-    GetClient()->GetExecutor()->SubmitAsyncPrioritized(
-        ReceivedHandler, [this] { return GetClient()->ListDirectory("/"); });
-  } else {  // synchronizely
-    ReceivedHandler(GetClient()->ListDirectory("/"));
-  }
+  std::async(std::launch::async, DoListDirectory);
 
   return true;
 }

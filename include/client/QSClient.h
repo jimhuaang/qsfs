@@ -46,9 +46,9 @@ class QSClient : public Client {
  public:
   // Head bucket
   //
-  // @param  : void
+  // @param  : flag to use thread pool worker thread or not
   // @return : ClientError
-  ClientError<QSError> HeadBucket() override;
+  ClientError<QSError> HeadBucket(bool useThreadPool = true) override;
 
   // Delete a file
   //
@@ -153,14 +153,15 @@ class QSClient : public Client {
 
   // List directory
   //
-  // @param  : dir path
+  // @param  : dir path, falg to use thread pool or not
   // @return : ClientError
   //
   // ListDirectory will update directory in tree if dir exists and is modified
   // or grow the tree if the directory is not existing in tree.
   //
   // Notice the dirPath should end with delimiter.
-  ClientError<QSError> ListDirectory(const std::string &dirPath) override;
+  ClientError<QSError> ListDirectory(const std::string &dirPath,
+                                     bool useThreadPool = true) override;
 
   // Create a symbolic link to a file
   //
@@ -225,7 +226,8 @@ class QSClient : public Client {
   // This only submit skd listobjects request, no ops on dir tree and cache.
   ListObjectsOutcome ListObjects(const std::string &dirPath,
                                  bool *resultTruncated = nullptr,
-                                 uint64_t maxCount = 0);
+                                 uint64_t maxCount = 0,
+                                 bool useThreadPool = true);
 
  public:
   static const std::unique_ptr<QingStor::QingStorService> &GetQingStorService();

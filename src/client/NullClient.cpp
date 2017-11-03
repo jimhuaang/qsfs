@@ -35,7 +35,9 @@ ClientError<QSError> GoodState() {
 
 using std::string;
 
-ClientError<QSError> NullClient::HeadBucket() { return GoodState(); }
+ClientError<QSError> NullClient::HeadBucket(bool useThreadPool) {
+  return GoodState();
+}
 
 ClientError<QSError> NullClient::DeleteFile(const string &filePath) {
   return GoodState();
@@ -99,7 +101,8 @@ ClientError<QSError> NullClient::SymLink(const std::string &filePath,
   return GoodState();
 }
 
-ClientError<QSError> NullClient::ListDirectory(const std::string &dirPath) {
+ClientError<QSError> NullClient::ListDirectory(const std::string &dirPath,
+                                               bool useThreadPool) {
   return GoodState();
 }
 

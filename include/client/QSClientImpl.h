@@ -54,13 +54,18 @@ class QSClientImpl : public ClientImpl {
           ClientConfiguration::Instance().GetTransactionTimeDuration()) const;
 
   // Head bucket
+  //
+  // @param  : time duration in ms, flag to use thread pool worker thread or not
+  // @return : HeadBucketOutcome
   HeadBucketOutcome HeadBucket(
       uint32_t msTimeDuration =
-          ClientConfiguration::Instance().GetTransactionTimeDuration()) const;
+          ClientConfiguration::Instance().GetTransactionTimeDuration(),
+      bool useThreadPool = true) const;
 
   // List bucket objects
   //
-  // @param  : input, resultTruncated(output), maxCount
+  // @param  : input, resultTruncated(output), maxCount, time duration in ms,
+  //           flag to use thread pool or not
   // @return : ListObjectsOutcome
   //
   // Use maxCount to specify the count limit of objects you want to list.
@@ -74,8 +79,8 @@ class QSClientImpl : public ClientImpl {
       QingStor::ListObjectsInput *input, bool *resultTruncated = nullptr,
       uint64_t maxCount = 0,
       uint32_t msTimeDuration =
-          ClientConfiguration::Instance().GetTransactionTimeDuration() *
-          10) const;
+          ClientConfiguration::Instance().GetTransactionTimeDuration() * 10,
+      bool useThreadPool = true) const;
 
   // Delete multiple objects
   DeleteMultipleObjectsOutcome DeleteMultipleObjects(

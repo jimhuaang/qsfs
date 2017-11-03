@@ -67,9 +67,9 @@ class Client {
  public:
   // Head bucket
   //
-  // @param  : void
+  // @param  : flag to use thread pool worker thread or not
   // @return : ClientError
-  virtual ClientError<QSError> HeadBucket() = 0;
+  virtual ClientError<QSError> HeadBucket(bool useThreadPool = true) = 0;
 
   // Delete a file
   //
@@ -177,14 +177,15 @@ class Client {
 
   // List directory
   //
-  // @param  : dir path
+  // @param  : dir path, flag to use thread pool worker thread or not
   // @return : ClientError
   //
   // ListDirectory will update directory in tree if dir exists and is modified
   // or grow the tree if the directory is not existing in tree.
   //
   // Notice the dirPath should end with delimiter.
-  virtual ClientError<QSError> ListDirectory(const std::string &dirPath) = 0;
+  virtual ClientError<QSError> ListDirectory(const std::string &dirPath,
+                                             bool useThreadPool = true) = 0;
 
   // Get object meta data
   //

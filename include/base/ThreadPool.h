@@ -36,6 +36,7 @@ namespace QS {
 namespace Threading {
 
 class TaskHandle;
+class ThreadPoolInitializer;
 
 using Task = std::function<void()>;
 
@@ -57,6 +58,14 @@ class ThreadPool {
 
   template <typename F, typename... Args>
   void SubmitPrioritized(F &&f, Args &&... args);
+
+  template <typename F, typename... Args>
+  auto SubmitCallable(F &&f, Args &&... args)
+      -> std::future<typename std::result_of<F(Args...)>::type>;
+
+  template <typename F, typename... Args>
+  auto SubmitCallablePrioritized(F &&f, Args &&... args)
+      -> std::future<typename std::result_of<F(Args...)>::type>;
 
   template <typename ReceivedHandler, typename F, typename... Args>
   void SubmitAsync(ReceivedHandler &&handler, F &&f, Args &&... args);
@@ -80,6 +89,10 @@ class ThreadPool {
   Task PopTask();
   bool HasTasks();
 
+  // Initialize create needed TaskHandlers (worker thread)
+  // Normally, this should only get called once
+  void Initialize();
+
   // This is intended for a interrupt test only, do not use this
   // except in destructor. After this has been called once, all tasks
   // will never been handled since then.
@@ -95,6 +108,8 @@ class ThreadPool {
   std::condition_variable m_syncConditionVar;
 
   friend class TaskHandle;
+  friend class ThreadPoolInitializer;
+  friend class ThreadPoolTest;
 };
 
 template <typename F, typename... Args>
@@ -107,6 +122,40 @@ template <typename F, typename... Args>
 void ThreadPool::SubmitPrioritized(F &&f, Args &&... args) {
   auto fun = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
   return SubmitToThread(fun, true);
+}
+
+template <typename F, typename... Args>
+auto ThreadPool::SubmitCallable(F &&f, Args &&... args)
+    -> std::future<typename std::result_of<F(Args...)>::type> {
+  using ReturnType = typename std::result_of<F(Args...)>::type;
+
+  auto task = std::make_shared<std::packaged_task<ReturnType()>>(
+      std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+
+  std::future<ReturnType> res = task->get_future();
+  {
+    std::lock_guard<std::mutex> lock(m_queueLock);
+    m_tasks.emplace_back([task]() { (*task)(); });
+  }
+  m_syncConditionVar.notify_one();
+  return res;
+}
+
+template <typename F, typename... Args>
+auto ThreadPool::SubmitCallablePrioritized(F &&f, Args &&... args)
+    -> std::future<typename std::result_of<F(Args...)>::type> {
+  using ReturnType = typename std::result_of<F(Args...)>::type;
+
+  auto task = std::make_shared<std::packaged_task<ReturnType()>>(
+      std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+
+  std::future<ReturnType> res = task->get_future();
+  {
+    std::lock_guard<std::mutex> lock(m_queueLock);
+    m_tasks.emplace_front([task]() { (*task)(); });
+  }
+  m_syncConditionVar.notify_one();
+  return res;
 }
 
 template <typename ReceivedHandler, typename F, typename... Args>

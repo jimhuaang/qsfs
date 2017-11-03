@@ -139,8 +139,10 @@ QSClient::QSClient() : Client() {
 QSClient::~QSClient() { CloseQSService(); }
 
 // --------------------------------------------------------------------------
-ClientError<QSError> QSClient::HeadBucket() {
-  auto outcome = GetQSClientImpl()->HeadBucket();
+ClientError<QSError> QSClient::HeadBucket(bool useThreadPool) {
+  auto msTimeDuration =
+      ClientConfiguration::Instance().GetTransactionTimeDuration();
+  auto outcome = GetQSClientImpl()->HeadBucket(msTimeDuration, useThreadPool);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -148,7 +150,7 @@ ClientError<QSError> QSClient::HeadBucket() {
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->HeadBucket();
+    outcome = GetQSClientImpl()->HeadBucket(msTimeDuration, useThreadPool);
     ++attemptedRetries;
     DebugInfo("Retry head bucket");
   }
@@ -686,7 +688,8 @@ ClientError<QSError> QSClient::SymLink(const string &filePath,
 }
 
 // --------------------------------------------------------------------------
-ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
+ClientError<QSError> QSClient::ListDirectory(const string &dirPath,
+                                             bool useThreadPool) {
   bool resultTruncated = false;
   // Set maxCount for a single list operation.
   // This will request for ListObjects seperately, so we can construct
@@ -699,7 +702,8 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
   assert(dirTree);
   auto dirNode = drive.GetNodeSimple(dirPath).lock();
   do {
-    auto outcome = ListObjects(dirPath, &resultTruncated, maxCount);
+    auto outcome =
+        ListObjects(dirPath, &resultTruncated, maxCount, useThreadPool);
     if (!outcome.IsSuccess()) {
       return outcome.GetError();
     }
@@ -730,7 +734,8 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath) {
 // --------------------------------------------------------------------------
 ListObjectsOutcome QSClient::ListObjects(const string &dirPath,
                                          bool *resultTruncated,
-                                         uint64_t maxCount) {
+                                         uint64_t maxCount,
+                                         bool useThreadPool) {
   ListObjectsInput listObjInput;
   listObjInput.SetLimit(Constants::BucketListObjectsLimit);
   listObjInput.SetDelimiter(QS::Utils::GetPathDelimiter());
@@ -741,8 +746,8 @@ ListObjectsOutcome QSClient::ListObjects(const string &dirPath,
 
   auto timeDuration = CalculateTimeForListObjects(maxCount);
 
-  auto outcome = GetQSClientImpl()->ListObjects(&listObjInput, resultTruncated,
-                                                maxCount, timeDuration);
+  auto outcome = GetQSClientImpl()->ListObjects(
+      &listObjInput, resultTruncated, maxCount, timeDuration, useThreadPool);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -750,8 +755,8 @@ ListObjectsOutcome QSClient::ListObjects(const string &dirPath,
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->ListObjects(&listObjInput, resultTruncated,
-                                             maxCount, timeDuration);
+    outcome = GetQSClientImpl()->ListObjects(
+        &listObjInput, resultTruncated, maxCount, timeDuration, useThreadPool);
     ++attemptedRetries;
     DebugInfo("Retry list objects " + FormatPath(dirPath));
   }
