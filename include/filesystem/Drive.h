@@ -37,7 +37,6 @@ namespace QS {
 
 namespace Client {
 class Client;
-class File;
 class QSClient;
 class QSTransferManager;
 class TransferHandle;
@@ -45,7 +44,6 @@ class TransferManager;
 }
 
 namespace Data {
-class Cache;
 class DirectoryTree;
 class FileMetaData;
 class Node;
@@ -295,8 +293,6 @@ class Drive {
 
   friend class QS::Client::QSClient;
   friend class QS::Client::QSTransferManager;  // for cache
-  //friend class QS::Data::Cache;                // for directory  // TODO(jim): r
-  //friend class QS::Data::File;                 // for transfer manager
   friend void qsfs_destroy(void* userdata);
 };
 

@@ -23,6 +23,7 @@
 
 #include <iostream>
 #include <memory>
+#include <mutex>  // NOLINT
 #include <set>
 #include <string>
 
@@ -69,6 +70,8 @@ class Page {
 
   std::string m_tmpFile;  // tmp file is used when qsfs cache is not enough
                           // it is an absolute path of /tmp/basename
+
+  mutable std::recursive_mutex m_mutex;
 
  public:
   // Construct Page from a block of bytes
@@ -134,6 +137,7 @@ class Page {
 
   // Return if page use temp file
   bool UseTempFile();
+  bool UseTempFileNoLock();
 
   // Refresh the page's partial content
   //
@@ -181,13 +185,6 @@ class Page {
   // - open the tmp file
   // - set stream to fstream assocating with tmp file
   bool SetupTempFile();
-
-  // Open tmp file
-  // NOTICE: need to call CloseTempFile after call OpenTempFile
-  bool OpenTempFile(std::ios_base::openmode mode);
-
-  // Close tmp file
-  void CloseTempFile();
 
   // Do a lazy resize for page.
   void ResizeToSmallerSize(size_t smallerSize);

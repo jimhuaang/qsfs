@@ -100,17 +100,12 @@ TEST_F(PageTest, CtorWithTmpFile) {
   EXPECT_EQ(p1.Next(), (off_t)len);
   EXPECT_EQ(p1.Size(), len);
   EXPECT_EQ(p1.Offset(), (off_t)0);
-  auto body1 = p1.GetBody();
+  // auto body = p1.GetBody();
   // Something goes wrong in gtest, the reference to body stream is null.
   // But add the same test code in qsfs, this works fine.
   // Strang thing is that gtest (PageTest) runs ok under debug mode, but
   // assert fail when run gtest (PageTest) exe directly.
   // assert(body);  // fail when run PageTest exe, but success under debug mode
-  if (body1) {
-    p1.OpenTempFile(std::ios_base::binary | std::ios_base::in);
-    EXPECT_EQ(GetStreamSize(body1), len);
-    p1.CloseTempFile();
-  }
   EXPECT_TRUE(p1.UseTempFile());
   RemoveFileIfExists(tmpfile1);
 
@@ -121,12 +116,6 @@ TEST_F(PageTest, CtorWithTmpFile) {
   EXPECT_EQ(p2.Next(), (off_t)len);
   EXPECT_EQ(p2.Size(), len);
   EXPECT_EQ(p2.Offset(), (off_t)0);
-  auto body2 = p2.GetBody();
-  if (body2) {
-    p2.OpenTempFile(std::ios_base::binary | std::ios_base::in);
-    EXPECT_EQ(GetStreamSize(body2), len);
-    p2.CloseTempFile();
-  }
   EXPECT_TRUE(p2.UseTempFile());
   RemoveFileIfExists(tmpfile2);
 }
