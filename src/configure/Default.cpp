@@ -64,18 +64,11 @@ blkcnt_t GetBlocks(off_t size) {
 }
 
 uint64_t GetMaxCacheSize() {
-  // TODO(Jim) : add option max_cache
   return QS::Data::Size::MB100;  // default value
 }
 
-size_t GetMaxFileMetaDataCount() {
-  // TODO(jim): add option max_stat_entrys
-  return QS::Data::Size::K10;  // default value
-}
-
-time_t GetFileMetaDataExpireDuration() {
-  // default with 60 min
-  return static_cast<time_t>(60 * 60);  //  in seconds
+size_t GetMaxStatCount() {
+  return QS::Data::Size::K20;  // default value
 }
 
 static const int CLIENT_DEFAULT_POOL_SIZE = 5;
@@ -108,9 +101,7 @@ uint64_t GetUploadMultipartMinPartSize() {
   return QS::Data::Size::MB4;
 }
 
-uint64_t GetUploadMultipartMaxPartSize() {
-  return std::min(QS::Data::Size::GB1, GetMaxCacheSize());
-}
+uint64_t GetUploadMultipartMaxPartSize() { return QS::Data::Size::GB1; }
 
 uint64_t GetUploadMultipartThresholdSize() { return QS::Data::Size::MB20; }
 

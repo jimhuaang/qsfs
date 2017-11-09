@@ -828,11 +828,11 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
     if (err.GetError() == QSError::KEY_NOT_EXIST) {
       if (path.back() == '/') {
         ListObjectsInput listObjInput;
-        listObjInput.SetLimit(10);
+        listObjInput.SetLimit(2);
         listObjInput.SetDelimiter(QS::Utils::GetPathDelimiter());
         listObjInput.SetPrefix(LTrim(path, '/'));
         auto outcome =
-            GetQSClientImpl()->ListObjects(&listObjInput, nullptr, 10);
+            GetQSClientImpl()->ListObjects(&listObjInput, nullptr, 2);
 
         if (outcome.IsSuccess()) {
           bool dirExist = false;

@@ -31,7 +31,6 @@
 #include "data/Cache.h"
 #include "data/Directory.h"
 
-extern int main(int argc, char **argv);  // TODO(jim): test to remove
 
 namespace QS {
 

@@ -19,7 +19,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <time.h>
 
 #include <sys/types.h>  // for blkcnt_t
 
@@ -49,9 +48,8 @@ uint16_t GetBlockSize();  // Block size for filesystem I/O
 uint16_t GetFragmentSize();
 blkcnt_t GetBlocks(off_t size);  // Number of 512B blocks allocated
 
-uint64_t GetMaxCacheSize();              // File cache size in bytes
-size_t GetMaxFileMetaDataCount();        // File meta data max count
-time_t GetFileMetaDataExpireDuration();  // File meta data expire duration
+uint64_t GetMaxCacheSize();      // File cache size in bytes
+size_t GetMaxStatCount();        // File meta data max count
 
 int GetQSConnectionDefaultRetries();
 uint32_t GetTransactionDefaultTimeDuration();  // in milliseconds

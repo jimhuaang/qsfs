@@ -54,9 +54,13 @@ string SecondsToRFC822GMT(time_t time) {
 }
 
 // --------------------------------------------------------------------------
-bool IsExpire(time_t t, time_t expireDuration) {
-  time_t now = time(NULL);
-  return t + expireDuration < now;
+bool IsExpire(time_t t, long int expireDurationInMin) {
+  if (expireDurationInMin < 0) {
+    return false;
+  } else {
+    time_t now = time(NULL);
+    return t + static_cast<time_t>(expireDurationInMin * 60) < now;
+  }
 }
 
 }  // namespace TimeUtils

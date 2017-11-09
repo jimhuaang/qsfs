@@ -45,10 +45,12 @@
 #include "client/TransferManager.h"
 #include "client/TransferManagerFactory.h"
 #include "configure/Default.h"
+#include "configure/Options.h"
 #include "data/Cache.h"
 #include "data/Directory.h"
 #include "data/FileMetaData.h"
 #include "data/IOStream.h"
+#include "data/Size.h"
 
 namespace QS {
 
@@ -78,8 +80,6 @@ using QS::Exception::QSException;
 using QS::Configure::Default::GetCacheTemporaryDirectory;
 using QS::Configure::Default::GetDefaultMaxParallelTransfers;
 using QS::Configure::Default::GetDefaultTransferMaxBufSize;
-using QS::Configure::Default::GetFileMetaDataExpireDuration;
-using QS::Configure::Default::GetMaxCacheSize;
 using QS::StringUtils::FormatPath;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::DeleteFilesInDirectory;
@@ -115,8 +115,12 @@ Drive::Drive()
       m_cleanup(false),
       m_client(ClientFactory::Instance().MakeClient()),
       m_transferManager(std::move(
-          TransferManagerFactory::Create(TransferManagerConfigure()))),
-      m_cache(std::move(unique_ptr<Cache>(new Cache(GetMaxCacheSize())))) {
+          TransferManagerFactory::Create(TransferManagerConfigure()))) {
+  uint64_t cacheSize = static_cast<uint64_t>(
+      QS::Configure::Options::Instance().GetMaxCacheSizeInMB() *
+      QS::Data::Size::MB1);
+  m_cache = std::move(unique_ptr<Cache>(new Cache(cacheSize)));
+
   uid_t uid = GetProcessEffectiveUserID();
   gid_t gid = GetProcessEffectiveGroupID();
 
@@ -243,9 +247,11 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
     }
   };
 
+  auto expireDurationInMin =
+      QS::Configure::Options::Instance().GetStatExpireInMin();
   if (node && *node) {
     if (QS::TimeUtils::IsExpire(node->GetCachedTime(),
-                                GetFileMetaDataExpireDuration())) {
+                                expireDurationInMin)) {
       UpdateNode(path, node);
     }
   } else {
@@ -268,7 +274,7 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
   // modified time as an precondition to decide if we need to update dir or not.
   if (node && *node && node->IsDirectory() && updateIfDirectory &&
       (QS::TimeUtils::IsExpire(node->GetCachedTime(),
-                               GetFileMetaDataExpireDuration()) ||
+                               expireDurationInMin) ||
        node->IsEmpty())) {
     auto ReceivedHandler = [](const ClientError<QSError> &err) {
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));

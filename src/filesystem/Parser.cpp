@@ -26,6 +26,7 @@
 #include "client/RetryStrategy.h"
 #include "client/URI.h"
 #include "client/Zone.h"
+#include "data/Size.h"
 #include "configure/Default.h"
 #include "configure/IncludeFuse.h"  // for fuse.h
 #include "configure/Options.h"
@@ -40,7 +41,11 @@ namespace Parser {
 
 namespace {
 
-using namespace QS::Client;  // NOLINT
+using QS::Client::Http::GetDefaultPort;
+using QS::Client::Http::GetDefaultProtocol;
+using QS::Client::Retry::DefaultMaxRetries;
+using QS::Configure::Default::GetMaxCacheSize;
+using QS::Configure::Default::GetMaxStatCount;
 
 static struct options {
   // We can't set default values for the char* fields here
@@ -52,10 +57,13 @@ static struct options {
   const char *credentials;
   const char *logDirectory;
   const char *logLevel;        // INFO, WARN, ERROR, FATAL
-  unsigned    retries = Retry::DefaultMaxRetries;
+  unsigned    retries = DefaultMaxRetries;
+  unsigned long maxcache = GetMaxCacheSize() / QS::Data::Size::MB1;  // in MB
+  unsigned long maxstat = GetMaxStatCount() / QS::Data::Size::K1;    // in K
+  long int statexpire = -1;  // in mins, negative value disable state expire
   const char *host;
   const char *protocol;
-  unsigned    port = Http::GetDefaultPort(Http::GetDefaultProtocol());
+  unsigned    port = GetDefaultPort(GetDefaultProtocol());
   const char *addtionalAgent;
   int clearLogDir = 0;         // default not clear log dir
   int foreground = 0;          // default not foreground
@@ -76,6 +84,9 @@ static const struct fuse_opt optionSpec[] = {
     OPTION("-l=%s", logDirectory),   OPTION("--logdir=%s",      logDirectory),
     OPTION("-L=%s", logLevel),       OPTION("--loglevel=%s",    logLevel),
     OPTION("-r=%u", retries),        OPTION("--retries=%u",     retries),
+    OPTION("-Z=%lu", maxcache),      OPTION("--maxcache=%lu",   maxcache),
+    OPTION("-t=%lu", maxstat),       OPTION("--maxstat=%lu",    maxstat),
+    OPTION("-e=%ld", statexpire),    OPTION("--statexpire=%ld", statexpire),
     OPTION("-H=%s", host),           OPTION("--host=%s",        host),
     OPTION("-p=%s", protocol),       OPTION("--protocol=%s",    protocol),
     OPTION("-P=%u", port),           OPTION("--port=%u",        port),
@@ -125,6 +136,9 @@ void Parse(int argc, char **argv) {
   qsOptions.SetLogDirectory(options.logDirectory);
   qsOptions.SetLogLevel(QS::Logging::GetLogLevelByName(options.logLevel));
   qsOptions.SetRetries(options.retries);
+  qsOptions.SetMaxCacheSizeInMB(options.maxcache);
+  qsOptions.SetMaxStatCountInK(options.maxstat);
+  qsOptions.SetStatExpireInMin(options.statexpire);
   qsOptions.SetHost(options.host);
   qsOptions.SetProtocol(options.protocol);
   qsOptions.SetPort(options.port);

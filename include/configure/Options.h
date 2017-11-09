@@ -60,6 +60,9 @@ class Options {
   const std::string &GetLogDirectory() const { return m_logDirectory; }
   LogLevel GetLogLevel() const { return m_logLevel; }
   uint16_t GetRetries() const { return m_retries; }
+  unsigned long GetMaxCacheSizeInMB() { return m_maxCacheSizeInMB; }
+  unsigned long GetMaxStatCountInK() { return m_maxStatCountInK; }
+  long int GetStatExpireInMin() { return m_statExpireInMin; }
   const std::string &GetHost() const { return m_host; }
   const std::string &GetProtocol() const { return m_protocol; }
   uint16_t GetPort() const { return m_port; }
@@ -86,6 +89,13 @@ class Options {
   void SetLogDirectory(const std::string &path) { m_logDirectory = path; }
   void SetLogLevel(LogLevel level) { m_logLevel = level; }
   void SetRetries(unsigned retries) { m_retries = retries; }
+  void SetMaxCacheSizeInMB(unsigned long maxcache) { 
+    m_maxCacheSizeInMB = maxcache; 
+  }
+  void SetMaxStatCountInK(unsigned long maxstat) { 
+    m_maxStatCountInK = maxstat;
+  }
+  void SetStatExpireInMin(long int expire) { m_statExpireInMin = expire; }
   void SetHost(const char *host) { m_host = host; }
   void SetProtocol(const char *protocol) { m_protocol = protocol; }
   void SetPort(unsigned port) { m_port = port; }
@@ -107,6 +117,9 @@ class Options {
   std::string m_logDirectory;
   LogLevel m_logLevel;
   uint16_t m_retries;
+  unsigned long m_maxCacheSizeInMB;
+  unsigned long m_maxStatCountInK;
+  long int m_statExpireInMin;  //  negative value will disable state expire
   std::string m_host;
   std::string m_protocol;
   uint16_t m_port;

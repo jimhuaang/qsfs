@@ -39,9 +39,9 @@ std::string SecondsToRFC822GMT(time_t time);
 
 // Check if given time expired
 //
-// @param  : time to check, expire duration
+// @param  : time to check, expire duration in min
 // @return : bool
-bool IsExpire(time_t t, time_t expireDuration);
+bool IsExpire(time_t t, long int expireDurationInMin);
 
 }  // namespace TimeUtils
 }  // namespace QS

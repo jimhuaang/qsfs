@@ -24,13 +24,13 @@
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
-#include "configure/Default.h"
+#include "configure/Options.h"
+#include "data/Size.h"
 
 namespace QS {
 
 namespace Data {
 
-using QS::Configure::Default::GetMaxFileMetaDataCount;
 using QS::StringUtils::FormatPath;
 using std::lock_guard;
 using std::recursive_mutex;
@@ -45,7 +45,10 @@ static std::once_flag initOnceFlag;
 // --------------------------------------------------------------------------
 FileMetaDataManager &FileMetaDataManager::Instance() {
   std::call_once(initOnceFlag, [] {
-    instance.reset(new FileMetaDataManager(GetMaxFileMetaDataCount()));
+    size_t maxStatCount = static_cast<size_t>(
+        QS::Configure::Options::Instance().GetMaxStatCountInK() *
+        QS::Data::Size::K1);
+    instance.reset(new FileMetaDataManager(maxStatCount));
   });
   return *instance.get();
 }
