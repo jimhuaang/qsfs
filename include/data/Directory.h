@@ -109,6 +109,7 @@ class Entry {
   FileType GetFileType() const { return m_metaData.lock()->m_fileType; }
   mode_t GetFileMode() const { return m_metaData.lock()->m_fileMode; }
   time_t GetMTime() const { return m_metaData.lock()->m_mtime; }
+  time_t GetCachedTime() const { return m_metaData.lock()->m_cachedTime; }
   uid_t GetUID() const { return m_metaData.lock()->m_uid; }
   bool IsNeedUpload() const { return m_metaData.lock()->m_needUpload; }
   bool IsFileOpen() const { return m_metaData.lock()->m_fileOpen; }
@@ -216,6 +217,7 @@ class Node {
 
   mode_t GetFileMode() const { return m_entry ? m_entry.GetFileMode() : 0; }
   time_t GetMTime() const { return m_entry ? m_entry.GetMTime() : 0; }
+  time_t GetCachedTime() const { return m_entry ? m_entry.GetCachedTime() : 0; }
   uid_t GetUID() const { return m_entry ? m_entry.GetUID() : -1; }
   bool IsNeedUpload() const { return m_entry ? m_entry.IsNeedUpload() : false; }
   bool IsFileOpen() const { return m_entry ? m_entry.IsFileOpen() : false; }

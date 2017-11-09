@@ -53,5 +53,11 @@ string SecondsToRFC822GMT(time_t time) {
   return date;
 }
 
+// --------------------------------------------------------------------------
+bool IsExpire(time_t t, time_t expireDuration) {
+  time_t now = time(NULL);
+  return t + expireDuration < now;
+}
+
 }  // namespace TimeUtils
 }  // namespace QS

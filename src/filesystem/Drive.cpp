@@ -35,6 +35,7 @@
 #include "base/Exception.h"
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
+#include "base/TimeUtils.h"
 #include "base/Utils.h"
 #include "client/Client.h"
 #include "client/ClientError.h"
@@ -77,6 +78,7 @@ using QS::Exception::QSException;
 using QS::Configure::Default::GetCacheTemporaryDirectory;
 using QS::Configure::Default::GetDefaultMaxParallelTransfers;
 using QS::Configure::Default::GetDefaultTransferMaxBufSize;
+using QS::Configure::Default::GetFileMetaDataExpireDuration;
 using QS::Configure::Default::GetMaxCacheSize;
 using QS::StringUtils::FormatPath;
 using QS::Utils::AppendPathDelim;
@@ -242,7 +244,10 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
   };
 
   if (node && *node) {
-    UpdateNode(path, node);
+    if (QS::TimeUtils::IsExpire(node->GetCachedTime(),
+                                GetFileMetaDataExpireDuration())) {
+      UpdateNode(path, node);
+    }
   } else {
     auto err = GetClient()->Stat(path);  // head it
     if (IsGoodQSError(err)) {
@@ -261,7 +266,10 @@ pair<weak_ptr<Node>, bool> Drive::GetNode(const string &path,
   // not be considered as an error.
   // The modified time is only the meta of an object, we should not take
   // modified time as an precondition to decide if we need to update dir or not.
-  if (node && *node && node->IsDirectory() && updateIfDirectory) {
+  if (node && *node && node->IsDirectory() && updateIfDirectory &&
+      (QS::TimeUtils::IsExpire(node->GetCachedTime(),
+                               GetFileMetaDataExpireDuration()) ||
+       node->IsEmpty())) {
     auto ReceivedHandler = [](const ClientError<QSError> &err) {
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     };

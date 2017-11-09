@@ -37,6 +37,12 @@ time_t RFC822GMTToSeconds(const std::string &date);
 // @return : date string in rfc822 GMT format
 std::string SecondsToRFC822GMT(time_t time);
 
+// Check if given time expired
+//
+// @param  : time to check, expire duration
+// @return : bool
+bool IsExpire(time_t t, time_t expireDuration);
+
 }  // namespace TimeUtils
 }  // namespace QS
 

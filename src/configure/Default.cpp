@@ -73,6 +73,11 @@ size_t GetMaxFileMetaDataCount() {
   return QS::Data::Size::K10;  // default value
 }
 
+time_t GetFileMetaDataExpireDuration() {
+  // default with 60 min
+  return static_cast<time_t>(60 * 60);  //  in seconds
+}
+
 static const int CLIENT_DEFAULT_POOL_SIZE = 5;
 static const int QS_CONNECTION_DEFAULT_RETRIES = 3;  // qs sdk parameter
 static const char* QS_SDK_LOG_FILE_NAME = "qingstor_sdk_log.txt";  // qs sdk log
