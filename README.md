@@ -1,2 +1,2 @@
-# qsfs-fuse
-qingstor filesystem based on fuse
+# qsfs
+qingstor filesystem based on fuse.
