@@ -216,7 +216,7 @@ void QSTransferManager::DoSinglePartDownload(
       };
 
   if (async) {
-    GetClient()->GetExecutor()->SubmitAsyncPrioritized(
+    GetExecutor()->SubmitAsyncPrioritized(
         ReceivedHandler,
         [this, handle, part]() -> pair<ClientError<QSError>, string> {
           string eTag;
@@ -300,7 +300,7 @@ void QSTransferManager::DoMultiPartDownload(
 
       string objKey = handle->GetObjectKey();
       if (async) {
-        GetClient()->GetExecutor()->SubmitAsync(
+        GetExecutor()->SubmitAsync(
             ReceivedHandler,
             [this, objKey, part]() -> pair<ClientError<QSError>, string> {
               string eTag;
@@ -470,7 +470,7 @@ void QSTransferManager::DoSinglePartUpload(
   };
 
   if (async) {
-    GetClient()->GetExecutor()->SubmitAsyncPrioritized(
+    GetExecutor()->SubmitAsyncPrioritized(
         ReceivedHandler, [this, objKey, fileSize, stream]() {
           return GetClient()->UploadFile(objKey, fileSize, stream);
         });
@@ -574,7 +574,7 @@ void QSTransferManager::DoMultiPartUpload(
       auto partId = part->GetPartId();
       auto partSize = part->GetSize();
       if (async) {
-        GetClient()->GetExecutor()->SubmitAsync(
+        GetExecutor()->SubmitAsync(
             ReceivedHandler,
             [this, objKey, uploadId, partId, partSize, stream]() {
               return GetClient()->UploadMultipart(objKey, uploadId, partId,

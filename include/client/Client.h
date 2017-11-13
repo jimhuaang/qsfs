@@ -45,7 +45,6 @@ namespace Client {
 
 class ClientImpl;
 class RetryStrategy;
-class QSTransferManager;
 
 class Client {
  public:
@@ -227,7 +226,6 @@ class Client {
   mutable std::condition_variable m_retrySignal;
 
   friend class QS::FileSystem::Drive;
-  friend class QS::Client::QSTransferManager;
 };
 
 }  // namespace Client

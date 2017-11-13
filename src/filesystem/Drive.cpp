@@ -520,8 +520,7 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
     }
   }
 
-  // download asynchronizely for unloaded part // TODO(jim): consider not
-  // download all remaining unloaded large range
+  // download asynchronizely for unloaded part
   if (remainingSize > 0) {
     auto ranges = m_cache->GetUnloadedRanges(filePath, 0, fileSize);
     if (!ranges.empty()) {

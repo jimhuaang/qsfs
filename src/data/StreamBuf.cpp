@@ -49,6 +49,12 @@ StreamBuf::StreamBuf(Buffer buf, size_t lengthToRead)
   setg(begin(), begin(), end());
 }
 
+StreamBuf::~StreamBuf() {
+  if(m_buffer) {
+    m_buffer.reset();
+  }
+}
+
 StreamBuf::pos_type StreamBuf::seekoff(off_type off, std::ios_base::seekdir dir,
                                        std::ios_base::openmode which) {
   if (dir == std::ios_base::beg) {

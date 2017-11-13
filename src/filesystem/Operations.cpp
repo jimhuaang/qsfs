@@ -36,6 +36,7 @@
 #include "base/ThreadPoolInitializer.h"
 #include "base/Utils.h"
 #include "configure/Default.h"
+#include "configure/Options.h"
 #include "data/Directory.h"
 #include "filesystem/Drive.h"
 
@@ -520,7 +521,8 @@ int qsfs_unlink(const char* path) {
       ret = -EINVAL;
       throw QSException("Not a file, but a directory " + FormatPath(path));
     } else {
-      drive.RemoveFile(path);
+      bool async = !QS::Configure::Options::Instance().IsQsfsSingleThread();
+      drive.RemoveFile(path, async);
     }
   } catch (const QSException& err) {
     Error(err.get());
@@ -674,7 +676,7 @@ int qsfs_rename(const char* path, const char* newpath) {
     // Check parent permission
     auto dir = CheckParentDir(path, W_OK | X_OK, &ret, false);
 
-    auto res = GetFile(path, true);  // update dir synchronizely
+    auto res = GetFile(path);
     auto node = std::get<0>(res).lock();
     string path_ = std::get<2>(res);
     if (!(node && *node)) {
@@ -706,8 +708,8 @@ int qsfs_rename(const char* path, const char* newpath) {
 
     // Do Renaming
     if (node->IsDirectory()) {
-      // rename dir asynchronizely
-      Drive::Instance().RenameDir(path_, AppendPathDelim(newpath), true);
+      bool async = !QS::Configure::Options::Instance().IsQsfsSingleThread();
+      Drive::Instance().RenameDir(path_, AppendPathDelim(newpath), async);
     } else {
       Drive::Instance().RenameFile(path_, newpath);
     }
@@ -1255,7 +1257,8 @@ int qsfs_release(const char* path, struct fuse_file_info* fi) {
     // Write the file to object storage
     if (node->IsNeedUpload()) {
       try {
-        Drive::Instance().UploadFile(path_);
+        bool async = !QS::Configure::Options::Instance().IsQsfsSingleThread();
+        Drive::Instance().UploadFile(path_, async);
       } catch (const QSException& err) {
         Error(err.get());
         return -EAGAIN;  // Try again
@@ -1354,9 +1357,7 @@ int qsfs_opendir(const char* path, struct fuse_file_info* fi) {
       throw QSException("No read permission " + FormatPath(dirPath));
     }
 
-    if (node->IsEmpty()) {
-      drive.GetNode(dirPath, true);  // update dir synchronizely
-    }
+    drive.GetNode(dirPath, true);  // update dir synchronizely
   } catch (const QSException& err) {
     Error(err.get());
     if (ret == 0) {
@@ -1507,7 +1508,8 @@ int qsfs_access(const char* path, int mask) {
   int ret = 0;
   try {
     // Check whether file exists
-    auto res = GetFile(path, true, true);  // update dir asynchronizely
+    bool async = !QS::Configure::Options::Instance().IsQsfsSingleThread();
+    auto res = GetFile(path, true, async);  // update dir
     auto node = std::get<0>(res).lock();
     string path_ = std::get<2>(res);
     if (!(node && *node)) {

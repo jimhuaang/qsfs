@@ -50,7 +50,7 @@ class StreamBuf : public std::streambuf {
   StreamBuf(const StreamBuf &) = delete;
   StreamBuf &operator=(StreamBuf &&) = default;
   StreamBuf &operator=(const StreamBuf &) = delete;
-  ~StreamBuf() = default;
+  ~StreamBuf();
 
  public:
   const Buffer &GetBuffer() const { return m_buffer; }
