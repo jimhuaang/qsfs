@@ -70,6 +70,7 @@ class Options {
   bool IsClearLogDir() const { return m_clearLogDir; }
   bool IsForeground() const { return m_foreground; }
   bool IsSingleThread() const { return m_singleThread; }
+  bool IsQsfsSingleThread() const { return m_qsfsSingleThread; }
   bool IsDebug() const { return m_debug; }
   bool IsShowHelp() const { return m_showHelp; }
   bool IsShowVersion() const { return m_showVersion; }
@@ -103,6 +104,9 @@ class Options {
   void SetClearLogDir(bool clearLogDir) { m_clearLogDir = clearLogDir; }
   void SetForeground(bool foreground) { m_foreground = foreground; }
   void SetSingleThread(bool singleThread) { m_singleThread = singleThread; }
+  void SetQsfsSingleThread(bool singleThread) {
+    m_qsfsSingleThread = singleThread;
+  }
   void SetDebug(bool debug) { m_debug = debug; }
   void SetShowHelp(bool showHelp) { m_showHelp = showHelp; }
   void setShowVerion(bool showVersion) { m_showVersion = showVersion; }
@@ -125,8 +129,9 @@ class Options {
   uint16_t m_port;
   std::string m_additionalAgent;
   bool m_clearLogDir;
-  bool m_foreground;    // FUSE foreground option
-  bool m_singleThread;  // FUSE single threaded opton
+  bool m_foreground;        // FUSE foreground option
+  bool m_singleThread;      // FUSE single threaded option
+  bool m_qsfsSingleThread;  // qsfs single threaded option
   bool m_debug;
   bool m_showHelp;
   bool m_showVersion;

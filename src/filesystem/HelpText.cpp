@@ -88,7 +88,8 @@ void ShowQSFSHelp() {
   "  -C, --clearlogdir  Clear log directory at beginning\n"
   "  -f, --forground    Turn on log messages to STDERR and enable FUSE\n"
   "                     foreground option\n"
-  "  -s, --single       FUSE single threaded option - disable multi-threaded\n"
+  "  -s, --single       Turn on FUSE single threaded option - disable multi-threaded\n"
+  "  -S, --Single       Turn on qsfs single threaded option - disable multi-threaded\n"
   "  -d, --debug        Turn on debug messages to log and enable FUSE debug option\n"
   "  -h, --help         Print qsfs help\n"
   "  -V, --version      Print qsfs version\n"
@@ -108,8 +109,8 @@ void ShowQSFSUsage() {
   "       [-Z|--maxcache=[value]] [-t|--maxstat=[value]] [-e|--statexpire=[value]]\n"
   "       [-H|--host=[value]] [-p|--protocol=[value]]\n"
   "       [-P|--port=[value]] [-a|--agent=[value]]\n"
-  "       [-C|--clearlogdir] [-f|--foreground] [-s|--single] [-d|--debug]\n"
-  "       [-h|--help] [-V|--version]\n"
+  "       [-C|--clearlogdir] [-f|--foreground] [-s|--single] [-S|--Single]\n"
+  "       [-d|--debug] [-h|--help] [-V|--version]\n"
   "       [FUSE options]\n";
   cout.flush();
 }

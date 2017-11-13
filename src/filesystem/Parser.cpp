@@ -60,14 +60,15 @@ static struct options {
   unsigned    retries = DefaultMaxRetries;
   unsigned long maxcache = GetMaxCacheSize() / QS::Data::Size::MB1;  // in MB
   unsigned long maxstat = GetMaxStatCount() / QS::Data::Size::K1;    // in K
-  long int statexpire = -1;  // in mins, negative value disable state expire
+  long int statexpire = -1;    // in mins, negative value disable state expire
   const char *host;
   const char *protocol;
   unsigned    port = GetDefaultPort(GetDefaultProtocol());
   const char *addtionalAgent;
   int clearLogDir = 0;         // default not clear log dir
   int foreground = 0;          // default not foreground
-  int singleThread = 0;        // default multi-thread
+  int singleThread = 0;        // default FUSE multi-thread
+  int qsSingleThread = 0;      // default qsfs multi-thread
   int debug = 0;               // default no debug
   int showHelp = 0;
   int showVersion = 0;
@@ -94,6 +95,7 @@ static const struct fuse_opt optionSpec[] = {
     OPTION("-C",    clearLogDir),    OPTION("--clearlogdir",    clearLogDir),
     OPTION("-f",    foreground),     OPTION("--foreground",     foreground),
     OPTION("-s",    singleThread),   OPTION("--single",         singleThread),
+    OPTION("-S",    qsSingleThread), OPTION("--Single",         qsSingleThread),
     OPTION("-d",    debug),          OPTION("--debug",          debug),
     OPTION("-h",    showHelp),       OPTION("--help",           showHelp),
     OPTION("-V",    showVersion),    OPTION("--version",        showVersion),
@@ -146,6 +148,7 @@ void Parse(int argc, char **argv) {
   qsOptions.SetClearLogDir(options.clearLogDir != 0);
   qsOptions.SetForeground(options.foreground != 0);
   qsOptions.SetSingleThread(options.singleThread != 0);
+  qsOptions.SetQsfsSingleThread(options.qsSingleThread != 0);
   qsOptions.SetDebug(options.debug != 0);
   qsOptions.SetShowHelp(options.showHelp != 0);
   qsOptions.setShowVerion(options.showVersion !=0);
