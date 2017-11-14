@@ -6,9 +6,8 @@ These are the base requirements to build and use qsfs from a source package (as 
 
 **qsfs** is integrated with QingStor via the [QingStor SDK for C++][qs-sdk-cpp link], so you need to get the QingStor SDK for C++ installed at first.
 
-Additional Requirements
+### Additional Requirements
 To compile on Linux, you must have the header files (-dev packages) for libfuse, libglog, libgflags, libgtest.
-
 Typically, you'll find the packages in your system's package manager.
 
 To install these packages on Ubuntu16.04:
@@ -52,17 +51,14 @@ Run cmake and make to build
  $ make
 ```
 
-Running unit tests
+Run unit tests
 ```sh
  $ make test
 ```
-    or
+  or
 ```sh
  $ ctest -R qsfs -V
 ```
-Running integration tests:
-
-Several directories are appended with *integration-tests. After building your project, you can run these executables to ensure everything works properly.
 
 Install the programs and any data files and documentation
 ```sh
@@ -81,4 +77,4 @@ To remove the installed files
 
 
 [qsfs github link]: [https://github.com/jimhuaang/qsfs]
-[qs-sdk-cpp link]: [https://]
+[qs-sdk-cpp link]: [https://git.internal.yunify.com/MorvenHuang/qingstor-sdk-c-and-cpp]

@@ -99,7 +99,7 @@ To umount:
 ```sh
  $ [sudo] fusermount -uqz /path/to/mountpoint
 ```
-    or
+  or
 ```sh
  $ [sudo] umount -l /path/to/mountpoint
 ```
