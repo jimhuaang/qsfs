@@ -1,10 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
-if(CMAKE_MAJOR_VERSION LESS 3)
-  message(
-      WARNING "Building with CMake 3.0 or higher is strongly suggested;
-      current version is ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.
-      ${CMAKE_PATCH_VERSION}")
-endif()
+cmake_minimum_required(VERSION 3.5)
 
 option(BUILD_SHARED_LIBS "Build shared libraries." ON)
 
@@ -23,6 +17,7 @@ endif (QSFS_BUILD_TESTS)
 #
 # configure version
 #
+set(QSFS_VERSION 1.0.0)
 if(EXISTS ${CMAKE_SOURCE_DIR}/include/configure/VersionConfig.h})
     FILE(REMOVE ${CMAKE_SOURCE_DIR}/include/configure/VersionConfig.h})
 endif()
@@ -38,7 +33,6 @@ file(
 string(
   REGEX MATCH "([0-9]+\\.[0-9]+\\.[0-9]+)"
   VERSION_STRING "${__QSFS_VERSION_LINE}")
-set(QSFS_VERSION "${VERSION_STRING}")
 
 message(STATUS "Building project version: ${QSFS_VERSION}")
 string(REPLACE "." ";" VERSION_LIST ${VERSION_STRING})
@@ -49,8 +43,7 @@ list (GET VERSION_LIST 2 QSFS_PATCH_VERSION)
 # 
 # dependencies
 #
-# Using cmake scripts and modules
-#list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
+# Using cmake scripts
 include(cmake/gtest.cmake)
 include(cmake/gflags.cmake)
 include(cmake/glog.cmake)
@@ -63,8 +56,6 @@ include(cmake/glog.cmake)
 #
 # compile set up
 #
-#ADD_DEFINITIONS(-DENABLE_DEBUG -DABC)
-##ifdef ENABLE_DEBUG /*code will be active #endif
 
 # As we build gflags as a subproject and gflags is built as static single-threaded
 # library by default. As glog depend on the gflags library and should link to gfalgs
@@ -102,7 +93,6 @@ include_directories(${PROJECT_SOURCE_DIR}/external/include/qingstor-sdk-cpp)
 link_directories(${PROJECT_SOURCE_DIR}/external/lib)
 
 
-#add_subdirectory(doc)
 add_subdirectory(include)
 add_subdirectory(src)
 add_subdirectory(test)

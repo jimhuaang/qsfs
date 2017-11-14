@@ -1,4 +1,27 @@
-.vscode/
+# NOTE! Please use 'git ls-files -i --exclude-standard'
+# command after changing this file, to see if there are
+# any tracked files which get ignored after the change.
+#
+# Normal rules
+#
+*.o
+*.a
+*.so
+
+#
+# Build directory (make)
+#
+build/
+
+#
+# Generated directory of build targets
+#
+bin/
+lib/
+
+#
+# Generated cmake files
+#
 CMakeCache.txt
 CMakeFiles
 CMakeScripts
@@ -8,8 +31,9 @@ cmake_install.cmake
 install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
-*.o
-bin/
-lib/
-build/
+
+#
+# Other folders
+#
 external/
+.vscode/
