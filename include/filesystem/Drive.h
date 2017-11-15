@@ -96,7 +96,7 @@ class Drive {
   //
   // Dir path should ending with '/'.
   // Using updateIfDirectory to invoke updating the directory tree
-  // asynchronizely if node is directory, which means the children of the
+  // asynchronously if node is directory, which means the children of the
   // directory will be add to the tree.
   //
   // Notes: GetNode will connect to object storage to retrive the object and
@@ -176,7 +176,7 @@ class Drive {
 
   // Open a file
   //
-  // @param  : file path, asynchronizely download file if not loaded yet
+  // @param  : file path, asynchronously download file if not loaded yet
   // @return : void
   void OpenFile(const std::string &filePath, bool async = false);
 
@@ -254,7 +254,7 @@ class Drive {
  private:
   // Download file contents
   //
-  // @param  : file path, file content ranges, asynchronizely or synchronizely
+  // @param  : file path, file content ranges, asynchronously or synchronizely
   // @return : void
   void DownloadFileContentRanges(const std::string &filePath,
                                  const QS::Data::ContentRangeDeque &ranges,

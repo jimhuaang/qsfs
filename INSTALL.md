@@ -28,30 +28,30 @@ To install these packages on CentOS 7:
 
 # Build from Source using CMake
 
-Clone the qsfs source from [yunify/qsfs][qsfs github link] on Github
+Clone the qsfs source from [yunify/qsfs][qsfs github link] on Github:
 ```sh
  $ git clone https://github.com/jimhuaang/qsfs.git
 ```
 
-Enter the project directory containing the package's source code
+Enter the project directory containing the package's source code:
 ```sh
  $ cd qsfs
 ```
 
 It is always a good idea to not pollute the source with build files,
-so create a directory in which to create your build files.
+so create a directory in which to create your build files:
 ```sh
  $ mkdir build
  $ cd build
 ```
 
-Run cmake and make to build
+Run cmake and make to build:
 ```sh
  $ cmake ..
  $ make
 ```
 
-Run unit tests
+Run unit tests:
 ```sh
  $ make test
 ```
@@ -60,21 +60,21 @@ Run unit tests
  $ ctest -R qsfs -V
 ```
 
-Install the programs and any data files and documentation
+Install the programs and any data files and documentation:
 ```sh
  $ [sudo] make install
 ```
 
-You can remove the program binaries and object files from the source code directory
+You can remove the program binaries and object files from the source code directory:
 ```sh
  $ make clean
 ```
 
-To remove the installed files
+To remove the installed files:
 ```sh
  $ [sudo] make uninstall
 ```
 
 
-[qsfs github link]: [https://github.com/jimhuaang/qsfs]
-[qs-sdk-cpp link]: [https://git.internal.yunify.com/MorvenHuang/qingstor-sdk-c-and-cpp]
+[qsfs github link]: https://github.com/jimhuaang/qsfs
+[qs-sdk-cpp link]: https://git.internal.yunify.com/MorvenHuang/qingstor-sdk-c-and-cpp

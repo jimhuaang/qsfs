@@ -44,8 +44,12 @@ namespace {
 using QS::Client::Http::GetDefaultPort;
 using QS::Client::Http::GetDefaultProtocol;
 using QS::Client::Retry::DefaultMaxRetries;
+using QS::Configure::Default::GetClientDefaultPoolSize;
+using QS::Configure::Default::GetDefaultParallelTransfers;
+using QS::Configure::Default::GetDefaultTransferBufSize;
 using QS::Configure::Default::GetMaxCacheSize;
 using QS::Configure::Default::GetMaxStatCount;
+using QS::Configure::Default::GetTransactionDefaultTimeDuration;
 
 static struct options {
   // We can't set default values for the char* fields here
@@ -57,10 +61,15 @@ static struct options {
   const char *credentials;
   const char *logDirectory;
   const char *logLevel;        // INFO, WARN, ERROR, FATAL
-  unsigned    retries = DefaultMaxRetries;
+  unsigned retries = DefaultMaxRetries;
+  unsigned long reqtimeout = GetTransactionDefaultTimeDuration();    // in ms
   unsigned long maxcache = GetMaxCacheSize() / QS::Data::Size::MB1;  // in MB
   unsigned long maxstat = GetMaxStatCount() / QS::Data::Size::K1;    // in K
   long int statexpire = -1;    // in mins, negative value disable state expire
+  unsigned numtransfer = GetDefaultParallelTransfers();
+  unsigned long bufsize = GetDefaultTransferBufSize()             // in MB
+                          / QS::Data::Size::MB1;
+  unsigned threads = GetClientDefaultPoolSize();
   const char *host;
   const char *protocol;
   unsigned    port = GetDefaultPort(GetDefaultProtocol());
@@ -85,9 +94,13 @@ static const struct fuse_opt optionSpec[] = {
     OPTION("-l=%s", logDirectory),   OPTION("--logdir=%s",      logDirectory),
     OPTION("-L=%s", logLevel),       OPTION("--loglevel=%s",    logLevel),
     OPTION("-r=%u", retries),        OPTION("--retries=%u",     retries),
+    OPTION("-R=%lu", reqtimeout),    OPTION("--reqtimeout=%lu", reqtimeout),
     OPTION("-Z=%lu", maxcache),      OPTION("--maxcache=%lu",   maxcache),
     OPTION("-t=%lu", maxstat),       OPTION("--maxstat=%lu",    maxstat),
     OPTION("-e=%ld", statexpire),    OPTION("--statexpire=%ld", statexpire),
+    OPTION("-n=%u", numtransfer),    OPTION("--numtransfer=%u", numtransfer),
+    OPTION("-u=%lu", bufsize),       OPTION("--bufsize=%lu",    bufsize),
+    OPTION("-T=%u", threads),        OPTION("--threads=%u",     threads),
     OPTION("-H=%s", host),           OPTION("--host=%s",        host),
     OPTION("-p=%s", protocol),       OPTION("--protocol=%s",    protocol),
     OPTION("-P=%u", port),           OPTION("--port=%u",        port),
@@ -138,9 +151,13 @@ void Parse(int argc, char **argv) {
   qsOptions.SetLogDirectory(options.logDirectory);
   qsOptions.SetLogLevel(QS::Logging::GetLogLevelByName(options.logLevel));
   qsOptions.SetRetries(options.retries);
+  qsOptions.SetRequestTimeOut(options.reqtimeout);
   qsOptions.SetMaxCacheSizeInMB(options.maxcache);
   qsOptions.SetMaxStatCountInK(options.maxstat);
   qsOptions.SetStatExpireInMin(options.statexpire);
+  qsOptions.SetParallelTransfers(options.numtransfer);
+  qsOptions.SetTransferBufferSizeInMB(options.bufsize);
+  qsOptions.SetClientPoolSize(options.threads);
   qsOptions.SetHost(options.host);
   qsOptions.SetProtocol(options.protocol);
   qsOptions.SetPort(options.port);

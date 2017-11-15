@@ -37,6 +37,7 @@
 #include "client/Zone.h"
 #include "configure/Default.h"
 #include "configure/Options.h"
+#include "data/Size.h"
 
 namespace QS {
 
@@ -45,6 +46,8 @@ namespace Client {
 using QS::Exception::QSException;
 using QS::Configure::Default::GetClientDefaultPoolSize;
 using QS::Configure::Default::GetDefaultLogDirectory;
+using QS::Configure::Default::GetDefaultParallelTransfers;
+using QS::Configure::Default::GetDefaultTransferBufSize;
 using QS::Configure::Default::GetDefineFileMode;
 using QS::Configure::Default::GetQSConnectionDefaultRetries;
 using QS::Configure::Default::GetQingStorSDKLogFileName;
@@ -128,7 +131,10 @@ ClientConfiguration::ClientConfiguration(const Credentials &credentials)
       m_logFile(GetDefaultLogDirectory() + GetQingStorSDKLogFileName()),
       m_transactionRetries(Retry::DefaultMaxRetries),
       m_transactionTimeDuration(GetTransactionDefaultTimeDuration()),
-      m_clientPoolSize(GetClientDefaultPoolSize()) {}
+      m_clientPoolSize(GetClientDefaultPoolSize()),
+      m_parallelTransfers(GetDefaultParallelTransfers()),
+      m_transferBufferSizeInMB(GetDefaultTransferBufSize() /
+                                QS::Data::Size::MB1) {}
 
 ClientConfiguration::ClientConfiguration(const CredentialsProvider &provider)
     : ClientConfiguration(provider.GetCredentials()) {}
@@ -168,6 +174,10 @@ void ClientConfiguration::InitializeByOptions() {
   }
 
   m_transactionRetries = options.GetRetries();
+  m_transactionTimeDuration = options.GetRequestTimeOut();
+  m_clientPoolSize = options.GetClientPoolSize();
+  m_parallelTransfers = options.GetParallelTransfers();
+  m_transferBufferSizeInMB = options.GetTransferBufferSizeInMB();
 }
 
 }  // namespace Client

@@ -3,54 +3,66 @@
 [![Build Status](https://travis-ci.org/jimhuaang/qsfs.svg?branch=master)][build link]
 [![License](http://img.shields.io/badge/license-apache%20v2-blue.svg)][license link]
 
-**qsfs** is a FUSE based filesystem written in modern C++(version C++ 11 or later), that allows you to mount an qingstor bucket in Linux.
+**qsfs** is a FUSE based filesystem written in modern C++(version C++ 11 or later), that allows you to mount a qingstor bucket in Linux.
 
 
 ## Features
 
-- Large subset of POSIX including reading/writing regular files, directories, symlinks 
+- Large subset of POSIX including reading/writing files, directories, symlinks 
   (mode, uid/gid is coming later).
-- File permissions:
+- File Permissions:
   - Default permission for a file is 0644 and for a directory is 0755.
-  - Default uid/gid of a file is the uid/gid of the owner of the file.
+  - Default uid/gid of a file is the uid/gid of the user.
   - Support for sticky bit in file permissions (if set, only owner can delete/rename).
-- File Cache
-  - A file cache is maintained to store file metadata as well as the actual file data.
-  - In-memory metadata caching, you can enable.
-  - In-memory & local disk file data caching.
-  - File metadata in the file cache is invalidated only after 1 minute.
-  - Files are cached as a list of pages, where each page can be of arbitrary size.
-  - Every READ and WRITE request to a file is passed through the file cache.
-- File Transfer
-  - Transfer Manager achieves enhanced throughput, performance, and reliability by making extensive use of multi-threaded multipart uploads.
-  - Large files transfer in chunks (10MB chunks) to restrict memory usage for large file uploads or downloads.
-  - Large files uploads via multi-part upload and handled by thread pool.
-  - Large files downloads via range download and handled by thread pool.
-- File renames via server-side copy
+- File renames via server-side move.
+- File Transfer:
+  - Large files uploads via multi-threaded multipart uploads.
+  - Large files downloads via multi-threaded range-selectively downloads.
+  - Large files transfer in chunks (10MB chunks by default). If you are uploading large
+  files (e.g. larger than 1GB), you can increase the transfer buffer size and the max
+  parallel tranfers (5 by default) by specifying *-u* and *-n* option, respectively.
+- Cache:
+  - In-memory metadata caching. You can specify the expire time (in minutes) by *-e*
+  option to invalidate the file metadata in cache. You can specify the max count
+  of metadata entrys by *-t* option.
+  - In-memory file data caching. You can specify max cache size for file data cache by
+  *-Z* option. For a big file, partial file data may been stored in a local disk file
+  under */tmp/qsfs_cache/* when the file cache is not available.
 - Logging:
-  - User can use any of the logging levels like DEBUG, INFO, WARN, ERROR and FATAL, by specifying the *-L* parameter in command line, such as *-L=INFO*.
-  - User can log messages to console by specifying forground options *-f*.
-  - User can also log messages to log file by specifying log dir parameter *-l*, such as
-  *-l=/path/to/logdir/*.  The default location where the logs are stored is */opt/qsfs/qsfs_log/*.
-- Thread Pool
-  - Every HTTP request to QingStor is handled through thread pool.
-  - Some operations such as list objects, rename directory, delete file, upload file is
-  handle through thread pool asynchronizely.
-- Retry strategy
+  - You can specify any of the logging levels like INFO, WARN, ERROR and FATAL by *-L*
+  option, e.g. *-L=INFO*.
+  - You can log messages to console by specifying forground option *-f*.
+  - You can also log messages to log file by specifying log dir option *-l*, e.g.
+  *-l=/path/to/logdir/*. The default location where the logs are stored is */opt/qsfs/qsfs_log/*.
+- Thread Pooled Executor:
+  - Submit tasks to run synchronously or asynchronously.
+  - Every HTTP request to QingStor through SDK is handled through executor.
+  - Operations which is time-consuming and do not need instant response could be handle
+  through exectuor asynchronously, such as list objects when enter a directory, rename
+  directory, delete file, upload file, etc. This is default behaviour, you can turn off
+  such behaviour by enable qsfs single thread option *-S*.
+- Retry strategy:
+  - You can specify the retry times to retry a faild transaction by *-r* option.
   - The retry strategy defaults to exponential backoff.
-- Security
-  - By default, access to the mount directory is restricted to the user who mounted GDFS.
+- Request Timeout:
+  - This value determines the length of time, in milliseconds, to wait before timing out
+  a request.
+  - For these requests which is not time-consuming, such as head a file, make an empty
+  file, make a folder, delete a file, etc., a default time-out (in milliseconds) value is
+  set (500 ms by default). You can increase this value by option *-R*.
+  - For these requests which is time-consuming, the request time-out will be evaluated,
+  e.g. if you need to transfer large files, the time-out will be depend on the file size.
+- Security:
+  - By default, access to the mount directory is restricted to the user who mounted qsfs.
 - User-specified regions
-  - The region specifies where you want the client to communicate. Examples include pek3a or sh1a. You must ensure the qinstor service you want is availabe in the region you configure.
-- Request Timeout
-  - This value determines the length of time, in milliseconds, to wait before timing out a request. You can increase this value if you need to transfer large files.
-- User Agent
-  - The user agent is built in the constructor and pulls information from your operating system. Do not alter the user agent.
-- Scheme
-  - The default value for scheme is HTTPS. You can set this value to HTTP if the information you are passing is not sensitive and the service to which you want to connect supports an HTTP endpoint.
-- Works with the Standard Template Library (STL).
-- C++ 11 features used and supported.
-- Builds with CMake.
+  - You can sepcify the zone or region by option *-z*, e.g. *-z=sh1a*, default is pek3a.
+  You must ensure the qinstor service you want is availabe in the region you configure.
+- Protocol:
+  - You can specify the protocol by option *-p*, e.g. *-p=HTTP*, default is HTTPS. You can
+  set this value to HTTP if the information you are passing is not sensitive and the service
+  to which you want to connect supports an HTTP endpoint.
+- Compatibility:
+  - Easy to expand to support other object stores such as Amazon S3.
 
 
 ## Installation
@@ -85,9 +97,9 @@ You can log messages to console:
  $ [sudo] qsfs -b=mybucket -m=/path/to/mountpoint -c=/path/to/cred -f
 ```
 
-Or you can log messages to file by specifying a directory `/path/to/logdir/`:
+Or you can log messages to log file by specifying a directory `/path/to/logdir/`:
 ```sh
- $ [sudo] qsfs -b=mybucket -m=/path/to/mountpoint -c=/path/to/cred -l="/path/to/logdir/"
+ $ [sudo] qsfs -b=mybucket -m=/path/to/mountpoint -c=/path/to/cred -l=/path/to/logdir/
 ```
 
 Specify log level (INFO,WARN,ERROR and FATAL):

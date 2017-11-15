@@ -111,16 +111,20 @@ string BuildXQSSourceString(const string &objKey) {
 
 // --------------------------------------------------------------------------
 uint32_t CalculateTransferTimeForFile(uint64_t fileSize) {
-  // 2000 milliseconds per MB1
+  const auto &clientConfig = ClientConfiguration::Instance();
+  // 2000 milliseconds per MB1 by default
   return std::ceil(static_cast<long double>(fileSize) / QS::Data::Size::MB1) *
-             2000 +
+         clientConfig.GetTransactionTimeDuration() * 4 +
          1000;
 }
 
 // --------------------------------------------------------------------------
 uint32_t CalculateTimeForListObjects(uint64_t maxCount) {
-  // 1000 milliseconds per 200 objects
-  return std::ceil(static_cast<long double>(maxCount) / 200) * 1000 + 1000;
+  const auto &clientConfig = ClientConfiguration::Instance();
+  // 1000 milliseconds per 200 objects by default
+  return std::ceil(static_cast<long double>(maxCount) / 200) *
+         clientConfig.GetTransactionTimeDuration() * 2 + 
+         1000;
 }
 
 }  // namespace
@@ -353,7 +357,7 @@ ClientError<QSError> QSClient::MoveDirectory(const string &sourceDirPath,
       auto sourceSubFile = "/" + key.GetKey();
       auto targetSubFile = targetDir + sourceSubFile.substr(lenSourceDir);
 
-      if (async) {  // asynchronizely
+      if (async) {  // asynchronously
         GetExecutor()->SubmitAsync(
             receivedHandler, [this, sourceSubFile, targetSubFile] {
               return MoveObject(sourceSubFile, targetSubFile);
@@ -370,7 +374,7 @@ ClientError<QSError> QSClient::MoveDirectory(const string &sourceDirPath,
       auto sourceSubDir = AppendPathDelim("/" + commonPrefix);
       auto targetSubDir = targetDir + sourceSubDir.substr(lenSourceDir);
 
-      if (async) {  // asynchronizely
+      if (async) {  // asynchronously
         GetExecutor()->SubmitAsync(
             receivedHandler, [this, sourceSubDir, targetSubDir] {
               return MoveDirectory(sourceSubDir, targetSubDir);
@@ -382,7 +386,7 @@ ClientError<QSError> QSClient::MoveDirectory(const string &sourceDirPath,
   }
 
   // move dir itself
-  if (async) {  // asynchronizely
+  if (async) {  // asynchronously
     GetExecutor()->SubmitAsync(receivedHandler, [this, sourceDir, targetDir] {
       return MoveObject(sourceDir, targetDir);
     });

@@ -41,6 +41,7 @@
 #include "client/ClientError.h"
 #include "client/ClientFactory.h"
 #include "client/QSError.h"
+#include "client/ClientConfiguration.h"
 #include "client/TransferHandle.h"
 #include "client/TransferManager.h"
 #include "client/TransferManagerFactory.h"
@@ -78,8 +79,6 @@ using QS::Data::IOStream;
 using QS::Data::Node;
 using QS::Exception::QSException;
 using QS::Configure::Default::GetCacheTemporaryDirectory;
-using QS::Configure::Default::GetDefaultMaxParallelTransfers;
-using QS::Configure::Default::GetDefaultTransferMaxBufSize;
 using QS::StringUtils::FormatPath;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::DeleteFilesInDirectory;
@@ -311,7 +310,7 @@ vector<weak_ptr<Node>> Drive::FindChildren(const string &dirPath,
   auto node = GetNodeSimple(dirPath).lock();
   if (node && *node) {
     if (node->IsDirectory() && updateIfDir) {
-      // Update directory tree synchornizely
+      // Update directory tree synchronously
       auto err = GetClient()->ListDirectory(dirPath);
       DebugErrorIf(!IsGoodQSError(err), GetMessageForQSError(err));
     }
@@ -347,7 +346,7 @@ void Drive::RemoveFile(const string &filePath, bool async) {
     }
   };
 
-  if (async) {  // delete file asynchronizely
+  if (async) {  // delete file asynchronously
     GetClient()->GetExecutor()->SubmitAsyncPrioritized(
         ReceivedHandler,
         [this, filePath] { return GetClient()->DeleteFile(filePath); });
@@ -520,7 +519,7 @@ size_t Drive::ReadFile(const string &filePath, off_t offset, size_t size,
     }
   }
 
-  // download asynchronizely for unloaded part
+  // download asynchronously for unloaded part
   if (remainingSize > 0) {
     auto ranges = m_cache->GetUnloadedRanges(filePath, 0, fileSize);
     if (!ranges.empty()) {
@@ -777,7 +776,9 @@ void Drive::DownloadFileContentRanges(const string &filePath,
     // Download file if not found in cache or if cache need update
     bool fileContentExist = m_cache->HasFileData(filePath, offset, size);
     if (!fileContentExist) {
-      auto bufSize = GetDefaultTransferMaxBufSize();
+      auto bufSize = 
+        QS::Client::ClientConfiguration::Instance().GetTransferBufferSizeInMB() *
+        QS::Data::Size::MB1;
       auto remainingSize = size;
       uint64_t downloadedSize = 0;
 

@@ -37,8 +37,11 @@ using QS::Client::Http::GetDefaultHostName;
 using QS::Client::Http::GetDefaultProtocolName;
 using QS::Configure::Default::GetDefaultCredentialsFile;
 using QS::Configure::Default::GetDefaultLogDirectory;
+using QS::Configure::Default::GetDefaultParallelTransfers;
+using QS::Configure::Default::GetDefaultTransferBufSize;
 using QS::Configure::Default::GetMaxCacheSize;
 using QS::Configure::Default::GetMaxStatCount;
+using QS::Configure::Default::GetTransactionDefaultTimeDuration;
 using std::cout;
 using std::endl;
 using std::to_string;
@@ -72,12 +75,24 @@ void ShowQSFSHelp() {
   "                     Specify one of following log level: INFO,WARN,ERROR,FATAL;\n"
   "                     INFO is set by default\n"
   "  -r, --retries      Number of times to retry a failed transaction\n"
+  "  -R, --reqtimeout   Time(milliseconds) to wait before timing out a request which\n"
+  "                     is not time-consuming such as head a file, make a file, etc.\n"
+  "                     For these time-consuming requests, e.g. upload/download a file,\n"
+  "                     it will be evaluated depended on this time value and file size.\n"
+  "                     Default value is" << to_string(GetTransactionDefaultTimeDuration())
+                                          << " milliseconds\n"
   "  -Z, --maxcache     Max cache size(MB) for files, default is "
                         << to_string(GetMaxCacheSize() / QS::Data::Size::MB1) << "MB\n"
   "  -t, --maxstat      Max count(K) of cached stat entrys, default is "
                         << to_string(GetMaxStatCount() / QS::Data::Size::K1) << "K\n"
   "  -e, --statexpire   Expire time(minutes) for stat entries, negative value will\n"
   "                     disable stat expire, default is no expire\n"
+  "  -n, --numtransfer  Max number file tranfers to run in parallel, you can increase\n"
+  "                     the value when transfer large files, default is "
+                        << to_string(GetDefaultParallelTransfers()) << "\n"
+  "  -u, --bufsize      File transfer buffer size(MB), this should be larger than 8MB,\n"
+  "                     default is " 
+                        << to_string(GetDefaultTransferBufSize() / QS::Data::Size::MB1) << "MB\n"
   "  -H, --host         Host name, default is " << GetDefaultHostName() << "\n" <<
   "  -p, --protocol     Protocol could be https or http, default is " <<
                                               GetDefaultProtocolName() << "\n" <<
@@ -104,9 +119,11 @@ void ShowQSFSHelp() {
 void ShowQSFSUsage() { 
   cout << 
   "Usage: qsfs -b|--bucket=<name> -m|--mount=<mount point>\n"
-  "       [-z|--zone=[value]] [-c|--credentials=[file path]] [-l|--logdir=[dir]]\n"
-  "       [-L|--loglevel=[INFO|WARN|ERROR|FATAL]] [-r|--retries=[value]]\n"
+  "       [-z|--zone=[value]] [-c|--credentials=[file path]]\n"
+  "       [-l|--logdir=[dir]] [-L|--loglevel=[INFO|WARN|ERROR|FATAL]] \n"
+  "       [-r|--retries=[value]] [-R|reqtimeout=[value]]\n"
   "       [-Z|--maxcache=[value]] [-t|--maxstat=[value]] [-e|--statexpire=[value]]\n"
+  "       [-n|--numtransfer=[value]] [-u|--bufsize=value]]\n"
   "       [-H|--host=[value]] [-p|--protocol=[value]]\n"
   "       [-P|--port=[value]] [-a|--agent=[value]]\n"
   "       [-C|--clearlogdir] [-f|--foreground] [-s|--single] [-S|--Single]\n"

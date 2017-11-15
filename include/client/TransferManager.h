@@ -24,7 +24,9 @@
 #include <string>
 
 #include "configure/Default.h"
+#include "client/ClientConfiguration.h"
 #include "data/ResourceManager.h"
+#include "data/Size.h"
 
 namespace QS {
 
@@ -46,30 +48,31 @@ class Client;
 class TransferHandle;
 
 struct TransferManagerConfigure {
-  // Maximum size of the working buffers to use
-  uint64_t m_bufferMaxHeapSize =
-      QS::Configure::Default::GetDefaultTransferMaxBufHeapSize();
-
   // Memory size allocated for one transfer buffer
   // If you are uploading large files(e.g. larger than 50GB), this needs to be
   // specified to be a size larger. And keeping in mind that you may need to
   // increase your max heap size if you plan on increasing buffer size.
-  uint64_t m_bufferSize =
-      QS::Configure::Default::GetDefaultTransferMaxBufSize();
+  uint64_t m_bufferSize;
 
   // Maximum number of file transfers to run in parallel.
-  size_t m_maxParallelTransfers =
-      QS::Configure::Default::GetDefaultMaxParallelTransfers();
+  size_t m_maxParallelTransfers;
+
+  // Maximum size of the working buffers to use
+  uint64_t m_bufferMaxHeapSize;
 
   TransferManagerConfigure(
-      uint64_t bufMaxHeapSize =
-          QS::Configure::Default::GetDefaultTransferMaxBufHeapSize(),
-      uint64_t bufSize = QS::Configure::Default::GetDefaultTransferMaxBufSize(),
+      uint64_t bufSize =
+          ClientConfiguration::Instance().GetTransferBufferSizeInMB() *
+          QS::Data::Size::MB1,
       size_t maxParallelTransfers =
-          QS::Configure::Default::GetDefaultMaxParallelTransfers())
-      : m_bufferMaxHeapSize(bufMaxHeapSize),
-        m_bufferSize(bufSize),
-        m_maxParallelTransfers(maxParallelTransfers) {}
+          ClientConfiguration::Instance().GetParallelTransfers(),
+      uint64_t bufMaxHeapSize =
+          ClientConfiguration::Instance().GetTransferBufferSizeInMB() *
+          QS::Data::Size::MB1 *
+          ClientConfiguration::Instance().GetParallelTransfers())
+      : m_bufferSize(bufSize),
+        m_maxParallelTransfers(maxParallelTransfers),
+        m_bufferMaxHeapSize(bufMaxHeapSize) {}
 };
 
 class TransferManager {

@@ -191,7 +191,7 @@ pair<weak_ptr<Node>, string> GetFileSimple(const char* path) {
 // --------------------------------------------------------------------------
 // Get the file
 //
-// @param  : path, flag update dir, flag update dir asynchronizely
+// @param  : path, flag update dir, flag update dir asynchronously
 // @return : {node, bool, path_}
 //          - 1st member is the node;
 //          - 2nd member denote if the node is modified comparing with the

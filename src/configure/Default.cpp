@@ -85,12 +85,12 @@ int GetQSConnectionDefaultRetries() { return QS_CONNECTION_DEFAULT_RETRIES; }
 
 const char* GetQingStorSDKLogFileName() { return QS_SDK_LOG_FILE_NAME; }
 
-size_t GetDefaultMaxParallelTransfers() { return 5; }
+size_t GetDefaultParallelTransfers() { return 5; }
 
 uint64_t GetDefaultTransferMaxBufHeapSize() { return QS::Data::Size::MB50; }
 
-uint64_t GetDefaultTransferMaxBufSize() {
-  // should be larger than 2 * MB4 (min part size),
+uint64_t GetDefaultTransferBufSize() {
+  // should be larger than 2 * MB4 (min part size) = 8MB,
   // as QSTransferManager count on it to average the last two
   // multiparts size when do multipart upload
   return QS::Data::Size::MB10;

@@ -83,6 +83,8 @@ class ClientConfiguration {
     return m_transactionTimeDuration;
   }
   uint16_t GetPoolSize() const { return m_clientPoolSize; }
+  uint16_t GetParallelTransfers() const { return m_parallelTransfers; }
+  uint32_t GetTransferBufferSizeInMB() const { return m_transferBufferSizeInMB; }
 
  private:
   const std::string& GetAccessKeyId() const { return m_accessKeyId; }
@@ -108,6 +110,8 @@ class ClientConfiguration {
   uint32_t m_transactionTimeDuration;  // default time duration for one
                                        // transaction in milliseconds
   uint16_t m_clientPoolSize;           // pool size of client
+  uint16_t m_parallelTransfers;        // number of file transfers in parallel
+  uint32_t m_transferBufferSizeInMB;   // file transfer buffer size in MB
 };
 
 }  // namespace Client

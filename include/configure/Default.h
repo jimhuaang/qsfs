@@ -56,9 +56,9 @@ uint32_t GetTransactionDefaultTimeDuration();  // in milliseconds
 int GetClientDefaultPoolSize();
 const char* GetQingStorSDKLogFileName();
 
-size_t GetDefaultMaxParallelTransfers();
+size_t GetDefaultParallelTransfers();
 uint64_t GetDefaultTransferMaxBufHeapSize();
-uint64_t GetDefaultTransferMaxBufSize();
+uint64_t GetDefaultTransferBufSize();
 
 uint64_t GetUploadMultipartMinPartSize();
 uint64_t GetUploadMultipartMaxPartSize();
