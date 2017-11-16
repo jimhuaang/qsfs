@@ -2,9 +2,6 @@ language: cpp
 sudo: required
 dist: trusty
 
-os:
-- linux
-
 addons:
   apt:
     sources:
@@ -16,15 +13,17 @@ addons:
       - cmake
 
 env:
-  - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
+  - CC_EVAL="CC=gcc-5 && CXX=g++-5"
+
+os:
+  - linux
 
 compiler:
-- gcc
+  - gcc
 
 before_install:
-  - sudo apt-get update -q
   - sudo apt-get install -q libfuse-dev
-  - eval "${MATRIX_EVAL}"
+  - eval "${CC_EVAL}"
 
 script:
   - mkdir build
