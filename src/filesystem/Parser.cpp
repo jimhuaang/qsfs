@@ -20,6 +20,9 @@
 #include <stddef.h>  // for offsetof
 #include <string.h>  // for strdup
 
+#include <iostream>
+#include <string>
+
 #include "base/Exception.h"
 #include "base/LogLevel.h"
 #include "client/Protocol.h"
@@ -50,6 +53,14 @@ using QS::Configure::Default::GetDefaultTransferBufSize;
 using QS::Configure::Default::GetMaxCacheSize;
 using QS::Configure::Default::GetMaxStatCount;
 using QS::Configure::Default::GetTransactionDefaultTimeDuration;
+using std::to_string;
+
+void PrintWarnMsg(const char *opt, long int invalidVal, long int defaultVal) {
+  if (opt == nullptr) return;
+  std::cerr << "[qsfs] invalid parameter in option " << opt << "="
+            << to_string(invalidVal) << ", "
+            << to_string(defaultVal) << " is used" << std::endl;
+}
 
 static struct options {
   // We can't set default values for the char* fields here
@@ -61,18 +72,17 @@ static struct options {
   const char *credentials;
   const char *logDirectory;
   const char *logLevel;        // INFO, WARN, ERROR, FATAL
-  unsigned retries = DefaultMaxRetries;
-  unsigned long reqtimeout = GetTransactionDefaultTimeDuration();    // in ms
-  unsigned long maxcache = GetMaxCacheSize() / QS::Data::Size::MB1;  // in MB
-  unsigned long maxstat = GetMaxStatCount() / QS::Data::Size::K1;    // in K
+  int retries = DefaultMaxRetries;
+  long int reqtimeout = GetTransactionDefaultTimeDuration();    // in ms
+  long int maxcache = GetMaxCacheSize() / QS::Data::Size::MB1;  // in MB
+  long int maxstat = GetMaxStatCount() / QS::Data::Size::K1;    // in K
   long int statexpire = -1;    // in mins, negative value disable state expire
-  unsigned numtransfer = GetDefaultParallelTransfers();
-  unsigned long bufsize = GetDefaultTransferBufSize()             // in MB
-                          / QS::Data::Size::MB1;
-  unsigned threads = GetClientDefaultPoolSize();
+  int numtransfer = GetDefaultParallelTransfers();
+  long int bufsize = GetDefaultTransferBufSize() / QS::Data::Size::MB1;  // in MB
+  int threads = GetClientDefaultPoolSize();
   const char *host;
   const char *protocol;
-  unsigned    port = GetDefaultPort(GetDefaultProtocol());
+  int port = GetDefaultPort(GetDefaultProtocol());
   const char *addtionalAgent;
   int clearLogDir = 0;         // default not clear log dir
   int foreground = 0;          // default not foreground
@@ -93,17 +103,17 @@ static const struct fuse_opt optionSpec[] = {
     OPTION("-c=%s", credentials),    OPTION("--credentials=%s", credentials),
     OPTION("-l=%s", logDirectory),   OPTION("--logdir=%s",      logDirectory),
     OPTION("-L=%s", logLevel),       OPTION("--loglevel=%s",    logLevel),
-    OPTION("-r=%u", retries),        OPTION("--retries=%u",     retries),
-    OPTION("-R=%lu", reqtimeout),    OPTION("--reqtimeout=%lu", reqtimeout),
-    OPTION("-Z=%lu", maxcache),      OPTION("--maxcache=%lu",   maxcache),
-    OPTION("-t=%lu", maxstat),       OPTION("--maxstat=%lu",    maxstat),
-    OPTION("-e=%ld", statexpire),    OPTION("--statexpire=%ld", statexpire),
-    OPTION("-n=%u", numtransfer),    OPTION("--numtransfer=%u", numtransfer),
-    OPTION("-u=%lu", bufsize),       OPTION("--bufsize=%lu",    bufsize),
-    OPTION("-T=%u", threads),        OPTION("--threads=%u",     threads),
+    OPTION("-r=%i", retries),        OPTION("--retries=%i",     retries),
+    OPTION("-R=%li", reqtimeout),    OPTION("--reqtimeout=%li", reqtimeout),
+    OPTION("-Z=%li", maxcache),      OPTION("--maxcache=%li",   maxcache),
+    OPTION("-t=%li", maxstat),       OPTION("--maxstat=%li",    maxstat),
+    OPTION("-e=%li", statexpire),    OPTION("--statexpire=%li", statexpire),
+    OPTION("-n=%i", numtransfer),    OPTION("--numtransfer=%i", numtransfer),
+    OPTION("-u=%li", bufsize),       OPTION("--bufsize=%li",    bufsize),
+    OPTION("-T=%i", threads),        OPTION("--threads=%i",     threads),
     OPTION("-H=%s", host),           OPTION("--host=%s",        host),
     OPTION("-p=%s", protocol),       OPTION("--protocol=%s",    protocol),
-    OPTION("-P=%u", port),           OPTION("--port=%u",        port),
+    OPTION("-P=%i", port),           OPTION("--port=%i",        port),
     OPTION("-a=%s", addtionalAgent), OPTION("--agent=%s",       addtionalAgent),
     OPTION("-C",    clearLogDir),    OPTION("--clearlogdir",    clearLogDir),
     OPTION("-f",    foreground),     OPTION("--foreground",     foreground),
@@ -150,17 +160,75 @@ void Parse(int argc, char **argv) {
   qsOptions.SetCredentialsFile(options.credentials);
   qsOptions.SetLogDirectory(options.logDirectory);
   qsOptions.SetLogLevel(QS::Logging::GetLogLevelByName(options.logLevel));
-  qsOptions.SetRetries(options.retries);
-  qsOptions.SetRequestTimeOut(options.reqtimeout);
-  qsOptions.SetMaxCacheSizeInMB(options.maxcache);
-  qsOptions.SetMaxStatCountInK(options.maxstat);
+
+  if (options.retries <= 0) {
+    PrintWarnMsg("-r|--retries", options.retries, DefaultMaxRetries);
+    qsOptions.SetRetries(DefaultMaxRetries);
+  } else {
+    qsOptions.SetRetries(options.retries);
+  }
+
+  if (options.reqtimeout <= 0) {
+    PrintWarnMsg("-R|--reqtimeout", options.reqtimeout,
+                 GetTransactionDefaultTimeDuration());
+    qsOptions.SetRequestTimeOut(GetTransactionDefaultTimeDuration());
+  } else {
+    qsOptions.SetRequestTimeOut(options.reqtimeout);
+  }
+
+  if (options.maxcache <= 0) {
+    PrintWarnMsg("-Z|--maxcache", options.maxcache,
+                 GetMaxCacheSize() / QS::Data::Size::MB1);
+    qsOptions.SetMaxCacheSizeInMB(GetMaxCacheSize() / QS::Data::Size::MB1);
+  } else {
+    qsOptions.SetMaxCacheSizeInMB(options.maxcache);
+  }
+
+  if (options.maxstat <= 0) {
+    PrintWarnMsg("-t|--maxstat", options.maxstat,
+                 GetMaxStatCount() / QS::Data::Size::K1);
+    qsOptions.SetMaxStatCountInK(GetMaxStatCount() / QS::Data::Size::K1);
+  } else {
+    qsOptions.SetMaxStatCountInK(options.maxstat);
+  }
+
   qsOptions.SetStatExpireInMin(options.statexpire);
-  qsOptions.SetParallelTransfers(options.numtransfer);
-  qsOptions.SetTransferBufferSizeInMB(options.bufsize);
-  qsOptions.SetClientPoolSize(options.threads);
+
+  if (options.numtransfer <= 0) {
+    PrintWarnMsg("-n|--numtransfer", options.numtransfer,
+                 GetDefaultParallelTransfers());
+    qsOptions.SetParallelTransfers(GetDefaultParallelTransfers());
+  } else {
+    qsOptions.SetParallelTransfers(options.numtransfer);
+  }
+
+  if (options.bufsize <= 0) {
+    PrintWarnMsg("-u|--bufsize", options.bufsize,
+                 GetDefaultTransferBufSize() / QS::Data::Size::MB1);
+    qsOptions.SetTransferBufferSizeInMB(GetDefaultTransferBufSize() /
+                                        QS::Data::Size::MB1);
+  } else {
+    qsOptions.SetTransferBufferSizeInMB(options.bufsize);
+  }
+
+  if (options.threads <= 0) {
+    PrintWarnMsg("-T|--threads", options.threads, GetClientDefaultPoolSize());
+    qsOptions.SetClientPoolSize(GetClientDefaultPoolSize());
+  } else {
+    qsOptions.SetClientPoolSize(options.threads);
+  }
+
   qsOptions.SetHost(options.host);
   qsOptions.SetProtocol(options.protocol);
-  qsOptions.SetPort(options.port);
+
+  if (options.port <= 0) {
+    PrintWarnMsg("-P|--port", options.port,
+                 GetDefaultPort(GetDefaultProtocol()));
+    qsOptions.SetPort(GetDefaultPort(GetDefaultProtocol()));
+  } else {
+    qsOptions.SetPort(options.port);
+  }
+
   qsOptions.SetAdditionalAgent(options.addtionalAgent);
   qsOptions.SetClearLogDir(options.clearLogDir != 0);
   qsOptions.SetForeground(options.foreground != 0);

@@ -7,28 +7,28 @@ These are the base requirements to build and use qsfs from a source package (as 
 **qsfs** is integrated with QingStor via the [QingStor SDK for C++][qs-sdk-cpp link], so you need to get the QingStor SDK for C++ installed at first.
 
 ### Additional Requirements
-To compile on Linux, you must have the header files (-dev packages) for libfuse, libglog, libgflags, libgtest.
-Typically, you'll find the packages in your system's package manager.
+qsfs use glog for logging and gtest for unit testing, and qsfs
+has used CMake to download these dependencies as part of the build's configure step, so you can just leave them alone.
+
+qsfs is a fuse based filesystem, so you must have libfuse installed.
+You may also need to install git in order to clone the source code from
+GitHub.
+
+Typically, you'll find these packages in your system's package manager.
 
 To install these packages on Ubuntu16.04:
 ```sh
- $ [sudo] apt-get install build-essential
- $ [sudo] apt-get install fuse g++ git gflags glog gtest
-```
-
-To install these packages on Debian:
-```sh
- $ 
+ $ [sudo] apt-get install g++ cmake make automake fuse libfuse-dev git
 ```
 
 To install these packages on CentOS 7:
 ```sh
- $ [sudo] yum install cmake fuse fuse-devel gcc-c++ git
+ $ [sudo] yum install gcc-c++ cmake make automake fuse fuse-devel git
 ```
 
 # Build from Source using CMake
 
-Clone the qsfs source from [yunify/qsfs][qsfs github link] on Github:
+Clone the qsfs source from [yunify/qsfs][qsfs github link] on GitHub:
 ```sh
  $ git clone https://github.com/jimhuaang/qsfs.git
 ```

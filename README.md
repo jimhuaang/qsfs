@@ -20,11 +20,11 @@
   - Large files downloads via multi-threaded range-selectively downloads.
   - Large files transfer in chunks (10MB chunks by default). If you are uploading large
   files (e.g. larger than 1GB), you can increase the transfer buffer size and the max
-  parallel tranfers (5 by default) by specifying *-u* and *-n* option, respectively.
+  parallel transfers (5 by default) by specifying *-u* and *-n* option, respectively.
 - Cache:
   - In-memory metadata caching. You can specify the expire time (in minutes) by *-e*
   option to invalidate the file metadata in cache. You can specify the max count
-  of metadata entrys by *-t* option.
+  of metadata entrys in cache by *-t* option.
   - In-memory file data caching. You can specify max cache size for file data cache by
   *-Z* option. For a big file, partial file data may been stored in a local disk file
   under */tmp/qsfs_cache/* when the file cache is not available.
@@ -38,7 +38,7 @@
   - Submit tasks to run synchronously or asynchronously.
   - Every HTTP request to QingStor through SDK is handled through executor.
   - Operations which is time-consuming and do not need instant response could be handle
-  through exectuor asynchronously, such as list objects when enter a directory, rename
+  through exectuor asynchronously, such as list objects when entering a directory, rename
   directory, delete file, upload file, etc. This is default behaviour, you can turn off
   such behaviour by enable qsfs single thread option *-S*.
 - Retry strategy:
@@ -50,8 +50,8 @@
   - For these requests which is not time-consuming, such as head a file, make an empty
   file, make a folder, delete a file, etc., a default time-out (in milliseconds) value is
   set (500 ms by default). You can increase this value by option *-R*.
-  - For these requests which is time-consuming, the request time-out will be evaluated,
-  e.g. if you need to transfer large files, the time-out will be depend on the file size.
+  - For these requests which is time-consuming, the request time-out will be evaluated
+  dependently, e.g. if you need to transfer large files, the time-out will be depend on the file size.
 - Security:
   - By default, access to the mount directory is restricted to the user who mounted qsfs.
 - User-specified regions
@@ -139,7 +139,7 @@ Generally qingstor cannot offer the same performance or semantics as a local fil
 
 ## Support
 
-If you notice any issue, please open an [issue][issue link] on Github. Please search the existing issues and see if others are also experiencing the issue before opening a new issue. Please include the version of qsfs, Compiler version, CMake version, and OS you’re using. Please also include repro case when appropriate.
+If you notice any issue, please open an [issue][issue link] on GitHub. Please search the existing issues and see if others are also experiencing the issue before opening a new issue. Please include the version of qsfs, Compiler version, CMake version, and OS you’re using. Please also include repro case when appropriate.
 
 If you have any questions, suggestions or feedback, feel free to send an email to <jimhuang@yunify.com>.
 
