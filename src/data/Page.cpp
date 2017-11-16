@@ -70,16 +70,16 @@ class FileOpener {
   FileOpener(FileOpener &&) = delete;
   FileOpener& operator=(const FileOpener &) = delete;
   FileOpener& operator=(FileOpener &&) = delete;
-  
+
   ~FileOpener() {
-    if(m_file != nullptr && m_file->is_open()) {
+    if (m_file != nullptr && m_file->is_open()) {
       m_file->flush();
       m_file->close();
     }
   }
 
   void DoOpen(const string &filename, std::ios_base::openmode mode) {
-    if(m_file != nullptr && !filename.empty()) {
+    if (m_file != nullptr && !filename.empty()) {
       m_file->open(filename, mode);
       if (!m_file->is_open()) {
         DebugError("Fail to open file " + FormatPath(filename));
@@ -88,7 +88,8 @@ class FileOpener {
       DebugError("Invalid parameter");
     }
   }
-private:
+
+ private:
   FileOpener() = default;
 
   fstream *m_file = nullptr;
@@ -188,12 +189,12 @@ Page::Page(off_t offset, size_t len, shared_ptr<iostream> &&body)
 // --------------------------------------------------------------------------
 bool Page::UseTempFile() {
   lock_guard<recursive_mutex> lock(m_mutex);
-  return !m_tmpFile.empty(); 
+  return !m_tmpFile.empty();
 }
 
 // --------------------------------------------------------------------------
 bool Page::UseTempFileNoLock() {
-  return !m_tmpFile.empty(); 
+  return !m_tmpFile.empty();
 }
 
 // --------------------------------------------------------------------------
@@ -212,11 +213,11 @@ void Page::UnguardedPutToBody(off_t offset, size_t len, const char *buffer) {
   } else {
     m_body->seekp(0, std::ios_base::beg);
   }
-  if(!m_body->good()) {
+  if (!m_body->good()) {
     DebugError("Fail to seek body " + ToStringLine(offset, len, buffer));
   } else {
     m_body->write(buffer, len);
-    if(!m_body->good()) {
+    if (!m_body->good()) {
       DebugError("Fail to write buffer " + ToStringLine(offset, len, buffer));
     }
   }
@@ -241,7 +242,7 @@ void Page::UnguardedPutToBody(off_t offset, size_t len,
   } else {
     m_body->seekp(0, std::ios_base::beg);
   }
-  if(!m_body->good()) {
+  if (!m_body->good()) {
     DebugError("Fail to seek body " + ToStringLine(offset, len));
   } else {
     instream->seekg(0, std::ios_base::beg);
@@ -252,7 +253,7 @@ void Page::UnguardedPutToBody(off_t offset, size_t len,
       ss << instream->rdbuf();
       m_body->write(ss.str().c_str(), len);
     }
-    if(!m_body->good()) {
+    if (!m_body->good()) {
       DebugError("Fail to write buffer " + ToStringLine(offset, len));
     }
   }
@@ -333,7 +334,7 @@ bool Page::UnguardedRefresh(off_t offset, size_t len, const char *buffer,
     FileOpener opener(m_body);
     if (UseTempFileNoLock()) {
       opener.DoOpen(m_tmpFile,
-                    std::ios_base::binary | std::ios_base::in);  // open for read
+                    std::ios_base::binary | std::ios_base::in);  // for read
       m_body->seekg(offset, std::ios_base::beg);
     } else {
       m_body->seekg(0, std::ios_base::beg);
@@ -363,7 +364,7 @@ bool Page::UnguardedRefresh(off_t offset, size_t len, const char *buffer,
     opener.DoOpen(m_tmpFile, std::ios_base::binary | std::ios_base::ate |
                   std::ios_base::in | std::ios_base::out);  // open for write
     m_body->seekp(m_offset, std::ios_base::beg);
-    if(!m_body->good()) {
+    if (!m_body->good()) {
       DebugError("Fail to seek page(" + ToStringLine(m_offset, m_size) +
                  ") with input " + ToStringLine(offset, len, buffer));
       return false;
@@ -399,7 +400,7 @@ size_t Page::Read(off_t offset, size_t len, char *buffer) {
   DebugErrorIf(!isValidInput,
                "Try to read page (" + ToStringLine(m_offset, m_size) +
                    ") with invalid input " + ToStringLine(offset, len, buffer));
-  
+
   lock_guard<recursive_mutex> lock(m_mutex);
   return UnguardedRead(offset, len, buffer);
 }

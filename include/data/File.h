@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_DATA_FILE_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_DATA_FILE_H_  // NOLINT
+#ifndef INCLUDE_DATA_FILE_H_
+#define INCLUDE_DATA_FILE_H_
 
 #include <stddef.h>  // for size_t
 #include <time.h>
@@ -214,4 +214,4 @@ class File {
 }  // namespace Data
 }  // namespace QS
 
-#endif  // _QSFS_FUSE_INCLUDED_DATA_FILE_H_
+#endif  // INCLUDE_DATA_FILE_H_

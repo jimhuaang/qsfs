@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_DATA_PAGE_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_DATA_PAGE_H_  // NOLINT
+#ifndef INCLUDE_DATA_PAGE_H_
+#define INCLUDE_DATA_PAGE_H_
 
 #include <stddef.h>  // for size_t
 
@@ -263,4 +263,4 @@ std::string ToStringLine(off_t offset, size_t size);
 }  // namespace Data
 }  // namespace QS
 
-#endif  // _QSFS_FUSE_INCLUDED_DATA_PAGE_H_
+#endif  // INCLUDE_DATA_PAGE_H_

@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_FILESYSTEM_HELPTEXT_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_FILESYSTEM_HELPTEXT_H_  // NOLINT
+#ifndef INCLUDE_FILESYSTEM_HELPTEXT_H_
+#define INCLUDE_FILESYSTEM_HELPTEXT_H_
 
 namespace QS {
 
@@ -31,5 +31,5 @@ void ShowQSFSUsage();
 }  // namespace FileSystem
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_FILESYSTEM_HELPTEXT_H_
+
+#endif  // INCLUDE_FILESYSTEM_HELPTEXT_H_

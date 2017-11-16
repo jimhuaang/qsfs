@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_UTILS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_UTILS_H_  // NOLINT
+#ifndef INCLUDE_CLIENT_UTILS_H_
+#define INCLUDE_CLIENT_UTILS_H_
 
 #include <stddef.h>  // for size_t
 
@@ -72,5 +72,5 @@ std::pair<off_t, size_t> ParseRequestContentRange(
 }  // namespace QS
 
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_UTILS_H_
+
+#endif  // INCLUDE_CLIENT_UTILS_H_

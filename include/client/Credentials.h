@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_CREDENTIALS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_CREDENTIALS_H_  // NOLINT
+#ifndef INCLUDE_CLIENT_CREDENTIALS_H_
+#define INCLUDE_CLIENT_CREDENTIALS_H_
 
 #include <memory>
 #include <string>
@@ -131,5 +131,5 @@ class DefaultCredentialsProvider : public CredentialsProvider {
 }  // namespace Client
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_CREDENTIALS_H_
+
+#endif  // INCLUDE_CLIENT_CREDENTIALS_H_

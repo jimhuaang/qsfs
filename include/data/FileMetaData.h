@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_DATA_FILEMETADATA_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_DATA_FILEMETADATA_H_  // NOLINT
+#ifndef INCLUDE_DATA_FILEMETADATA_H_
+#define INCLUDE_DATA_FILEMETADATA_H_
 
 #include <stdint.h>
 #include <time.h>
@@ -117,5 +117,5 @@ class FileMetaData {
 }  // namespace Data
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_DATA_FILEMETADATA_H_
+
+#endif  // INCLUDE_DATA_FILEMETADATA_H_

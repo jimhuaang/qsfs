@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_DATA_RESOURCEMANAGER_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_DATA_RESOURCEMANAGER_H_  // NOLINT
+#ifndef INCLUDE_DATA_RESOURCEMANAGER_H_
+#define INCLUDE_DATA_RESOURCEMANAGER_H_
 
 #include <stddef.h>  // for size_t
 
@@ -123,5 +123,5 @@ class ResourceManager {
 }  // namespace Data
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_DATA_RESOURCEMANAGER_H_
+
+#endif  // INCLUDE_DATA_RESOURCEMANAGER_H_

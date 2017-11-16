@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_BASE_LOGLEVEL_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_BASE_LOGLEVEL_H_  // NOLINT
+#ifndef INCLUDE_BASE_LOGLEVEL_H_
+#define INCLUDE_BASE_LOGLEVEL_H_
 
 #include <string>
 
@@ -48,5 +48,5 @@ std::string GetLogLevelPrefix(LogLevel logLevel);
 }  // namespace Logging
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDE_BASE_LOGLEVEL_H_
+
+#endif  // INCLUDE_BASE_LOGLEVEL_H_

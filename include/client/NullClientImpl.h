@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_NULLCLIENTIMPL_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_NULLCLIENTIMPL_H_  // NOLINT
+#ifndef INCLUDE_CLIENT_NULLCLIENTIMPL_H_
+#define INCLUDE_CLIENT_NULLCLIENTIMPL_H_
 
 #include <memory>
 
@@ -39,5 +39,5 @@ class NullClientImpl : public ClientImpl {
 }  // namespace Client
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_NULLCLIENTIMPL_H_
+
+#endif  // INCLUDE_CLIENT_NULLCLIENTIMPL_H_

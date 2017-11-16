@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_DATA_FILEMETADATAMANAGER_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_DATA_FILEMETADATAMANAGER_H_  // NOLINT
+#ifndef INCLUDE_DATA_FILEMETADATAMANAGER_H_
+#define INCLUDE_DATA_FILEMETADATAMANAGER_H_
 
 #include <assert.h>
 
@@ -141,5 +141,5 @@ class FileMetaDataManager {
 }  // namespace Data
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_DATA_FILEMETADATAMANAGER_H_
+
+#endif  // INCLUDE_DATA_FILEMETADATAMANAGER_H_

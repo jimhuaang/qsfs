@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_CLIENT_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_CLIENT_H_  // NOLINT
+#ifndef INCLUDE_CLIENT_CLIENT_H_
+#define INCLUDE_CLIENT_CLIENT_H_
 
 #include <sys/statvfs.h>
 #include <time.h>
@@ -231,5 +231,5 @@ class Client {
 }  // namespace Client
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_CLIENT_H_
+
+#endif  // INCLUDE_CLIENT_CLIENT_H_

@@ -50,7 +50,7 @@ StreamBuf::StreamBuf(Buffer buf, size_t lengthToRead)
 }
 
 StreamBuf::~StreamBuf() {
-  if(m_buffer) {
+  if (m_buffer) {
     m_buffer.reset();
   }
 }

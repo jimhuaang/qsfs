@@ -67,7 +67,7 @@ ostream &operator<<(ostream &os, const Options &opts) {
          << "[max stat(K): " << to_string(opts.m_maxStatCountInK) << "] "
          << "[stat expire(min): " << to_string(opts.m_statExpireInMin) << "] "
          << "[num transfers: " << to_string(opts.m_parallelTransfers) << "] "
-         << "[transfer buf(MB): " << to_string(opts.m_transferBufferSizeInMB) <<"] "
+         << "[transfer buf(MB): " << to_string(opts.m_transferBufferSizeInMB) <<"] "  // NOLINT
          << "[pool size: " << to_string(opts.m_clientPoolSize) << "] "
          << "[host: " << opts.m_host << "] "
          << "[protocol: " << opts.m_protocol << "] "

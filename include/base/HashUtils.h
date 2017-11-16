@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_BASE_HASHUTILS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_BASE_HASHUTILS_H_  // NOLINT
+#ifndef INCLUDE_BASE_HASHUTILS_H_
+#define INCLUDE_BASE_HASHUTILS_H_
 
 #include <string>
 
@@ -47,5 +47,5 @@ struct StringHash {
 }  // namespace HashUtils
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_BASE_HASHUTILS_H_
+
+#endif  // INCLUDE_BASE_HASHUTILS_H_

@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_DATA_STREAMUTILS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_DATA_STREAMUTILS_H_  // NOLINT
+#ifndef INCLUDE_DATA_STREAMUTILS_H_
+#define INCLUDE_DATA_STREAMUTILS_H_
 
 #include <stddef.h>
 
@@ -39,4 +39,4 @@ size_t GetStreamSize(const std::shared_ptr<std::iostream> &stream);
 
 
 // NOLINITNEXT
-#endif  // _QSFS_FUSE_INCLUDED_DATA_STREAMUTILS_H_
+#endif  // INCLUDE_DATA_STREAMUTILS_H_

@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_DATA_CACHE_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_DATA_CACHE_H_  // NOLINT
+#ifndef INCLUDE_DATA_CACHE_H_
+#define INCLUDE_DATA_CACHE_H_
 
 #include <stddef.h>  // for size_t
 #include <time.h>
@@ -261,4 +261,4 @@ class Cache {
 }  // namespace Data
 }  // namespace QS
 
-#endif  // _QSFS_FUSE_INCLUDE_DATA_CACHE_H_
+#endif  // INCLUDE_DATA_CACHE_H_

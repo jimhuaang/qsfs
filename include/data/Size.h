@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_DATA_SIZE_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_DATA_SIZE_H_  // NOLINT
+#ifndef INCLUDE_DATA_SIZE_H_
+#define INCLUDE_DATA_SIZE_H_
 
 #include <stddef.h>  // for size_t
 #include <stdint.h>  // for unit64_t
@@ -52,5 +52,5 @@ static const size_t M100 = 100 * 1000 * 1000;
 }  // namespace Data
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_DATA_SIZE_H_
+
+#endif  // INCLUDE_DATA_SIZE_H_

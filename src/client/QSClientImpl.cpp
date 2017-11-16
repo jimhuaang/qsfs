@@ -240,7 +240,7 @@ ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
       return {sdkErr, std::move(output)};
     };
     std::future<pair<QsError, ListObjectsOutput>> fListObjects;
-    if(useThreadPool) {
+    if (useThreadPool) {
       fListObjects = GetExecutor()->SubmitCallablePrioritized(DoListObjects);
     } else {
       fListObjects = std::async(std::launch::async, DoListObjects);

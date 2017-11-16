@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_FILESYSTEM_INITIALIZER_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_FILESYSTEM_INITIALIZER_H_  // NOLINT
+#ifndef INCLUDE_FILESYSTEM_INITIALIZER_H_
+#define INCLUDE_FILESYSTEM_INITIALIZER_H_
 
 #include <functional>
 #include <memory>
@@ -79,5 +79,5 @@ class Initializer {
 }  // namespace FileSystem
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_FILESYSTEM_INITIALIZER_H_
+
+#endif  // INCLUDE_FILESYSTEM_INITIALIZER_H_

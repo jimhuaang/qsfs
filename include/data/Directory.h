@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_DATA_DIRECTORY_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_DATA_DIRECTORY_H_  // NOLINT
+#ifndef INCLUDE_DATA_DIRECTORY_H_
+#define INCLUDE_DATA_DIRECTORY_H_
 
 #include <stdint.h>
 #include <time.h>
@@ -399,5 +399,5 @@ class DirectoryTree {
 }  // namespace Data
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDE_DATA_DIRECTORY_H_
+
+#endif  // INCLUDE_DATA_DIRECTORY_H_

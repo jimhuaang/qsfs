@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_PROTOCOL_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_PROTOCOL_H_  // NOLINT
+#ifndef INCLUDE_CLIENT_PROTOCOL_H_
+#define INCLUDE_CLIENT_PROTOCOL_H_
 
 #include <stdint.h>
 
@@ -39,5 +39,5 @@ std::string GetDefaultProtocolName();
 }  // namespace Client
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_PROTOCOL_H_
+
+#endif  // INCLUDE_CLIENT_PROTOCOL_H_

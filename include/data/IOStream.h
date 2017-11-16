@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_DATA_IOSTREAM_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_DATA_IOSTREAM_H_  // NOLINT
+#ifndef INCLUDE_DATA_IOSTREAM_H_
+#define INCLUDE_DATA_IOSTREAM_H_
 
 #include <stddef.h>
 
@@ -52,5 +52,5 @@ class IOStream : public std::basic_iostream<char, std::char_traits<char> > {
 }  // namespace Data
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_DATA_IOSTREAM_H_
+
+#endif  // INCLUDE_DATA_IOSTREAM_H_

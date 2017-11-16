@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_CONFIGURE_VERSION_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_CONFIGURE_VERSION_H_  // NOLINT
+#ifndef INCLUDE_CONFIGURE_VERSION_H_
+#define INCLUDE_CONFIGURE_VERSION_H_
 
 namespace QS {
 
@@ -28,5 +28,5 @@ const char* GetVersionString();
 }  // namespace Configure
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDE_CONFIGURE_VERSION_H_
+
+#endif  // INCLUDE_CONFIGURE_VERSION_H_

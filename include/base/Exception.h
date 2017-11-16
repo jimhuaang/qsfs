@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_BASE_EXCEPTION_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_BASE_EXCEPTION_H_  // NOLINT
+#ifndef INCLUDE_BASE_EXCEPTION_H_
+#define INCLUDE_BASE_EXCEPTION_H_
 
 #include <stdexcept>
 #include <string>
@@ -34,5 +34,5 @@ struct QSException : public std::runtime_error {
 }  // namespace Exception
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDE_BASE_EXCEPTION_H_
+
+#endif  // INCLUDE_BASE_EXCEPTION_H_

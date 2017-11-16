@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_BASE_UTILS_H_  // NOLINT
+#ifndef INCLUDE_BASE_UTILS_H_
+#define INCLUDE_BASE_UTILS_H_
 
 
 #include <sys/stat.h>
@@ -162,5 +162,5 @@ bool IsSafeDiskSpace(const std::string& absolutePath, uint64_t freeSpace);
 }  // namespace Utils
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDE_BASE_UTILS_H_
+
+#endif  // INCLUDE_BASE_UTILS_H_

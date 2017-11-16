@@ -54,7 +54,7 @@ string SecondsToRFC822GMT(time_t time) {
 }
 
 // --------------------------------------------------------------------------
-bool IsExpire(time_t t, long int expireDurationInMin) {
+bool IsExpire(time_t t, int32_t expireDurationInMin) {
   if (expireDurationInMin < 0) {
     return false;
   } else {

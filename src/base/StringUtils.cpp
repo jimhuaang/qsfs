@@ -130,27 +130,27 @@ char GetFileTypeLetter(mode_t mode) {
     c = 'c';
   }
 #ifdef S_ISFIFO
-  else if (S_ISFIFO(mode)) {
+  else if (S_ISFIFO(mode)) {  // NOLINT
     c = 'p';
   }
 #endif /* S_ISFIFO */
 #ifdef S_ISLNK
-  else if (S_ISLNK(mode)) {
+  else if (S_ISLNK(mode)) {  // NOLINT
     c = 'l';
   }
 #endif /* S_ISLNK */
 #ifdef S_ISSOCK
-  else if (S_ISSOCK(mode)) {
+  else if (S_ISSOCK(mode)) {  // NOLINT
     c = 's';
   }
 #endif /* S_ISSOCK */
 #ifdef S_ISDOOR
   /* Solaris 2.6, etc. */
-  else if (S_ISDOOR(mode)) {
+  else if (S_ISDOOR(mode)) {  // NOLINT
     c = 'D';
   }
 #endif /* S_ISDOOR */
-  else {
+  else {                      // NOLINT
     /* Unknown type -- possibly a regular file? */
     c = '?';
   }

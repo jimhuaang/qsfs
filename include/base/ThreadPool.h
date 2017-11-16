@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_BASE_THREADPOOL_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_BASE_THREADPOOL_H_  // NOLINT
+#ifndef INCLUDE_BASE_THREADPOOL_H_
+#define INCLUDE_BASE_THREADPOOL_H_
 
 #include <stddef.h>
 
@@ -223,5 +223,5 @@ void ThreadPool::SubmitAsyncWithContextPrioritized(ReceivedHandler &&handler,
 }  // namespace Threading
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDE_BASE_THREADPOOL_H_
+
+#endif  // INCLUDE_BASE_THREADPOOL_H_

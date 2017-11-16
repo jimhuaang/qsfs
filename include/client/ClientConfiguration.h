@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_CLIENTCONFIGURATION_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_CLIENTCONFIGURATION_H_  // NOLINT
+#ifndef INCLUDE_CLIENT_CLIENTCONFIGURATION_H_
+#define INCLUDE_CLIENT_CLIENTCONFIGURATION_H_
 
 #include <stdint.h>
 
@@ -84,7 +84,9 @@ class ClientConfiguration {
   }
   uint16_t GetPoolSize() const { return m_clientPoolSize; }
   uint16_t GetParallelTransfers() const { return m_parallelTransfers; }
-  uint32_t GetTransferBufferSizeInMB() const { return m_transferBufferSizeInMB; }
+  uint32_t GetTransferBufferSizeInMB() const {
+    return m_transferBufferSizeInMB;
+  }
 
  private:
   const std::string& GetAccessKeyId() const { return m_accessKeyId; }
@@ -117,5 +119,5 @@ class ClientConfiguration {
 }  // namespace Client
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_CLIENTCONFIGURATION_H_
+
+#endif  // INCLUDE_CLIENT_CLIENTCONFIGURATION_H_

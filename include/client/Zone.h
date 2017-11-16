@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_ZONE_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_ZONE_H_  // NOLINT
+#ifndef INCLUDE_CLIENT_ZONE_H_
+#define INCLUDE_CLIENT_ZONE_H_
 
 #include <string>
 
@@ -40,4 +40,4 @@ const char *GetDefaultZone();
 }  // namespace Client
 }  // namespace QS
 
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_ZONE_H_
+#endif  // INCLUDE_CLIENT_ZONE_H_

@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_FILESYSTEM_OPERATIONS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_FILESYSTEM_OPERATIONS_H_  // NOLINT
+#ifndef INCLUDE_FILESYSTEM_OPERATIONS_H_
+#define INCLUDE_FILESYSTEM_OPERATIONS_H_
 
 #include <sys/stat.h>
 
@@ -127,5 +127,5 @@ int qsfs_fallocate(const char* path, int, off_t offseta, off_t offsetb,
 }  // namespace FileSystem
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_FILESYSTEM_OPERATIONS_H_
+
+#endif  // INCLUDE_FILESYSTEM_OPERATIONS_H_

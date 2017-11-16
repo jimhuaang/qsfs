@@ -776,9 +776,9 @@ void Drive::DownloadFileContentRanges(const string &filePath,
     // Download file if not found in cache or if cache need update
     bool fileContentExist = m_cache->HasFileData(filePath, offset, size);
     if (!fileContentExist) {
-      auto bufSize = 
-        QS::Client::ClientConfiguration::Instance().GetTransferBufferSizeInMB() *
-        QS::Data::Size::MB1;
+      auto bufSize = QS::Client::ClientConfiguration::Instance()
+                         .GetTransferBufferSizeInMB() *
+                     QS::Data::Size::MB1;
       auto remainingSize = size;
       uint64_t downloadedSize = 0;
 

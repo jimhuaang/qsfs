@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_CONFIGURE_DEFAULT_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_CONFIGURE_DEFAULT_H_  // NOLINT
+#ifndef INCLUDE_CONFIGURE_DEFAULT_H_
+#define INCLUDE_CONFIGURE_DEFAULT_H_
 
 #include <stddef.h>
 #include <stdint.h>
@@ -69,4 +69,4 @@ uint64_t GetUploadMultipartThresholdSize();
 }  // namespace QS
 
 // NOLINTNEXTLIN
-#endif  // _QSFS_FUSE_INCLUDE_CONFIGURE_DEFAULT_H_
+#endif  // INCLUDE_CONFIGURE_DEFAULT_H_

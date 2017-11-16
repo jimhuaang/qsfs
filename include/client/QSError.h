@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_CLIENT_QSERROR_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_CLIENT_QSERROR_H_  // NOLINT
+#ifndef INCLUDE_CLIENT_QSERROR_H_
+#define INCLUDE_CLIENT_QSERROR_H_
 
 #include <string>
 
@@ -85,5 +85,5 @@ std::string SDKResponseCodeToString(QingStor::Http::HttpResponseCode code);
 }  // namespace Client
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDE_CLIENT_QSERROR_H_
+
+#endif  // INCLUDE_CLIENT_QSERROR_H_

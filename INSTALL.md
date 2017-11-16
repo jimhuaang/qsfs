@@ -11,6 +11,7 @@ qsfs use glog for logging and gtest for unit testing, and qsfs
 has used CMake to download these dependencies as part of the build's configure step, so you can just leave them alone.
 
 qsfs is a fuse based filesystem, so you must have libfuse installed.
+
 You may also need to install git in order to clone the source code from
 GitHub.
 

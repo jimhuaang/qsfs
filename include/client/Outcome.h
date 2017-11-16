@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_OUTCOME_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_OUTCOME_H_  // NOLINT
+#ifndef INCLUDE_CLIENT_OUTCOME_H_
+#define INCLUDE_CLIENT_OUTCOME_H_
 
 #include <utility>
 
@@ -88,5 +88,5 @@ class Outcome {
 }  // namespace Client
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_OUTCOME_H_
+
+#endif  // INCLUDE_CLIENT_OUTCOME_H_

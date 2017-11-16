@@ -14,9 +14,10 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_BASE_TIMEUTILS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_BASE_TIMEUTILS_H_  // NOLINT
+#ifndef INCLUDE_BASE_TIMEUTILS_H_
+#define INCLUDE_BASE_TIMEUTILS_H_
 
+#include <stdint.h>
 #include <time.h>
 
 #include <string>
@@ -41,10 +42,10 @@ std::string SecondsToRFC822GMT(time_t time);
 //
 // @param  : time to check, expire duration in min
 // @return : bool
-bool IsExpire(time_t t, long int expireDurationInMin);
+bool IsExpire(time_t t, int32_t expireDurationInMin);
 
 }  // namespace TimeUtils
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_BASE_TIMEUTILS_H_
+
+#endif  // INCLUDE_BASE_TIMEUTILS_H_

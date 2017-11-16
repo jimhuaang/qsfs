@@ -123,7 +123,7 @@ uint32_t CalculateTimeForListObjects(uint64_t maxCount) {
   const auto &clientConfig = ClientConfiguration::Instance();
   // 1000 milliseconds per 200 objects by default
   return std::ceil(static_cast<long double>(maxCount) / 200) *
-         clientConfig.GetTransactionTimeDuration() * 2 + 
+         clientConfig.GetTransactionTimeDuration() * 2 +
          1000;
 }
 

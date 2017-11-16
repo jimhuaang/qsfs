@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_BASE_TASKHANDLE_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_BASE_TASKHANDLE_H_  // NOLINT
+#ifndef INCLUDE_BASE_TASKHANDLE_H_
+#define INCLUDE_BASE_TASKHANDLE_H_
 
 #include <atomic>
 #include <thread>  // NOLINT
@@ -51,5 +51,5 @@ class TaskHandle {
 }  // namespace Threading
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDE_BASE_TASKHANDLE_H_
+
+#endif  // INCLUDE_BASE_TASKHANDLE_H_

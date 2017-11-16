@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_URI_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_URI_H_  // NOLINT
+#ifndef INCLUDE_CLIENT_URI_H_
+#define INCLUDE_CLIENT_URI_H_
 
 #include <stdint.h>
 
@@ -48,5 +48,5 @@ uint16_t GetDefaultPort(Protocol protocol);
 }  // namespace Client
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_URI_H_
+
+#endif  // INCLUDE_CLIENT_URI_H_

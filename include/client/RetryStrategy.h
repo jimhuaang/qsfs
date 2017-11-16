@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_RETRYSTRATEGY_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_RETRYSTRATEGY_H_  // NOLINT
+#ifndef INCLUDE_CLIENT_RETRYSTRATEGY_H_
+#define INCLUDE_CLIENT_RETRYSTRATEGY_H_
 
 #include "client/ClientError.h"
 #include "client/QSError.h"
@@ -52,4 +52,4 @@ RetryStrategy GetCustomRetryStrategy();
 }  // namespace Client
 }  // namespace QS
 
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_RETRYSTRATEGY_H_
+#endif  // INCLUDE_CLIENT_RETRYSTRATEGY_H_

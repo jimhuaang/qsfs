@@ -18,6 +18,7 @@
 
 #include <assert.h>
 #include <stddef.h>  // for offsetof
+#include <stdint.h>
 #include <string.h>  // for strdup
 
 #include <iostream>
@@ -55,7 +56,7 @@ using QS::Configure::Default::GetMaxStatCount;
 using QS::Configure::Default::GetTransactionDefaultTimeDuration;
 using std::to_string;
 
-void PrintWarnMsg(const char *opt, long int invalidVal, long int defaultVal) {
+void PrintWarnMsg(const char *opt, int32_t invalidVal, int32_t defaultVal) {
   if (opt == nullptr) return;
   std::cerr << "[qsfs] invalid parameter in option " << opt << "="
             << to_string(invalidVal) << ", "
@@ -73,12 +74,12 @@ static struct options {
   const char *logDirectory;
   const char *logLevel;        // INFO, WARN, ERROR, FATAL
   int retries = DefaultMaxRetries;
-  long int reqtimeout = GetTransactionDefaultTimeDuration();    // in ms
-  long int maxcache = GetMaxCacheSize() / QS::Data::Size::MB1;  // in MB
-  long int maxstat = GetMaxStatCount() / QS::Data::Size::K1;    // in K
-  long int statexpire = -1;    // in mins, negative value disable state expire
+  int32_t reqtimeout = GetTransactionDefaultTimeDuration();    // in ms
+  int32_t maxcache = GetMaxCacheSize() / QS::Data::Size::MB1;  // in MB
+  int32_t maxstat = GetMaxStatCount() / QS::Data::Size::K1;    // in K
+  int32_t statexpire = -1;    // in mins, negative value disable state expire
   int numtransfer = GetDefaultParallelTransfers();
-  long int bufsize = GetDefaultTransferBufSize() / QS::Data::Size::MB1;  // in MB
+  int32_t bufsize = GetDefaultTransferBufSize() / QS::Data::Size::MB1;  // in MB
   int threads = GetClientDefaultPoolSize();
   const char *host;
   const char *protocol;

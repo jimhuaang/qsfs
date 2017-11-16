@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_BASE_STRINGUTILS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_BASE_STRINGUTILS_H_  // NOLINT
+#ifndef INCLUDE_BASE_STRINGUTILS_H_
+#define INCLUDE_BASE_STRINGUTILS_H_
 
 #include <stdio.h>
 
@@ -74,5 +74,5 @@ std::string FormatPath(const std::string &from, const std::string &to);
 }  // namespace StringUtils
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_BASE_STRINGUTILS_H_
+
+#endif  // INCLUDE_BASE_STRINGUTILS_H_

@@ -188,10 +188,10 @@ string FileMetaData::MyBaseName() const {
 // --------------------------------------------------------------------------
 bool FileMetaData::FileAccess(uid_t uid, gid_t gid, int amode) const {
   // DebugInfo("Check access permission " + FormatPath(m_filePath));
-  // DebugInfo("[uid:gid:mode process=" + to_string(uid) + ":" + to_string(gid) +
-  //           ":" + AccessMaskToString(amode) +
-  //           ", file=" + to_string(m_uid) + ":" + to_string(m_gid) +
-  //           ":" + ModeToString(m_fileMode) + "]");
+  // DebugInfo("[uid:gid:mode process=" + to_string(uid) + ":" + to_string(gid)+
+  //          ":" + AccessMaskToString(amode) +
+  //          ", file=" + to_string(m_uid) + ":" + to_string(m_gid) +
+  //          ":" + ModeToString(m_fileMode) + "]");
 
   if (m_filePath.empty()) {
     DebugWarning("object file path is empty");

@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CONFIGURE_OPTIONS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CONFIGURE_OPTIONS_H_  // NOLINT
+#ifndef INCLUDE_CONFIGURE_OPTIONS_H_
+#define INCLUDE_CONFIGURE_OPTIONS_H_
 
 #include <stdint.h>  // for uint16_t
 
@@ -60,12 +60,12 @@ class Options {
   const std::string &GetLogDirectory() const { return m_logDirectory; }
   LogLevel GetLogLevel() const { return m_logLevel; }
   uint16_t GetRetries() const { return m_retries; }
-  unsigned long GetRequestTimeOut() const { return m_requestTimeOut; }
-  unsigned long GetMaxCacheSizeInMB() const { return m_maxCacheSizeInMB; }
-  unsigned long GetMaxStatCountInK() const { return m_maxStatCountInK; }
-  long int GetStatExpireInMin() const { return m_statExpireInMin; }
+  uint32_t GetRequestTimeOut() const { return m_requestTimeOut; }
+  uint32_t GetMaxCacheSizeInMB() const { return m_maxCacheSizeInMB; }
+  uint32_t GetMaxStatCountInK() const { return m_maxStatCountInK; }
+  int32_t GetStatExpireInMin() const { return m_statExpireInMin; }
   uint16_t GetParallelTransfers() const { return m_parallelTransfers; }
-  unsigned long GetTransferBufferSizeInMB() const {
+  uint32_t GetTransferBufferSizeInMB() const {
     return m_transferBufferSizeInMB;
   }
   uint16_t GetClientPoolSize() const { return m_clientPoolSize; }
@@ -96,21 +96,21 @@ class Options {
   void SetLogDirectory(const std::string &path) { m_logDirectory = path; }
   void SetLogLevel(LogLevel level) { m_logLevel = level; }
   void SetRetries(unsigned retries) { m_retries = retries; }
-  void SetRequestTimeOut(unsigned long timeout) { m_requestTimeOut = timeout; }
-  void SetMaxCacheSizeInMB(unsigned long maxcache) { 
-    m_maxCacheSizeInMB = maxcache; 
+  void SetRequestTimeOut(uint32_t timeout) { m_requestTimeOut = timeout; }
+  void SetMaxCacheSizeInMB(uint32_t maxcache) {
+    m_maxCacheSizeInMB = maxcache;
   }
-  void SetMaxStatCountInK(unsigned long maxstat) { 
+  void SetMaxStatCountInK(uint32_t maxstat) {
     m_maxStatCountInK = maxstat;
   }
-  void SetStatExpireInMin(long int expire) { m_statExpireInMin = expire; }
+  void SetStatExpireInMin(int32_t expire) { m_statExpireInMin = expire; }
   void SetParallelTransfers(unsigned numtransfers) {
     m_parallelTransfers = numtransfers;
   }
-  void SetTransferBufferSizeInMB(unsigned long bufsize) {
+  void SetTransferBufferSizeInMB(uint32_t bufsize) {
     m_transferBufferSizeInMB = bufsize;
   }
-  void SetClientPoolSize(unsigned long poolsize) {
+  void SetClientPoolSize(uint32_t poolsize) {
     m_clientPoolSize = poolsize;
   }
   void SetHost(const char *host) { m_host = host; }
@@ -137,12 +137,12 @@ class Options {
   std::string m_logDirectory;
   LogLevel m_logLevel;
   uint16_t m_retries;
-  unsigned long m_requestTimeOut;  // in milliseconds
-  unsigned long m_maxCacheSizeInMB;
-  unsigned long m_maxStatCountInK;
-  long int m_statExpireInMin;  //  negative value will disable state expire
+  uint32_t m_requestTimeOut;  // in milliseconds
+  uint32_t m_maxCacheSizeInMB;
+  uint32_t m_maxStatCountInK;
+  int32_t m_statExpireInMin;  //  negative value will disable state expire
   uint16_t m_parallelTransfers;  // count of file transfers in parallel
-  unsigned long m_transferBufferSizeInMB;
+  uint32_t m_transferBufferSizeInMB;
   uint16_t m_clientPoolSize;
   std::string m_host;
   std::string m_protocol;
@@ -167,5 +167,5 @@ std::ostream &operator<<(std::ostream &os, const Options &opts);
 }  // namespace Configure
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CONFIGURE_OPTIONS_H_
+
+#endif  // INCLUDE_CONFIGURE_OPTIONS_H_

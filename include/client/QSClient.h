@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_QSCLIENT_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_QSCLIENT_H_  // NOLINT
+#ifndef INCLUDE_CLIENT_QSCLIENT_H_
+#define INCLUDE_CLIENT_QSCLIENT_H_
 
 #include <memory>
 #include <string>
@@ -247,5 +247,5 @@ class QSClient : public Client {
 }  // namespace Client
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_QSCLIENT_H_
+
+#endif  // INCLUDE_CLIENT_QSCLIENT_H_

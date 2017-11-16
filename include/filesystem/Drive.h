@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_FILESYSTEM_DRIVE_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_FILESYSTEM_DRIVE_H_  // NOLINT
+#ifndef INCLUDE_FILESYSTEM_DRIVE_H_
+#define INCLUDE_FILESYSTEM_DRIVE_H_
 
 #include <sys/stat.h>
 #include <sys/statvfs.h>
@@ -298,5 +298,5 @@ class Drive {
 }  // namespace FileSystem
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_FILESYSTEM_DRIVE_H_
+
+#endif  // INCLUDE_FILESYSTEM_DRIVE_H_

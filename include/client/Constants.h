@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_CLIENT_CONSTANTS_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_CLIENT_CONSTANTS_H_  // NOLINT
+#ifndef INCLUDE_CLIENT_CONSTANTS_H_
+#define INCLUDE_CLIENT_CONSTANTS_H_
 
 #include <stdint.h>  // for uint16_t
 
@@ -32,5 +32,5 @@ static const uint16_t BucketDeleteMultipleObjectsLimit = 200;
 }  // namespace Client
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_CLIENT_CONSTANTS_H_
+
+#endif  // INCLUDE_CLIENT_CONSTANTS_H_

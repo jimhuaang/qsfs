@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_BASE_THREADPOOLINITIALIZER_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_BASE_THREADPOOLINITIALIZER_H_  // NOLINT
+#ifndef INCLUDE_BASE_THREADPOOLINITIALIZER_H_
+#define INCLUDE_BASE_THREADPOOLINITIALIZER_H_
 
 #include <set>
 
@@ -56,5 +56,5 @@ class ThreadPoolInitializer {
 }  // namespace Threading
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_BASE_THREADPOOLINITIALIZER_H_
+
+#endif  // INCLUDE_BASE_THREADPOOLINITIALIZER_H_

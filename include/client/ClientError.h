@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_CLIENT_CLIENTERROR_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_CLIENT_CLIENTERROR_H_  // NOLINT
+#ifndef INCLUDE_CLIENT_CLIENTERROR_H_
+#define INCLUDE_CLIENT_CLIENTERROR_H_
 
 #include <string>
 
@@ -57,5 +57,5 @@ class ClientError {
 }  // namespace Client
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDE_CLIENT_CLIENTERROR_H_
+
+#endif  // INCLUDE_CLIENT_CLIENTERROR_H_

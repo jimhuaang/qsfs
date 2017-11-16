@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDE_BASE_LOGGING_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDE_BASE_LOGGING_H_  // NOLINT
+#ifndef INCLUDE_BASE_LOGGING_H_
+#define INCLUDE_BASE_LOGGING_H_
 
 #include <atomic>
 #include <memory>
@@ -107,5 +107,5 @@ class DefaultLog : public Log {
 }  // namespace Logging
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDE_BASE_LOGGING_H_
+
+#endif  // INCLUDE_BASE_LOGGING_H_

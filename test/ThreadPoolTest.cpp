@@ -69,7 +69,7 @@ class ThreadPoolTest : public Test {
   }
 
  protected:
-  void SetUp() override { 
+  void SetUp() override {
     m_pThreadPool = new ThreadPool(poolSize_);
     m_pThreadPool->Initialize();
   }

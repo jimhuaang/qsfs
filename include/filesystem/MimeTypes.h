@@ -14,8 +14,8 @@
 // | limitations under the License.
 // +-------------------------------------------------------------------------
 
-#ifndef _QSFS_FUSE_INCLUDED_FILESYSTEM_MIMETYPES_H_  // NOLINT
-#define _QSFS_FUSE_INCLUDED_FILESYSTEM_MIMETYPES_H_  // NOLINT
+#ifndef INCLUDE_FILESYSTEM_MIMETYPES_H_
+#define INCLUDE_FILESYSTEM_MIMETYPES_H_
 
 #include <string.h>  // for strcasecmp
 
@@ -88,5 +88,5 @@ std::string GetSymlinkMimeType();
 }  // namespace FileSystem
 }  // namespace QS
 
-// NOLINTNEXTLINE
-#endif  // _QSFS_FUSE_INCLUDED_FILESYSTEM_MIMETYPES_H_
+
+#endif  // INCLUDE_FILESYSTEM_MIMETYPES_H_
