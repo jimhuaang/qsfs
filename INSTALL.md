@@ -1,7 +1,7 @@
 # Prerequisites
 
 These are the base requirements to build and use qsfs from a source package (as described below): 
-- GNU Compiler Collection (GCC) 5.0.0 or later
+- GNU Compiler Collection (GCC) 5.4.0 or later
 - CMake v3.0 or later
 
 **qsfs** is integrated with QingStor via the [QingStor SDK for C++][qs-sdk-cpp link], so you need to get the QingStor SDK for C++ installed at first.
@@ -17,7 +17,7 @@ GitHub.
 
 Typically, you'll find these packages in your system's package manager.
 
-To install these packages on Ubuntu16.04:
+To install these packages on Ubuntu14.04:
 ```sh
  $ [sudo] apt-get install g++ cmake make automake fuse libfuse-dev git
 ```

@@ -159,7 +159,7 @@ pair<bool, string> DeleteFilesInDirectoryNoLog(const std::string &path,
     msg.assign(str);
   };
 
-  unique_ptr<DIR, decltype(closedir) *> dir(opendir(path.c_str()), closedir);
+  unique_ptr<DIR, decltype(&closedir)> dir(opendir(path.c_str()), &closedir);
   if (dir) {
     struct dirent *nextDir = nullptr;
     while ((nextDir = readdir(dir.get())) != nullptr) {
@@ -300,7 +300,7 @@ pair<bool, string> GetParentDirectory(const string &path) {
 
 // --------------------------------------------------------------------------
 bool IsDirectoryEmpty(const std::string &path) {
-  unique_ptr<DIR, decltype(closedir) *> dir(opendir(path.c_str()), closedir);
+  unique_ptr<DIR, decltype(&closedir)> dir(opendir(path.c_str()), &closedir);
   if (dir) {
     struct dirent *nextDir = nullptr;
     while ((nextDir = readdir(dir.get())) != nullptr) {
