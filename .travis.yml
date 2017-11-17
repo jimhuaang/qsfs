@@ -22,7 +22,8 @@ compiler:
   - gcc
 
 before_install:
-  - sudo apt-get install -q libfuse-dev
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libfuse-dev
   - eval "${CC_EVAL}"
 
 script:

@@ -139,9 +139,7 @@ Generally qingstor cannot offer the same performance or semantics as a local fil
 
 ## Support
 
-If you notice any issue, please open an [issue][issue link] on GitHub. Please search the existing issues and see if others are also experiencing the issue before opening a new issue. Please include the version of qsfs, Compiler version, CMake version, and OS you’re using. Please also include repro case when appropriate.
-
-If you have any questions, suggestions or feedback, feel free to send an email to <jimhuang@yunify.com>.
+If you notice any issue, please open an [issue][issue link] on GitHub. Please search the existing issues and see if others are also experiencing the issue before opening a new issue. Please include the version of qsfs, Compiler version, CMake version, and OS you’re using.
 
 
 ## License
