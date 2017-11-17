@@ -114,7 +114,7 @@ std::pair<bool, std::string> GetParentDirectory(const std::string &path);
 //
 // @param  : dir path
 // @return : bool
-bool IsDirectoryEmpty(const std::string &dir);
+bool IsDirectoryEmpty(const std::string &dir, bool logOn);
 
 // Get user name of uid
 //
@@ -151,13 +151,14 @@ bool HavePermission(const std::string &path, bool logOn);
 //
 // @param  : absolute path
 // @return : uint64_t
-uint64_t GetFreeDiskSpace(const std::string &absolutePath);
+uint64_t GetFreeDiskSpace(const std::string &absolutePath, bool logOn);
 
 // Check if disk has available free space
 //
 // @param  : absolute path, free space needed
 // @return : bool
-bool IsSafeDiskSpace(const std::string& absolutePath, uint64_t freeSpace);
+bool IsSafeDiskSpace(const std::string& absolutePath,
+                     uint64_t freeSpace, bool logOn);
 
 }  // namespace Utils
 }  // namespace QS

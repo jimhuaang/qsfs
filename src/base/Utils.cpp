@@ -66,6 +66,9 @@ string PostErrMsg(const string &path) {
 
 // --------------------------------------------------------------------------
 bool CreateDirectoryIfNotExistsNoLog(const string &path) {
+  if (path.empty()) {
+    return false;
+  }
   if (IsRootDirectory(path)) {
     return true;
   }
@@ -242,8 +245,6 @@ bool IsRootDirectory(const std::string &path) { return path == "/"; }
 // --------------------------------------------------------------------------
 string AppendPathDelim(const string &path) {
   assert(!path.empty());
-  DebugWarningIf(path.empty(),
-                 "Try to add directory seperator with a empty input");
   string copy(path);
   if (path.back() != PATH_DELIM) {
     copy.append(1, PATH_DELIM);
@@ -299,7 +300,7 @@ pair<bool, string> GetParentDirectory(const string &path) {
 }
 
 // --------------------------------------------------------------------------
-bool IsDirectoryEmpty(const std::string &path) {
+bool IsDirectoryEmpty(const std::string &path, bool logOn) {
   unique_ptr<DIR, decltype(&closedir)> dir(opendir(path.c_str()), &closedir);
   if (dir) {
     struct dirent *nextDir = nullptr;
@@ -310,7 +311,9 @@ bool IsDirectoryEmpty(const std::string &path) {
       }
     }
   } else {
-    Error("Failed to open path " + PostErrMsg(path));
+    if (logOn) {
+      Error("Failed to open path " + PostErrMsg(path));
+    }
     return false;
   }
 
@@ -465,19 +468,22 @@ bool HavePermission(struct stat *st, bool logOn) {
 }
 
 // --------------------------------------------------------------------------
-uint64_t GetFreeDiskSpace(const string &absolutePath) {
+uint64_t GetFreeDiskSpace(const string &absolutePath, bool logOn) {
   struct statvfs vfsbuf;
   int ret = statvfs(absolutePath.c_str(), &vfsbuf);
   if (ret != 0) {
-    DebugError("Fail to get free disk space " + PostErrMsg(absolutePath));
+    if (logOn) {
+      DebugError("Fail to get free disk space " + PostErrMsg(absolutePath));
+    }
     return 0;
   }
   return (vfsbuf.f_bavail * vfsbuf.f_bsize);
 }
 
 // --------------------------------------------------------------------------
-bool IsSafeDiskSpace(const string &absolutePath, uint64_t freeSpace) {
-  uint64_t totalFreeSpace = GetFreeDiskSpace(absolutePath);
+bool IsSafeDiskSpace(const string &absolutePath,
+                     uint64_t freeSpace, bool logOn) {
+  uint64_t totalFreeSpace = GetFreeDiskSpace(absolutePath, logOn);
   return totalFreeSpace > freeSpace;
 }
 

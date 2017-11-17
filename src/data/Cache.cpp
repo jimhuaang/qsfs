@@ -332,7 +332,7 @@ pair<bool, unique_ptr<File> *> Cache::PrepareWrite(const string &fileId,
         DebugError("Unable to mkdir for folder " + FormatPath(diskfolder));
         return {false, nullptr};
       }
-      if (!IsSafeDiskSpace(diskfolder, len)) {
+      if (!IsSafeDiskSpace(diskfolder, len, true)) {
         if (!FreeDiskCacheFiles(diskfolder, len, fileId)) {
           DebugError("No available free space (" + to_string(len) +
                      "bytes) for folder " + FormatPath(diskfolder));
@@ -418,7 +418,7 @@ bool Cache::FreeDiskCacheFiles(const string &diskfolder, size_t size,
                               const string &fileUnfreeable) {
   assert(diskfolder == GetDiskCacheDirectory());
   // diskfolder should be cache disk dir
-  if (IsSafeDiskSpace(diskfolder, size)) {
+  if (IsSafeDiskSpace(diskfolder, size, true)) {
     return true;
   }
 
@@ -428,7 +428,7 @@ bool Cache::FreeDiskCacheFiles(const string &diskfolder, size_t size,
 
   auto it = m_cache.rbegin();
   // Discards the least recently used File first, which is put at back.
-  while (it != m_cache.rend() && !IsSafeDiskSpace(diskfolder, size)) {
+  while (it != m_cache.rend() && !IsSafeDiskSpace(diskfolder, size, true)) {
     // Notice do NOT store a reference of the File supposed to be removed.
     auto fileId = it->first;
     if (fileId != fileUnfreeable && it->second && !it->second->IsOpen()) {
@@ -457,7 +457,7 @@ bool Cache::FreeDiskCacheFiles(const string &diskfolder, size_t size,
     DebugInfo("Has freed disk file of " + to_string(freedDiskSpace) + " bytes" +
               FormatPath(GetDiskCacheDirectory()));
   }
-  return IsSafeDiskSpace(diskfolder, size);
+  return IsSafeDiskSpace(diskfolder, size, true);
 }
 
 // --------------------------------------------------------------------------
