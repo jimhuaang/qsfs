@@ -35,7 +35,7 @@ const char* GetProgramName();
 std::string GetDefaultCredentialsFile();
 std::string GetDefaultLogDirectory();
 std::string GetMimeFile();
-std::string GetCacheTemporaryDirectory();
+std::string GetDiskCacheDirectory();
 
 uint16_t GetPathMaxLen();
 uint16_t GetNameMaxLen();

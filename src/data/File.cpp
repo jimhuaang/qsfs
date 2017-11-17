@@ -37,7 +37,7 @@ namespace QS {
 
 namespace Data {
 
-using QS::Configure::Default::GetCacheTemporaryDirectory;
+using QS::Configure::Default::GetDiskCacheDirectory;
 using QS::StringUtils::PointerAddress;
 using QS::Utils::FileExists;
 using QS::Utils::RemoveFileIfExists;
@@ -59,14 +59,14 @@ using std::vector;
 
 namespace {
 
-// Build a tmp file absolute path
+// Build a disk file absolute path
 //
 // @param  : file base name
 // @return : string
 //
-string BuildTempFilePath(const string &basename) {
-  string qsfsTmpDir = GetCacheTemporaryDirectory();
-  return qsfsTmpDir + basename;
+string BuildDiskFilePath(const string &basename) {
+  string qsfsDiskDir = GetDiskCacheDirectory();
+  return qsfsDiskDir + basename;
 }
 
 // --------------------------------------------------------------------------
@@ -76,13 +76,13 @@ string PrintFileName(const string &file) { return "[file=" + file + "]"; }
 
 // --------------------------------------------------------------------------
 File::~File() {
-  // As pages using tmp file will reference to the same tmp file, so File should
-  // manage the life cycle of the tmp file.
-  RemoveTempFileFromDiskIfExists(true);  // log on
+  // As pages using disk file will reference to the same disk file, so File should
+  // manage the life cycle of the disk file.
+  RemoveDiskFileIfExists(true);  // log on
 }
 
 // --------------------------------------------------------------------------
-string File::AskTempFilePath() const { return BuildTempFilePath(m_baseName); }
+string File::AskDiskFilePath() const { return BuildDiskFilePath(m_baseName); }
 
 // --------------------------------------------------------------------------
 pair<PageSetConstIterator, PageSetConstIterator>
@@ -438,7 +438,7 @@ void File::ResizeToSmallerSize(size_t smallerSize) {
       auto lastPage = --m_pages.end();
       auto lastPageSize = (*lastPage)->Size();
       if (smallerSize + lastPageSize <= m_size) {
-        if (!(*lastPage)->UseTempFile()) {
+        if (!(*lastPage)->UseDiskFile()) {
           m_cacheSize -= lastPageSize;
         }
         m_size -= lastPageSize;
@@ -447,7 +447,7 @@ void File::ResizeToSmallerSize(size_t smallerSize) {
         auto newSize = lastPageSize - (m_size - smallerSize);
         // Do a lazy remove for last page.
         (*lastPage)->ResizeToSmallerSize(newSize);
-        if (!(*lastPage)->UseTempFile()) {
+        if (!(*lastPage)->UseDiskFile()) {
           m_cacheSize -= lastPageSize - newSize;
         }
         m_size -= lastPageSize - newSize;
@@ -458,15 +458,15 @@ void File::ResizeToSmallerSize(size_t smallerSize) {
 }
 
 // --------------------------------------------------------------------------
-void File::RemoveTempFileFromDiskIfExists(bool logOn) const {
+void File::RemoveDiskFileIfExists(bool logOn) const {
   lock_guard<recursive_mutex> lock(m_mutex);
-  if (UseTempFile()) {
-    auto tmpFile = AskTempFilePath();
-    if (FileExists(tmpFile, logOn)) {
+  if (UseDiskFile()) {
+    auto diskFile = AskDiskFilePath();
+    if (FileExists(diskFile, logOn)) {
       if (logOn) {
-        RemoveFileIfExists(tmpFile);
+        RemoveFileIfExists(diskFile);
       } else {
-        RemoveFileIfExistsNoLog(tmpFile);
+        RemoveFileIfExistsNoLog(diskFile);
       }
     }
   }
@@ -481,8 +481,8 @@ void File::Clear() {
   m_mtime.store(0);
   m_size.store(0);
   m_cacheSize.store(0);
-  RemoveTempFileFromDiskIfExists(true);
-  m_useTempFile.store(false);
+  RemoveDiskFileIfExists(true);
+  m_useDiskFile.store(false);
 }
 
 // --------------------------------------------------------------------------
@@ -546,9 +546,9 @@ tuple<PageSetConstIterator, bool, size_t, size_t> File::UnguardedAddPage(
   pair<PageSetConstIterator, bool> res;
   size_t addedSize = 0;
   size_t addedSizeInCache = 0;
-  if (UseTempFile()) {
-    res = m_pages.emplace(new Page(offset, len, buffer, AskTempFilePath()));
-    // do not count size of data stored in tmp file
+  if (UseDiskFile()) {
+    res = m_pages.emplace(new Page(offset, len, buffer, AskDiskFilePath()));
+    // do not count size of data stored in disk file
   } else {
     res = m_pages.emplace(new Page(offset, len, buffer));
     if (res.second) {
@@ -573,8 +573,8 @@ tuple<PageSetConstIterator, bool, size_t, size_t> File::UnguardedAddPage(
   pair<PageSetConstIterator, bool> res;
   size_t addedSize = 0;
   size_t addedSizeInCache = 0;
-  if (UseTempFile()) {
-    res = m_pages.emplace(new Page(offset, len, stream, AskTempFilePath()));
+  if (UseDiskFile()) {
+    res = m_pages.emplace(new Page(offset, len, stream, AskDiskFilePath()));
   } else {
     res = m_pages.emplace(new Page(offset, len, stream));
     if (res.second) {
@@ -599,8 +599,8 @@ tuple<PageSetConstIterator, bool, size_t, size_t> File::UnguardedAddPage(
   pair<PageSetConstIterator, bool> res;
   size_t addedSize = 0;
   size_t addedSizeInCache = 0;
-  if (UseTempFile()) {
-    res = m_pages.emplace(new Page(offset, len, stream, AskTempFilePath()));
+  if (UseDiskFile()) {
+    res = m_pages.emplace(new Page(offset, len, stream, AskDiskFilePath()));
   } else {
     res = m_pages.emplace(new Page(offset, len, std::move(stream)));
     if (res.second) {

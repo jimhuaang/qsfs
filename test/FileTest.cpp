@@ -34,7 +34,7 @@ namespace QS {
 
 namespace Data {
 
-using QS::Configure::Default::GetCacheTemporaryDirectory;
+using QS::Configure::Default::GetDiskCacheDirectory;
 using std::array;
 using std::make_shared;
 using std::string;
@@ -64,14 +64,14 @@ class FileTest : public Test {
 
 TEST_F(FileTest, Default) {
   string filename = "file1";
-  string tmpfilepath = GetCacheTemporaryDirectory() + filename;
+  string filepath = GetDiskCacheDirectory() + filename;
   File file1(filename, mtime_);
   EXPECT_EQ(file1.GetBaseName(), filename);
   EXPECT_EQ(file1.GetSize(), 0u);
   EXPECT_EQ(file1.GetCachedSize(), 0u);
   EXPECT_EQ(file1.GetTime(), mtime_);
-  EXPECT_FALSE(file1.UseTempFile());
-  EXPECT_EQ(file1.AskTempFilePath(), tmpfilepath);
+  EXPECT_FALSE(file1.UseDiskFile());
+  EXPECT_EQ(file1.AskDiskFilePath(), filepath);
   EXPECT_TRUE(file1.HasData(0, 0));
   EXPECT_FALSE(file1.HasData(0, 1));
   EXPECT_TRUE(file1.GetUnloadedRanges(0, 0).empty());
@@ -93,7 +93,7 @@ TEST_F(FileTest, TestWrite) {
   file1.Write(off1, len1, page1, 0);
   EXPECT_EQ(file1.GetSize(), len1);
   EXPECT_EQ(file1.GetCachedSize(), len1);
-  EXPECT_FALSE(file1.UseTempFile());
+  EXPECT_FALSE(file1.UseDiskFile());
   EXPECT_TRUE(file1.HasData(0, len1 - 1));
   EXPECT_TRUE(file1.HasData(0, len1));
   EXPECT_FALSE(file1.HasData(0, len1 + 1));
@@ -177,10 +177,10 @@ TEST_F(FileTest, TestWrite) {
   EXPECT_TRUE(range4.second == file1.EndPage());
 }
 
-TEST_F(FileTest, TestWriteTmpFile) {
+TEST_F(FileTest, TestWriteDiskFile) {
   string filename = "file1";
   File file1(filename, mtime_);  // empty file
-  file1.SetUseTempFile(true);
+  file1.SetUseDiskFile(true);
 
   constexpr const char *page1 = "012";
   constexpr size_t len1 = strlen(page1);
@@ -188,7 +188,7 @@ TEST_F(FileTest, TestWriteTmpFile) {
   file1.Write(off1, len1, page1, 0);
   EXPECT_EQ(file1.GetSize(), len1);
   EXPECT_EQ(file1.GetCachedSize(), 0u);
-  EXPECT_TRUE(file1.UseTempFile());
+  EXPECT_TRUE(file1.UseDiskFile());
   EXPECT_TRUE(file1.HasData(0, len1 - 1));
   EXPECT_TRUE(file1.HasData(0, len1));
   EXPECT_FALSE(file1.HasData(0, len1 + 1));
@@ -289,10 +289,10 @@ TEST_F(FileTest, TestRead) {
   EXPECT_TRUE(unloadPages4.empty());
 }
 
-TEST_F(FileTest, TestReadTmpFile) {
+TEST_F(FileTest, TestReadDiskFile) {
   string filename = "file2";
   File file1(filename, mtime_);  // empty file
-  file1.SetUseTempFile(true);
+  file1.SetUseDiskFile(true);
 
   constexpr const char *page1 = "012";
   constexpr size_t len1 = strlen(page1);

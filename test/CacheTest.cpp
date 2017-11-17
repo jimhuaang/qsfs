@@ -161,7 +161,7 @@ TEST_F(CacheTest, Write) {
 }
 
 // --------------------------------------------------------------------------
-TEST_F(CacheTest, WriteTmpFile) {
+TEST_F(CacheTest, WriteDiskFile) {
   uint64_t cacheCap = 3;
   Cache cache(cacheCap);
 
@@ -186,7 +186,7 @@ TEST_F(CacheTest, WriteTmpFile) {
 
   EXPECT_EQ(cache.GetFileSize("file1"), len1 + len2 + len3);
   pfile = cache.Find("file1");
-  EXPECT_TRUE(pfile->second->UseTempFile());
+  EXPECT_TRUE(pfile->second->UseDiskFile());
 
   EXPECT_EQ(cache.GetSize(), len1);
   EXPECT_TRUE(cache.HasFileData("file1", off1, len1 + len2));
@@ -239,7 +239,7 @@ TEST_F(CacheTest, Resize) {
 }
 
 // --------------------------------------------------------------------------
-TEST_F(CacheTest, ResizeTmpFile) {
+TEST_F(CacheTest, ResizeDiskFile) {
   uint64_t cacheCap = 3;
   Cache cache(cacheCap);
 
@@ -348,7 +348,7 @@ TEST_F(CacheTest, Read) {
 }
 
 // --------------------------------------------------------------------------
-TEST_F(CacheTest, ReadTmpFile) {
+TEST_F(CacheTest, ReadDiskFile) {
   uint64_t cacheCap = 3;
   Cache cache(cacheCap);
 

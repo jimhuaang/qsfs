@@ -49,7 +49,7 @@ class File {
         m_mtime(mtime),
         m_size(size),
         m_cacheSize(size),
-        m_useTempFile(false),
+        m_useDiskFile(false),
         m_open(false) {}
 
   File(File &&) = delete;
@@ -63,11 +63,11 @@ class File {
   size_t GetSize() const { return m_size.load(); }
   size_t GetCachedSize() const { return m_cacheSize.load(); }
   time_t GetTime() const { return m_mtime.load(); }
-  bool UseTempFile() const { return m_useTempFile.load(); }
+  bool UseDiskFile() const { return m_useDiskFile.load(); }
   bool IsOpen() const { return m_open.load(); }
 
-  // return tmp file path
-  std::string AskTempFilePath() const;
+  // return disk file path
+  std::string AskDiskFilePath() const;
 
   // Return a pair of iterators pointing to the range of consecutive pages
   // at the front of cache list
@@ -139,8 +139,8 @@ class File {
   // Resize the total pages' size to a smaller size.
   void ResizeToSmallerSize(size_t smallerSize);
 
-  // Remove tmp file from disk
-  void RemoveTempFileFromDiskIfExists(bool logOn = true) const;
+  // Remove disk file
+  void RemoveDiskFileIfExists(bool logOn = true) const;
 
   // Clear pages and reset attributes.
   void Clear();
@@ -148,8 +148,8 @@ class File {
   // Set modification time
   void SetTime(time_t mtime) { m_mtime.store(mtime); }
 
-  // Set flag to use temp file
-  void SetUseTempFile(bool useTempFile) { m_useTempFile.store(useTempFile); }
+  // Set flag to use disk file
+  void SetUseDiskFile(bool useDiskFile) { m_useDiskFile.store(useDiskFile); }
 
   // Set file open state
   void SetOpen(bool open) { m_open.store(open); }
@@ -196,9 +196,9 @@ class File {
   std::atomic<time_t> m_mtime;      // time of last modification
   std::atomic<size_t> m_size;       // record sum of all pages' size
   std::atomic<size_t> m_cacheSize;  // record sum of all pages' size
-                                    // stored in cache not including tmp file
+                                    // stored in cache not including disk file
 
-  std::atomic<bool> m_useTempFile;  // use tmp file when no free cache space
+  std::atomic<bool> m_useDiskFile;  // use disk file when no free cache space
   std::atomic<bool> m_open;         // file open/close state
   mutable std::recursive_mutex m_mutex;
   PageSet m_pages;              // a set of pages suppose to be successive
@@ -206,9 +206,9 @@ class File {
   friend class Cache;
 
   FRIEND_TEST(FileTest, TestWrite);
-  FRIEND_TEST(FileTest, TestWriteTmpFile);
+  FRIEND_TEST(FileTest, TestWriteDiskFile);
   FRIEND_TEST(FileTest, TestRead);
-  FRIEND_TEST(FileTest, TestReadTmpFile);
+  FRIEND_TEST(FileTest, TestReadDiskFile);
 };
 
 }  // namespace Data

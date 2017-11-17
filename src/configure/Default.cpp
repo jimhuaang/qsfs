@@ -36,7 +36,7 @@ static const char* const PROGRAM_NAME = "qsfs";
 static const char* const QSFS_DEFAULT_CREDENTIALS = "/opt/qsfs/qsfs.cred";
 static const char* const QSFS_DEFAULT_LOG_DIR = "/opt/qsfs/qsfs_log/";
 static const char* const QSFS_MIME_FILE = "/etc/mime.types";
-static const char* const QSFS_TMP_DIR = "/tmp/qsfs_cache/";  // tmp cache dir
+static const char* const QSFS_CACHE_DIR = "/tmp/qsfs_cache/";  // file cache dir
 
 const char* GetProgramName() { return PROGRAM_NAME; }
 
@@ -44,7 +44,7 @@ string GetDefaultCredentialsFile() { return QSFS_DEFAULT_CREDENTIALS; }
 string GetDefaultLogDirectory() { return QSFS_DEFAULT_LOG_DIR; }
 
 string GetMimeFile() { return QSFS_MIME_FILE; }
-string GetCacheTemporaryDirectory() { return QSFS_TMP_DIR; }
+string GetDiskCacheDirectory() { return QSFS_CACHE_DIR; }
 
 uint16_t GetPathMaxLen() { return 4096; }  // TODO(jim): should be 1023?
 uint16_t GetNameMaxLen() { return 255; }

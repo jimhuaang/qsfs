@@ -38,7 +38,7 @@ namespace Data {
 
 using QS::Data::IOStream;
 using QS::Data::StreamUtils::GetStreamSize;
-using QS::Configure::Default::GetCacheTemporaryDirectory;
+using QS::Configure::Default::GetDiskCacheDirectory;
 using QS::StringUtils::FormatPath;
 using QS::StringUtils::PointerAddress;
 using QS::Utils::CreateDirectoryIfNotExists;
@@ -55,9 +55,6 @@ using std::string;
 using std::to_string;
 
 namespace {
-bool IsTempFile(const string &tmpfilePath) {
-  return GetDirName(tmpfilePath) == GetCacheTemporaryDirectory();
-}
 
 // RAII class to open file and close it in destructor
 class FileOpener {
@@ -113,8 +110,8 @@ Page::Page(off_t offset, size_t len, const char *buffer)
 }
 
 // --------------------------------------------------------------------------
-Page::Page(off_t offset, size_t len, const char *buffer, const string &tmpfile)
-    : m_offset(offset), m_size(len), m_tmpFile(tmpfile) {
+Page::Page(off_t offset, size_t len, const char *buffer, const string &diskfile)
+    : m_offset(offset), m_size(len), m_diskFile(diskfile) {
   bool isValidInput = offset >= 0 && len >= 0 && buffer != nullptr;
   assert(isValidInput);
   if (!isValidInput) {
@@ -124,7 +121,7 @@ Page::Page(off_t offset, size_t len, const char *buffer, const string &tmpfile)
   }
 
   lock_guard<recursive_mutex> lock(m_mutex);
-  if (SetupTempFile()) {
+  if (SetupDiskFile()) {
     UnguardedPutToBody(offset, len, buffer);
   }
 }
@@ -146,8 +143,8 @@ Page::Page(off_t offset, size_t len, const shared_ptr<iostream> &instream)
 
 // --------------------------------------------------------------------------
 Page::Page(off_t offset, size_t len, const shared_ptr<iostream> &instream,
-           const string &tmpfile)
-    : m_offset(offset), m_size(len), m_tmpFile(tmpfile) {
+           const string &diskfile)
+    : m_offset(offset), m_size(len), m_diskFile(diskfile) {
   bool isValidInput = offset >= 0 && len > 0 && instream;
   assert(isValidInput);
   if (!isValidInput) {
@@ -157,7 +154,7 @@ Page::Page(off_t offset, size_t len, const shared_ptr<iostream> &instream,
   }
 
   lock_guard<recursive_mutex> lock(m_mutex);
-  if (SetupTempFile()) {
+  if (SetupDiskFile()) {
     UnguardedPutToBody(offset, len, instream);
   }
 }
@@ -187,14 +184,14 @@ Page::Page(off_t offset, size_t len, shared_ptr<iostream> &&body)
 }
 
 // --------------------------------------------------------------------------
-bool Page::UseTempFile() {
+bool Page::UseDiskFile() {
   lock_guard<recursive_mutex> lock(m_mutex);
-  return !m_tmpFile.empty();
+  return !m_diskFile.empty();
 }
 
 // --------------------------------------------------------------------------
-bool Page::UseTempFileNoLock() {
-  return !m_tmpFile.empty();
+bool Page::UseDiskFileNoLock() {
+  return !m_diskFile.empty();
 }
 
 // --------------------------------------------------------------------------
@@ -204,10 +201,10 @@ void Page::UnguardedPutToBody(off_t offset, size_t len, const char *buffer) {
     return;
   }
   FileOpener opener(m_body);
-  if (UseTempFileNoLock()) {
+  if (UseDiskFileNoLock()) {
     // Notice: need to open in both output and input mode to avoid truncate file
     // as open in out mode only will actually truncate file.
-    opener.DoOpen(m_tmpFile, std::ios_base::binary | std::ios_base::ate |
+    opener.DoOpen(m_diskFile, std::ios_base::binary | std::ios_base::ate |
                   std::ios_base::in | std::ios_base::out);  // open for write
     m_body->seekp(m_offset, std::ios_base::beg);
   } else {
@@ -235,8 +232,8 @@ void Page::UnguardedPutToBody(off_t offset, size_t len,
   }
 
   FileOpener opener(m_body);
-  if (UseTempFileNoLock()) {
-    opener.DoOpen(m_tmpFile, std::ios_base::binary | std::ios_base::ate |
+  if (UseDiskFileNoLock()) {
+    opener.DoOpen(m_diskFile, std::ios_base::binary | std::ios_base::ate |
                   std::ios_base::in | std::ios_base::out);  // open for write
     m_body->seekp(m_offset, std::ios_base::beg);
   } else {
@@ -266,24 +263,20 @@ void Page::SetStream(shared_ptr<iostream> &&stream) {
 }
 
 // --------------------------------------------------------------------------
-bool Page::SetupTempFile() {
+bool Page::SetupDiskFile() {
   lock_guard<recursive_mutex> lock(m_mutex);
-  CreateDirectoryIfNotExists(GetCacheTemporaryDirectory());
-  if (!IsTempFile(m_tmpFile)) {
-    DebugError("tmp file not under /tmp " + FormatPath(m_tmpFile));
-    return false;
-  }
+  CreateDirectoryIfNotExists(GetDiskCacheDirectory());
 
   std::ios_base::openmode mode = std::ios_base::binary | std::ios_base::ate |
                                  std::ios_base::in | std::ios_base::out;
-  if (!FileExists(m_tmpFile)) {
+  if (!FileExists(m_diskFile)) {
     // Notice: set open mode with std::ios_base::out to create file in disk if
     // it is not exist
     mode = std::ios_base::binary | std::ios_base::out;
   }
-  auto file = make_shared<fstream>(m_tmpFile, mode);
+  auto file = make_shared<fstream>(m_diskFile, mode);
   if (file && file->is_open()) {
-    DebugInfo("Open tmp file " + FormatPath(m_tmpFile));
+    DebugInfo("Open file " + FormatPath(m_diskFile));
   }
   file->close();
   m_body = std::move(file);
@@ -298,7 +291,7 @@ void Page::ResizeToSmallerSize(size_t smallerSize) {
   assert(0 <= smallerSize && smallerSize <= m_size);
   lock_guard<recursive_mutex> lock(m_mutex);
   m_size = smallerSize;
-  if (UseTempFileNoLock()) {
+  if (UseDiskFileNoLock()) {
     m_body->seekp(m_offset + smallerSize, std::ios_base::beg);
   } else {
     m_body->seekp(smallerSize, std::ios_base::beg);
@@ -307,7 +300,7 @@ void Page::ResizeToSmallerSize(size_t smallerSize) {
 
 // --------------------------------------------------------------------------
 bool Page::Refresh(off_t offset, size_t len, const char *buffer,
-                   const string &tmpfile) {
+                   const string &diskfile) {
   if (len == 0) {
     return true;  // do nothing
   }
@@ -321,19 +314,19 @@ bool Page::Refresh(off_t offset, size_t len, const char *buffer,
   }
 
   lock_guard<recursive_mutex> lock(m_mutex);
-  return UnguardedRefresh(offset, len, buffer, tmpfile);
+  return UnguardedRefresh(offset, len, buffer, diskfile);
 }
 
 // --------------------------------------------------------------------------
 bool Page::UnguardedRefresh(off_t offset, size_t len, const char *buffer,
-                            const string &tmpfile) {
+                            const string &diskfile) {
   auto moreLen = offset + len - Next();
   auto dataLen = moreLen > 0 ? m_size + moreLen : m_size;
   auto data = make_shared<IOStream>(dataLen);
   {
     FileOpener opener(m_body);
-    if (UseTempFileNoLock()) {
-      opener.DoOpen(m_tmpFile,
+    if (UseDiskFileNoLock()) {
+      opener.DoOpen(m_diskFile,
                     std::ios_base::binary | std::ios_base::in);  // for read
       m_body->seekg(offset, std::ios_base::beg);
     } else {
@@ -351,17 +344,17 @@ bool Page::UnguardedRefresh(off_t offset, size_t len, const char *buffer,
     return false;
   }
 
-  if (!tmpfile.empty()) {
-    m_tmpFile = tmpfile;
-    if (!SetupTempFile()) {
-      DebugError("Unable to set up tmp file " + FormatPath(m_tmpFile));
+  if (!diskfile.empty()) {
+    m_diskFile = diskfile;
+    if (!SetupDiskFile()) {
+      DebugError("Unable to set up file " + FormatPath(m_diskFile));
       return false;
     }
   }
 
   FileOpener opener(m_body);
-  if (UseTempFileNoLock()) {
-    opener.DoOpen(m_tmpFile, std::ios_base::binary | std::ios_base::ate |
+  if (UseDiskFileNoLock()) {
+    opener.DoOpen(m_diskFile, std::ios_base::binary | std::ios_base::ate |
                   std::ios_base::in | std::ios_base::out);  // open for write
     m_body->seekp(m_offset, std::ios_base::beg);
     if (!m_body->good()) {
@@ -370,7 +363,7 @@ bool Page::UnguardedRefresh(off_t offset, size_t len, const char *buffer,
       return false;
     }
     data->seekg(0, std::ios_base::beg);
-    (*m_body) << data->rdbuf();  // put pages' all content into tmp file
+    (*m_body) << data->rdbuf();  // put pages' all content into disk file
   } else {
     data->seekg(0, std::ios_base::beg);
     m_body = std::move(data);
@@ -412,8 +405,8 @@ size_t Page::UnguardedRead(off_t offset, size_t len, char *buffer) {
     return 0;
   }
   FileOpener opener(m_body);
-  if (UseTempFileNoLock()) {
-    opener.DoOpen(m_tmpFile,
+  if (UseDiskFileNoLock()) {
+    opener.DoOpen(m_diskFile,
                   std::ios_base::binary | std::ios_base::in);  // open for read
     m_body->seekg(offset, std::ios_base::beg);
   } else {

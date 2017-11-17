@@ -78,7 +78,7 @@ using QS::Data::FilePathToNodeUnorderedMap;
 using QS::Data::IOStream;
 using QS::Data::Node;
 using QS::Exception::QSException;
-using QS::Configure::Default::GetCacheTemporaryDirectory;
+using QS::Configure::Default::GetDiskCacheDirectory;
 using QS::StringUtils::FormatPath;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::DeleteFilesInDirectory;
@@ -141,11 +141,11 @@ void Drive::CleanUp() {
         m_transferManager->AbortMultipartUpload(fileToHandle.second);
       }
     }
-    // remove temp folder if existing
-    auto tmpfolder = GetCacheTemporaryDirectory();
-    if (FileExists(tmpfolder, false) &&
-        IsDirectory(tmpfolder, true)) {         // log on
-      DeleteFilesInDirectory(tmpfolder, true);  // delete folder itself
+    // remove disk cache folder if existing
+    auto diskfolder = GetDiskCacheDirectory();
+    if (FileExists(diskfolder, false) &&
+        IsDirectory(diskfolder, true)) {         // log on
+      DeleteFilesInDirectory(diskfolder, true);  // delete folder itself
     }
 
     m_client.reset();

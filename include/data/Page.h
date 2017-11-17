@@ -59,17 +59,16 @@ class Page {
   size_t m_size = 0;   // size of bytes this page contains
 
   // NOTICE: body stream should be QS::Data::IOStream which associated with
-  // QS::Data::StreamBuf when not use tmp file; otherwise body stream is a
-  // fstream assoicated to a tmp file.
-  // With the asssoicated stream buf or tmp file, the body stream support to
+  // QS::Data::StreamBuf when not use disk file; otherwise body stream is a
+  // fstream assoicated to a disk file.
+  // With the asssoicated stream buf or disk file, the body stream support to
   // be read/write for multiple times, but keep in mind following things:
   // 1) always seek to the right postion before to read/write body stream;
-  // 2) if use tmp file, always call OpenTempFile before read/write and call
-  // CloseTempFile after read/write (or operator <<).
+  // 2) if use disk file, always use RAII FileOpener to open it for read/write
   std::shared_ptr<std::iostream> m_body;  // stream storing the bytes
 
-  std::string m_tmpFile;  // tmp file is used when qsfs cache is not enough
-                          // it is an absolute path of /tmp/basename
+  std::string m_diskFile;  // disk file is used when in-memory cache is not
+                           // available, it is an absolute file path
 
   mutable std::recursive_mutex m_mutex;
 
@@ -83,12 +82,12 @@ class Page {
   // The owning file's offset is 'offset'.
   Page(off_t offset, size_t len, const char *buffer);
 
-  // Construct Page from a block of bytes (store it in tmp file)
+  // Construct Page from a block of bytes (store it in disk file)
   //
-  // @param  : file offset, len, buffer, tmp file path
+  // @param  : file offset, len, buffer, disk file path
   // @return :
   Page(off_t offset, size_t len, const char *buffer,
-       const std::string &tmpfile);
+       const std::string &diskfile);
 
   // Construct Page from a stream
   //
@@ -99,12 +98,12 @@ class Page {
   // The owning file's offset is 'offset'.
   Page(off_t offset, size_t len, const std::shared_ptr<std::iostream> &stream);
 
-  // Construct Page from a stream (store it in tmp file)
+  // Construct Page from a stream (store it in disk file)
   //
-  // @param  : file offset, len of bytes, stream, tmp file
+  // @param  : file offset, len of bytes, stream, disk file
   // @return :
   Page(off_t offset, size_t len, const std::shared_ptr<std::iostream> &stream,
-       const std::string &tmpfile);
+       const std::string &diskfile);
 
   // Construct Page from a stream by moving
   //
@@ -135,20 +134,20 @@ class Page {
   // Return body
   const std::shared_ptr<std::iostream> &GetBody() const { return m_body; }
 
-  // Return if page use temp file
-  bool UseTempFile();
-  bool UseTempFileNoLock();
+  // Return if page use disk file
+  bool UseDiskFile();
+  bool UseDiskFileNoLock();
 
   // Refresh the page's partial content
   //
-  // @param  : file offset, len of bytes to update, buffer, tmp file
+  // @param  : file offset, len of bytes to update, buffer, disk file
   // @return : bool
   //
   // May enlarge the page's size depended on 'len', and when the len
-  // is larger than page's size and using tmp file, then all page's data
-  // will be put to tmp file.
+  // is larger than page's size and using disk file, then all page's data
+  // will be put to disk file.
   bool Refresh(off_t offset, size_t len, const char *buffer,
-               const std::string &tmpfile = std::string());
+               const std::string &diskfile = std::string());
 
   // Refresh the page's entire content with bytes from buffer,
   // without checking.
@@ -181,10 +180,10 @@ class Page {
   // Set stream
   void SetStream(std::shared_ptr<std::iostream> &&stream);
 
-  // Setup tmp file on disk
-  // - open the tmp file
-  // - set stream to fstream assocating with tmp file
-  bool SetupTempFile();
+  // Setup disk file on disk
+  // - open the disk file
+  // - set stream to fstream assocating with disk file
+  bool SetupDiskFile();
 
   // Do a lazy resize for page.
   void ResizeToSmallerSize(size_t smallerSize);
@@ -199,7 +198,7 @@ class Page {
   // Starting from file offset, len of bytes will be updated.
   // For internal use only.
   bool UnguardedRefresh(off_t offset, size_t len, const char *buffer,
-                        const std::string &tmpfile = std::string());
+                        const std::string &diskfile = std::string());
 
   // Refresh the page's partial content without checking.
   // Starting from file offset, all the page's remaining size will be updated.
@@ -240,9 +239,9 @@ class Page {
   }
 
   friend class File;
-  FRIEND_TEST(PageTest, CtorWithTmpFile);
+  FRIEND_TEST(PageTest, CtorWithDiskFile);
   FRIEND_TEST(PageTest, TestResize);
-  FRIEND_TEST(PageTest, TestResizeTmpFile);
+  FRIEND_TEST(PageTest, TestResizeDiskFile);
 };
 
 struct PageCmp {

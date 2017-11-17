@@ -39,7 +39,7 @@ namespace QS {
 namespace Data {
 
 using QS::Data::StreamUtils::GetStreamSize;
-using QS::Configure::Default::GetCacheTemporaryDirectory;
+using QS::Configure::Default::GetDiskCacheDirectory;
 using QS::StringUtils::FormatPath;
 using QS::StringUtils::PointerAddress;
 using QS::TimeUtils::SecondsToRFC822GMT;
@@ -327,15 +327,15 @@ pair<bool, unique_ptr<File> *> Cache::PrepareWrite(const string &fileId,
     availableFreeSpace = Free(len, fileId);
 
     if (!availableFreeSpace) {
-      auto tmpfolder = GetCacheTemporaryDirectory();
-      if (!CreateDirectoryIfNotExists(tmpfolder)) {
-        DebugError("Unable to mkdir for tmp folder " + FormatPath(tmpfolder));
+      auto diskfolder = GetDiskCacheDirectory();
+      if (!CreateDirectoryIfNotExists(diskfolder)) {
+        DebugError("Unable to mkdir for folder " + FormatPath(diskfolder));
         return {false, nullptr};
       }
-      if (!IsSafeDiskSpace(tmpfolder, len)) {
-        if (!FreeTmpCacheFiles(tmpfolder, len, fileId)) {
+      if (!IsSafeDiskSpace(diskfolder, len)) {
+        if (!FreeDiskCacheFiles(diskfolder, len, fileId)) {
           DebugError("No available free space (" + to_string(len) +
-                     "bytes) for tmp folder " + FormatPath(tmpfolder));
+                     "bytes) for folder " + FormatPath(diskfolder));
           return {false, nullptr};
         }
       }  // check safe disk space
@@ -353,9 +353,9 @@ pair<bool, unique_ptr<File> *> Cache::PrepareWrite(const string &fileId,
 
   auto pfile = &(pos->second);
   if (!availableFreeSpace) {
-    (*pfile)->SetUseTempFile(true);
+    (*pfile)->SetUseDiskFile(true);
   } else {
-    (*pfile)->SetUseTempFile(false);
+    (*pfile)->SetUseDiskFile(false);
   }
 
   return {true, pfile};
@@ -377,7 +377,7 @@ bool Cache::Free(size_t size, const string &fileUnfreeable) {
 
   assert(!m_cache.empty());
   size_t freedSpace = 0;
-  size_t freedTmpSpace = 0;
+  size_t freedDiskSpace = 0;
 
   auto it = m_cache.rbegin();
   // Discards the least recently used File first, which is put at back.
@@ -387,7 +387,7 @@ bool Cache::Free(size_t size, const string &fileUnfreeable) {
     if (fileId != fileUnfreeable && it->second && !it->second->IsOpen()) {
       auto fileCacheSz = it->second->GetCachedSize();
       freedSpace += fileCacheSz;
-      freedTmpSpace += it->second->GetSize() - fileCacheSz;
+      freedDiskSpace += it->second->GetSize() - fileCacheSz;
       m_size -= fileCacheSz;
       it->second->Clear();
       m_cache.erase((++it).base());
@@ -406,35 +406,35 @@ bool Cache::Free(size_t size, const string &fileUnfreeable) {
   if (freedSpace > 0) {
     DebugInfo("Has freed cache of " + to_string(freedSpace) + " bytes");
   }
-  if (freedTmpSpace > 0) {
-    DebugInfo("Has freed tmp file of " + to_string(freedTmpSpace) + " bytes" +
-              FormatPath(GetCacheTemporaryDirectory()));
+  if (freedDiskSpace > 0) {
+    DebugInfo("Has freed disk file of " + to_string(freedDiskSpace) + " bytes" +
+              FormatPath(GetDiskCacheDirectory()));
   }
   return HasFreeSpace(size);
 }
 
 // --------------------------------------------------------------------------
-bool Cache::FreeTmpCacheFiles(const string &tmpfolder, size_t size,
+bool Cache::FreeDiskCacheFiles(const string &diskfolder, size_t size,
                               const string &fileUnfreeable) {
-  assert(tmpfolder == GetCacheTemporaryDirectory());
-  // tmpfolder should be cache tmp dir
-  if (IsSafeDiskSpace(tmpfolder, size)) {
+  assert(diskfolder == GetDiskCacheDirectory());
+  // diskfolder should be cache disk dir
+  if (IsSafeDiskSpace(diskfolder, size)) {
     return true;
   }
 
   assert(!m_cache.empty());
   size_t freedSpace = 0;
-  size_t freedTmpSpace = 0;
+  size_t freedDiskSpace = 0;
 
   auto it = m_cache.rbegin();
   // Discards the least recently used File first, which is put at back.
-  while (it != m_cache.rend() && !IsSafeDiskSpace(tmpfolder, size)) {
+  while (it != m_cache.rend() && !IsSafeDiskSpace(diskfolder, size)) {
     // Notice do NOT store a reference of the File supposed to be removed.
     auto fileId = it->first;
     if (fileId != fileUnfreeable && it->second && !it->second->IsOpen()) {
       auto fileCacheSz = it->second->GetCachedSize();
       freedSpace += fileCacheSz;
-      freedTmpSpace += it->second->GetSize() - fileCacheSz;
+      freedDiskSpace += it->second->GetSize() - fileCacheSz;
       m_size -= fileCacheSz;
       it->second->Clear();
       m_cache.erase((++it).base());
@@ -453,11 +453,11 @@ bool Cache::FreeTmpCacheFiles(const string &tmpfolder, size_t size,
   if (freedSpace > 0) {
     DebugInfo("Has freed cache of " + to_string(freedSpace) + " bytes");
   }
-  if (freedTmpSpace > 0) {
-    DebugInfo("Has freed tmp file of " + to_string(freedTmpSpace) + " bytes" +
-              FormatPath(GetCacheTemporaryDirectory()));
+  if (freedDiskSpace > 0) {
+    DebugInfo("Has freed disk file of " + to_string(freedDiskSpace) + " bytes" +
+              FormatPath(GetDiskCacheDirectory()));
   }
-  return IsSafeDiskSpace(tmpfolder, size);
+  return IsSafeDiskSpace(diskfolder, size);
 }
 
 // --------------------------------------------------------------------------

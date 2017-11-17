@@ -35,7 +35,7 @@ namespace QS {
 
 namespace Data {
 
-using QS::Configure::Default::GetCacheTemporaryDirectory;
+using QS::Configure::Default::GetDiskCacheDirectory;
 using QS::Data::StreamUtils::GetStreamSize;
 using QS::Utils::RemoveFileIfExists;
 using std::array;
@@ -70,7 +70,7 @@ TEST_F(PageTest, Ctor) {
   EXPECT_EQ(p1.Size(), len);
   EXPECT_EQ(p1.Offset(), (off_t)0);
   EXPECT_EQ(GetStreamSize(p1.GetBody()), len);
-  EXPECT_FALSE(p1.UseTempFile());
+  EXPECT_FALSE(p1.UseDiskFile());
 
   auto ss = make_shared<stringstream>(str);
   Page p2(0, len, ss);
@@ -79,7 +79,7 @@ TEST_F(PageTest, Ctor) {
   EXPECT_EQ(p2.Size(), len);
   EXPECT_EQ(p2.Offset(), (off_t)0);
   EXPECT_EQ(GetStreamSize(p2.GetBody()), len);
-  EXPECT_FALSE(p2.UseTempFile());
+  EXPECT_FALSE(p2.UseDiskFile());
 
   Page p3(0, len, std::move(ss));
   EXPECT_EQ(p3.Stop(), (off_t)(len - 1));
@@ -87,15 +87,15 @@ TEST_F(PageTest, Ctor) {
   EXPECT_EQ(p3.Size(), len);
   EXPECT_EQ(p3.Offset(), (off_t)0);
   EXPECT_EQ(GetStreamSize(p3.GetBody()), len);
-  EXPECT_FALSE(p3.UseTempFile());
+  EXPECT_FALSE(p3.UseDiskFile());
 }
 
 // --------------------------------------------------------------------------
-TEST_F(PageTest, CtorWithTmpFile) {
+TEST_F(PageTest, CtorWithDiskFile) {
   string str("123");
   size_t len = str.size();
-  string tmpfile1 = GetCacheTemporaryDirectory() + "test_page1";
-  Page p1(0, len, str.c_str(), tmpfile1);
+  string file1 = GetDiskCacheDirectory() + "test_page1";
+  Page p1(0, len, str.c_str(), file1);
   EXPECT_EQ(p1.Stop(), (off_t)(len - 1));
   EXPECT_EQ(p1.Next(), (off_t)len);
   EXPECT_EQ(p1.Size(), len);
@@ -106,18 +106,18 @@ TEST_F(PageTest, CtorWithTmpFile) {
   // Strang thing is that gtest (PageTest) runs ok under debug mode, but
   // assert fail when run gtest (PageTest) exe directly.
   // assert(body);  // fail when run PageTest exe, but success under debug mode
-  EXPECT_TRUE(p1.UseTempFile());
-  RemoveFileIfExists(tmpfile1);
+  EXPECT_TRUE(p1.UseDiskFile());
+  RemoveFileIfExists(file1);
 
   auto ss = make_shared<stringstream>(str);
-  string tmpfile2 = GetCacheTemporaryDirectory() + "test_page2";
-  Page p2(0, len, ss, tmpfile2);
+  string file2 = GetDiskCacheDirectory() + "test_page2";
+  Page p2(0, len, ss, file2);
   EXPECT_EQ(p2.Stop(), (off_t)(len - 1));
   EXPECT_EQ(p2.Next(), (off_t)len);
   EXPECT_EQ(p2.Size(), len);
   EXPECT_EQ(p2.Offset(), (off_t)0);
-  EXPECT_TRUE(p2.UseTempFile());
-  RemoveFileIfExists(tmpfile2);
+  EXPECT_TRUE(p2.UseDiskFile());
+  RemoveFileIfExists(file2);
 }
 
 // --------------------------------------------------------------------------
@@ -165,18 +165,18 @@ TEST_F(PageTest, TestRead) {
 }
 
 // --------------------------------------------------------------------------
-TEST_F(PageTest, TestReadTmpFile) {
+TEST_F(PageTest, TestReadDiskFile) {
   constexpr const char *str = "123";
   constexpr size_t len = strlen(str);
   array<char, len> arr{'1', '2', '3'};
-  string tmpfile1 = GetCacheTemporaryDirectory() + "test_page1";
-  Page p1(0, len, str, tmpfile1);
+  string file1 = GetDiskCacheDirectory() + "test_page1";
+  Page p1(0, len, str, file1);
 
   array<char, len> buf1;
   p1.Read(0, len, &buf1[0]);
   EXPECT_TRUE(buf1 == arr);
 
-  RemoveFileIfExists(tmpfile1);
+  RemoveFileIfExists(file1);
 }
 
 // --------------------------------------------------------------------------
@@ -199,11 +199,11 @@ TEST_F(PageTest, TestRefresh) {
 }
 
 // --------------------------------------------------------------------------
-TEST_F(PageTest, TestRefreshTmpFile) {
+TEST_F(PageTest, TestRefreshDiskFile) {
   constexpr const char *str = "123";
   constexpr size_t len = strlen(str);
-  string tmpfile1 = GetCacheTemporaryDirectory() + "test_page1";
-  Page p1(0, len, str, tmpfile1);
+  string file1 = GetDiskCacheDirectory() + "test_page1";
+  Page p1(0, len, str, file1);
 
   array<char, len> arrNew1{'4', '5', '6'};
   p1.Refresh(&arrNew1[0]);
@@ -217,7 +217,7 @@ TEST_F(PageTest, TestRefreshTmpFile) {
   p1.Read(0, len, &buf2[0]);
   EXPECT_TRUE(buf2 == arrNew2);
 
-  RemoveFileIfExists(tmpfile1);
+  RemoveFileIfExists(file1);
 }
 
 // --------------------------------------------------------------------------
@@ -234,18 +234,18 @@ TEST_F(PageTest, TestResize) {
 }
 
 // --------------------------------------------------------------------------
-TEST_F(PageTest, TestResizeTmpFile) {
+TEST_F(PageTest, TestResizeDiskFile) {
   constexpr const char *str = "123";
   constexpr size_t len = strlen(str);
-  string tmpfile1 = GetCacheTemporaryDirectory() + "test_page1";
-  Page p1(0, len, str, tmpfile1);
+  string file1 = GetDiskCacheDirectory() + "test_page1";
+  Page p1(0, len, str, file1);
 
   array<char, len - 1> arrSmaller{'1', '2'};
   p1.ResizeToSmallerSize(len - 1);
   array<char, len - 1> buf1;
   p1.Read(&buf1[0]);
   EXPECT_TRUE(buf1 == arrSmaller);
-  RemoveFileIfExists(tmpfile1);
+  RemoveFileIfExists(file1);
 }
 
 }  // namespace Data
