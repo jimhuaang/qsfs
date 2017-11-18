@@ -21,7 +21,6 @@
 
 #include "base/HashUtils.h"
 #include "base/LogMacros.h"
-#include "client/Protocol.h"
 
 namespace QS {
 
@@ -65,29 +64,6 @@ Host StringToHost(const string& name) {
     return Host::Null;
   }
   return it->second;
-}
-
-Host GetDefaultHost() { return Host::QingStor; }
-
-std::string GetDefaultHostName() { return HOST_QINGSTOR; }
-
-uint16_t GetDefaultPort(Protocol protocol) {
-  static const uint16_t HTTP_DEFAULT_PORT = 80;
-  static const uint16_t HTTPS_DEFAULT_PORT = 443;
-
-  std::unordered_map<Protocol, uint16_t, EnumHash> protocolPortMap = {
-      {Protocol::HTTP, HTTP_DEFAULT_PORT},
-      {Protocol::HTTPS, HTTPS_DEFAULT_PORT}};
-
-  auto it = protocolPortMap.find(protocol);
-  if (it != protocolPortMap.end()) {
-    return it->second;
-  } else {
-    DebugWarning("Try to get default port with a invalid protocol " +
-                 ProtocolToString(protocol) + " returned default port " +
-                 to_string(HTTPS_DEFAULT_PORT));
-    return HTTPS_DEFAULT_PORT;
-  }
 }
 
 }  // namespace Http

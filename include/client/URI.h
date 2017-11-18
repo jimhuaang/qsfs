@@ -21,8 +21,6 @@
 
 #include <string>
 
-#include "client/Protocol.h"
-
 namespace QS {
 
 namespace Client {
@@ -38,10 +36,6 @@ enum class Host {
 
 std::string HostToString(Host host);
 Host StringToHost(const std::string &name);
-Host GetDefaultHost();
-std::string GetDefaultHostName();
-
-uint16_t GetDefaultPort(Protocol protocol);
 
 }  // namespace Http
 

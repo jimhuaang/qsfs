@@ -28,7 +28,7 @@
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
 #include "base/Utils.h"
-#include "configure/Default.h"
+#include "configure/Options.h"
 #include "data/IOStream.h"
 #include "data/StreamUtils.h"
 
@@ -38,7 +38,6 @@ namespace Data {
 
 using QS::Data::IOStream;
 using QS::Data::StreamUtils::GetStreamSize;
-using QS::Configure::Default::GetDiskCacheDirectory;
 using QS::StringUtils::FormatPath;
 using QS::StringUtils::PointerAddress;
 using QS::Utils::CreateDirectoryIfNotExists;
@@ -265,7 +264,8 @@ void Page::SetStream(shared_ptr<iostream> &&stream) {
 // --------------------------------------------------------------------------
 bool Page::SetupDiskFile() {
   lock_guard<recursive_mutex> lock(m_mutex);
-  CreateDirectoryIfNotExists(GetDiskCacheDirectory());
+  CreateDirectoryIfNotExists(
+      QS::Configure::Options::Instance().GetDiskCacheDirectory());
 
   std::ios_base::openmode mode = std::ios_base::binary | std::ios_base::ate |
                                  std::ios_base::in | std::ios_base::out;

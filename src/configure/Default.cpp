@@ -20,6 +20,7 @@
 #include <sys/types.h>
 
 #include <algorithm>
+#include <cctype>
 #include <string>
 
 #include "data/Size.h"
@@ -34,17 +35,47 @@ using std::string;
 
 static const char* const PROGRAM_NAME = "qsfs";
 static const char* const QSFS_DEFAULT_CREDENTIALS = "/opt/qsfs/qsfs.cred";
+static const char* const QSFS_DEFAULT_DISK_CACHE_DIR = "/tmp/qsfs_cache/";
+static uint16_t const    QSFS_DEFAULT_MAX_RETRIES = 3;
 static const char* const QSFS_DEFAULT_LOG_DIR = "/opt/qsfs/qsfs_log/";
+static const char* const QSFS_DEFAULT_LOGLEVEL_NAME = "INFO";
+static const char* const QSFS_DEFAULT_HOST = "qingstor.com";
+static const char* const QSFS_DEFAULT_PROTOCOL = "https";
+static const char *const QSFS_DEFAULT_ZONE = "pek3a";
 static const char* const QSFS_MIME_FILE = "/etc/mime.types";
-static const char* const QSFS_CACHE_DIR = "/tmp/qsfs_cache/";  // file cache dir
+
 
 const char* GetProgramName() { return PROGRAM_NAME; }
 
 string GetDefaultCredentialsFile() { return QSFS_DEFAULT_CREDENTIALS; }
+string GetDefaultDiskCacheDirectory() { return QSFS_DEFAULT_DISK_CACHE_DIR; }
+uint16_t GetDefaultMaxRetries() { return QSFS_DEFAULT_MAX_RETRIES; }
 string GetDefaultLogDirectory() { return QSFS_DEFAULT_LOG_DIR; }
+string GetDefaultLogLevelName() { return QSFS_DEFAULT_LOGLEVEL_NAME; }
+string GetDefaultHostName() { return QSFS_DEFAULT_HOST; }
+
+uint16_t GetDefaultPort(const string &protocolName) {
+  static const uint16_t HTTP_DEFAULT_PORT = 80;
+  static const uint16_t HTTPS_DEFAULT_PORT = 443;
+
+  string lowercaseProtocol(protocolName);
+  for (auto &c : lowercaseProtocol) {
+    c = std::tolower(c);
+  }
+
+  if(lowercaseProtocol == "http") {
+    return HTTP_DEFAULT_PORT;
+  } else if(lowercaseProtocol == "https") {
+    return HTTPS_DEFAULT_PORT;
+  } else {
+    return HTTPS_DEFAULT_PORT;
+  }
+}
+
+string GetDefaultProtocolName() { return QSFS_DEFAULT_PROTOCOL; }
+string GetDefaultZone() { return QSFS_DEFAULT_ZONE; }
 
 string GetMimeFile() { return QSFS_MIME_FILE; }
-string GetDiskCacheDirectory() { return QSFS_CACHE_DIR; }
 
 uint16_t GetPathMaxLen() { return 4096; }  // TODO(jim): should be 1023?
 uint16_t GetNameMaxLen() { return 255; }

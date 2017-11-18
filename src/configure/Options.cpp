@@ -23,12 +23,30 @@
 #include <string>
 
 #include "base/LogLevel.h"
+#include "configure/Default.h"
+#include "data/Size.h"
 
 namespace QS {
 
 namespace Configure {
 
+using QS::Configure::Default::GetClientDefaultPoolSize;
+using QS::Configure::Default::GetDefaultCredentialsFile;
+using QS::Configure::Default::GetDefaultDiskCacheDirectory;
+using QS::Configure::Default::GetDefaultLogDirectory;
+using QS::Configure::Default::GetDefaultLogLevelName;
+using QS::Configure::Default::GetDefaultHostName;
+using QS::Configure::Default::GetDefaultMaxRetries;
+using QS::Configure::Default::GetDefaultPort;
+using QS::Configure::Default::GetDefaultProtocolName;
+using QS::Configure::Default::GetDefaultParallelTransfers;
+using QS::Configure::Default::GetDefaultTransferBufSize;
+using QS::Configure::Default::GetDefaultZone;
+using QS::Configure::Default::GetMaxCacheSize;
+using QS::Configure::Default::GetMaxStatCount;
+using QS::Configure::Default::GetTransactionDefaultTimeDuration;
 using QS::Logging::GetLogLevelName;
+using QS::Logging::GetLogLevelByName;
 using std::ostream;
 using std::string;
 using std::to_string;
@@ -40,6 +58,35 @@ Options &Options::Instance() {
   std::call_once(flag, [] { instance.reset(new Options); });
   return *instance.get();
 }
+
+Options::Options()
+    : m_bucket(),
+      m_mountPoint(),
+      m_zone(GetDefaultZone()),
+      m_credentialsFile(GetDefaultCredentialsFile()),
+      m_logDirectory(GetDefaultLogDirectory()),
+      m_logLevel(GetLogLevelByName(GetDefaultLogLevelName())),
+      m_retries(GetDefaultMaxRetries()),
+      m_requestTimeOut(GetTransactionDefaultTimeDuration()),
+      m_maxCacheSizeInMB(GetMaxCacheSize() / QS::Data::Size::MB1),
+      m_diskCacheDir(GetDefaultDiskCacheDirectory()),
+      m_maxStatCountInK(GetMaxStatCount() / QS::Data::Size::K1),
+      m_statExpireInMin(-1),  // default disable state expire
+      m_parallelTransfers(GetDefaultParallelTransfers()),
+      m_transferBufferSizeInMB(GetDefaultTransferBufSize() /
+                               QS::Data::Size::MB1),
+      m_clientPoolSize(GetClientDefaultPoolSize()),
+      m_host(GetDefaultHostName()),
+      m_protocol(GetDefaultProtocolName()),
+      m_port(GetDefaultPort(GetDefaultProtocolName())),
+      m_additionalAgent(),
+      m_clearLogDir(false),
+      m_foreground(false),
+      m_singleThread(false),
+      m_qsfsSingleThread(false),
+      m_debug(false),
+      m_showHelp(false),
+      m_showVersion(false) {}
 
 ostream &operator<<(ostream &os, const Options &opts) {
   auto CatArgv = [](int argc, char **argv) -> string {
@@ -64,6 +111,7 @@ ostream &operator<<(ostream &os, const Options &opts) {
          << "[retries: " << to_string(opts.m_retries) << "] "
          << "[req timeout(ms): " << to_string(opts.m_requestTimeOut) << "] "
          << "[max cache(MB): " << to_string(opts.m_maxCacheSizeInMB) << "] "
+         << "[disk cache dir: " << opts.m_diskCacheDir << "] "
          << "[max stat(K): " << to_string(opts.m_maxStatCountInK) << "] "
          << "[stat expire(min): " << to_string(opts.m_statExpireInMin) << "] "
          << "[num transfers: " << to_string(opts.m_parallelTransfers) << "] "

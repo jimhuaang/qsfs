@@ -27,7 +27,8 @@
   of metadata entrys in cache by *-t* option.
   - In-memory file data caching. You can specify max cache size for file data cache by
   *-Z* option. For a big file, partial file data may been stored in a local disk file
-  under */tmp/qsfs_cache/* when the file cache is not available.
+  when the file cache is not available, by default the disk file will be put under
+  */tmp/qsfs_cache/*, you can change it by *-D* option.
 - Logging:
   - You can specify any of the logging levels like INFO, WARN, ERROR and FATAL by *-L*
   option, e.g. *-L=INFO*.

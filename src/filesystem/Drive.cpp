@@ -78,7 +78,6 @@ using QS::Data::FilePathToNodeUnorderedMap;
 using QS::Data::IOStream;
 using QS::Data::Node;
 using QS::Exception::QSException;
-using QS::Configure::Default::GetDiskCacheDirectory;
 using QS::StringUtils::FormatPath;
 using QS::Utils::AppendPathDelim;
 using QS::Utils::DeleteFilesInDirectory;
@@ -142,7 +141,8 @@ void Drive::CleanUp() {
       }
     }
     // remove disk cache folder if existing
-    auto diskfolder = GetDiskCacheDirectory();
+    auto diskfolder =
+        QS::Configure::Options::Instance().GetDiskCacheDirectory();
     if (FileExists(diskfolder, false) &&
         IsDirectory(diskfolder, true)) {         // log on
       DeleteFilesInDirectory(diskfolder, true);  // delete folder itself

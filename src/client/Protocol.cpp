@@ -61,10 +61,6 @@ Protocol StringToProtocol(const string& name) {
   return Protocol::HTTPS;
 }
 
-Protocol GetDefaultProtocol() { return Protocol::HTTPS; }
-
-string GetDefaultProtocolName() { return HTTPS_NAME; }
 }  // namespace Http
-
 }  // namespace Client
 }  // namespace QS

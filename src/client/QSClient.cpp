@@ -46,7 +46,6 @@
 #include "client/QSClientConverter.h"
 #include "client/QSClientImpl.h"
 #include "client/QSError.h"
-#include "client/URI.h"
 #include "client/Utils.h"
 #include "data/Cache.h"
 #include "data/Directory.h"

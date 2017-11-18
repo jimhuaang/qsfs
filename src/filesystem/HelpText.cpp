@@ -19,9 +19,6 @@
 #include <iostream>
 #include <string>
 
-#include "client/Protocol.h"
-#include "client/URI.h"
-#include "client/Zone.h"
 #include "configure/Default.h"
 #include "configure/Version.h"
 #include "data/Size.h"
@@ -32,13 +29,14 @@ namespace FileSystem {
 
 namespace HelpText {
 
-using QS::Client::GetDefaultZone;
-using QS::Client::Http::GetDefaultHostName;
-using QS::Client::Http::GetDefaultProtocolName;
 using QS::Configure::Default::GetDefaultCredentialsFile;
+using QS::Configure::Default::GetDefaultDiskCacheDirectory;
 using QS::Configure::Default::GetDefaultLogDirectory;
+using QS::Configure::Default::GetDefaultHostName;
+using QS::Configure::Default::GetDefaultProtocolName;
 using QS::Configure::Default::GetDefaultParallelTransfers;
 using QS::Configure::Default::GetDefaultTransferBufSize;
+using QS::Configure::Default::GetDefaultZone;
 using QS::Configure::Default::GetMaxCacheSize;
 using QS::Configure::Default::GetMaxStatCount;
 using QS::Configure::Default::GetTransactionDefaultTimeDuration;
@@ -78,11 +76,13 @@ void ShowQSFSHelp() {
   "  -R, --reqtimeout   Time(milliseconds) to wait before timing out a request which\n"
   "                     is not time-consuming such as head a file, make a file, etc.\n"
   "                     For these time-consuming requests, e.g. upload/download a file,\n"
-  "                     it will be evaluated depended on this time value and file size.\n"
-  "                     Default value is" << to_string(GetTransactionDefaultTimeDuration())
+  "                     it will be evaluated depended on this time value and file size;\n"
+  "                     Default value is " << to_string(GetTransactionDefaultTimeDuration())
                                           << " milliseconds\n"
-  "  -Z, --maxcache     Max cache size(MB) for files, default is "
+  "  -Z, --maxcache     Max in-memory cache size(MB) for files, default is "
                         << to_string(GetMaxCacheSize() / QS::Data::Size::MB1) << "MB\n"
+  "  -D, --diskdir      Specify the directory to store file data when in-memory cache\n"
+  "                     is not availabe, default is " << GetDefaultDiskCacheDirectory() << "\n"
   "  -t, --maxstat      Max count(K) of cached stat entrys, default is "
                         << to_string(GetMaxStatCount() / QS::Data::Size::K1) << "K\n"
   "  -e, --statexpire   Expire time(minutes) for stat entries, negative value will\n"
@@ -101,8 +101,7 @@ void ShowQSFSHelp() {
   "\n"
   "Miscellaneous Options:\n"
   "  -C, --clearlogdir  Clear log directory at beginning\n"
-  "  -f, --forground    Turn on log messages to STDERR and enable FUSE\n"
-  "                     foreground option\n"
+  "  -f, --forground    Turn on log to STDERR and enable FUSE foreground mode\n"
   "  -s, --single       Turn on FUSE single threaded option - disable multi-threaded\n"
   "  -S, --Single       Turn on qsfs single threaded option - disable multi-threaded\n"
   "  -d, --debug        Turn on debug messages to log and enable FUSE debug option\n"
@@ -122,7 +121,8 @@ void ShowQSFSUsage() {
   "       [-z|--zone=[value]] [-c|--credentials=[file path]]\n"
   "       [-l|--logdir=[dir]] [-L|--loglevel=[INFO|WARN|ERROR|FATAL]] \n"
   "       [-r|--retries=[value]] [-R|reqtimeout=[value]]\n"
-  "       [-Z|--maxcache=[value]] [-t|--maxstat=[value]] [-e|--statexpire=[value]]\n"
+  "       [-Z|--maxcache=[value]] [-D|--diskdir=[value]]\n"
+  "       [-t|--maxstat=[value]] [-e|--statexpire=[value]]\n"
   "       [-n|--numtransfer=[value]] [-u|--bufsize=value]]\n"
   "       [-H|--host=[value]] [-p|--protocol=[value]]\n"
   "       [-P|--port=[value]] [-a|--agent=[value]]\n"

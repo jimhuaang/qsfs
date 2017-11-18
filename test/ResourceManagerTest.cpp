@@ -37,7 +37,7 @@ using std::vector;
 using ::testing::Test;
 
 // default log dir
-static const char *defaultLogDir = "/tmp/qsfs.logs/";
+static const char *defaultLogDir = "/tmp/qsfs.test.logs/";
 void InitLog() {
   QS::Utils::CreateDirectoryIfNotExistsNoLog(defaultLogDir);
   QS::Logging::InitializeLogging(

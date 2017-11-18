@@ -31,7 +31,7 @@
 #include "base/StringUtils.h"
 #include "base/TimeUtils.h"
 #include "base/Utils.h"
-#include "configure/Default.h"
+#include "configure/Options.h"
 #include "data/StreamUtils.h"
 
 namespace QS {
@@ -39,7 +39,6 @@ namespace QS {
 namespace Data {
 
 using QS::Data::StreamUtils::GetStreamSize;
-using QS::Configure::Default::GetDiskCacheDirectory;
 using QS::StringUtils::FormatPath;
 using QS::StringUtils::PointerAddress;
 using QS::TimeUtils::SecondsToRFC822GMT;
@@ -327,7 +326,8 @@ pair<bool, unique_ptr<File> *> Cache::PrepareWrite(const string &fileId,
     availableFreeSpace = Free(len, fileId);
 
     if (!availableFreeSpace) {
-      auto diskfolder = GetDiskCacheDirectory();
+      auto diskfolder =
+          QS::Configure::Options::Instance().GetDiskCacheDirectory();
       if (!CreateDirectoryIfNotExists(diskfolder)) {
         DebugError("Unable to mkdir for folder " + FormatPath(diskfolder));
         return {false, nullptr};
@@ -407,8 +407,9 @@ bool Cache::Free(size_t size, const string &fileUnfreeable) {
     DebugInfo("Has freed cache of " + to_string(freedSpace) + " bytes");
   }
   if (freedDiskSpace > 0) {
-    DebugInfo("Has freed disk file of " + to_string(freedDiskSpace) + " bytes" +
-              FormatPath(GetDiskCacheDirectory()));
+    DebugInfo(
+        "Has freed disk file of " + to_string(freedDiskSpace) + " bytes" +
+        FormatPath(QS::Configure::Options::Instance().GetDiskCacheDirectory()));
   }
   return HasFreeSpace(size);
 }
@@ -416,7 +417,8 @@ bool Cache::Free(size_t size, const string &fileUnfreeable) {
 // --------------------------------------------------------------------------
 bool Cache::FreeDiskCacheFiles(const string &diskfolder, size_t size,
                               const string &fileUnfreeable) {
-  assert(diskfolder == GetDiskCacheDirectory());
+  assert(diskfolder ==
+         QS::Configure::Options::Instance().GetDiskCacheDirectory());
   // diskfolder should be cache disk dir
   if (IsSafeDiskSpace(diskfolder, size, true)) {
     return true;
@@ -454,8 +456,9 @@ bool Cache::FreeDiskCacheFiles(const string &diskfolder, size_t size,
     DebugInfo("Has freed cache of " + to_string(freedSpace) + " bytes");
   }
   if (freedDiskSpace > 0) {
-    DebugInfo("Has freed disk file of " + to_string(freedDiskSpace) + " bytes" +
-              FormatPath(GetDiskCacheDirectory()));
+    DebugInfo(
+        "Has freed disk file of " + to_string(freedDiskSpace) + " bytes" +
+        FormatPath(QS::Configure::Options::Instance().GetDiskCacheDirectory()));
   }
   return IsSafeDiskSpace(diskfolder, size, true);
 }

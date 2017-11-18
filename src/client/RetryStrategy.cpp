@@ -16,6 +16,7 @@
 
 #include "client/RetryStrategy.h"
 
+#include "configure/Default.h"
 #include "configure/Options.h"
 
 namespace QS {
@@ -34,7 +35,8 @@ uint32_t RetryStrategy::CalculateDelayBeforeNextRetry(
 }
 
 RetryStrategy GetDefaultRetryStrategy() {
-  return RetryStrategy(Retry::DefaultMaxRetries, Retry::DefaultScaleFactor);
+  return RetryStrategy(QS::Configure::Default::GetDefaultMaxRetries(),
+                       Retry::DefaultScaleFactor);
 }
 
 RetryStrategy GetCustomRetryStrategy() {

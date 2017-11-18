@@ -26,7 +26,7 @@
 
 #include "base/Logging.h"
 #include "base/Utils.h"
-#include "configure/Default.h"
+#include "configure/Options.h"
 #include "data/File.h"
 #include "data/Page.h"
 
@@ -34,7 +34,6 @@ namespace QS {
 
 namespace Data {
 
-using QS::Configure::Default::GetDiskCacheDirectory;
 using std::array;
 using std::make_shared;
 using std::string;
@@ -43,7 +42,7 @@ using std::unique_ptr;
 using ::testing::Test;
 
 // default log dir
-static const char *defaultLogDir = "/tmp/qsfs.logs/";
+static const char *defaultLogDir = "/tmp/qsfs.test.logs/";
 void InitLog() {
   QS::Utils::CreateDirectoryIfNotExistsNoLog(defaultLogDir);
   QS::Logging::InitializeLogging(
@@ -64,7 +63,8 @@ class FileTest : public Test {
 
 TEST_F(FileTest, Default) {
   string filename = "file1";
-  string filepath = GetDiskCacheDirectory() + filename;
+  string filepath =
+      QS::Configure::Options::Instance().GetDiskCacheDirectory() + filename;
   File file1(filename, mtime_);
   EXPECT_EQ(file1.GetBaseName(), filename);
   EXPECT_EQ(file1.GetSize(), 0u);

@@ -27,9 +27,6 @@
 #include "base/Exception.h"
 #include "base/LogLevel.h"
 #include "client/Protocol.h"
-#include "client/RetryStrategy.h"
-#include "client/URI.h"
-#include "client/Zone.h"
 #include "data/Size.h"
 #include "configure/Default.h"
 #include "configure/IncludeFuse.h"  // for fuse.h
@@ -45,12 +42,18 @@ namespace Parser {
 
 namespace {
 
-using QS::Client::Http::GetDefaultPort;
-using QS::Client::Http::GetDefaultProtocol;
-using QS::Client::Retry::DefaultMaxRetries;
 using QS::Configure::Default::GetClientDefaultPoolSize;
+using QS::Configure::Default::GetDefaultCredentialsFile;
+using QS::Configure::Default::GetDefaultDiskCacheDirectory;
+using QS::Configure::Default::GetDefaultLogDirectory;
+using QS::Configure::Default::GetDefaultLogLevelName;
+using QS::Configure::Default::GetDefaultHostName;
+using QS::Configure::Default::GetDefaultMaxRetries;
+using QS::Configure::Default::GetDefaultPort;
+using QS::Configure::Default::GetDefaultProtocolName;
 using QS::Configure::Default::GetDefaultParallelTransfers;
 using QS::Configure::Default::GetDefaultTransferBufSize;
+using QS::Configure::Default::GetDefaultZone;
 using QS::Configure::Default::GetMaxCacheSize;
 using QS::Configure::Default::GetMaxStatCount;
 using QS::Configure::Default::GetTransactionDefaultTimeDuration;
@@ -73,9 +76,10 @@ static struct options {
   const char *credentials;
   const char *logDirectory;
   const char *logLevel;        // INFO, WARN, ERROR, FATAL
-  int retries = DefaultMaxRetries;
+  int retries = GetDefaultMaxRetries();
   int32_t reqtimeout = GetTransactionDefaultTimeDuration();    // in ms
   int32_t maxcache = GetMaxCacheSize() / QS::Data::Size::MB1;  // in MB
+  const char *diskdir;
   int32_t maxstat = GetMaxStatCount() / QS::Data::Size::K1;    // in K
   int32_t statexpire = -1;    // in mins, negative value disable state expire
   int numtransfer = GetDefaultParallelTransfers();
@@ -83,7 +87,7 @@ static struct options {
   int threads = GetClientDefaultPoolSize();
   const char *host;
   const char *protocol;
-  int port = GetDefaultPort(GetDefaultProtocol());
+  int port = GetDefaultPort(GetDefaultProtocolName());
   const char *addtionalAgent;
   int clearLogDir = 0;         // default not clear log dir
   int foreground = 0;          // default not foreground
@@ -107,9 +111,10 @@ static const struct fuse_opt optionSpec[] = {
     OPTION("-r=%i", retries),        OPTION("--retries=%i",     retries),
     OPTION("-R=%li", reqtimeout),    OPTION("--reqtimeout=%li", reqtimeout),
     OPTION("-Z=%li", maxcache),      OPTION("--maxcache=%li",   maxcache),
+    OPTION("-D=%s",  diskdir),       OPTION("--diskdir=%s",     diskdir),
     OPTION("-t=%li", maxstat),       OPTION("--maxstat=%li",    maxstat),
     OPTION("-e=%li", statexpire),    OPTION("--statexpire=%li", statexpire),
-    OPTION("-n=%i", numtransfer),    OPTION("--numtransfer=%i", numtransfer),
+    OPTION("-n=%i",  numtransfer),   OPTION("--numtransfer=%i", numtransfer),
     OPTION("-u=%li", bufsize),       OPTION("--bufsize=%li",    bufsize),
     OPTION("-T=%i", threads),        OPTION("--threads=%i",     threads),
     OPTION("-H=%s", host),           OPTION("--host=%s",        host),
@@ -137,17 +142,13 @@ void Parse(int argc, char **argv) {
   // can free the defaults if other values are specified.
   options.bucket         = strdup("");
   options.mountPoint     = strdup("");
-  options.zone           = strdup(QS::Client::GetDefaultZone());
-  options.credentials    = strdup(
-      QS::Configure::Default::GetDefaultCredentialsFile().c_str());
-  options.logDirectory   = strdup(
-      QS::Configure::Default::GetDefaultLogDirectory().c_str());
-  options.logLevel       = strdup(
-      QS::Logging::GetLogLevelName(QS::Logging::LogLevel::Info).c_str());
-  options.host           = strdup(
-      QS::Client::Http::GetDefaultHostName().c_str());
-  options.protocol       = strdup(
-      QS::Client::Http::GetDefaultProtocolName().c_str());
+  options.zone           = strdup(GetDefaultZone().c_str());
+  options.credentials    = strdup(GetDefaultCredentialsFile().c_str());
+  options.logDirectory   = strdup(GetDefaultLogDirectory().c_str());
+  options.logLevel       = strdup(GetDefaultLogLevelName().c_str());
+  options.diskdir        = strdup(GetDefaultDiskCacheDirectory().c_str());
+  options.host           = strdup(GetDefaultHostName().c_str());
+  options.protocol       = strdup(GetDefaultProtocolName().c_str());
   options.addtionalAgent = strdup("");
 
   auto & args = qsOptions.GetFuseArgs();
@@ -163,8 +164,8 @@ void Parse(int argc, char **argv) {
   qsOptions.SetLogLevel(QS::Logging::GetLogLevelByName(options.logLevel));
 
   if (options.retries <= 0) {
-    PrintWarnMsg("-r|--retries", options.retries, DefaultMaxRetries);
-    qsOptions.SetRetries(DefaultMaxRetries);
+    PrintWarnMsg("-r|--retries", options.retries, GetDefaultMaxRetries());
+    qsOptions.SetRetries(GetDefaultMaxRetries());
   } else {
     qsOptions.SetRetries(options.retries);
   }
@@ -184,6 +185,8 @@ void Parse(int argc, char **argv) {
   } else {
     qsOptions.SetMaxCacheSizeInMB(options.maxcache);
   }
+
+  qsOptions.SetDiskCacheDirectory(options.diskdir);
 
   if (options.maxstat <= 0) {
     PrintWarnMsg("-t|--maxstat", options.maxstat,
@@ -224,8 +227,8 @@ void Parse(int argc, char **argv) {
 
   if (options.port <= 0) {
     PrintWarnMsg("-P|--port", options.port,
-                 GetDefaultPort(GetDefaultProtocol()));
-    qsOptions.SetPort(GetDefaultPort(GetDefaultProtocol()));
+                 GetDefaultPort(GetDefaultProtocolName()));
+    qsOptions.SetPort(GetDefaultPort(GetDefaultProtocolName()));
   } else {
     qsOptions.SetPort(options.port);
   }

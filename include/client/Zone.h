@@ -27,15 +27,13 @@ namespace QSZone {
 
 static const char *const AP_1 = "ap1";
 static const char *const PEK_2 = "pek2";
-static const char *const PEK_3A = "pek3a";
+static const char *const PEK_3A = "pek3a";  // default zone
 static const char *const GD_1 = "gd1";
 static const char *const GD_2A = "gd2a";
 static const char *const SH_1A = "sh1a";
 }  // namespace QSZone
 
 std::string FromEndPoint(const std::string &zoneName);
-
-const char *GetDefaultZone();
 
 }  // namespace Client
 }  // namespace QS

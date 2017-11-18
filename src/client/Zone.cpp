@@ -53,7 +53,5 @@ string FromEndPoint(const string &zoneName) {
   }
 }
 
-const char *GetDefaultZone() { return QSZone::PEK_3A; }
-
 }  // namespace Client
 }  // namespace QS

@@ -33,9 +33,15 @@ namespace Default {
 const char* GetProgramName();
 
 std::string GetDefaultCredentialsFile();
+std::string GetDefaultDiskCacheDirectory();
 std::string GetDefaultLogDirectory();
+std::string GetDefaultLogLevelName();
+uint16_t    GetDefaultMaxRetries();
+std::string GetDefaultHostName();
+uint16_t    GetDefaultPort(const std::string &protocolName);
+std::string GetDefaultProtocolName();
+std::string GetDefaultZone();
 std::string GetMimeFile();
-std::string GetDiskCacheDirectory();
 
 uint16_t GetPathMaxLen();
 uint16_t GetNameMaxLen();

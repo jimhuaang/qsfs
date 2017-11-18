@@ -46,7 +46,11 @@ class Options {
   Options(const Options &) = delete;
   Options &operator=(Options &&) = delete;
   Options &operator=(const Options &) = delete;
-  ~Options() { fuse_opt_free_args(&m_fuseArgs); }
+  ~Options() {
+    if (m_fuseArgsInitialized) {
+      fuse_opt_free_args(&m_fuseArgs);
+    }
+  }
 
  public:
   static Options &Instance();
@@ -62,6 +66,7 @@ class Options {
   uint16_t GetRetries() const { return m_retries; }
   uint32_t GetRequestTimeOut() const { return m_requestTimeOut; }
   uint32_t GetMaxCacheSizeInMB() const { return m_maxCacheSizeInMB; }
+  const std::string GetDiskCacheDirectory() const { return m_diskCacheDir; }
   uint32_t GetMaxStatCountInK() const { return m_maxStatCountInK; }
   int32_t GetStatExpireInMin() const { return m_statExpireInMin; }
   uint16_t GetParallelTransfers() const { return m_parallelTransfers; }
@@ -82,7 +87,7 @@ class Options {
   bool IsShowVersion() const { return m_showVersion; }
 
  private:
-  Options() = default;
+  Options();
 
   struct fuse_args &GetFuseArgs() {
     return m_fuseArgs;
@@ -100,6 +105,7 @@ class Options {
   void SetMaxCacheSizeInMB(uint32_t maxcache) {
     m_maxCacheSizeInMB = maxcache;
   }
+  void SetDiskCacheDirectory(const char *diskdir) { m_diskCacheDir = diskdir; }
   void SetMaxStatCountInK(uint32_t maxstat) {
     m_maxStatCountInK = maxstat;
   }
@@ -128,6 +134,7 @@ class Options {
   void setShowVerion(bool showVersion) { m_showVersion = showVersion; }
   void SetFuseArgs(int argc, char **argv) {
     m_fuseArgs = FUSE_ARGS_INIT(argc, argv);
+    m_fuseArgsInitialized = true;
   }
 
   std::string m_bucket;
@@ -139,6 +146,7 @@ class Options {
   uint16_t m_retries;
   uint32_t m_requestTimeOut;  // in milliseconds
   uint32_t m_maxCacheSizeInMB;
+  std::string m_diskCacheDir;
   uint32_t m_maxStatCountInK;
   int32_t m_statExpireInMin;  //  negative value will disable state expire
   uint16_t m_parallelTransfers;  // count of file transfers in parallel
@@ -156,6 +164,7 @@ class Options {
   bool m_showHelp;
   bool m_showVersion;
   struct fuse_args m_fuseArgs;
+  bool m_fuseArgsInitialized = false;
 
   friend class QS::FileSystem::Mounter;  // for DoMount
   friend void QS::FileSystem::Parser::Parse(int argc, char **argv);

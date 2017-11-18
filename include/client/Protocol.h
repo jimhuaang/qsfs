@@ -32,8 +32,6 @@ enum class Protocol { HTTP, HTTPS };
 std::string ProtocolToString(Protocol protocol);
 Protocol StringToProtocol(const std::string &name);
 
-Protocol GetDefaultProtocol();
-std::string GetDefaultProtocolName();
 }  // namespace Http
 
 }  // namespace Client

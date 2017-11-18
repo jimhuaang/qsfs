@@ -53,9 +53,9 @@ using std::vector;
 using ::testing::Values;
 using ::testing::WithParamInterface;
 
-static const char *defaultLogDir = "/tmp/qsfs.logs/";
-const char* infoLogFile = "/tmp/qsfs.logs/qsfs.INFO";
-const char* fatalLogFile = "/tmp/qsfs.logs/qsfs.FATAL";
+static const char *defaultLogDir = "/tmp/qsfs.test.logs/";
+const char* infoLogFile = "/tmp/qsfs.test.logs/qsfs.INFO";
+const char* fatalLogFile = "/tmp/qsfs.test.logs/qsfs.FATAL";
 
 void MakeDefaultLogDir() {
   auto success = QS::Utils::CreateDirectoryIfNotExistsNoLog(defaultLogDir);

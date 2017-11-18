@@ -30,14 +30,13 @@
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
 #include "base/Utils.h"
-#include "configure/Default.h"
+#include "configure/Options.h"
 #include "data/IOStream.h"
 
 namespace QS {
 
 namespace Data {
 
-using QS::Configure::Default::GetDiskCacheDirectory;
 using QS::StringUtils::PointerAddress;
 using QS::Utils::FileExists;
 using QS::Utils::RemoveFileIfExists;
@@ -65,7 +64,8 @@ namespace {
 // @return : string
 //
 string BuildDiskFilePath(const string &basename) {
-  string qsfsDiskDir = GetDiskCacheDirectory();
+  string qsfsDiskDir =
+      QS::Configure::Options::Instance().GetDiskCacheDirectory();
   return qsfsDiskDir + basename;
 }
 

@@ -32,9 +32,7 @@
 #include "base/Utils.h"
 #include "client/Credentials.h"
 #include "client/Protocol.h"
-#include "client/RetryStrategy.h"
 #include "client/URI.h"
-#include "client/Zone.h"
 #include "configure/Default.h"
 #include "configure/Options.h"
 #include "data/Size.h"
@@ -46,8 +44,13 @@ namespace Client {
 using QS::Exception::QSException;
 using QS::Configure::Default::GetClientDefaultPoolSize;
 using QS::Configure::Default::GetDefaultLogDirectory;
+using QS::Configure::Default::GetDefaultMaxRetries;
 using QS::Configure::Default::GetDefaultParallelTransfers;
 using QS::Configure::Default::GetDefaultTransferBufSize;
+using QS::Configure::Default::GetDefaultHostName;
+using QS::Configure::Default::GetDefaultPort;
+using QS::Configure::Default::GetDefaultProtocolName;
+using QS::Configure::Default::GetDefaultZone;
 using QS::Configure::Default::GetDefineFileMode;
 using QS::Configure::Default::GetQSConnectionDefaultRetries;
 using QS::Configure::Default::GetQingStorSDKLogFileName;
@@ -121,15 +124,15 @@ ClientConfiguration &ClientConfiguration::Instance() {
 ClientConfiguration::ClientConfiguration(const Credentials &credentials)
     : m_accessKeyId(credentials.GetAccessKeyId()),
       m_secretKey(credentials.GetSecretKey()),
-      m_zone(QS::Client::GetDefaultZone()),
-      m_host(Http::GetDefaultHost()),
-      m_protocol(QS::Client::Http::GetDefaultProtocol()),
-      m_port(Http::GetDefaultPort(m_protocol)),
+      m_zone(GetDefaultZone()),
+      m_host(QS::Client::Http::StringToHost(GetDefaultHostName())),
+      m_protocol(QS::Client::Http::StringToProtocol(GetDefaultProtocolName())),
+      m_port(GetDefaultPort(GetDefaultProtocolName())),
       m_connectionRetries(GetQSConnectionDefaultRetries()),
       m_additionalUserAgent(std::string()),
       m_logLevel(ClientLogLevel::Warn),
       m_logFile(GetDefaultLogDirectory() + GetQingStorSDKLogFileName()),
-      m_transactionRetries(Retry::DefaultMaxRetries),
+      m_transactionRetries(GetDefaultMaxRetries()),
       m_transactionTimeDuration(GetTransactionDefaultTimeDuration()),
       m_clientPoolSize(GetClientDefaultPoolSize()),
       m_parallelTransfers(GetDefaultParallelTransfers()),
@@ -145,7 +148,7 @@ void ClientConfiguration::InitializeByOptions() {
   m_zone = options.GetZone();
   m_host = Http::StringToHost(options.GetHost());
   m_protocol = Http::StringToProtocol(options.GetProtocol());
-  m_port = GetDefaultPort(m_protocol);
+  m_port = options.GetPort();
   m_additionalUserAgent = options.GetAdditionalAgent();
   m_logLevel = static_cast<ClientLogLevel>(options.GetLogLevel());
   if (options.IsDebug()) {
