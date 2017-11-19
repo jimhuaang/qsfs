@@ -27,7 +27,6 @@
 #include <set>
 #include <string>
 
-#include "gtest/gtest_prod.h"  // FRIEND_TEST
 
 namespace QS {
 
@@ -239,9 +238,7 @@ class Page {
   }
 
   friend class File;
-  FRIEND_TEST(PageTest, CtorWithDiskFile);
-  FRIEND_TEST(PageTest, TestResize);
-  FRIEND_TEST(PageTest, TestResizeDiskFile);
+  friend class PageTest;
 };
 
 struct PageCmp {

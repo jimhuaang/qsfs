@@ -77,9 +77,6 @@ else(BUILD_SHARED_LIBS)
     set(LIBTYPE STATIC)
 endif(BUILD_SHARED_LIBS)
 
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
-set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
-
 # Where qsfs's .h files can be found.
 include_directories(${PROJECT_SOURCE_DIR}/include)
 

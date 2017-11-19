@@ -25,8 +25,6 @@
 #include <mutex>  // NOLINT
 #include <vector>
 
-#include "gtest/gtest_prod.h"  // FRIEND_TEST
-
 namespace QS {
 
 namespace Client {
@@ -114,10 +112,7 @@ class ResourceManager {
 
   friend class QS::Client::TransferManager;
   friend class QS::Client::QSTransferManager;
-
-  FRIEND_TEST(ResourceManagerTest, Default);
-  FRIEND_TEST(ResourceManagerTest, TestPutResource);
-  FRIEND_TEST(ResourceManagerTest, TestAcquireReleaseResource);
+  friend class ResourceManagerTest;
 };
 
 }  // namespace Data

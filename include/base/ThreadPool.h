@@ -29,8 +29,6 @@
 #include <utility>
 #include <vector>
 
-#include "gtest/gtest_prod.h"  // FRIEND_TEST
-
 namespace QS {
 
 namespace Threading {
@@ -97,7 +95,6 @@ class ThreadPool {
   // except in destructor. After this has been called once, all tasks
   // will never been handled since then.
   void StopProcessing();
-  FRIEND_TEST(ThreadPoolTest, TestInterrupt);
 
  private:
   size_t m_poolSize;

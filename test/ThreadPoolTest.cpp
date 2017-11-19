@@ -76,26 +76,31 @@ class ThreadPoolTest : public Test {
 
   void TearDown() override { delete m_pThreadPool; }
 
+  // test private member
+  void TestInterruptThreadPool() {
+    EXPECT_FALSE(m_pThreadPool->HasTasks());
+
+    m_pThreadPool->StopProcessing();
+    auto f = m_pThreadPool->SubmitCallable(Factorial, 5);
+    EXPECT_TRUE(m_pThreadPool->HasTasks());
+
+    auto fStatus = f.wait_for(std::chrono::milliseconds(100));
+    ASSERT_EQ(fStatus, std::future_status::timeout);
+
+    auto task = m_pThreadPool->PopTask();
+    EXPECT_FALSE(m_pThreadPool->HasTasks());
+
+    // Should never invoke f.get(), as after stoping thredpool, task will never
+    // get a chance to execute, so this will hang the program there.
+    // f.get();
+  }
+
  protected:
   ThreadPool *m_pThreadPool;
 };
 
 TEST_F(ThreadPoolTest, TestInterrupt) {
-  EXPECT_FALSE(m_pThreadPool->HasTasks());
-
-  m_pThreadPool->StopProcessing();
-  auto f = m_pThreadPool->SubmitCallable(Factorial, 5);
-  EXPECT_TRUE(m_pThreadPool->HasTasks());
-
-  auto fStatus = f.wait_for(std::chrono::milliseconds(100));
-  ASSERT_EQ(fStatus, std::future_status::timeout);
-
-  auto task = m_pThreadPool->PopTask();
-  EXPECT_FALSE(m_pThreadPool->HasTasks());
-
-  // Should never invoke f.get(), as after stoping thredpool, task will never
-  // get a chance to execute, so this will hang the program there.
-  // f.get();
+  TestInterruptThreadPool();
 }
 
 TEST_F(ThreadPoolTest, TestSubmit) {

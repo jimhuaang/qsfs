@@ -30,8 +30,6 @@
 #include <tuple>
 #include <utility>
 
-#include "gtest/gtest_prod.h"  // FRIEND_TEST
-
 #include "data/Page.h"
 
 namespace QS {
@@ -204,11 +202,7 @@ class File {
   PageSet m_pages;              // a set of pages suppose to be successive
 
   friend class Cache;
-
-  FRIEND_TEST(FileTest, TestWrite);
-  FRIEND_TEST(FileTest, TestWriteDiskFile);
-  FRIEND_TEST(FileTest, TestRead);
-  FRIEND_TEST(FileTest, TestReadDiskFile);
+  friend class FileTest;
 };
 
 }  // namespace Data

@@ -21,8 +21,6 @@
 #include <memory>
 #include <string>
 
-#include "gtest/gtest_prod.h"  // FRIEND_TEST
-
 #include "base/LogLevel.h"
 
 // Declare in global namespace before class Log, since friend declarations
@@ -53,16 +51,14 @@ class Log {
  private:
   void SetLogLevel(LogLevel level) noexcept;
   void SetDebug(bool debug) noexcept { m_isDebug = debug; }
-  FRIEND_TEST(LoggingTest, TestNonFatalLogsLevelInfo);
-  FRIEND_TEST(LoggingTest, TestNonFatalLogsLevelWarn);
-  FRIEND_TEST(LoggingTest, TestNonFatalLogsLevelError);
-  FRIEND_TEST(FatalLoggingDeathTest, TestWithDebugAndIf);
 
  private:
   LogLevel m_logLevel = LogLevel::Info;
   bool m_isDebug = false;
 
   friend void ::LoggingInitializer();
+  friend class LoggingTest;
+  friend class FatalLoggingDeathTest;
 };
 
 class ConsoleLog : public Log {

@@ -49,82 +49,90 @@ mode_t fileMode_ = S_IRWXU | S_IRWXG | S_IROTH;
 class FileMetaDataManagerTest : public Test {
  protected:
   static void SetUpTestCase() { InitLog(); }
+
+  void TestDefault() {
+    FileMetaDataManager manager(2);
+    EXPECT_EQ(manager.GetMaxCount(), 2u);
+    EXPECT_TRUE(manager.HasFreeSpace(2));
+    EXPECT_TRUE(manager.Get("") == manager.End());
+    EXPECT_TRUE(manager.Begin() == manager.m_metaDatas.begin());
+    EXPECT_TRUE(manager.End() == manager.m_metaDatas.end());
+    EXPECT_TRUE(manager.Begin() == manager.End());
+    EXPECT_FALSE(manager.Has(""));
+  }
+
+  void TestAddRemove() {
+    FileMetaDataManager manager(2);
+    FileMetaData file1("file1", 2, mtime_, mtime_, uid_, gid_, fileMode_,
+                       FileType::File);
+    manager.Add(make_shared<FileMetaData>(file1));
+    EXPECT_TRUE(manager.HasFreeSpace(1));
+    EXPECT_FALSE(manager.HasFreeSpace(2));
+    EXPECT_TRUE(manager.Has("file1"));
+    EXPECT_TRUE(*(manager.Get("file1")->second) == file1);
+
+    FileMetaData folder1("folder1", 0, mtime_, mtime_, uid_, gid_, fileMode_,
+                         FileType::Directory);  // directory will append '/'
+    manager.Add(make_shared<FileMetaData>(folder1));
+    EXPECT_TRUE(manager.HasFreeSpace(0));
+    EXPECT_FALSE(manager.HasFreeSpace(1));
+    EXPECT_TRUE(manager.Has("folder1/"));
+    EXPECT_TRUE(*(manager.Get("folder1/")->second) == folder1);
+    EXPECT_TRUE(*(manager.Begin()->second) == folder1);
+
+    EXPECT_TRUE(manager.Has("file1"));  // will put file1 at front
+    EXPECT_TRUE(*(manager.Begin()->second) == file1);
+
+    manager.Erase("file1");
+    EXPECT_FALSE(manager.Has("file1"));
+    EXPECT_TRUE(manager.HasFreeSpace(1));
+    EXPECT_FALSE(manager.HasFreeSpace(2));
+
+    manager.Clear();
+    EXPECT_FALSE(manager.Has("folder1/"));
+    EXPECT_TRUE(manager.HasFreeSpace(2));
+  }
+
+  void TestRename() {
+    FileMetaDataManager manager(2);
+    FileMetaData file1("file1", 2, mtime_, mtime_, uid_, gid_, fileMode_,
+                       FileType::File);
+    manager.Add(make_shared<FileMetaData>(file1));
+    manager.Rename("file1", "newfile1");
+    EXPECT_TRUE(manager.Has("newfile1"));
+    EXPECT_FALSE(manager.Has("file1"));
+  }
+
+  void TestOverflow() {
+    FileMetaDataManager manager(2);
+    FileMetaData file1("file1", 2, mtime_, mtime_, uid_, gid_, fileMode_,
+                       FileType::File);
+    FileMetaData file2("file2", 2, mtime_, mtime_, uid_, gid_, fileMode_,
+                       FileType::File);
+    FileMetaData folder1("folder1/", 0, mtime_, mtime_, uid_, gid_, fileMode_,
+                         FileType::Directory);
+
+    manager.Add(make_shared<FileMetaData>(file1));
+    manager.Add(make_shared<FileMetaData>(folder1));
+    EXPECT_TRUE(manager.Has("file1"));
+    EXPECT_TRUE(manager.Has("folder1/"));
+    EXPECT_TRUE(*(manager.Begin()->second) == folder1);
+
+    manager.Add(make_shared<FileMetaData>(file2));
+    EXPECT_TRUE(*(manager.Begin()->second) == file2);
+    EXPECT_TRUE(manager.Has("file2"));
+    EXPECT_TRUE(manager.Has("folder1/"));
+    EXPECT_FALSE(manager.Has("file1"));
+  }
 };
 
-TEST_F(FileMetaDataManagerTest, Default) {
-  FileMetaDataManager manager(2);
-  EXPECT_EQ(manager.GetMaxCount(), 2u);
-  EXPECT_TRUE(manager.HasFreeSpace(2));
-  EXPECT_TRUE(manager.Get("") == manager.End());
-  EXPECT_TRUE(manager.Begin() == manager.m_metaDatas.begin());
-  EXPECT_TRUE(manager.End() == manager.m_metaDatas.end());
-  EXPECT_TRUE(manager.Begin() == manager.End());
-  EXPECT_FALSE(manager.Has(""));
-}
+TEST_F(FileMetaDataManagerTest, Default) { TestDefault(); }
 
-TEST_F(FileMetaDataManagerTest, TestAddRemove) {
-  FileMetaDataManager manager(2);
-  FileMetaData file1("file1", 2, mtime_, mtime_, uid_, gid_, fileMode_,
-                     FileType::File);
-  manager.Add(make_shared<FileMetaData>(file1));
-  EXPECT_TRUE(manager.HasFreeSpace(1));
-  EXPECT_FALSE(manager.HasFreeSpace(2));
-  EXPECT_TRUE(manager.Has("file1"));
-  EXPECT_TRUE(*(manager.Get("file1")->second) == file1);
+TEST_F(FileMetaDataManagerTest, AddRemove) { TestAddRemove(); }
 
-  FileMetaData folder1("folder1", 0, mtime_, mtime_, uid_, gid_, fileMode_,
-                     FileType::Directory);  // directory will append '/'
-  manager.Add(make_shared<FileMetaData>(folder1));
-  EXPECT_TRUE(manager.HasFreeSpace(0));
-  EXPECT_FALSE(manager.HasFreeSpace(1));
-  EXPECT_TRUE(manager.Has("folder1/"));
-  EXPECT_TRUE(*(manager.Get("folder1/")->second) == folder1);
-  EXPECT_TRUE(*(manager.Begin()->second) == folder1);
+TEST_F(FileMetaDataManagerTest, Rename) { TestRename(); }
 
-  EXPECT_TRUE(manager.Has("file1"));  // will put file1 at front
-  EXPECT_TRUE(*(manager.Begin()->second) == file1);
-
-  manager.Erase("file1");
-  EXPECT_FALSE(manager.Has("file1"));
-  EXPECT_TRUE(manager.HasFreeSpace(1));
-  EXPECT_FALSE(manager.HasFreeSpace(2));
-
-  manager.Clear();
-  EXPECT_FALSE(manager.Has("folder1/"));
-  EXPECT_TRUE(manager.HasFreeSpace(2));
-}
-
-TEST_F(FileMetaDataManagerTest, TestRename) {
-  FileMetaDataManager manager(2);
-  FileMetaData file1("file1", 2, mtime_, mtime_, uid_, gid_, fileMode_,
-                     FileType::File);
-  manager.Add(make_shared<FileMetaData>(file1));
-  manager.Rename("file1", "newfile1");
-  EXPECT_TRUE(manager.Has("newfile1"));
-  EXPECT_FALSE(manager.Has("file1"));
-}
-
-TEST_F(FileMetaDataManagerTest, TestOverflow) {
-  FileMetaDataManager manager(2);
-  FileMetaData file1("file1", 2, mtime_, mtime_, uid_, gid_, fileMode_,
-                     FileType::File);
-  FileMetaData file2("file2", 2, mtime_, mtime_, uid_, gid_, fileMode_,
-                     FileType::File);
-  FileMetaData folder1("folder1/", 0, mtime_, mtime_, uid_, gid_, fileMode_,
-                       FileType::Directory);
-
-  manager.Add(make_shared<FileMetaData>(file1));
-  manager.Add(make_shared<FileMetaData>(folder1));
-  EXPECT_TRUE(manager.Has("file1"));
-  EXPECT_TRUE(manager.Has("folder1/"));
-  EXPECT_TRUE(*(manager.Begin()->second) == folder1);
-
-  manager.Add(make_shared<FileMetaData>(file2));
-  EXPECT_TRUE(*(manager.Begin()->second) == file2);
-  EXPECT_TRUE(manager.Has("file2"));
-  EXPECT_TRUE(manager.Has("folder1/"));
-  EXPECT_FALSE(manager.Has("file1"));
-}
+TEST_F(FileMetaDataManagerTest, Overflow) { TestOverflow(); }
 
 }  // namespace Data
 }  // namespace QS

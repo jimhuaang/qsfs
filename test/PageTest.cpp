@@ -57,6 +57,64 @@ void InitLog() {
 class PageTest : public Test {
  protected:
   static void SetUpTestCase() { InitLog(); }
+
+  void TestCtorWithDiskFile() {
+    string str("123");
+    size_t len = str.size();
+    string file1 =
+        QS::Configure::Options::Instance().GetDiskCacheDirectory() + "test_page1";
+    Page p1(0, len, str.c_str(), file1);
+    EXPECT_EQ(p1.Stop(), (off_t)(len - 1));
+    EXPECT_EQ(p1.Next(), (off_t)len);
+    EXPECT_EQ(p1.Size(), len);
+    EXPECT_EQ(p1.Offset(), (off_t)0);
+    // auto body = p1.GetBody();
+    // Something goes wrong in gtest, the reference to body stream is null.
+    // But add the same test code in qsfs, this works fine.
+    // Strang thing is that gtest (PageTest) runs ok under debug mode, but
+    // assert fail when run gtest (PageTest) exe directly.
+    // assert(body);  // fail when run PageTest exe, but success under debug mode
+    EXPECT_TRUE(p1.UseDiskFile());
+    RemoveFileIfExists(file1);
+  
+    auto ss = make_shared<stringstream>(str);
+    string file2 =
+        QS::Configure::Options::Instance().GetDiskCacheDirectory() + "test_page2";
+    Page p2(0, len, ss, file2);
+    EXPECT_EQ(p2.Stop(), (off_t)(len - 1));
+    EXPECT_EQ(p2.Next(), (off_t)len);
+    EXPECT_EQ(p2.Size(), len);
+    EXPECT_EQ(p2.Offset(), (off_t)0);
+    EXPECT_TRUE(p2.UseDiskFile());
+    RemoveFileIfExists(file2);
+  }
+
+  void TestResize() {
+    constexpr const char *str = "123";
+    constexpr size_t len = strlen(str);
+    Page p1(0, len, str);
+  
+    array<char, len - 1> arrSmaller{'1', '2'};
+    p1.ResizeToSmallerSize(len - 1);
+    array<char, len - 1> buf1;
+    p1.Read(&buf1[0]);
+    EXPECT_TRUE(buf1 == arrSmaller);
+  }
+
+  void TestResizeDiskFile() {
+    constexpr const char *str = "123";
+    constexpr size_t len = strlen(str);
+    string file1 =
+        QS::Configure::Options::Instance().GetDiskCacheDirectory() + "test_page1";
+    Page p1(0, len, str, file1);
+  
+    array<char, len - 1> arrSmaller{'1', '2'};
+    p1.ResizeToSmallerSize(len - 1);
+    array<char, len - 1> buf1;
+    p1.Read(&buf1[0]);
+    EXPECT_TRUE(buf1 == arrSmaller);
+    RemoveFileIfExists(file1);
+  }
 };
 
 // --------------------------------------------------------------------------
@@ -91,38 +149,11 @@ TEST_F(PageTest, Ctor) {
 
 // --------------------------------------------------------------------------
 TEST_F(PageTest, CtorWithDiskFile) {
-  string str("123");
-  size_t len = str.size();
-  string file1 =
-      QS::Configure::Options::Instance().GetDiskCacheDirectory() + "test_page1";
-  Page p1(0, len, str.c_str(), file1);
-  EXPECT_EQ(p1.Stop(), (off_t)(len - 1));
-  EXPECT_EQ(p1.Next(), (off_t)len);
-  EXPECT_EQ(p1.Size(), len);
-  EXPECT_EQ(p1.Offset(), (off_t)0);
-  // auto body = p1.GetBody();
-  // Something goes wrong in gtest, the reference to body stream is null.
-  // But add the same test code in qsfs, this works fine.
-  // Strang thing is that gtest (PageTest) runs ok under debug mode, but
-  // assert fail when run gtest (PageTest) exe directly.
-  // assert(body);  // fail when run PageTest exe, but success under debug mode
-  EXPECT_TRUE(p1.UseDiskFile());
-  RemoveFileIfExists(file1);
-
-  auto ss = make_shared<stringstream>(str);
-  string file2 =
-      QS::Configure::Options::Instance().GetDiskCacheDirectory() + "test_page2";
-  Page p2(0, len, ss, file2);
-  EXPECT_EQ(p2.Stop(), (off_t)(len - 1));
-  EXPECT_EQ(p2.Next(), (off_t)len);
-  EXPECT_EQ(p2.Size(), len);
-  EXPECT_EQ(p2.Offset(), (off_t)0);
-  EXPECT_TRUE(p2.UseDiskFile());
-  RemoveFileIfExists(file2);
+  TestCtorWithDiskFile();
 }
 
 // --------------------------------------------------------------------------
-TEST_F(PageTest, TestRead) {
+TEST_F(PageTest, Read) {
   constexpr const char *str = "123";
   constexpr size_t len = strlen(str);
   array<char, len> arr{'1', '2', '3'};
@@ -166,7 +197,7 @@ TEST_F(PageTest, TestRead) {
 }
 
 // --------------------------------------------------------------------------
-TEST_F(PageTest, TestReadDiskFile) {
+TEST_F(PageTest, ReadDiskFile) {
   constexpr const char *str = "123";
   constexpr size_t len = strlen(str);
   array<char, len> arr{'1', '2', '3'};
@@ -182,7 +213,7 @@ TEST_F(PageTest, TestReadDiskFile) {
 }
 
 // --------------------------------------------------------------------------
-TEST_F(PageTest, TestRefresh) {
+TEST_F(PageTest, Refresh) {
   constexpr const char *str = "123";
   constexpr size_t len = strlen(str);
   Page p1(0, len, str);
@@ -201,7 +232,7 @@ TEST_F(PageTest, TestRefresh) {
 }
 
 // --------------------------------------------------------------------------
-TEST_F(PageTest, TestRefreshDiskFile) {
+TEST_F(PageTest, RefreshDiskFile) {
   constexpr const char *str = "123";
   constexpr size_t len = strlen(str);
   string file1 =
@@ -224,32 +255,13 @@ TEST_F(PageTest, TestRefreshDiskFile) {
 }
 
 // --------------------------------------------------------------------------
-TEST_F(PageTest, TestResize) {
-  constexpr const char *str = "123";
-  constexpr size_t len = strlen(str);
-  Page p1(0, len, str);
-
-  array<char, len - 1> arrSmaller{'1', '2'};
-  p1.ResizeToSmallerSize(len - 1);
-  array<char, len - 1> buf1;
-  p1.Read(&buf1[0]);
-  EXPECT_TRUE(buf1 == arrSmaller);
+TEST_F(PageTest, Resize) {
+  TestResize();
 }
 
 // --------------------------------------------------------------------------
-TEST_F(PageTest, TestResizeDiskFile) {
-  constexpr const char *str = "123";
-  constexpr size_t len = strlen(str);
-  string file1 =
-      QS::Configure::Options::Instance().GetDiskCacheDirectory() + "test_page1";
-  Page p1(0, len, str, file1);
-
-  array<char, len - 1> arrSmaller{'1', '2'};
-  p1.ResizeToSmallerSize(len - 1);
-  array<char, len - 1> buf1;
-  p1.Read(&buf1[0]);
-  EXPECT_TRUE(buf1 == arrSmaller);
-  RemoveFileIfExists(file1);
+TEST_F(PageTest, ResizeDiskFile) {
+  TestResizeDiskFile();
 }
 
 }  // namespace Data

@@ -23,7 +23,6 @@
 #include <streambuf>  // NOLINT
 #include <vector>
 
-#include "gtest/gtest_prod.h"  // FRIEND_TEST
 
 namespace QS {
 
@@ -78,8 +77,7 @@ class StreamBuf : public std::streambuf {
                           // stream to see 500 b of it.
   friend class IOStream;
   friend class QS::Client::QSTransferManager;
-
-  FRIEND_TEST(StreamBufTest, PrivateFunc);
+  friend class StreamBufTest;
 };
 
 }  // namespace Data

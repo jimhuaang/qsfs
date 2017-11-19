@@ -17,17 +17,19 @@ file(GLOB QSFS_SOURCES
   ${QSFS_FILESYSTEM_SRCS}
   )
 
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 add_executable(
   ${PROJECT_NAME} 
   ${QSFS_SOURCES}
   )
-target_link_libraries(${PROJECT_NAME} fuse glog gtest qingstor)
+target_link_libraries(${PROJECT_NAME} fuse glog qingstor)
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 
 #
 # make libs referenced by unit test
 #
+set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 add_library(
   qsfsConfigure ${LIBTYPE}
   ${QSFS_CONFIGURE_SRCS}
@@ -115,8 +117,6 @@ endif (BUILD_SHARED_LIBS)
 install (
   TARGETS 
   ${PROJECT_NAME}
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
 

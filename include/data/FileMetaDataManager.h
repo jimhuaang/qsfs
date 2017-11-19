@@ -27,7 +27,6 @@
 #include <utility>
 #include <vector>
 
-#include "gtest/gtest_prod.h"  // For FRIEND_TEST
 
 #include "base/HashUtils.h"
 #include "data/FileMetaData.h"
@@ -131,11 +130,7 @@ class FileMetaDataManager {
 
   friend class QS::Data::Entry;
   friend class QS::Data::Node;
-
-  FRIEND_TEST(FileMetaDataManagerTest, Default);
-  FRIEND_TEST(FileMetaDataManagerTest, TestAddRemove);
-  FRIEND_TEST(FileMetaDataManagerTest, TestRename);
-  FRIEND_TEST(FileMetaDataManagerTest, TestOverflow);
+  friend class FileMetaDataManagerTest;
 };
 
 }  // namespace Data

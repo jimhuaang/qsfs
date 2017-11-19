@@ -54,8 +54,8 @@ using ::testing::Values;
 using ::testing::WithParamInterface;
 
 static const char *defaultLogDir = "/tmp/qsfs.test.logs/";
-const char* infoLogFile = "/tmp/qsfs.test.logs/qsfs.INFO";
-const char* fatalLogFile = "/tmp/qsfs.test.logs/qsfs.FATAL";
+const char *infoLogFile = "/tmp/qsfs.test.logs/qsfs.INFO";
+const char *fatalLogFile = "/tmp/qsfs.test.logs/qsfs.FATAL";
 
 void MakeDefaultLogDir() {
   auto success = QS::Utils::CreateDirectoryIfNotExistsNoLog(defaultLogDir);
@@ -139,6 +139,31 @@ class LoggingTest : public ::testing::Test {
   }
 
   ~LoggingTest() {}
+
+ protected:
+  void TestNonFatalLogsLevelInfo() {
+    GetLogInstance()->SetDebug(true);
+    GetLogInstance()->SetLogLevel(LogLevel::Info);
+    ClearFileContent(infoLogFile);  // make sure only contain logs of this test
+    LogNonFatalPossibilities();
+    VerifyAllNonFatalLogs(LogLevel::Info);
+  }
+
+  void TestNonFatalLogsLevelWarn() {
+    GetLogInstance()->SetDebug(true);
+    GetLogInstance()->SetLogLevel(LogLevel::Warn);
+    ClearFileContent(infoLogFile);  // make sure only contain logs of this test
+    LogNonFatalPossibilities();
+    VerifyAllNonFatalLogs(LogLevel::Warn);
+  }
+
+  void TestNonFatalLogsLevelError() {
+    GetLogInstance()->SetDebug(true);
+    GetLogInstance()->SetLogLevel(LogLevel::Error);
+    ClearFileContent(infoLogFile);  // make sure only contain logs of this test
+    LogNonFatalPossibilities();
+    VerifyAllNonFatalLogs(LogLevel::Error);
+  }
 };
 
 // As glog logging a FATAL message will terminate the program,
@@ -157,18 +182,6 @@ struct LogFatalState {
               << ", debug: " << state.isDebug << ", will die: " << state.willDie
               << "]";
   }
-};
-
-class FatalLoggingDeathTest : public LoggingTest,
-                              public WithParamInterface<LogFatalState> {
- public:
-  void SetUp() override {
-    MakeDefaultLogDir();
-    m_fatalMsg = GetParam().fatalMsg;
-  }
-
- protected:
-  string m_fatalMsg;
 };
 
 void LogFatal(bool condition) { Fatal("test Fatal"); }
@@ -199,42 +212,39 @@ void VerifyFatalLog(const string &expectedMsg) {
   EXPECT_EQ(logMsg, expectedMsg);
 }
 
-// Test Cases
-TEST_F(LoggingTest, TestNonFatalLogsLevelInfo) {
-  GetLogInstance()->SetDebug(true);
-  GetLogInstance()->SetLogLevel(LogLevel::Info);
-  ClearFileContent(infoLogFile);  // make sure only contain logs of this test
-  LogNonFatalPossibilities();
-  VerifyAllNonFatalLogs(LogLevel::Info);
-}
-
-TEST_F(LoggingTest, TestNonFatalLogsLevelWarn) {
-  GetLogInstance()->SetDebug(true);
-  GetLogInstance()->SetLogLevel(LogLevel::Warn);
-  ClearFileContent(infoLogFile);  // make sure only contain logs of this test
-  LogNonFatalPossibilities();
-  VerifyAllNonFatalLogs(LogLevel::Warn);
-}
-
-TEST_F(LoggingTest, TestNonFatalLogsLevelError) {
-  GetLogInstance()->SetDebug(true);
-  GetLogInstance()->SetLogLevel(LogLevel::Error);
-  ClearFileContent(infoLogFile);  // make sure only contain logs of this test
-  LogNonFatalPossibilities();
-  VerifyAllNonFatalLogs(LogLevel::Error);
-}
-
-TEST_P(FatalLoggingDeathTest, TestWithDebugAndIf) {
-  auto func = GetParam().logFatalFunc;
-  auto condition = GetParam().condition;
-  GetLogInstance()->SetDebug(GetParam().isDebug);
-  // only when log msg fatal sucessfully the test will die,
-  // otherwise the test will fail to die.
-  if (GetParam().willDie) {
-    ASSERT_DEATH({ func(condition); }, "");
+class FatalLoggingDeathTest : public LoggingTest,
+                              public WithParamInterface<LogFatalState> {
+ public:
+  void SetUp() override {
+    MakeDefaultLogDir();
+    m_fatalMsg = GetParam().fatalMsg;
   }
-  VerifyFatalLog(m_fatalMsg);
-}
+
+ protected:
+  void TestWithDebugAndIf() {
+    auto func = GetParam().logFatalFunc;
+    auto condition = GetParam().condition;
+    GetLogInstance()->SetDebug(GetParam().isDebug);
+    // only when log msg fatal sucessfully the test will die,
+    // otherwise the test will fail to die.
+    if (GetParam().willDie) {
+      ASSERT_DEATH({ func(condition); }, "");
+    }
+    VerifyFatalLog(m_fatalMsg);
+  }
+
+ protected:
+  string m_fatalMsg;
+};
+
+// Test Cases
+TEST_F(LoggingTest, NonFatalLogsLevelInfo) { TestNonFatalLogsLevelInfo(); }
+
+TEST_F(LoggingTest, NonFatalLogsLevelWarn) { TestNonFatalLogsLevelWarn(); }
+
+TEST_F(LoggingTest, NonFatalLogsLevelError) { TestNonFatalLogsLevelError(); }
+
+TEST_P(FatalLoggingDeathTest, WithDebugAndIf) { TestWithDebugAndIf(); }
 
 INSTANTIATE_TEST_CASE_P(
     LogFatal, FatalLoggingDeathTest,

@@ -49,49 +49,57 @@ void InitLog() {
 class ResourceManagerTest : public Test {
  protected:
   static void SetUpTestCase() { InitLog(); }
+
+  void TestDefaultCtor() {
+    ResourceManager manager;
+    EXPECT_FALSE(manager.ResourcesAvailable());
+  }
+
+  void TestPutResource() {
+    ResourceManager manager;
+    manager.PutResource(Resource(new vector<char>(10)));
+    EXPECT_TRUE(manager.ResourcesAvailable());
+
+    for (auto &resource : manager.ShutdownAndWait(1)) {
+      if (resource) {
+        resource.reset();
+      }
+    }
+
+    EXPECT_FALSE(manager.ResourcesAvailable());
+  }
+
+  void TestAcquireReleaseResource() {
+    ResourceManager manager;
+    manager.PutResource(Resource(new vector<char>(10)));
+    packaged_task<Resource()> task([&manager] { return manager.Acquire(); });
+    future<Resource> f = task.get_future();
+    task();
+    auto status = f.wait_for(std::chrono::milliseconds(100));
+    ASSERT_EQ(status, std::future_status::ready);
+    EXPECT_FALSE(manager.ResourcesAvailable());
+
+    auto resource = f.get();
+    ASSERT_EQ(*(resource), vector<char>(10));
+
+    manager.Release(std::move(resource));
+    EXPECT_TRUE(manager.ResourcesAvailable());
+
+    for (auto &resource : manager.ShutdownAndWait(1)) {
+      if (resource) {
+        resource.reset();
+      }
+    }
+    EXPECT_FALSE(manager.ResourcesAvailable());
+  }
 };
 
-TEST_F(ResourceManagerTest, Default) {
-  ResourceManager manager;
-  EXPECT_FALSE(manager.ResourcesAvailable());
-}
+TEST_F(ResourceManagerTest, Default) { TestDefaultCtor(); }
 
-TEST_F(ResourceManagerTest, TestPutResource) {
-  ResourceManager manager;
-  manager.PutResource(Resource(new vector<char>(10)));
-  EXPECT_TRUE(manager.ResourcesAvailable());
+TEST_F(ResourceManagerTest, PutResource) { TestPutResource(); }
 
-  for (auto &resource : manager.ShutdownAndWait(1)) {
-    if (resource) {
-      resource.reset();
-    }
-  }
-
-  EXPECT_FALSE(manager.ResourcesAvailable());
-}
-
-TEST_F(ResourceManagerTest, TestAcquireReleaseResource) {
-  ResourceManager manager;
-  manager.PutResource(Resource(new vector<char>(10)));
-  packaged_task<Resource()> task([&manager] { return manager.Acquire(); });
-  future<Resource> f = task.get_future();
-  task();
-  auto status = f.wait_for(std::chrono::milliseconds(100));
-  ASSERT_EQ(status, std::future_status::ready);
-  EXPECT_FALSE(manager.ResourcesAvailable());
-
-  auto resource = f.get();
-  ASSERT_EQ(*(resource), vector<char>(10));
-
-  manager.Release(std::move(resource));
-  EXPECT_TRUE(manager.ResourcesAvailable());
-
-  for (auto &resource : manager.ShutdownAndWait(1)) {
-    if (resource) {
-      resource.reset();
-    }
-  }
-  EXPECT_FALSE(manager.ResourcesAvailable());
+TEST_F(ResourceManagerTest, AcquireReleaseResource) {
+  TestAcquireReleaseResource();
 }
 
 }  // namespace Data

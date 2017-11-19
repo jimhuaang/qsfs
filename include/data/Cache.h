@@ -29,8 +29,6 @@
 #include <unordered_map>
 #include <utility>
 
-#include "gtest/gtest_prod.h"  // for FRIEND_TEST
-
 #include "base/HashUtils.h"
 #include "data/File.h"
 #include "data/Page.h"
@@ -248,14 +246,7 @@ class Cache {
 
   friend class QS::Client::QSClient;
   friend class QS::FileSystem::Drive;
-
-  FRIEND_TEST(CacheTest, Default);
-  FRIEND_TEST(CacheTest, Write);
-  FRIEND_TEST(CacheTest, WriteDiskFile);
-  FRIEND_TEST(CacheTest, Resize);
-  FRIEND_TEST(CacheTest, ResizeDiskFile);
-  FRIEND_TEST(CacheTest, Read);
-  FRIEND_TEST(CacheTest, ReadDiskFile);
+  friend class CacheTest;
 };
 
 }  // namespace Data
