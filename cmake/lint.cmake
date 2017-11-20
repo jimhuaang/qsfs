@@ -1,3 +1,4 @@
+set(CMAKE_SOURCE_DIR ..)  # set CMAKE_SOURCE_DIR to top dir
 set(LINT_COMMAND ${CMAKE_SOURCE_DIR}/scripts/cpplint.py)
 set(SRC_FILE_EXTENSIONS h hpp c cpp cc)
 set(LINT_DIRS include/base include/client include/configure include/data include/filesystem
@@ -30,6 +31,8 @@ execute_process(
 )
 
 #message(STATUS "cpplint output: ${LINT_OUTPUT}")
+# supress the REPLACE warning when LINT_OUTPUT is empty
+set(LINT_OUTPUT ${LINT_OUTPUT} "non-empty")
 
 string(REPLACE "\n" ";" LINT_OUTPUT ${LINT_OUTPUT})
 

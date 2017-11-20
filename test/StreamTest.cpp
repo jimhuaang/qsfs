@@ -65,10 +65,10 @@ class StreamBufTest : public Test {
     auto buf = vector<char>({'0', '1', '2'});
     StreamBuf streamBuf(Buffer(new vector<char>(buf)), buf.size() - 1);
     EXPECT_TRUE(*(streamBuf.GetBuffer()) == buf);
-  
+
     EXPECT_EQ(*(streamBuf.begin()), '0');
     EXPECT_EQ(*(streamBuf.end()), '2');
-  
+
     auto buf1 = streamBuf.ReleaseBuffer();
     EXPECT_TRUE(*(buf1) == buf);
     EXPECT_FALSE(streamBuf.GetBuffer());
@@ -89,9 +89,7 @@ TEST_F(StreamBufTest, Ctor) {
   ASSERT_TRUE(*(streamBuf.GetBuffer()) == buf);
 }
 
-TEST_F(StreamBufTest, PrivateFunc) {
-  TestPrivateFun();
-}
+TEST_F(StreamBufTest, PrivateFunc) { TestPrivateFun(); }
 
 TEST(IOStreamTest, Ctor1) {
   IOStream iostream(10);

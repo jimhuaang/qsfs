@@ -63,9 +63,9 @@ uint16_t GetDefaultPort(const string &protocolName) {
     c = std::tolower(c);
   }
 
-  if(lowercaseProtocol == "http") {
+  if (lowercaseProtocol == "http") {
     return HTTP_DEFAULT_PORT;
-  } else if(lowercaseProtocol == "https") {
+  } else if (lowercaseProtocol == "https") {
     return HTTPS_DEFAULT_PORT;
   } else {
     return HTTPS_DEFAULT_PORT;

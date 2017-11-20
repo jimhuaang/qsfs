@@ -63,7 +63,7 @@
   set this value to HTTP if the information you are passing is not sensitive and the service
   to which you want to connect supports an HTTP endpoint.
 - Compatibility:
-  - Easy to expand to support other object stores such as Amazon S3.
+  - Easy to extend to support other object stores such as Amazon S3.
 
 
 ## Installation

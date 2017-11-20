@@ -49,9 +49,10 @@ include(cmake/gflags.cmake)
 include(cmake/glog.cmake)
 
 #
-# Linter target
+# linter target (make lint)
 #
-#include(cmake/lint.cmake)
+add_custom_target(lint COMMAND ${CMAKE_COMMAND} -P
+                  ${CMAKE_SOURCE_DIR}/cmake/lint.cmake)
 
 #
 # compile set up

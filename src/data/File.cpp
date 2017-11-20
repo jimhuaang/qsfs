@@ -76,8 +76,8 @@ string PrintFileName(const string &file) { return "[file=" + file + "]"; }
 
 // --------------------------------------------------------------------------
 File::~File() {
-  // As pages using disk file will reference to the same disk file, so File should
-  // manage the life cycle of the disk file.
+  // As pages using disk file will reference to the same disk file, so File
+  // should manage the life cycle of the disk file.
   RemoveDiskFileIfExists(true);  // log on
 }
 
