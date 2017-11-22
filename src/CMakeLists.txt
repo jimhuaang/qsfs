@@ -22,7 +22,7 @@ add_executable(
   ${PROJECT_NAME} 
   ${QSFS_SOURCES}
   )
-target_link_libraries(${PROJECT_NAME} fuse glog qingstor)
+target_link_libraries(${PROJECT_NAME} fuse glog gflags -lpthread qingstor)
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 
@@ -45,7 +45,7 @@ add_library(
   base/Logging.cpp 
   base/LogLevel.cpp
   )
-target_link_libraries(qsfsLogging gtest glog qsfsConfigure)  # FRIEND_TEST
+target_link_libraries(qsfsLogging glog qsfsConfigure)
 set_target_properties(qsfsLogging PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
 if (BUILD_SHARED_LIBS)
   set_target_properties(qsfsLogging PROPERTIES SOVERSION ${QSFS_VERSION})
@@ -68,7 +68,7 @@ add_library(
   base/ThreadPool.cpp
   base/TaskHandle.cpp
 )
-target_link_libraries(qsfsThreadPool gtest)
+target_link_libraries(qsfsThreadPool)
 set_target_properties(qsfsThreadPool PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
 if (BUILD_SHARED_LIBS)
   set_target_properties(qsfsThreadPool PROPERTIES SOVERSION ${QSFS_VERSION})
@@ -80,7 +80,7 @@ add_library(
   data/FileMetaData.cpp
   data/FileMetaDataManager.cpp
   )
-target_link_libraries(qsfsDirectory gtest)  # FRIEND_TEST
+target_link_libraries(qsfsDirectory)
 set_target_properties(qsfsDirectory PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
 if (BUILD_SHARED_LIBS)
   set_target_properties(qsfsDirectory PROPERTIES SOVERSION ${QSFS_VERSION})
@@ -92,7 +92,7 @@ add_library(
   data/File.cpp
   data/Page.cpp
   )
-target_link_libraries(qsfsCache gtest)  # FRIEND_TEST
+target_link_libraries(qsfsCache)
 set_target_properties(qsfsCache PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
 if (BUILD_SHARED_LIBS)
   set_target_properties(qsfsCache PROPERTIES SOVERSION ${QSFS_VERSION})
@@ -105,7 +105,7 @@ add_library(
   data/StreamBuf.cpp
   data/StreamUtils.cpp
   )
-target_link_libraries(qsfsResource gtest)  # FRIEND_TEST
+target_link_libraries(qsfsResource)
 set_target_properties(qsfsResource PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
 if (BUILD_SHARED_LIBS)
   set_target_properties(qsfsResource PROPERTIES SOVERSION ${QSFS_VERSION})

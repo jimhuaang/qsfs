@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
 
-option(BUILD_SHARED_LIBS "Build shared libraries." ON)
-
 option(QSFS_BUILD_TESTS "Build all of qsfs's own tests." ON)
 
 #
@@ -18,8 +16,8 @@ endif (QSFS_BUILD_TESTS)
 # configure version
 #
 set(QSFS_VERSION 1.0.0)
-if(EXISTS ${CMAKE_SOURCE_DIR}/include/configure/VersionConfig.h})
-    FILE(REMOVE ${CMAKE_SOURCE_DIR}/include/configure/VersionConfig.h})
+if(EXISTS ${CMAKE_SOURCE_DIR}/include/configure/VersionConfig.h)
+    FILE(REMOVE ${CMAKE_SOURCE_DIR}/include/configure/VersionConfig.h)
 endif()
 configure_file(
   cmake/templates/VersionConfig.h.in
@@ -72,11 +70,9 @@ add_compile_options(-fPIC)
 
 add_compile_options(-g -std=c++11 -Wall -D_FILE_OFFSET_BITS=64)
 
-if(BUILD_SHARED_LIBS)
-    set(LIBTYPE SHARED)
-else(BUILD_SHARED_LIBS)
-    set(LIBTYPE STATIC)
-endif(BUILD_SHARED_LIBS)
+# To avoid link gflags both statically and dynamically,
+# we just keep our libs to link gflags statically just as glogs do
+set(LIBTYPE STATIC)
 
 # Where qsfs's .h files can be found.
 include_directories(${PROJECT_SOURCE_DIR}/include)
@@ -98,10 +94,13 @@ add_subdirectory(test)
 #
 # uninstall target
 #
+include(cmake/UninstallProject.cmake)
+setup_uninstall_project(qsfs)
+
 if (NOT TARGET uninstall)
-    configure_file (
-      "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
-      "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake" @ONLY)
-add_custom_target(uninstall
-    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
-endif ()
+    add_custom_target(uninstall
+        COMMAND ${CMAKE_COMMAND} -P "${qsfs_BINARY_DIR}/cmake_uninstall.cmake"
+        COMMAND ${CMAKE_COMMAND} -P "${googletest_BINARY_DIR}/cmake_uninstall.cmake"
+        COMMAND ${CMAKE_COMMAND} -P "${googlelog_BINARY_DIR}/cmake_uninstall.cmake"
+        COMMAND ${CMAKE_COMMAND} -P "${googleflags_BINARY_DIR}/cmake_uninstall.cmake")
+endif()

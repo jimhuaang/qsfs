@@ -16,7 +16,7 @@ matrix:
       env:
          - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
 
-# upgrade cmake to more recent standard
+# upgrade cmake to support more recent standard
 addons:
   apt:
     sources:
@@ -32,14 +32,14 @@ compiler:
   - gcc
 
 before_install:
-  - sudo apt-get update -q
-  - sudo apt-get install -q libfuse-dev
+  - sudo apt-get update -qq
+  - sudo apt-get install -qy libfuse-dev
   - eval "${MATRIX_EVAL}"
 
 script:
   - mkdir build
   - cd build
-  - cmake ..
-  - make
-  - make test
+  - sudo cmake ..
+  - sudo make
+  - sudo make test
   - modprobe fuse

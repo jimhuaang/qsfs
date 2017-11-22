@@ -8,7 +8,8 @@ These are the base requirements to build and use qsfs from a source package (as 
 
 ### Additional Requirements
 qsfs use glog for logging and gtest for unit testing, and qsfs
-has used CMake to download these dependencies as part of the build's configure step, so you can just leave them alone.
+has used CMake to download and install these dependencies as part of the build's configure step,
+so you can just leave them alone.
 
 qsfs is a fuse based filesystem, so you must have libfuse installed.
 
@@ -46,19 +47,19 @@ so create a directory in which to create your build files:
  $ cd build
 ```
 
-Run cmake and make to build:
+Run cmake and make to build, as we install dependencies in cmake configure step, you need root privileges:
 ```sh
- $ cmake ..
- $ make
+ $ [sudo] cmake ..
+ $ [sudo] make
 ```
 
 Run unit tests:
 ```sh
- $ make test
+ $ [sudo] make test
 ```
   or
 ```sh
- $ ctest -R qsfs -V
+ $ [sudo] ctest -R qsfs -V
 ```
 
 Install the programs and any data files and documentation:
@@ -66,14 +67,32 @@ Install the programs and any data files and documentation:
  $ [sudo] make install
 ```
 
-You can remove the program binaries and object files from the source code directory:
+To clean the generated build files, just remove folder build:
 ```sh
- $ make clean
+ $ rm -rf build
 ```
 
-To remove the installed files:
+To clean program binaries and object files, juse remove folder bin and lib:
+```sh
+ $ rm -rf bin
+ $ rm -rf lib
+```
+
+To remove all installed files:
 ```sh
  $ [sudo] make uninstall
+```
+
+To only remove installed qsfs files:
+```sh
+ $ [sudo] make uninstall_qsfs
+```
+
+TO remove installde dependened project's files, such as googletest, googleflags and goolgelog:
+```sh
+ $ [sudo] make uninstall_googletest
+ $ [sudo] make uninstall_googlelog
+ $ [sudo] make uninstall_googleflags
 ```
 
 
