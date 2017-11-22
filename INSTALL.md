@@ -88,7 +88,7 @@ To only remove installed qsfs files:
  $ [sudo] make uninstall_qsfs
 ```
 
-TO remove installde dependened project's files, such as googletest, googleflags and goolgelog:
+To remove installed depended project's files, such as googletest, googleflags and goolgelog:
 ```sh
  $ [sudo] make uninstall_googletest
  $ [sudo] make uninstall_googlelog

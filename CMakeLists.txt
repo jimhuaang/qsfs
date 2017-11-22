@@ -15,7 +15,10 @@ endif (QSFS_BUILD_TESTS)
 #
 # configure version
 #
-set(QSFS_VERSION 1.0.0)
+set(QSFS_MAJOR_VERSION 1)
+set(QSFS_MINOR_VERSION 0)
+set(QSFS_PATCH_VERSION 0)
+set(QSFS_VERSION ${QSFS_MAJOR_VERSION}.${QSFS_MINOR_VERSION}.${QSFS_PATCH_VERSION})
 if(EXISTS ${CMAKE_SOURCE_DIR}/include/configure/VersionConfig.h)
     FILE(REMOVE ${CMAKE_SOURCE_DIR}/include/configure/VersionConfig.h)
 endif()
@@ -23,28 +26,24 @@ configure_file(
   cmake/templates/VersionConfig.h.in
   "${CMAKE_SOURCE_DIR}/include/configure/VersionConfig.h")
 
-# extract version string from the existing generated header file
-file(
-    STRINGS "${CMAKE_SOURCE_DIR}/include/configure/VersionConfig.h" 
-    __QSFS_VERSION_LINE LIMIT_COUNT 1 
-    REGEX "QSFS_VERSION_STRING.*[0-9]+\\.[0-9]+\\.[0-9]+")
-string(
-  REGEX MATCH "([0-9]+\\.[0-9]+\\.[0-9]+)"
-  VERSION_STRING "${__QSFS_VERSION_LINE}")
-
 message(STATUS "Building project version: ${QSFS_VERSION}")
-string(REPLACE "." ";" VERSION_LIST ${VERSION_STRING})
-list (GET VERSION_LIST 0 QSFS_MAJOR_VERSION)
-list (GET VERSION_LIST 1 QSFS_MINOR_VERSION)
-list (GET VERSION_LIST 2 QSFS_PATCH_VERSION)
 
 # 
 # dependencies
 #
-# Using cmake scripts
+# Download and Install dependencies
 include(cmake/gtest.cmake)
 include(cmake/gflags.cmake)
 include(cmake/glog.cmake)
+
+# qingstor dependencies
+#find_package(FindCURL REQUIRED)
+#find_package(FindOpenSSL REQUIRED)
+#find_package(ZLIB REQUIRED)
+
+find_package(GTest REQUIRED)
+find_package(gflags REQUIRED)
+find_package(glog REQUIRED)
 
 #
 # linter target (make lint)
