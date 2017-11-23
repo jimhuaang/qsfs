@@ -42,8 +42,8 @@ include(cmake/glog.cmake)
 #find_package(ZLIB REQUIRED)
 
 find_package(GTest REQUIRED)
-find_package(gflags REQUIRED)
-find_package(glog REQUIRED)
+find_package(gflags 2.2.1 REQUIRED)
+find_package(glog 0.3.5 REQUIRED)
 
 #
 # linter target (make lint)
@@ -69,9 +69,6 @@ add_compile_options(-fPIC)
 
 add_compile_options(-g -std=c++11 -Wall -D_FILE_OFFSET_BITS=64)
 
-# To avoid link gflags both statically and dynamically,
-# we just keep our libs to link gflags statically just as glogs do
-set(LIBTYPE STATIC)
 
 # Where qsfs's .h files can be found.
 include_directories(${PROJECT_SOURCE_DIR}/include)

@@ -29,87 +29,48 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 #
 # make libs referenced by unit test
 #
-set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
+# use OBJECT lib type, as we do not need to produce any library files
 add_library(
-  qsfsConfigure ${LIBTYPE}
-  ${QSFS_CONFIGURE_SRCS}
-  )
-target_link_libraries(qsfsConfigure fuse)
-set_target_properties(qsfsConfigure PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
-if (BUILD_SHARED_LIBS)
-  set_target_properties(qsfsConfigure PROPERTIES SOVERSION ${QSFS_VERSION})
-endif (BUILD_SHARED_LIBS)
-
-add_library(
-  qsfsLogging ${LIBTYPE}
+  qsfsLogging OBJECT
   base/Logging.cpp 
   base/LogLevel.cpp
+  ${QSFS_CONFIGURE_SRCS}
   )
-target_link_libraries(qsfsLogging glog qsfsConfigure)
-set_target_properties(qsfsLogging PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
-if (BUILD_SHARED_LIBS)
-  set_target_properties(qsfsLogging PROPERTIES SOVERSION ${QSFS_VERSION})
-endif (BUILD_SHARED_LIBS)
 
 add_library(
-  qsfsBaseUtils ${LIBTYPE}
+  qsfsBaseUtils OBJECT
   base/StringUtils.cpp
   base/TimeUtils.cpp
   base/Utils.cpp
   )
-target_link_libraries(qsfsBaseUtils qsfsLogging)
-set_target_properties(qsfsBaseUtils PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
-if (BUILD_SHARED_LIBS)
-  set_target_properties(qsfsBaseUtils PROPERTIES SOVERSION ${QSFS_VERSION})
-endif (BUILD_SHARED_LIBS)
 
 add_library(
-  qsfsThreadPool ${LIBTYPE}
+  qsfsThreadPool OBJECT
   base/ThreadPool.cpp
   base/TaskHandle.cpp
 )
-target_link_libraries(qsfsThreadPool)
-set_target_properties(qsfsThreadPool PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
-if (BUILD_SHARED_LIBS)
-  set_target_properties(qsfsThreadPool PROPERTIES SOVERSION ${QSFS_VERSION})
-endif (BUILD_SHARED_LIBS)
 
 add_library(
-  qsfsDirectory ${LIBTYPE}
+  qsfsDirectory OBJECT
   data/Directory.cpp 
   data/FileMetaData.cpp
   data/FileMetaDataManager.cpp
   )
-target_link_libraries(qsfsDirectory)
-set_target_properties(qsfsDirectory PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
-if (BUILD_SHARED_LIBS)
-  set_target_properties(qsfsDirectory PROPERTIES SOVERSION ${QSFS_VERSION})
-endif (BUILD_SHARED_LIBS)
 
 add_library(
-  qsfsCache ${LIBTYPE}
+  qsfsCache OBJECT
   data/Cache.cpp
   data/File.cpp
   data/Page.cpp
   )
-target_link_libraries(qsfsCache)
-set_target_properties(qsfsCache PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
-if (BUILD_SHARED_LIBS)
-  set_target_properties(qsfsCache PROPERTIES SOVERSION ${QSFS_VERSION})
-endif (BUILD_SHARED_LIBS)
 
 add_library(
-  qsfsResource ${LIBTYPE}
+  qsfsResource OBJECT
   data/IOStream.cpp
   data/ResourceManager.cpp
   data/StreamBuf.cpp
   data/StreamUtils.cpp
   )
-target_link_libraries(qsfsResource)
-set_target_properties(qsfsResource PROPERTIES VERSION ${QSFS_MAJOR_VERSION})
-if (BUILD_SHARED_LIBS)
-  set_target_properties(qsfsResource PROPERTIES SOVERSION ${QSFS_VERSION})
-endif (BUILD_SHARED_LIBS)
 
 #
 # install

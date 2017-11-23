@@ -72,10 +72,9 @@ To clean the generated build files, just remove folder build:
  $ rm -rf build
 ```
 
-To clean program binaries and object files, juse remove folder bin and lib:
+To clean program binaries, juse remove folder bin:
 ```sh
  $ rm -rf bin
- $ rm -rf lib
 ```
 
 To remove all installed files:
