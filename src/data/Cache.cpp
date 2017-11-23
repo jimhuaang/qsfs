@@ -239,8 +239,7 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
     if (it != m_map.end()) {
       UnguardedMakeFileMostRecentlyUsed(it->second);
     } else {
-      auto pos = UnguardedNewEmptyFile(fileId, mtime);
-      assert(pos != m_cache.end());
+      UnguardedNewEmptyFile(fileId, mtime);
     }
     return true;  // do nothing
   }
@@ -278,8 +277,7 @@ bool Cache::Write(const string &fileId, off_t offset, size_t len,
     if (it != m_map.end()) {
       UnguardedMakeFileMostRecentlyUsed(it->second);
     } else {
-      auto pos = UnguardedNewEmptyFile(fileId, mtime);
-      assert(pos != m_cache.end());
+      UnguardedNewEmptyFile(fileId, mtime);
     }
     return true;  // do nothing
   }

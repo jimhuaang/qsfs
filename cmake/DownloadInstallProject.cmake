@@ -108,7 +108,8 @@ function(download_install_project PROJECT)
         message(FATAL_ERROR "Pre-install step for ${PROJECT} failed: ${result}")
     endif()
 
-    execute_process(COMMAND ${CMAKE_COMMAND}
+    # need to get root privileges to install project
+    execute_process(COMMAND sudo cmake
         --build ${${PROJECT}_BINARY_DIR}
         --target install
         RESULT_VARIABLE result

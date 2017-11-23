@@ -41,9 +41,16 @@ include(cmake/glog.cmake)
 #find_package(FindOpenSSL REQUIRED)
 #find_package(ZLIB REQUIRED)
 
+find_package(Threads REQUIRED)
 find_package(GTest REQUIRED)
-find_package(gflags 2.2.1 REQUIRED)
-find_package(glog 0.3.5 REQUIRED)
+include_directories(${GTEST_INCLUDE_DIR})
+find_package(gflags REQUIRED)  # depended by glog
+# refer to glog usage, no need to add include directory by hand.
+# https://github.com/google/glog/blob/master/cmake/INSTALL.md
+find_package(glog REQUIRED)
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #
 # linter target (make lint)
@@ -67,8 +74,8 @@ add_custom_target(lint COMMAND ${CMAKE_COMMAND} -P
 #   which is not in export set.
 add_compile_options(-fPIC)
 
-add_compile_options(-g -std=c++11 -Wall -D_FILE_OFFSET_BITS=64)
-
+# do not specify -g, instead specify -DCMAKE_BUILD_TYPE=Debug/Release in command line
+add_compile_options(-std=c++11 -Wall -Wunused-result -D_FILE_OFFSET_BITS=64)
 
 # Where qsfs's .h files can be found.
 include_directories(${PROJECT_SOURCE_DIR}/include)

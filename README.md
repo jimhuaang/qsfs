@@ -52,7 +52,7 @@
   file, make a folder, delete a file, etc., a default time-out (in milliseconds) value is
   set (500 ms by default). You can increase this value by option *-R*.
   - For these requests which is time-consuming, the request time-out will be evaluated
-  dependently, e.g. if you need to transfer large files, the time-out will be depend on the file size.
+  dependently, e.g. if you need to transfer large files, the time-out will be depend on the file size and the time-out value set by option *-R*.
 - Security:
   - By default, access to the mount directory is restricted to the user who mounted qsfs.
 - User-specified regions
