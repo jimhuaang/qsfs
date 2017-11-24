@@ -1,5 +1,5 @@
 
-if (QSFS_BUILD_TESTS)
+if (BUILD_TESTS)
   set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
   add_executable(
@@ -99,4 +99,4 @@ if (QSFS_BUILD_TESTS)
   target_link_libraries(CacheTest fuse gtest glog gflags ${CMAKE_THREAD_LIBS_INIT})
   add_test(NAME qsfs_cache COMMAND CacheTest)
 
-endif (QSFS_BUILD_TESTS)
+endif (BUILD_TESTS)

@@ -47,9 +47,22 @@ so create a directory in which to create your build files:
  $ cd build
 ```
 
-Run cmake and make to build, NOTICE as we install dependencies in cmake configure step, the terminal will wait for you to type password in order to get root privileges:
+Run cmake to configure and install dependencies, NOTICE as we install
+dependencies in cmake configure step, the terminal will wait for you
+to type password in order to get root privileges:
 ```sh
  $ cmake ..
+ $ make
+```
+
+Notice, if you want to enable unit test, specfiy -DBUILD_TESTS=ON in cmake
+configure step:
+```sh
+ $ cmake -DBUILD_TESTS=ON ..
+```
+
+Run make to build:
+```sh
  $ make
 ```
 

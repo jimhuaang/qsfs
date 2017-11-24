@@ -73,11 +73,11 @@ add_library(
   )
 
 #
-# install
+# install target
 #
 install (
-  TARGETS 
-  ${PROJECT_NAME}
-  RUNTIME DESTINATION bin
+  TARGETS ${PROJECT_NAME}
+  EXPORT ${EXPORT_NAME}
+  RUNTIME DESTINATION "${INSTALL_RUNTIME_DIR}" COMPONENT bin
 )
 
