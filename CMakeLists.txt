@@ -49,6 +49,7 @@ message (STATUS "Building project version: ${PACKAGE_VERSION}")
 include (cmake/gtest.cmake)
 include (cmake/gflags.cmake)
 include (cmake/glog.cmake)
+include (cmake/qingstorsdk.cmake)
 
 # qingstor dependencies
 #find_package (FindCURL REQUIRED)
@@ -163,7 +164,8 @@ if (NOT TARGET uninstall)
     COMMAND ${CMAKE_COMMAND} -P "${PROJECT_BINARY_DIR}/cmake_uninstall.cmake"
     COMMAND ${CMAKE_COMMAND} -P "${googletest_BINARY_DIR}/cmake_uninstall.cmake"
     COMMAND ${CMAKE_COMMAND} -P "${googlelog_BINARY_DIR}/cmake_uninstall.cmake"
-    COMMAND ${CMAKE_COMMAND} -P "${googleflags_BINARY_DIR}/cmake_uninstall.cmake")
+    COMMAND ${CMAKE_COMMAND} -P "${googleflags_BINARY_DIR}/cmake_uninstall.cmake"
+    COMMAND ${CMAKE_COMMAND} -P "${qingstorsdk_BINARY_DIR}/cmake_uninstall.cmake")
 endif()
 
 
