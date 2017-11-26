@@ -39,7 +39,7 @@ before_install:
 script:
   - mkdir build
   - cd build
-  - cmake ..
+  - cmake -DBUILD_TESTS=ON ..
   - make
   - make test
   - modprobe fuse
