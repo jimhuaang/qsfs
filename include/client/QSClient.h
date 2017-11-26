@@ -25,7 +25,7 @@
 #include "client/QSClientOutcome.h"
 
 namespace QingStor {
-class QingStorService;
+class QsConfig;
 }  // namespace QingStor
 
 namespace QS {
@@ -230,7 +230,7 @@ class QSClient : public Client {
                                  bool useThreadPool = true);
 
  public:
-  static const std::unique_ptr<QingStor::QingStorService> &GetQingStorService();
+  static const std::unique_ptr<QingStor::QsConfig> &GetQingStorConfig();
   const std::shared_ptr<QSClientImpl> &GetQSClientImpl() const;
 
  private:
@@ -240,7 +240,7 @@ class QSClient : public Client {
   void InitializeClientImpl();
 
  private:
-  static std::unique_ptr<QingStor::QingStorService> m_qingStorService;
+  static std::unique_ptr<QingStor::QsConfig> m_qingStorConfig;
   std::shared_ptr<QSClientImpl> m_qsClientImpl;
 };
 

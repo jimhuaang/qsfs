@@ -29,11 +29,11 @@
 #include <utility>
 #include <vector>
 
-#include "qingstor-sdk-cpp/Bucket.h"
-#include "qingstor-sdk-cpp/HttpCommon.h"
-#include "qingstor-sdk-cpp/QingStor.h"
-#include "qingstor-sdk-cpp/QsConfig.h"
-#include "qingstor-sdk-cpp/types/ObjectPartType.h"
+#include "qingstor/Bucket.h"
+#include "qingstor/HttpCommon.h"
+#include "qingstor/QingStor.h"
+#include "qingstor/QsConfig.h"
+#include "qingstor/types/ObjectPartType.h"
 
 #include "base/LogMacros.h"
 #include "base/StringUtils.h"
@@ -130,7 +130,7 @@ uint32_t CalculateTimeForListObjects(uint64_t maxCount) {
 
 static std::once_flag onceFlagGetClientImpl;
 static std::once_flag onceFlagStartService;
-unique_ptr<QingStor::QingStorService> QSClient::m_qingStorService = nullptr;
+unique_ptr<QingStor::QsConfig> QSClient::m_qingStorConfig = nullptr;
 
 // --------------------------------------------------------------------------
 QSClient::QSClient() : Client() {
@@ -893,9 +893,9 @@ ClientError<QSError> QSClient::Statvfs(struct statvfs *stvfs) {
 }
 
 // --------------------------------------------------------------------------
-const unique_ptr<QingStorService> &QSClient::GetQingStorService() {
+const unique_ptr<QsConfig> &QSClient::GetQingStorConfig() {
   StartQSService();
-  return m_qingStorService;
+  return m_qingStorConfig;
 }
 
 // --------------------------------------------------------------------------
@@ -922,31 +922,30 @@ void QSClient::StartQSService() {
     // Must set sdk log at beginning, otherwise sdk will broken due to
     // uninitialization of plog sdk depended on.
     // QingStor SDK need a log dir.
-    QingStorService::initService(GetDirName(clientConfig.GetClientLogFile()));
+    QingStorService::InitService(GetDirName(clientConfig.GetClientLogFile()));
 
-    static QsConfig sdkConfig(clientConfig.GetAccessKeyId(),
-                              clientConfig.GetSecretKey());
-    sdkConfig.m_LogLevel =
+    m_qingStorConfig = unique_ptr<QsConfig>(
+        new QsConfig(clientConfig.GetAccessKeyId(),
+                     clientConfig.GetSecretKey()));
+    m_qingStorConfig->m_LogLevel =
         GetClientLogLevelName(clientConfig.GetClientLogLevel());
-    sdkConfig.m_AdditionalUserAgent = clientConfig.GetAdditionalAgent();
-    sdkConfig.m_Host = Http::HostToString(clientConfig.GetHost());
-    sdkConfig.m_Protocol = Http::ProtocolToString(clientConfig.GetProtocol());
-    sdkConfig.m_Port = clientConfig.GetPort();
-    sdkConfig.m_ConnectionRetries = clientConfig.GetConnectionRetries();
-    m_qingStorService =
-        unique_ptr<QingStorService>(new QingStorService(sdkConfig));
+    m_qingStorConfig->m_AdditionalUserAgent = clientConfig.GetAdditionalAgent();
+    m_qingStorConfig->m_Host = Http::HostToString(clientConfig.GetHost());
+    m_qingStorConfig->m_Protocol = Http::ProtocolToString(clientConfig.GetProtocol());
+    m_qingStorConfig->m_Port = clientConfig.GetPort();
+    m_qingStorConfig->m_ConnectionRetries = clientConfig.GetConnectionRetries();
   });
 }
 
 // --------------------------------------------------------------------------
-void QSClient::CloseQSService() { QingStorService::shutdownService(); }
+void QSClient::CloseQSService() { QingStorService::ShutdownService(); }
 
 // --------------------------------------------------------------------------
 void QSClient::InitializeClientImpl() {
   const auto &clientConfig = ClientConfiguration::Instance();
   if (GetQSClientImpl()->GetBucket()) return;
   GetQSClientImpl()->SetBucket(unique_ptr<Bucket>(
-      new Bucket(m_qingStorService->GetConfig(), clientConfig.GetBucket(),
+      new Bucket(*m_qingStorConfig, clientConfig.GetBucket(),
                  clientConfig.GetZone())));
 }
 

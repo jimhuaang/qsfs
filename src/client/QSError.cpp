@@ -272,47 +272,48 @@ QSError SDKResponseToQSError(HttpResponseCode code) {
           //{HttpResponseCode::SWITCH_PROXY,                     306},
           //{HttpResponseCode::TEMPORARY_REDIRECT,               307},
           //{HttpResponseCode::PERMANENT_REDIRECT,               308},
-          {HttpResponseCode::BAD_REQUEST,                      QSError::SERVICE_UNAVAILABLE},
-          {HttpResponseCode::UNAUTHORIZED,                     QSError::CLIENT_UNRECOGNIZED},
-          {HttpResponseCode::PAYMENT_REQUIRED,                 QSError::PARAMETER_MISSING},
-          {HttpResponseCode::FORBIDDEN,                        QSError::ACCESS_DENIED},
+          {HttpResponseCode::BAD_REQUEST,                      QSError::SERVICE_UNAVAILABLE},  // 400
+          {HttpResponseCode::UNAUTHORIZED_OR_EXPIRED,          QSError::CLIENT_UNRECOGNIZED},
+          {HttpResponseCode::DELINQUENT_ACCOUNT,               QSError::PARAMETER_MISSING},
+          {HttpResponseCode::FORBIDDEN,                        QSError::ACCESS_DENIED},  // 403
           {HttpResponseCode::NOT_FOUND,                        QSError::KEY_NOT_EXIST},
           {HttpResponseCode::METHOD_NOT_ALLOWED,               QSError::ACTION_INVALID},
-          {HttpResponseCode::NOT_ACCEPTABLE,                   QSError::ACCESS_DENIED},
-          {HttpResponseCode::PROXY_AUTHENTICATION_REQUIRED,    QSError::AUTHENTICATION_TOKEN_MISSING},
-          {HttpResponseCode::REQUEST_TIMEOUT,                  QSError::REQUEST_EXPIRED},
-          {HttpResponseCode::CONFLICT,                         QSError::ACTION_INVALID},
+          //-{HttpResponseCode::NOT_ACCEPTABLE,                   QSError::ACCESS_DENIED},  // 406
+          //-{HttpResponseCode::PROXY_AUTHENTICATION_REQUIRED,    QSError::AUTHENTICATION_TOKEN_MISSING},
+          //-{HttpResponseCode::REQUEST_TIMEOUT,                  QSError::REQUEST_EXPIRED},
+          {HttpResponseCode::CONFLICT,                         QSError::ACTION_INVALID},  // 409
           //{HttpResponseCode::GONE,                             410},
-          {HttpResponseCode::LENGTH_REQUIRED,                  QSError::PARAMETER_MISSING},
-          {HttpResponseCode::PRECONDITION_FAILED,              QSError::INTERNAL_FAILURE},
-          {HttpResponseCode::REQUEST_ENTITY_TOO_LARGE,         QSError::SERVICE_UNAVAILABLE},
-          {HttpResponseCode::REQUEST_URI_TOO_LONG,             QSError::QUERY_PARAMETER_INVALID},
-          {HttpResponseCode::UNSUPPORTED_MEDIA_TYPE,           QSError::PARAMETER_VALUE_INAVLID},
-          {HttpResponseCode::REQUESTED_RANGE_NOT_SATISFIABLE,  QSError::QUERY_PARAMETER_INVALID},
-          {HttpResponseCode::EXPECTATION_FAILED,               QSError::PARAMETER_VALUE_INAVLID},
-          //{HttpResponseCode::IM_A_TEAPOT,                      418},
-          {HttpResponseCode::AUTHENTICATION_TIMEOUT,           QSError::REQUEST_EXPIRED},
-          {HttpResponseCode::METHOD_FAILURE,                   QSError::SERVICE_UNAVAILABLE},
-          {HttpResponseCode::UNPROC_ENTITY,                    QSError::PARAMETER_VALUE_INAVLID},
-          {HttpResponseCode::LOCKED,                           QSError::SERVICE_UNAVAILABLE},
+          //{HttpResponseCode::LENGTH_REQUIRED,                  QSError::PARAMETER_MISSING},
+          {HttpResponseCode::PRECONDITION_FAILED,              QSError::INTERNAL_FAILURE},  // 412
+          //-{HttpResponseCode::REQUEST_ENTITY_TOO_LARGE,         QSError::SERVICE_UNAVAILABLE},
+          //-{HttpResponseCode::REQUEST_URI_TOO_LONG,             QSError::QUERY_PARAMETER_INVALID},
+          //-{HttpResponseCode::UNSUPPORTED_MEDIA_TYPE,           QSError::PARAMETER_VALUE_INAVLID},
+          //-{HttpResponseCode::REQUESTED_RANGE_NOT_SATISFIABLE,  QSError::QUERY_PARAMETER_INVALID},
+          //-{HttpResponseCode::EXPECTATION_FAILED,               QSError::PARAMETER_VALUE_INAVLID},
+          //-{HttpResponseCode::IM_A_TEAPOT,                      418},
+          //-{HttpResponseCode::AUTHENTICATION_TIMEOUT,           QSError::REQUEST_EXPIRED},
+          //-{HttpResponseCode::METHOD_FAILURE,                   QSError::SERVICE_UNAVAILABLE},
+          //-{HttpResponseCode::UNPROC_ENTITY,                    QSError::PARAMETER_VALUE_INAVLID},
+          //-{HttpResponseCode::LOCKED,                           QSError::SERVICE_UNAVAILABLE},
           //{HttpResponseCode::FAILED_DEPENDENCY,                424},
-          {HttpResponseCode::UPGRADE_REQUIRED,                 QSError::PARAMETER_MISSING},
+          //-{HttpResponseCode::UPGRADE_REQUIRED,                 QSError::PARAMETER_MISSING},
           //{HttpResponseCode::PRECONDITION_REQUIRED,            427},
+          {HttpResponseCode::INVALID_RANGE,                    QSError::PARAMETER_VALUE_INAVLID},  // 416
           {HttpResponseCode::TOO_MANY_REQUESTS,                QSError::SERVICE_UNAVAILABLE},
-          {HttpResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,  QSError::PARAMETER_VALUE_INAVLID},
-          {HttpResponseCode::LOGIN_TIMEOUT,                    QSError::REQUEST_EXPIRED},
-          {HttpResponseCode::NO_RESPONSE,                      QSError::SERVICE_UNAVAILABLE},
+          //-{HttpResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,  QSError::PARAMETER_VALUE_INAVLID}, // 431
+          //-{HttpResponseCode::LOGIN_TIMEOUT,                    QSError::REQUEST_EXPIRED},
+          //-{HttpResponseCode::NO_RESPONSE,                      QSError::SERVICE_UNAVAILABLE},
           //{HttpResponseCode::RETRY_WITH,                       449},
-          {HttpResponseCode::BLOCKED,                          QSError::NETWORK_CONNECTION},
-          {HttpResponseCode::REDIRECT,                         QSError::NETWORK_CONNECTION},
-          {HttpResponseCode::REQUEST_HEADER_TOO_LARGE,         QSError::PARAMETER_VALUE_INAVLID},
-          {HttpResponseCode::CERT_ERROR,                       QSError::CLIENT_TOKEN_ID_INVALID},
-          {HttpResponseCode::NO_CERT,                          QSError::AUTHENTICATION_TOKEN_MISSING},
+          //-{HttpResponseCode::BLOCKED,                          QSError::NETWORK_CONNECTION},
+          //-{HttpResponseCode::REDIRECT,                         QSError::NETWORK_CONNECTION},
+          //-{HttpResponseCode::REQUEST_HEADER_TOO_LARGE,         QSError::PARAMETER_VALUE_INAVLID},
+          //-{HttpResponseCode::CERT_ERROR,                       QSError::CLIENT_TOKEN_ID_INVALID},
+          //-{HttpResponseCode::NO_CERT,                          QSError::AUTHENTICATION_TOKEN_MISSING},
           //{HttpResponseCode::HTTP_TO_HTTPS,                    497},
-          {HttpResponseCode::CLIENT_CLOSED_TO_REQUEST,         QSError::SERVICE_UNAVAILABLE},
+          //-{HttpResponseCode::CLIENT_CLOSED_TO_REQUEST,         QSError::SERVICE_UNAVAILABLE},  // 499
           {HttpResponseCode::INTERNAL_SERVER_ERROR,            QSError::INTERNAL_FAILURE},
-          {HttpResponseCode::NOT_IMPLEMENTED,                  QSError::ACTION_INVALID},
-          {HttpResponseCode::BAD_GATEWAY,                      QSError::NETWORK_CONNECTION},
+          //-{HttpResponseCode::NOT_IMPLEMENTED,                  QSError::ACTION_INVALID},  // 501
+          //-{HttpResponseCode::BAD_GATEWAY,                      QSError::NETWORK_CONNECTION},  // 502
           {HttpResponseCode::SERVICE_UNAVAILABLE,              QSError::SERVICE_UNAVAILABLE},
           {HttpResponseCode::GATEWAY_TIMEOUT,                  QSError::NETWORK_CONNECTION},
           {HttpResponseCode::HTTP_VERSION_NOT_SUPPORTED,       QSError::INTERNAL_FAILURE},
@@ -365,7 +366,7 @@ bool SDKShouldRetry(QingStor::Http::HttpResponseCode code){
           //HttpResponseCode::METHOD_NOT_ALLOWED,              //"MethodNotAllowed"               // 405
           //HttpResponseCode::NOT_ACCEPTABLE,                  //"NotAcceptable"                  // 406
           //HttpResponseCode::PROXY_AUTHENTICATION_REQUIRED,   //"ProxyAuthenticationRequired"    // 407
-          HttpResponseCode::REQUEST_TIMEOUT,                 //"RequestTimeOut"                 // 408
+          //-HttpResponseCode::REQUEST_TIMEOUT,                 //"RequestTimeOut"                 // 408
           //HttpResponseCode::CONFLICT,                        //"Conflict"                       // 409
           //HttpResponseCode::GONE,                            //"Gone"                           // 410
           //HttpResponseCode::LENGTH_REQUIRED,                 //"LengthRequired"                 // 411
@@ -376,7 +377,7 @@ bool SDKShouldRetry(QingStor::Http::HttpResponseCode code){
           //HttpResponseCode::REQUESTED_RANGE_NOT_SATISFIABLE, //"RequestedRangeNotSatisfiable"   // 416
           //HttpResponseCode::EXPECTATION_FAILED,              //"ExpectationFailed"              // 417
           //HttpResponseCode::IM_A_TEAPOT,                     //"ImATeapot"                      // 418
-          HttpResponseCode::AUTHENTICATION_TIMEOUT,          //"AuthenticationTimeout"          // 419
+          //-HttpResponseCode::AUTHENTICATION_TIMEOUT,          //"AuthenticationTimeout"          // 419
           //HttpResponseCode::METHOD_FAILURE,                  //"MethodFailure"                  // 420
           //HttpResponseCode::UNPROC_ENTITY,                   //"UnprocEntity"                   // 422
           //HttpResponseCode::LOCKED,                          //"Locked"                         // 423
@@ -385,19 +386,19 @@ bool SDKShouldRetry(QingStor::Http::HttpResponseCode code){
           //HttpResponseCode::PRECONDITION_REQUIRED,           //"PreconditionRequired"           // 427
           HttpResponseCode::TOO_MANY_REQUESTS,               //"TooManyRequests"                // 429
           //HttpResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE, //"RequestHeaderFieldsTooLarge"    // 431
-          HttpResponseCode::LOGIN_TIMEOUT,                   //"LoginTimeout"                   // 440
-          HttpResponseCode::NO_RESPONSE,                     //"NoResponse"                     // 444
-          HttpResponseCode::RETRY_WITH,                      //"RetryWith"                      // 449
-          HttpResponseCode::BLOCKED,                         //"Blocked"                        // 450
-          HttpResponseCode::REDIRECT,                        //"Redirect"                       // 451
+          //-HttpResponseCode::LOGIN_TIMEOUT,                   //"LoginTimeout"                   // 440
+          //-HttpResponseCode::NO_RESPONSE,                     //"NoResponse"                     // 444
+          //-HttpResponseCode::RETRY_WITH,                      //"RetryWith"                      // 449
+          //-HttpResponseCode::BLOCKED,                         //"Blocked"                        // 450
+          //-HttpResponseCode::REDIRECT,                        //"Redirect"                       // 451
           //HttpResponseCode::REQUEST_HEADER_TOO_LARGE,        //"RequestHeaderTooLarge"          // 494
           //HttpResponseCode::CERT_ERROR,                      //"CretError"                      // 495
           //HttpResponseCode::NO_CERT,                         //"NoCret"                         // 496
-          HttpResponseCode::HTTP_TO_HTTPS,                   //"HttpToHttps"                    // 497
+          //-HttpResponseCode::HTTP_TO_HTTPS,                   //"HttpToHttps"                    // 497
           //HttpResponseCode::CLIENT_CLOSED_TO_REQUEST,        //"ClientClosedToRequest"          // 499
           //HttpResponseCode::INTERNAL_SERVER_ERROR,           //"InternalServerError"            // 500
           //HttpResponseCode::NOT_IMPLEMENTED,                 //"NotImplemented"                 // 501
-          HttpResponseCode::BAD_GATEWAY,                     //"BadGateway"                     // 502
+          //-HttpResponseCode::BAD_GATEWAY,                     //"BadGateway"                     // 502
           //HttpResponseCode::SERVICE_UNAVAILABLE,             //"ServiceUnavailable"             // 503
           HttpResponseCode::GATEWAY_TIMEOUT,                 //"GatewayTimeout"                 // 504
           //HttpResponseCode::HTTP_VERSION_NOT_SUPPORTED,      //"HttpVersionNotSupported"        // 505
@@ -447,46 +448,49 @@ string SDKResponseCodeToName(HttpResponseCode code) {
           {HttpResponseCode::TEMPORARY_REDIRECT,              "TemporaryRedirect"},              // 307
           {HttpResponseCode::PERMANENT_REDIRECT,              "PermanentRedirect"},              // 308
           {HttpResponseCode::BAD_REQUEST,                     "BadRequest"},                     // 400
-          {HttpResponseCode::UNAUTHORIZED,                    "Unauthorized"},                   // 401
-          {HttpResponseCode::PAYMENT_REQUIRED,                "PaymentRequired"},                // 402
+          //-{HttpResponseCode::UNAUTHORIZED,                    "Unauthorized"},                   // 401
+          //-{HttpResponseCode::PAYMENT_REQUIRED,                "PaymentRequired"},                // 402
+          {HttpResponseCode::UNAUTHORIZED_OR_EXPIRED,         "UnauthorizedOrExpired"},          // 401
+          {HttpResponseCode::DELINQUENT_ACCOUNT,              "DelinquentAccount"},              // 402
           {HttpResponseCode::FORBIDDEN,                       "Forbidden"},                      // 403
           {HttpResponseCode::NOT_FOUND,                       "NotFound"},                       // 404
           {HttpResponseCode::METHOD_NOT_ALLOWED,              "MethodNotAllowed"},               // 405
-          {HttpResponseCode::NOT_ACCEPTABLE,                  "NotAcceptable"},                  // 406
-          {HttpResponseCode::PROXY_AUTHENTICATION_REQUIRED,   "ProxyAuthenticationRequired"},    // 407
-          {HttpResponseCode::REQUEST_TIMEOUT,                 "RequestTimeOut"},                 // 408
+          //-{HttpResponseCode::NOT_ACCEPTABLE,                  "NotAcceptable"},                  // 406
+          //-{HttpResponseCode::PROXY_AUTHENTICATION_REQUIRED,   "ProxyAuthenticationRequired"},    // 407
+          //-{HttpResponseCode::REQUEST_TIMEOUT,                 "RequestTimeOut"},                 // 408
           {HttpResponseCode::CONFLICT,                        "Conflict"},                       // 409
-          {HttpResponseCode::GONE,                            "Gone"},                           // 410
-          {HttpResponseCode::LENGTH_REQUIRED,                 "LengthRequired"},                 // 411
+          //-{HttpResponseCode::GONE,                            "Gone"},                           // 410
+          //-{HttpResponseCode::LENGTH_REQUIRED,                 "LengthRequired"},                 // 411
           {HttpResponseCode::PRECONDITION_FAILED,             "PerconditionFailed"},             // 412
-          {HttpResponseCode::REQUEST_ENTITY_TOO_LARGE,        "RequestEntityTooLarge"},          // 413
-          {HttpResponseCode::REQUEST_URI_TOO_LONG,            "RequestURITooLong"},              // 414
-          {HttpResponseCode::UNSUPPORTED_MEDIA_TYPE,          "UnsupportedMediaType"},           // 415
-          {HttpResponseCode::REQUESTED_RANGE_NOT_SATISFIABLE, "RequestedRangeNotSatisfiable"},   // 416
-          {HttpResponseCode::EXPECTATION_FAILED,              "ExpectationFailed"},              // 417
-          {HttpResponseCode::IM_A_TEAPOT,                     "ImATeapot"},                      // 418
-          {HttpResponseCode::AUTHENTICATION_TIMEOUT,          "AuthenticationTimeout"},          // 419
-          {HttpResponseCode::METHOD_FAILURE,                  "MethodFailure"},                  // 420
-          {HttpResponseCode::UNPROC_ENTITY,                   "UnprocEntity"},                   // 422
-          {HttpResponseCode::LOCKED,                          "Locked"},                         // 423
-          {HttpResponseCode::FAILED_DEPENDENCY,               "FailedDependency"},               // 424
-          {HttpResponseCode::UPGRADE_REQUIRED,                "UpgradeRequired"},                // 426
-          {HttpResponseCode::PRECONDITION_REQUIRED,           "PreconditionRequired"},           // 427
+          //-{HttpResponseCode::REQUEST_ENTITY_TOO_LARGE,        "RequestEntityTooLarge"},          // 413
+          //-{HttpResponseCode::REQUEST_URI_TOO_LONG,            "RequestURITooLong"},              // 414
+          //-{HttpResponseCode::UNSUPPORTED_MEDIA_TYPE,          "UnsupportedMediaType"},           // 415
+          //-{HttpResponseCode::REQUESTED_RANGE_NOT_SATISFIABLE, "RequestedRangeNotSatisfiable"},   // 416
+          //-{HttpResponseCode::EXPECTATION_FAILED,              "ExpectationFailed"},              // 417
+          //-{HttpResponseCode::IM_A_TEAPOT,                     "ImATeapot"},                      // 418
+          //-{HttpResponseCode::AUTHENTICATION_TIMEOUT,          "AuthenticationTimeout"},          // 419
+          //-{HttpResponseCode::METHOD_FAILURE,                  "MethodFailure"},                  // 420
+          //-{HttpResponseCode::UNPROC_ENTITY,                   "UnprocEntity"},                   // 422
+          //-{HttpResponseCode::LOCKED,                          "Locked"},                         // 423
+          //-{HttpResponseCode::FAILED_DEPENDENCY,               "FailedDependency"},               // 424
+          //-{HttpResponseCode::UPGRADE_REQUIRED,                "UpgradeRequired"},                // 426
+          //-{HttpResponseCode::PRECONDITION_REQUIRED,           "PreconditionRequired"},           // 427
+          {HttpResponseCode::INVALID_RANGE,                   "InvalidRange"},                   // 416
           {HttpResponseCode::TOO_MANY_REQUESTS,               "TooManyRequests"},                // 429
-          {HttpResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE, "RequestHeaderFieldsTooLarge"},    // 431
-          {HttpResponseCode::LOGIN_TIMEOUT,                   "LoginTimeout"},                   // 440
-          {HttpResponseCode::NO_RESPONSE,                     "NoResponse"},                     // 444
-          {HttpResponseCode::RETRY_WITH,                      "RetryWith"},                      // 449
-          {HttpResponseCode::BLOCKED,                         "Blocked"},                        // 450
-          {HttpResponseCode::REDIRECT,                        "Redirect"},                       // 451
-          {HttpResponseCode::REQUEST_HEADER_TOO_LARGE,        "RequestHeaderTooLarge"},          // 494
-          {HttpResponseCode::CERT_ERROR,                      "CretError"},                      // 495
-          {HttpResponseCode::NO_CERT,                         "NoCret"},                         // 496
-          {HttpResponseCode::HTTP_TO_HTTPS,                   "HttpToHttps"},                    // 497
-          {HttpResponseCode::CLIENT_CLOSED_TO_REQUEST,        "ClientClosedToRequest"},          // 499
+          //-{HttpResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE, "RequestHeaderFieldsTooLarge"},    // 431
+          //-{HttpResponseCode::LOGIN_TIMEOUT,                   "LoginTimeout"},                   // 440
+          //-{HttpResponseCode::NO_RESPONSE,                     "NoResponse"},                     // 444
+          //-{HttpResponseCode::RETRY_WITH,                      "RetryWith"},                      // 449
+          //-{HttpResponseCode::BLOCKED,                         "Blocked"},                        // 450
+          //-{HttpResponseCode::REDIRECT,                        "Redirect"},                       // 451
+          //-{HttpResponseCode::REQUEST_HEADER_TOO_LARGE,        "RequestHeaderTooLarge"},          // 494
+          //-{HttpResponseCode::CERT_ERROR,                      "CretError"},                      // 495
+          //-{HttpResponseCode::NO_CERT,                         "NoCret"},                         // 496
+          //-{HttpResponseCode::HTTP_TO_HTTPS,                   "HttpToHttps"},                    // 497
+          //-{HttpResponseCode::CLIENT_CLOSED_TO_REQUEST,        "ClientClosedToRequest"},          // 499
           {HttpResponseCode::INTERNAL_SERVER_ERROR,           "InternalServerError"},            // 500
-          {HttpResponseCode::NOT_IMPLEMENTED,                 "NotImplemented"},                 // 501
-          {HttpResponseCode::BAD_GATEWAY,                     "BadGateway"},                     // 502
+          //-{HttpResponseCode::NOT_IMPLEMENTED,                 "NotImplemented"},                 // 501
+          //-{HttpResponseCode::BAD_GATEWAY,                     "BadGateway"},                     // 502
           {HttpResponseCode::SERVICE_UNAVAILABLE,             "ServiceUnavailable"},             // 503
           {HttpResponseCode::GATEWAY_TIMEOUT,                 "GatewayTimeout"},                 // 504
           {HttpResponseCode::HTTP_VERSION_NOT_SUPPORTED,      "HttpVersionNotSupported"},        // 505
@@ -532,46 +536,49 @@ int SDKResponseCodeToInt(HttpResponseCode code) {
           {HttpResponseCode::TEMPORARY_REDIRECT,               307},
           {HttpResponseCode::PERMANENT_REDIRECT,               308},
           {HttpResponseCode::BAD_REQUEST,                      400},
-          {HttpResponseCode::UNAUTHORIZED,                     401},
-          {HttpResponseCode::PAYMENT_REQUIRED,                 402},
+          //{HttpResponseCode::UNAUTHORIZED,                     401},
+          //{HttpResponseCode::PAYMENT_REQUIRED,                 402},
+          {HttpResponseCode::UNAUTHORIZED_OR_EXPIRED,          401},
+          {HttpResponseCode::DELINQUENT_ACCOUNT,               402},
           {HttpResponseCode::FORBIDDEN,                        403},
           {HttpResponseCode::NOT_FOUND,                        404},
           {HttpResponseCode::METHOD_NOT_ALLOWED,               405},
-          {HttpResponseCode::NOT_ACCEPTABLE,                   406},
-          {HttpResponseCode::PROXY_AUTHENTICATION_REQUIRED,    407},
-          {HttpResponseCode::REQUEST_TIMEOUT,                  408},
+          //{HttpResponseCode::NOT_ACCEPTABLE,                   406},
+          //{HttpResponseCode::PROXY_AUTHENTICATION_REQUIRED,    407},
+          //{HttpResponseCode::REQUEST_TIMEOUT,                  408},
           {HttpResponseCode::CONFLICT,                         409},
-          {HttpResponseCode::GONE,                             410},
-          {HttpResponseCode::LENGTH_REQUIRED,                  411},
+          //{HttpResponseCode::GONE,                             410},
+          //{HttpResponseCode::LENGTH_REQUIRED,                  411},
           {HttpResponseCode::PRECONDITION_FAILED,              412},
-          {HttpResponseCode::REQUEST_ENTITY_TOO_LARGE,         413},
-          {HttpResponseCode::REQUEST_URI_TOO_LONG,             414},
-          {HttpResponseCode::UNSUPPORTED_MEDIA_TYPE,           415},
-          {HttpResponseCode::REQUESTED_RANGE_NOT_SATISFIABLE,  416},
-          {HttpResponseCode::EXPECTATION_FAILED,               417},
-          {HttpResponseCode::IM_A_TEAPOT,                      418},
-          {HttpResponseCode::AUTHENTICATION_TIMEOUT,           419},
-          {HttpResponseCode::METHOD_FAILURE,                   420},
-          {HttpResponseCode::UNPROC_ENTITY,                    422},
-          {HttpResponseCode::LOCKED,                           423},
-          {HttpResponseCode::FAILED_DEPENDENCY,                424},
-          {HttpResponseCode::UPGRADE_REQUIRED,                 426},
-          {HttpResponseCode::PRECONDITION_REQUIRED,            427},
+          //{HttpResponseCode::REQUEST_ENTITY_TOO_LARGE,         413},
+          //{HttpResponseCode::REQUEST_URI_TOO_LONG,             414},
+          //{HttpResponseCode::UNSUPPORTED_MEDIA_TYPE,           415},
+          //{HttpResponseCode::REQUESTED_RANGE_NOT_SATISFIABLE,  416},
+          //{HttpResponseCode::EXPECTATION_FAILED,               417},
+          //{HttpResponseCode::IM_A_TEAPOT,                      418},
+          //{HttpResponseCode::AUTHENTICATION_TIMEOUT,           419},
+          //{HttpResponseCode::METHOD_FAILURE,                   420},
+          //{HttpResponseCode::UNPROC_ENTITY,                    422},
+          //{HttpResponseCode::LOCKED,                           423},
+          //{HttpResponseCode::FAILED_DEPENDENCY,                424},
+          //{HttpResponseCode::UPGRADE_REQUIRED,                 426},
+          //{HttpResponseCode::PRECONDITION_REQUIRED,            427},
+          {HttpResponseCode::INVALID_RANGE,                    416},
           {HttpResponseCode::TOO_MANY_REQUESTS,                429},
-          {HttpResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,  431},
-          {HttpResponseCode::LOGIN_TIMEOUT,                    440},
-          {HttpResponseCode::NO_RESPONSE,                      444},
-          {HttpResponseCode::RETRY_WITH,                       449},
-          {HttpResponseCode::BLOCKED,                          450},
-          {HttpResponseCode::REDIRECT,                         451},
-          {HttpResponseCode::REQUEST_HEADER_TOO_LARGE,         494},
-          {HttpResponseCode::CERT_ERROR,                       495},
-          {HttpResponseCode::NO_CERT,                          496},
-          {HttpResponseCode::HTTP_TO_HTTPS,                    497},
-          {HttpResponseCode::CLIENT_CLOSED_TO_REQUEST,         499},
+          //{HttpResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,  431},
+          //{HttpResponseCode::LOGIN_TIMEOUT,                    440},
+          //{HttpResponseCode::NO_RESPONSE,                      444},
+          //{HttpResponseCode::RETRY_WITH,                       449},
+          //{HttpResponseCode::BLOCKED,                          450},
+          //{HttpResponseCode::REDIRECT,                         451},
+          //{HttpResponseCode::REQUEST_HEADER_TOO_LARGE,         494},
+          //{HttpResponseCode::CERT_ERROR,                       495},
+          //{HttpResponseCode::NO_CERT,                          496},
+          //{HttpResponseCode::HTTP_TO_HTTPS,                    497},
+          //{HttpResponseCode::CLIENT_CLOSED_TO_REQUEST,         499},
           {HttpResponseCode::INTERNAL_SERVER_ERROR,            500},
-          {HttpResponseCode::NOT_IMPLEMENTED,                  501},
-          {HttpResponseCode::BAD_GATEWAY,                      502},
+          //{HttpResponseCode::NOT_IMPLEMENTED,                  501},
+          //{HttpResponseCode::BAD_GATEWAY,                      502},
           {HttpResponseCode::SERVICE_UNAVAILABLE,              503},
           {HttpResponseCode::GATEWAY_TIMEOUT,                  504},
           {HttpResponseCode::HTTP_VERSION_NOT_SUPPORTED,       505},

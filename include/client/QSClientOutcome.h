@@ -19,7 +19,7 @@
 
 #include <vector>
 
-#include "qingstor-sdk-cpp/Bucket.h"
+#include "qingstor/Bucket.h"
 
 #include "client/ClientError.h"
 #include "client/Outcome.h"

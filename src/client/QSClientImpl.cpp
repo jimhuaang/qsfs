@@ -25,12 +25,12 @@
 #include <utility>
 #include <vector>
 
-#include "qingstor-sdk-cpp/Bucket.h"
-#include "qingstor-sdk-cpp/HttpCommon.h"
-#include "qingstor-sdk-cpp/QingStor.h"
-#include "qingstor-sdk-cpp/QsConfig.h"
-#include "qingstor-sdk-cpp/QsErrors.h"  // for sdk QsError
-#include "qingstor-sdk-cpp/Types.h"     // for sdk QsOutput
+#include "qingstor/Bucket.h"
+#include "qingstor/HttpCommon.h"
+#include "qingstor/QingStor.h"
+#include "qingstor/QsConfig.h"
+#include "qingstor/QsErrors.h"  // for sdk QsError
+#include "qingstor/Types.h"     // for sdk QsOutput
 
 #include "base/LogMacros.h"
 #include "base/ThreadPool.h"
@@ -132,8 +132,8 @@ ClientError<QSError> TimeOutError(const string &exceptionName,
 QSClientImpl::QSClientImpl() : ClientImpl() {
   if (!m_bucket) {
     const auto &clientConfig = ClientConfiguration::Instance();
-    const auto &qsService = QSClient::GetQingStorService();
-    m_bucket = unique_ptr<Bucket>(new Bucket(qsService->GetConfig(),
+    const auto &qsConfig = QSClient::GetQingStorConfig();
+    m_bucket = unique_ptr<Bucket>(new Bucket(*qsConfig,
                                              clientConfig.GetBucket(),
                                              clientConfig.GetZone()));
   }
@@ -147,7 +147,7 @@ GetBucketStatisticsOutcome QSClientImpl::GetBucketStatistics(
       [this]() -> pair<QsError, GetBucketStatisticsOutput> {
     GetBucketStatisticsInput input;  // dummy input
     GetBucketStatisticsOutput output;
-    auto sdkErr = m_bucket->getBucketStatistics(input, output);
+    auto sdkErr = m_bucket->GetBucketStatistics(input, output);
     return {sdkErr, std::move(output)};
   };
   auto fGetBucketStatistics =
@@ -177,7 +177,7 @@ HeadBucketOutcome QSClientImpl::HeadBucket(uint32_t msTimeDuration,
   auto DoHeadBucket = [this]() -> pair<QsError, HeadBucketOutput> {
     HeadBucketInput input;  // dummy input
     HeadBucketOutput output;
-    auto sdkErr = m_bucket->headBucket(input, output);
+    auto sdkErr = m_bucket->HeadBucket(input, output);
     return {sdkErr, std::move(output)};
   };
   std::future<pair<QsError, HeadBucketOutput>> fHeadBucket;
@@ -236,7 +236,7 @@ ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
 
     auto DoListObjects = [this, input]() -> pair<QsError, ListObjectsOutput> {
       ListObjectsOutput output;
-      auto sdkErr = m_bucket->listObjects(*input, output);
+      auto sdkErr = m_bucket->ListObjects(*input, output);
       return {sdkErr, std::move(output)};
     };
     std::future<pair<QsError, ListObjectsOutput>> fListObjects;
@@ -288,7 +288,7 @@ DeleteMultipleObjectsOutcome QSClientImpl::DeleteMultipleObjects(
   auto DoDeleteMultiObject =
       [this, input]() -> pair<QsError, DeleteMultipleObjectsOutput> {
     DeleteMultipleObjectsOutput output;
-    auto sdkErr = m_bucket->deleteMultipleObjects(*input, output);
+    auto sdkErr = m_bucket->DeleteMultipleObjects(*input, output);
     return {sdkErr, std::move(output)};
   };
   auto fDeleteMultiObject =
@@ -346,7 +346,7 @@ ListMultipartUploadsOutcome QSClientImpl::ListMultipartUploads(
     auto DoListMultipartUploads =
         [this, input]() -> pair<QsError, ListMultipartUploadsOutput> {
       ListMultipartUploadsOutput output;
-      auto sdkErr = m_bucket->listMultipartUploads(*input, output);
+      auto sdkErr = m_bucket->ListMultipartUploads(*input, output);
       return {sdkErr, std::move(output)};
     };
     auto fListMultiPartUploads =
@@ -359,9 +359,9 @@ ListMultipartUploadsOutcome QSClientImpl::ListMultipartUploads(
       auto responseCode = output.GetResponseCode();
       if (SDKResponseSuccess(sdkErr, responseCode)) {
         count += output.GetUploads().size();
-        responseTruncated = !output.GetNextMarker().empty();
+        responseTruncated = !output.GetNextKeyMarker().empty();
         if (responseTruncated) {
-          input->SetMarker(output.GetNextMarker());
+          input->SetKeyMarker(output.GetNextKeyMarker());
         }
         result.push_back(std::move(output));
       } else {
@@ -393,7 +393,7 @@ DeleteObjectOutcome QSClientImpl::DeleteObject(const string &objKey,
   auto DoDeleteObject = [this, objKey]() -> pair<QsError, DeleteObjectOutput> {
     DeleteObjectInput input;  // dummy input
     DeleteObjectOutput output;
-    auto sdkErr = m_bucket->deleteObject(objKey, input, output);
+    auto sdkErr = m_bucket->DeleteObject(objKey, input, output);
     return {sdkErr, std::move(output)};
   };
 
@@ -432,7 +432,7 @@ GetObjectOutcome QSClientImpl::GetObject(const std::string &objKey,
 
   auto DoGetObject = [this, objKey, input]() -> pair<QsError, GetObjectOutput> {
     GetObjectOutput output;
-    auto sdkErr = m_bucket->getObject(objKey, *input, output);
+    auto sdkErr = m_bucket->GetObject(objKey, *input, output);
     return {sdkErr, std::move(output)};
   };
 
@@ -486,7 +486,7 @@ HeadObjectOutcome QSClientImpl::HeadObject(const string &objKey,
   auto DoHeadObject = [this, objKey,
                        input]() -> pair<QsError, HeadObjectOutput> {
     HeadObjectOutput output;
-    auto sdkErr = m_bucket->headObject(objKey, *input, output);
+    auto sdkErr = m_bucket->HeadObject(objKey, *input, output);
     return {sdkErr, std::move(output)};
   };
 
@@ -524,7 +524,7 @@ PutObjectOutcome QSClientImpl::PutObject(const string &objKey,
 
   auto DoPutObject = [this, objKey, input]() -> pair<QsError, PutObjectOutput> {
     PutObjectOutput output;
-    auto sdkErr = m_bucket->putObject(objKey, *input, output);
+    auto sdkErr = m_bucket->PutObject(objKey, *input, output);
     return {sdkErr, std::move(output)};
   };
 
@@ -562,7 +562,7 @@ InitiateMultipartUploadOutcome QSClientImpl::InitiateMultipartUpload(
   auto DoInitiateMultipartUpload =
       [this, objKey, input]() -> pair<QsError, InitiateMultipartUploadOutput> {
     InitiateMultipartUploadOutput output;
-    auto sdkErr = m_bucket->initiateMultipartUpload(objKey, *input, output);
+    auto sdkErr = m_bucket->InitiateMultipartUpload(objKey, *input, output);
     return {sdkErr, std::move(output)};
   };
   auto fInitMultipartUpload =
@@ -601,7 +601,7 @@ UploadMultipartOutcome QSClientImpl::UploadMultipart(
   auto DoUploadMultipart = [this, objKey,
                             input]() -> pair<QsError, UploadMultipartOutput> {
     UploadMultipartOutput output;
-    auto sdkErr = m_bucket->uploadMultipart(objKey, *input, output);
+    auto sdkErr = m_bucket->UploadMultipart(objKey, *input, output);
     return {sdkErr, std::move(output)};
   };
   auto fUploadMultipart =
@@ -640,7 +640,7 @@ CompleteMultipartUploadOutcome QSClientImpl::CompleteMultipartUpload(
   auto DoCompleteMultipartUpload =
       [this, objKey, input]() -> pair<QsError, CompleteMultipartUploadOutput> {
     CompleteMultipartUploadOutput output;
-    auto sdkErr = m_bucket->completeMultipartUpload(objKey, *input, output);
+    auto sdkErr = m_bucket->CompleteMultipartUpload(objKey, *input, output);
     return {sdkErr, std::move(output)};
   };
   auto fCompleteMultipartUpload =
@@ -680,7 +680,7 @@ AbortMultipartUploadOutcome QSClientImpl::AbortMultipartUpload(
   auto DoAbortMultipartUpload =
       [this, objKey, input]() -> pair<QsError, AbortMultipartUploadOutput> {
     AbortMultipartUploadOutput output;
-    auto sdkErr = m_bucket->abortMultipartUpload(objKey, *input, output);
+    auto sdkErr = m_bucket->AbortMultipartUpload(objKey, *input, output);
     return {sdkErr, std::move(output)};
   };
   auto fAbortMultipartUpload =
@@ -735,7 +735,7 @@ ListMultipartOutcome QSClientImpl::ListMultipart(
     auto DoListMultipart = [this, objKey,
                             input]() -> pair<QsError, ListMultipartOutput> {
       ListMultipartOutput output;
-      auto sdkErr = m_bucket->listMultipart(objKey, *input, output);
+      auto sdkErr = m_bucket->ListMultipart(objKey, *input, output);
       return {sdkErr, std::move(output)};
     };
     auto fListMultipart =

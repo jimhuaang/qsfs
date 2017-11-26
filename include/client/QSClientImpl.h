@@ -23,7 +23,7 @@
 #include <string>
 #include <vector>
 
-#include "qingstor-sdk-cpp/Bucket.h"  // for instantiation of QSClientImpl
+#include "qingstor/Bucket.h"  // for instantiation of QSClientImpl
 
 #include "client/ClientConfiguration.h"
 #include "client/ClientImpl.h"

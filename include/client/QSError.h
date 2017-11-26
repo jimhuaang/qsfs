@@ -19,8 +19,8 @@
 
 #include <string>
 
-#include "qingstor-sdk-cpp/HttpCommon.h"
-#include "qingstor-sdk-cpp/QsErrors.h"
+#include "qingstor/HttpCommon.h"
+#include "qingstor/QsErrors.h"
 
 #include "client/ClientError.h"
 

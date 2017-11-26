@@ -28,7 +28,7 @@
 #include <utility>
 #include <vector>
 
-#include "qingstor-sdk-cpp/HttpCommon.h"
+#include "qingstor/HttpCommon.h"
 
 #include "base/TimeUtils.h"
 #include "base/Utils.h"

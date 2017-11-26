@@ -23,8 +23,8 @@
 #include <string>
 #include <vector>
 
-#include "qingstor-sdk-cpp/Bucket.h"
-#include "qingstor-sdk-cpp/types/KeyType.h"
+#include "qingstor/Bucket.h"
+#include "qingstor/types/KeyType.h"
 
 #include "data/Directory.h"
 
