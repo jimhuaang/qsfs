@@ -98,10 +98,10 @@ add_compile_options (-std=c++11 -Wall -Wunused-result -D_FILE_OFFSET_BITS=64)
 # Where qsfs's .h files can be found.
 include_directories (${PROJECT_SOURCE_DIR}/include)
 
-## Where qingstor-cpp's .h files can be found
+# Where qingstor-cpp's .h files can be found
 include_directories(/usr/local/include/qingstor)
 
-## Where qingstor-cpp's libs
+# Where qingstor-cpp's libs
 link_directories(/usr/local/lib)
 # add the automatically determined parts of the RPATH
 # which point to directories outside the build tree to the install RPAHT
