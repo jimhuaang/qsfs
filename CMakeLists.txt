@@ -100,11 +100,12 @@ include_directories (${PROJECT_SOURCE_DIR}/include)
 
 ## Where qingstor-cpp's .h files can be found
 include_directories(/usr/local/include/qingstor)
-#include_directories(/usr/local/include/qingstor/types)
-#include_directories(${PROJECT_SOURCE_DIR}/external/include)
-#include_directories(${PROJECT_SOURCE_DIR}/external/include/qingstor-sdk-cpp)
+
 ## Where qingstor-cpp's libs
 link_directories(/usr/local/lib)
+# add the automatically determined parts of the RPATH
+# which point to directories outside the build tree to the install RPAHT
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 
 #
