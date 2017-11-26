@@ -1,5 +1,4 @@
-ChangeLog for qsfs
-------------------
 
-Version 1.0 -- 2017
-Releases a basic version of qsfs on GitHub.
+* Fri Nov 24 2017 - Yunify Inc.
+
+- qsfs: version 1.0.0

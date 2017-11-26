@@ -39,7 +39,7 @@ before_install:
 script:
   - mkdir build
   - cd build
-  - sudo cmake ..
-  - sudo make
-  - sudo make test
+  - cmake ..
+  - make
+  - make test
   - modprobe fuse
