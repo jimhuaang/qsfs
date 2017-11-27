@@ -37,7 +37,7 @@ using QS::Client::GetCredentialsProviderInstance;
 using QS::Client::InitializeClientConfiguration;
 using QS::Client::InitializeCredentialsProvider;
 using QS::Exception::QSException;
-using QS::Configure::Default::GetMimeFile;
+using QS::Configure::Default::GetMimeFiles;
 using QS::FileSystem::Initializer;
 using QS::FileSystem::Priority;
 using QS::FileSystem::PriorityInitFuncPair;
@@ -86,9 +86,20 @@ void ClientConfigurationInitializer() {
 }
 
 void MimeTypesInitializer() {
-  string mimeFile = GetMimeFile();
-  if (!FileExists(mimeFile)) {
-    throw QSException(mimeFile + " does not exist");
+  string mimeFile = string();
+  for (const auto &filePath : GetMimeFiles()) {
+    if(FileExists(filePath)) {
+      mimeFile = filePath;
+      break;
+    }
+  }
+  if (mimeFile.empty()) {
+    string files = string();
+    for (const auto &filePath : GetMimeFiles()) {
+      files += filePath;
+      files += ";";
+    }
+    throw QSException("Unable to find mime types [path=" + files + "]");
   } else {
     QS::FileSystem::InitializeMimeTypes(mimeFile);
   }

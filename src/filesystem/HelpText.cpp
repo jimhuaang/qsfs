@@ -56,7 +56,7 @@ void ShowQSFSHelp() {
   cout <<
   "\n"
   "  mounting\n"
-  "    qsfs -b=<BUCKET> -m=<MOUNTPOINT> [options]\n"
+  "    qsfs -b=<BUCKET> -m=<MOUNTPOINT> -c=<CREDENTIALS> [options]\n"
   "  unmounting\n"
   "    umount <MOUNTPOINT>  or  fusermount -u <MOUNTPOINT>\n"
   "\n"
@@ -64,9 +64,9 @@ void ShowQSFSHelp() {
   "Mandatory argements to long options are mandatory for short options too.\n"
   "  -b, --bucket       Specify bucket name\n"
   "  -m, --mount        Specify mount point (path)\n"
-  "  -z, --zone         Zone or region, default is " << GetDefaultZone() << "\n"
   "  -c, --credentials  Specify credentials file, default is " << 
                           GetDefaultCredentialsFile() << "\n" <<
+  "  -z, --zone         Zone or region, default is " << GetDefaultZone() << "\n"
   "  -l, --logdir       Specify log directory, default is " <<
                           GetDefaultLogDirectory() << "\n" <<
   "  -L, --loglevel     Min log level, message lower than this level don't logged;\n"
@@ -118,7 +118,7 @@ void ShowQSFSHelp() {
 void ShowQSFSUsage() { 
   cout << 
   "Usage: qsfs -b|--bucket=<name> -m|--mount=<mount point>\n"
-  "       [-z|--zone=[value]] [-c|--credentials=[file path]]\n"
+  "       [-c|--credentials=[file path]] [-z|--zone=[value]]\n"
   "       [-l|--logdir=[dir]] [-L|--loglevel=[INFO|WARN|ERROR|FATAL]] \n"
   "       [-r|--retries=[value]] [-R|reqtimeout=[value]]\n"
   "       [-Z|--maxcache=[value]] [-D|--diskdir=[value]]\n"

@@ -23,7 +23,6 @@
 #include <string>
 
 #include "base/Exception.h"
-#include "configure/Default.h"
 
 namespace QS {
 
@@ -55,7 +54,6 @@ void InitializeMimeTypes(const std::string &mimeFile) {
 MimeTypes &MimeTypes::Instance() {
   std::call_once(flag, [] {
     instance = unique_ptr<MimeTypes>(new MimeTypes);
-    instance->Initialize(QS::Configure::Default::GetMimeFile());
   });
 
   return *instance.get();

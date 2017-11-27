@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cctype>
 #include <string>
+#include <vector>
 
 #include "data/Size.h"
 
@@ -32,6 +33,7 @@ namespace Configure {
 namespace Default {
 
 using std::string;
+using std::vector;
 
 static const char* const PROGRAM_NAME = "qsfs";
 static const char* const QSFS_DEFAULT_CREDENTIALS = "/opt/qsfs/qsfs.cred";
@@ -42,7 +44,8 @@ static const char* const QSFS_DEFAULT_LOGLEVEL_NAME = "INFO";
 static const char* const QSFS_DEFAULT_HOST = "qingstor.com";
 static const char* const QSFS_DEFAULT_PROTOCOL = "https";
 static const char *const QSFS_DEFAULT_ZONE = "pek3a";
-static const char* const QSFS_MIME_FILE = "/etc/mime.types";
+static const char* const MIME_FILE_DEBIAN = "/etc/mime.types";
+static const char* const MIME_FILE_CENTOS = "/usr/share/mime/types";
 
 
 const char* GetProgramName() { return PROGRAM_NAME; }
@@ -75,7 +78,10 @@ uint16_t GetDefaultPort(const string &protocolName) {
 string GetDefaultProtocolName() { return QSFS_DEFAULT_PROTOCOL; }
 string GetDefaultZone() { return QSFS_DEFAULT_ZONE; }
 
-string GetMimeFile() { return QSFS_MIME_FILE; }
+vector<string> GetMimeFiles() {
+  vector<string> mimes = { MIME_FILE_DEBIAN, MIME_FILE_CENTOS };
+  return mimes;
+}
 
 uint16_t GetPathMaxLen() { return 4096; }  // TODO(jim): should be 1023?
 uint16_t GetNameMaxLen() { return 255; }

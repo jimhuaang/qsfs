@@ -23,6 +23,7 @@
 #include <sys/types.h>  // for blkcnt_t
 
 #include <string>
+#include <vector>
 
 namespace QS {
 
@@ -41,7 +42,7 @@ std::string GetDefaultHostName();
 uint16_t    GetDefaultPort(const std::string &protocolName);
 std::string GetDefaultProtocolName();
 std::string GetDefaultZone();
-std::string GetMimeFile();
+std::vector<std::string> GetMimeFiles();
 
 uint16_t GetPathMaxLen();
 uint16_t GetNameMaxLen();
