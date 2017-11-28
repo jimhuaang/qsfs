@@ -45,28 +45,39 @@ message (STATUS "Building project version: ${PACKAGE_VERSION}")
 # 
 # dependencies
 #
+find_package (Threads REQUIRED)
+if (NOT Threads_FOUND)
+  message (FATAL_ERROR "Could not find pthread. Check the log file"
+  "\n\t${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeError.log")
+endif ()
+
 # Download and Install dependencies
-include (cmake/gtest.cmake)
-include (cmake/gflags.cmake)
-include (cmake/glog.cmake)
+find_package (GTest)
+if (NOT GTest_FOUND)
+  include (cmake/gtest.cmake)
+endif()
+include_directories (${GTEST_INCLUDE_DIRS})
+
+find_package (gflags)  # depended by glog
+if(NOT GFLAGS_INCLUDE_DIR)
+  include (cmake/gflags.cmake)
+endif()
+
+find_package (Glog)
+if(NOT TARGET glog::glog)
+  include (cmake/glog.cmake)
+endif(NOT TARGET glog::glog)
+
+# always download and intall sdk, no add FindQingStorSDK.cmake
 include (cmake/qingstorsdk.cmake)
 
 # qingstor dependencies
 #find_package (FindCURL REQUIRED)
 #find_package (FindOpenSSL REQUIRED)
-#find_package (ZLIB REQUIRED)
-
-find_package (Threads REQUIRED)
-find_package (GTest REQUIRED)
-include_directories (${GTEST_INCLUDE_DIR})
-find_package (gflags REQUIRED)  # depended by glog
-# refer to glog usage, no need to add include directory by hand.
-# https://github.com/google/glog/blob/master/cmake/INSTALL.md
-find_package (glog REQUIRED)
 
 set (CMAKE_CXX_STANDARD 11)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
- 
+
 
 #
 # linter target (make lint)
@@ -159,14 +170,27 @@ endif ()
 include(cmake/UninstallProject.cmake)
 setup_uninstall_project(${PROJECT_NAME})
 
-if (NOT TARGET uninstall)
-  add_custom_target (uninstall
-    COMMAND ${CMAKE_COMMAND} -P "${PROJECT_BINARY_DIR}/cmake_uninstall.cmake"
-    COMMAND ${CMAKE_COMMAND} -P "${googletest_BINARY_DIR}/cmake_uninstall.cmake"
-    COMMAND ${CMAKE_COMMAND} -P "${googlelog_BINARY_DIR}/cmake_uninstall.cmake"
-    COMMAND ${CMAKE_COMMAND} -P "${googleflags_BINARY_DIR}/cmake_uninstall.cmake"
-    COMMAND ${CMAKE_COMMAND} -P "${qingstorsdk_BINARY_DIR}/cmake_uninstall.cmake")
+set (UNINSTALL_ALL uninstall_${PROJECT_NAME})
+
+if(TARGET uninstall_qingstorsdk)
+  set (UNINSTALL_ALL ${UNINSTALL_ALL} uninstall_qingstorsdk)
 endif()
+
+if(TARGET uninstall_googletest)
+  set (UNINSTALL_ALL ${UNINSTALL_ALL} uninstall_googletest)
+endif()
+
+if(TARGET uninstall_googlelog)
+  set (UNINSTALL_ALL ${UNINSTALL_ALL} uninstall_googlelog)
+endif()
+
+if(TARGET uninstall_googleflags)
+  set (UNINSTALL_ALL ${UNINSTALL_ALL} uninstall_googleflags)
+endif()
+
+add_custom_target(
+  uninstall DEPENDS ${UNINSTALL_ALL}
+)
 
 
 #
@@ -274,4 +298,4 @@ if (BUILD_PACKAGING)
 
   include (CPack)
 
-endif () # BUILD_PACKAGING
+endif (BUILD_PACKAGING) # BUILD_PACKAGING
