@@ -25,7 +25,13 @@ namespace Client {
 
 namespace Constants {
 
-static const uint16_t BucketListObjectsLimit = 1000;
+// For a better performance we set a lower value than the limit
+// for per transaction of ListObject to lower than max value.
+// https://docs.qingcloud.com/qingstor/api/bucket/get.html
+static const uint16_t BucketListObjectsLimit = 500;
+
+// limitation for per tranasction of DeleteMulitipleObjects
+// https://docs.qingcloud.com/qingstor/api/bucket/delete_multiple.html
 static const uint16_t BucketDeleteMultipleObjectsLimit = 200;
 
 }  // namespace Constants

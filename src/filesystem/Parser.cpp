@@ -55,6 +55,7 @@ using QS::Configure::Default::GetDefaultParallelTransfers;
 using QS::Configure::Default::GetDefaultTransferBufSize;
 using QS::Configure::Default::GetDefaultZone;
 using QS::Configure::Default::GetMaxCacheSize;
+using QS::Configure::Default::GetMaxListObjectsCount;
 using QS::Configure::Default::GetMaxStatCount;
 using QS::Configure::Default::GetTransactionDefaultTimeDuration;
 using std::to_string;
@@ -81,6 +82,7 @@ static struct options {
   int32_t maxcache = GetMaxCacheSize() / QS::Data::Size::MB1;  // in MB
   const char *diskdir;
   int32_t maxstat = GetMaxStatCount() / QS::Data::Size::K1;    // in K
+  int32_t maxlist = GetMaxListObjectsCount();  // max file count for ls
   int32_t statexpire = -1;    // in mins, negative value disable state expire
   int numtransfer = GetDefaultParallelTransfers();
   int32_t bufsize = GetDefaultTransferBufSize() / QS::Data::Size::MB1;  // in MB
@@ -94,6 +96,7 @@ static struct options {
   int singleThread = 0;        // default FUSE multi-thread
   int qsSingleThread = 0;      // default qsfs multi-thread
   int debug = 0;               // default no debug
+  int curldbg = 0;             // default no curl debug msg
   int showHelp = 0;
   int showVersion = 0;
 } options;
@@ -113,6 +116,7 @@ static const struct fuse_opt optionSpec[] = {
     OPTION("-Z=%li", maxcache),      OPTION("--maxcache=%li",   maxcache),
     OPTION("-D=%s",  diskdir),       OPTION("--diskdir=%s",     diskdir),
     OPTION("-t=%li", maxstat),       OPTION("--maxstat=%li",    maxstat),
+    OPTION("-i=%li", maxlist),       OPTION("--maxlist=%li",    maxlist),
     OPTION("-e=%li", statexpire),    OPTION("--statexpire=%li", statexpire),
     OPTION("-n=%i",  numtransfer),   OPTION("--numtransfer=%i", numtransfer),
     OPTION("-u=%li", bufsize),       OPTION("--bufsize=%li",    bufsize),
@@ -126,6 +130,7 @@ static const struct fuse_opt optionSpec[] = {
     OPTION("-s",    singleThread),   OPTION("--single",         singleThread),
     OPTION("-S",    qsSingleThread), OPTION("--Single",         qsSingleThread),
     OPTION("-d",    debug),          OPTION("--debug",          debug),
+    OPTION("-U",    curldbg),        OPTION("--curldbg",        curldbg),
     OPTION("-h",    showHelp),       OPTION("--help",           showHelp),
     OPTION("-V",    showVersion),    OPTION("--version",        showVersion),
     FUSE_OPT_END
@@ -196,6 +201,7 @@ void Parse(int argc, char **argv) {
     qsOptions.SetMaxStatCountInK(options.maxstat);
   }
 
+  qsOptions.SetMaxListCount(options.maxlist);
   qsOptions.SetStatExpireInMin(options.statexpire);
 
   if (options.numtransfer <= 0) {
@@ -239,6 +245,7 @@ void Parse(int argc, char **argv) {
   qsOptions.SetSingleThread(options.singleThread != 0);
   qsOptions.SetQsfsSingleThread(options.qsSingleThread != 0);
   qsOptions.SetDebug(options.debug != 0);
+  qsOptions.SetDebugCurl(options.curldbg != 0);
   qsOptions.SetShowHelp(options.showHelp != 0);
   qsOptions.setShowVerion(options.showVersion !=0);
 

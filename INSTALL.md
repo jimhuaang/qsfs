@@ -5,7 +5,7 @@ These are the base requirements to build and use qsfs from a source package (as 
 - CMake v3.0 or later
 
 ### Additional Requirements
-**qsfs** is integrated with QingStor via the [QingStor SDK for C++][qs-sdk-cpp link], and qsfs uses glog for logging and uses gtest for unit testing, qsfs will check if these dependencies are installed or not, if not these dependencies will be downloaded and installed as part of the CMake build's configure step, so you can just leave them alone.
+**qsfs** is integrated with QingStor via the [QingStor SDK for C++][qs-sdk-cpp link], and qsfs uses glog for logging and uses gtest for unit testing, qsfs will check if these dependencies are installed or not, if not, these dependencies will be downloaded and installed as part of the CMake build's configure step, so you can just leave them alone.
 
 qsfs is a fuse based filesystem, so you must have libfuse installed.
 
@@ -50,10 +50,11 @@ to type password in order to get root privileges:
  $ make
 ```
 
-Notice, if you want to enable unit test, specfiy -DBUILD_TESTS=ON in cmake
-configure step:
+Notice, if you want to enable unit test, specfiy -DBUILD_TESTS=ON in cmake configure step; you can specify build type such as -DCMAKE_BUILD_TYPE=Debug; you can specify -DINSTALL_HEADERS to request installations of headers and other development files:
 ```sh
  $ cmake -DBUILD_TESTS=ON ..
+ $ cmake -DCMAKE_BUILD_TYPE=Debug ..
+ $ cmake -DINSTALL_HEADERS ..
 ```
 
 Run make to build:

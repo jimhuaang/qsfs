@@ -220,12 +220,20 @@ class QSClient : public Client {
 
   // List objects
   //
-  // @param  : dir path, resultTruncated(output), maxCount
-  // @return : ClientError
+  // @param  : input, resultTruncated(output), resCount(outputu) maxCount,
+  //           flag to use thread pool or not
+  // @return : ListObjectsOutcome
+  //
+  // Use maxCount to specify the count limit of objects you want to list.
+  // Use maxCount = 0 to list all the objects, this is default option.
+  // Use resCount to obtain the actual listed objects number
+  // Use resultTruncated to obtain the status of whether the operation has
+  // list all of the objects of the bucket;
   //
   // This only submit skd listobjects request, no ops on dir tree and cache.
   ListObjectsOutcome ListObjects(const std::string &dirPath,
                                  bool *resultTruncated = nullptr,
+                                 uint64_t *resCount = nullptr,
                                  uint64_t maxCount = 0,
                                  bool useThreadPool = true);
 

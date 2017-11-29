@@ -693,24 +693,35 @@ ClientError<QSError> QSClient::SymLink(const string &filePath,
 // --------------------------------------------------------------------------
 ClientError<QSError> QSClient::ListDirectory(const string &dirPath,
                                              bool useThreadPool) {
-  bool resultTruncated = false;
+  uint64_t maxListCount = ClientConfiguration::Instance().GetMaxListCount();
+  bool listAll = maxListCount <= 0;
+
   // Set maxCount for a single list operation.
   // This will request for ListObjects seperately, so we can construct
   // directory tree gradually. This will be helpful for the performance
   // if there are a huge number of objects to list.
-  uint64_t maxCount = static_cast<uint64_t>(Constants::BucketListObjectsLimit);
+  uint64_t maxCountPerList =
+      static_cast<uint64_t>(Constants::BucketListObjectsLimit * 2);
+  if (maxListCount < maxCountPerList) {
+    maxCountPerList = maxListCount;
+  }
 
   auto &drive = QS::FileSystem::Drive::Instance();
   auto &dirTree = drive.GetDirectoryTree();
   assert(dirTree);
   auto dirNode = drive.GetNodeSimple(dirPath).lock();
+
+  bool resultTruncated = false;
+  uint64_t resCount = 0;
   do {
-    auto outcome =
-        ListObjects(dirPath, &resultTruncated, maxCount, useThreadPool);
+    uint64_t countPerList = 0;
+    auto outcome = ListObjects(dirPath, &resultTruncated, &countPerList,
+                               maxCountPerList, useThreadPool);
     if (!outcome.IsSuccess()) {
       return outcome.GetError();
     }
 
+    resCount += countPerList;
     for (auto &listObjOutput : outcome.GetResult()) {
       if (!(dirNode && *dirNode)) {  // directory not existing at this moment
         // Add its children to dir tree
@@ -729,7 +740,7 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath,
         }
       }
     }  // for list object output
-  } while (resultTruncated);
+  } while (resultTruncated && (listAll || resCount < maxListCount));
 
   return ClientError<QSError>(QSError::GOOD, false);
 }
@@ -737,10 +748,14 @@ ClientError<QSError> QSClient::ListDirectory(const string &dirPath,
 // --------------------------------------------------------------------------
 ListObjectsOutcome QSClient::ListObjects(const string &dirPath,
                                          bool *resultTruncated,
+                                         uint64_t *resCount,
                                          uint64_t maxCount,
                                          bool useThreadPool) {
   ListObjectsInput listObjInput;
-  listObjInput.SetLimit(Constants::BucketListObjectsLimit);
+  uint64_t limit = Constants::BucketListObjectsLimit < maxCount ? 
+                   Constants::BucketListObjectsLimit : 
+                   maxCount;
+  listObjInput.SetLimit(limit);
   listObjInput.SetDelimiter(QS::Utils::GetPathDelimiter());
   string prefix = IsRootDirectory(dirPath)
                       ? string()
@@ -749,8 +764,9 @@ ListObjectsOutcome QSClient::ListObjects(const string &dirPath,
 
   auto timeDuration = CalculateTimeForListObjects(maxCount);
 
-  auto outcome = GetQSClientImpl()->ListObjects(
-      &listObjInput, resultTruncated, maxCount, timeDuration, useThreadPool);
+  auto outcome =
+      GetQSClientImpl()->ListObjects(&listObjInput, resultTruncated, resCount,
+                                     maxCount, timeDuration, useThreadPool);
   unsigned attemptedRetries = 0;
   while (!outcome.IsSuccess() &&
          GetRetryStrategy().ShouldRetry(outcome.GetError(), attemptedRetries)) {
@@ -758,8 +774,9 @@ ListObjectsOutcome QSClient::ListObjects(const string &dirPath,
         GetRetryStrategy().CalculateDelayBeforeNextRetry(outcome.GetError(),
                                                          attemptedRetries);
     RetryRequestSleep(std::chrono::milliseconds(sleepMilliseconds));
-    outcome = GetQSClientImpl()->ListObjects(
-        &listObjInput, resultTruncated, maxCount, timeDuration, useThreadPool);
+    outcome =
+        GetQSClientImpl()->ListObjects(&listObjInput, resultTruncated, resCount,
+                                       maxCount, timeDuration, useThreadPool);
     ++attemptedRetries;
     DebugInfo("Retry list objects " + FormatPath(dirPath));
   }
@@ -835,7 +852,7 @@ ClientError<QSError> QSClient::Stat(const string &path, time_t modifiedSince,
         listObjInput.SetDelimiter(QS::Utils::GetPathDelimiter());
         listObjInput.SetPrefix(LTrim(path, '/'));
         auto outcome =
-            GetQSClientImpl()->ListObjects(&listObjInput, nullptr, 2);
+            GetQSClientImpl()->ListObjects(&listObjInput, nullptr, nullptr, 2);
 
         if (outcome.IsSuccess()) {
           bool dirExist = false;
@@ -934,6 +951,8 @@ void QSClient::StartQSService() {
     m_qingStorConfig->m_Protocol = Http::ProtocolToString(clientConfig.GetProtocol());
     m_qingStorConfig->m_Port = clientConfig.GetPort();
     m_qingStorConfig->m_ConnectionRetries = clientConfig.GetConnectionRetries();
+    // TODO (jim): uncomment when sdk are ok
+    //m_qingStorConfig->m_enableCurlDbg = clientConfig.IsDebugCurl();
   });
 }
 

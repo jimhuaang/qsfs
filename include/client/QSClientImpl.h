@@ -64,12 +64,13 @@ class QSClientImpl : public ClientImpl {
 
   // List bucket objects
   //
-  // @param  : input, resultTruncated(output), maxCount, time duration in ms,
-  //           flag to use thread pool or not
+  // @param  : input, resultTruncated(output), resCount(outputu) maxCount,
+  //           time duration in ms, flag to use thread pool or not
   // @return : ListObjectsOutcome
   //
   // Use maxCount to specify the count limit of objects you want to list.
   // Use maxCount = 0 to list all the objects, this is default option.
+  // Use resCount to obtain the actual listed objects number
   // Use resultTruncated to obtain the status of whether the operation has
   // list all of the objects of the bucket;
   //
@@ -77,7 +78,7 @@ class QSClientImpl : public ClientImpl {
   // will help to continue the following list operation.
   ListObjectsOutcome ListObjects(
       QingStor::ListObjectsInput *input, bool *resultTruncated = nullptr,
-      uint64_t maxCount = 0,
+      uint64_t *resCount = nullptr, uint64_t maxCount = 0,
       uint32_t msTimeDuration =
           ClientConfiguration::Instance().GetTransactionTimeDuration() * 10,
       bool useThreadPool = true) const;

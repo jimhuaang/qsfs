@@ -52,6 +52,7 @@ using QS::Configure::Default::GetDefaultPort;
 using QS::Configure::Default::GetDefaultProtocolName;
 using QS::Configure::Default::GetDefaultZone;
 using QS::Configure::Default::GetDefineFileMode;
+using QS::Configure::Default::GetMaxListObjectsCount;
 using QS::Configure::Default::GetQSConnectionDefaultRetries;
 using QS::Configure::Default::GetQingStorSDKLogFileName;
 using QS::Configure::Default::GetTransactionDefaultTimeDuration;
@@ -129,11 +130,13 @@ ClientConfiguration::ClientConfiguration(const Credentials &credentials)
       m_protocol(QS::Client::Http::StringToProtocol(GetDefaultProtocolName())),
       m_port(GetDefaultPort(GetDefaultProtocolName())),
       m_connectionRetries(GetQSConnectionDefaultRetries()),
+      m_debugCurl(false),
       m_additionalUserAgent(std::string()),
       m_logLevel(ClientLogLevel::Warn),
       m_logFile(GetDefaultLogDirectory() + GetQingStorSDKLogFileName()),
       m_transactionRetries(GetDefaultMaxRetries()),
       m_transactionTimeDuration(GetTransactionDefaultTimeDuration()),
+      m_maxListCount(GetMaxListObjectsCount()),
       m_clientPoolSize(GetClientDefaultPoolSize()),
       m_parallelTransfers(GetDefaultParallelTransfers()),
       m_transferBufferSizeInMB(GetDefaultTransferBufSize() /
@@ -149,6 +152,9 @@ void ClientConfiguration::InitializeByOptions() {
   m_host = Http::StringToHost(options.GetHost());
   m_protocol = Http::StringToProtocol(options.GetProtocol());
   m_port = options.GetPort();
+  // m_connectionRetries is sdk internal retries for per transaction
+  // options.GetRetries is for tranaction itself
+  m_debugCurl = options.IsDebugCurl();
   m_additionalUserAgent = options.GetAdditionalAgent();
   m_logLevel = static_cast<ClientLogLevel>(options.GetLogLevel());
   if (options.IsDebug()) {
@@ -178,6 +184,7 @@ void ClientConfiguration::InitializeByOptions() {
 
   m_transactionRetries = options.GetRetries();
   m_transactionTimeDuration = options.GetRequestTimeOut();
+  m_maxListCount = options.GetMaxListCount();
   m_clientPoolSize = options.GetClientPoolSize();
   m_parallelTransfers = options.GetParallelTransfers();
   m_transferBufferSizeInMB = options.GetTransferBufferSizeInMB();

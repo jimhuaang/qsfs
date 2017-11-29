@@ -68,6 +68,7 @@ class Options {
   uint32_t GetMaxCacheSizeInMB() const { return m_maxCacheSizeInMB; }
   const std::string GetDiskCacheDirectory() const { return m_diskCacheDir; }
   uint32_t GetMaxStatCountInK() const { return m_maxStatCountInK; }
+  int32_t GetMaxListCount() const { return m_maxListCount; }
   int32_t GetStatExpireInMin() const { return m_statExpireInMin; }
   uint16_t GetParallelTransfers() const { return m_parallelTransfers; }
   uint32_t GetTransferBufferSizeInMB() const {
@@ -83,6 +84,7 @@ class Options {
   bool IsSingleThread() const { return m_singleThread; }
   bool IsQsfsSingleThread() const { return m_qsfsSingleThread; }
   bool IsDebug() const { return m_debug; }
+  bool IsDebugCurl() const { return m_debugCurl; }
   bool IsShowHelp() const { return m_showHelp; }
   bool IsShowVersion() const { return m_showVersion; }
 
@@ -109,6 +111,9 @@ class Options {
   void SetMaxStatCountInK(uint32_t maxstat) {
     m_maxStatCountInK = maxstat;
   }
+  void SetMaxListCount(int32_t maxlist) {
+    m_maxListCount = maxlist;
+  }
   void SetStatExpireInMin(int32_t expire) { m_statExpireInMin = expire; }
   void SetParallelTransfers(unsigned numtransfers) {
     m_parallelTransfers = numtransfers;
@@ -130,6 +135,7 @@ class Options {
     m_qsfsSingleThread = singleThread;
   }
   void SetDebug(bool debug) { m_debug = debug; }
+  void SetDebugCurl(bool debug) { m_debugCurl = debug; }
   void SetShowHelp(bool showHelp) { m_showHelp = showHelp; }
   void setShowVerion(bool showVersion) { m_showVersion = showVersion; }
   void SetFuseArgs(int argc, char **argv) {
@@ -148,6 +154,7 @@ class Options {
   uint32_t m_maxCacheSizeInMB;
   std::string m_diskCacheDir;
   uint32_t m_maxStatCountInK;
+  int32_t m_maxListCount;  // negative value will list all files for ls
   int32_t m_statExpireInMin;  //  negative value will disable state expire
   uint16_t m_parallelTransfers;  // count of file transfers in parallel
   uint32_t m_transferBufferSizeInMB;
@@ -161,6 +168,7 @@ class Options {
   bool m_singleThread;      // FUSE single threaded option
   bool m_qsfsSingleThread;  // qsfs single threaded option
   bool m_debug;
+  bool m_debugCurl;
   bool m_showHelp;
   bool m_showVersion;
   struct fuse_args m_fuseArgs;

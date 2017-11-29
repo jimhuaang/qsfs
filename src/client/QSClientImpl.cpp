@@ -206,6 +206,7 @@ HeadBucketOutcome QSClientImpl::HeadBucket(uint32_t msTimeDuration,
 // --------------------------------------------------------------------------
 ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
                                              bool *resultTruncated,
+                                             uint64_t *resCount,
                                              uint64_t maxCount,
                                              uint32_t msTimeDuration,
                                              bool useThreadPool) const {
@@ -224,6 +225,13 @@ ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
         "ListObjectsInput with negative count limit", false));
   }
 
+  if (resultTruncated != nullptr) {
+    *resultTruncated = false;
+  }
+  if (resCount != nullptr) {
+    *resCount = 0;
+  }
+
   bool listAllObjects = maxCount == 0;
   uint64_t count = 0;
   bool responseTruncated = true;
@@ -231,7 +239,9 @@ ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
   do {
     if (!listAllObjects) {
       int remainingCount = static_cast<int>(maxCount - count);
-      if (remainingCount < input->GetLimit()) input->SetLimit(remainingCount);
+      if (remainingCount < input->GetLimit()) {
+        input->SetLimit(remainingCount);
+      }
     }
 
     auto DoListObjects = [this, input]() -> pair<QsError, ListObjectsOutput> {
@@ -271,6 +281,9 @@ ListObjectsOutcome QSClientImpl::ListObjects(ListObjectsInput *input,
   } while (responseTruncated && (listAllObjects || count < maxCount));
   if (resultTruncated != nullptr) {
     *resultTruncated = responseTruncated;
+  }
+  if (resCount != nullptr) {
+    *resCount = count;
   }
   return ListObjectsOutcome(std::move(result));
 }
@@ -331,6 +344,9 @@ ListMultipartUploadsOutcome QSClientImpl::ListMultipartUploads(
     return ListMultipartUploadsOutcome(ClientError<QSError>(
         QSError::NO_SUCH_LIST_MULTIPART_UPLOADS, exceptionName,
         "ListMultipartUploadsInput with negative count limit", false));
+  }
+  if (resultTruncated != nullptr) {
+    *resultTruncated = false;
   }
 
   bool listAllPartUploads = maxCount == 0;
@@ -720,6 +736,9 @@ ListMultipartOutcome QSClientImpl::ListMultipart(
     return ListMultipartOutcome(ClientError<QSError>(
         QSError::NO_SUCH_LIST_MULTIPART, exceptionName,
         "ListMultipartInput with negative count limit", false));
+  }
+  if (resultTruncated != nullptr) {
+    *resultTruncated = false;
   }
 
   bool listAllParts = maxCount == 0;

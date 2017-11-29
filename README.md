@@ -35,6 +35,10 @@
   - You can log messages to console by specifying forground option *-f*.
   - You can also log messages to log file by specifying log dir option *-l*, e.g.
   *-l=/path/to/logdir/*. The default location where the logs are stored is */opt/qsfs/qsfs_log/*.
+- Debugging:
+  - You can turn on debug message to log by specifying debug option *-d*, this option
+  will also enable FUSE debug mode.
+  - You can turn on debug message from libcurl by specifying option *-U*.
 - Thread Pooled Executor:
   - Submit tasks to run synchronously or asynchronously.
   - Every HTTP request to QingStor through SDK is handled through executor.

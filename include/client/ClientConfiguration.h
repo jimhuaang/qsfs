@@ -73,6 +73,7 @@ class ClientConfiguration {
   Http::Protocol GetProtocol() const { return m_protocol; }
   uint16_t GetPort() const { return m_port; }
   int GetConnectionRetries() const { return m_connectionRetries; }
+  bool IsDebugCurl() const { return m_debugCurl; }
   const std::string& GetAdditionalAgent() const {
     return m_additionalUserAgent;
   }
@@ -82,6 +83,7 @@ class ClientConfiguration {
   uint32_t GetTransactionTimeDuration() const {
     return m_transactionTimeDuration;
   }
+  int32_t GetMaxListCount() const { return m_maxListCount; }
   uint16_t GetPoolSize() const { return m_clientPoolSize; }
   uint16_t GetParallelTransfers() const { return m_parallelTransfers; }
   uint32_t GetTransferBufferSizeInMB() const {
@@ -104,6 +106,7 @@ class ClientConfiguration {
   Http::Protocol m_protocol;
   uint16_t m_port;
   int m_connectionRetries;
+  bool m_debugCurl;
   std::string m_additionalUserAgent;
   ClientLogLevel m_logLevel;
   std::string m_logFile;  // log file path
@@ -111,6 +114,7 @@ class ClientConfiguration {
   uint16_t m_transactionRetries;       // retry times when transaction fails
   uint32_t m_transactionTimeDuration;  // default time duration for one
                                        // transaction in milliseconds
+  int32_t m_maxListCount;              // max obj count for ls
   uint16_t m_clientPoolSize;           // pool size of client
   uint16_t m_parallelTransfers;        // number of file transfers in parallel
   uint32_t m_transferBufferSizeInMB;   // file transfer buffer size in MB

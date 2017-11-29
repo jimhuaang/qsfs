@@ -108,6 +108,10 @@ size_t GetMaxStatCount() {
   return QS::Data::Size::K20;  // default value
 }
 
+uint16_t GetMaxListObjectsCount() {
+  return QS::Data::Size::K1;  // default value
+}
+
 static const int CLIENT_DEFAULT_POOL_SIZE = 5;
 static const int QS_CONNECTION_DEFAULT_RETRIES = 3;  // qs sdk parameter
 static const char* QS_SDK_LOG_FILE_NAME = "qingstor_sdk_log.txt";  // qs sdk log

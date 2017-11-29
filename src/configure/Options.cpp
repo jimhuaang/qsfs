@@ -43,6 +43,7 @@ using QS::Configure::Default::GetDefaultParallelTransfers;
 using QS::Configure::Default::GetDefaultTransferBufSize;
 using QS::Configure::Default::GetDefaultZone;
 using QS::Configure::Default::GetMaxCacheSize;
+using QS::Configure::Default::GetMaxListObjectsCount;
 using QS::Configure::Default::GetMaxStatCount;
 using QS::Configure::Default::GetTransactionDefaultTimeDuration;
 using QS::Logging::GetLogLevelName;
@@ -71,6 +72,7 @@ Options::Options()
       m_maxCacheSizeInMB(GetMaxCacheSize() / QS::Data::Size::MB1),
       m_diskCacheDir(GetDefaultDiskCacheDirectory()),
       m_maxStatCountInK(GetMaxStatCount() / QS::Data::Size::K1),
+      m_maxListCount(GetMaxListObjectsCount()),
       m_statExpireInMin(-1),  // default disable state expire
       m_parallelTransfers(GetDefaultParallelTransfers()),
       m_transferBufferSizeInMB(GetDefaultTransferBufSize() /
@@ -85,6 +87,7 @@ Options::Options()
       m_singleThread(false),
       m_qsfsSingleThread(false),
       m_debug(false),
+      m_debugCurl(false),
       m_showHelp(false),
       m_showVersion(false) {}
 
@@ -113,6 +116,7 @@ ostream &operator<<(ostream &os, const Options &opts) {
          << "[max cache(MB): " << to_string(opts.m_maxCacheSizeInMB) << "] "
          << "[disk cache dir: " << opts.m_diskCacheDir << "] "
          << "[max stat(K): " << to_string(opts.m_maxStatCountInK) << "] "
+         << "[max list: " << to_string(opts.m_maxListCount) << "] "
          << "[stat expire(min): " << to_string(opts.m_statExpireInMin) << "] "
          << "[num transfers: " << to_string(opts.m_parallelTransfers) << "] "
          << "[transfer buf(MB): " << to_string(opts.m_transferBufferSizeInMB) <<"] "  // NOLINT
@@ -126,6 +130,7 @@ ostream &operator<<(ostream &os, const Options &opts) {
          << "[FUSE single thread: " << opts.m_singleThread << "] "
          << "[qsfs single thread: " << opts.m_qsfsSingleThread << "] "
          << "[debug: " << opts.m_debug << "] "
+         << "[curldbg: " << opts.m_debugCurl << "] "
          << "[show help: " << opts.m_showHelp << "] "
          << "[show version: " << opts.m_showVersion << "] "
          << "[fuse_args.argc: " << to_string(fuseArg.argc) << "] "

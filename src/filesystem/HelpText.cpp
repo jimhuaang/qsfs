@@ -38,6 +38,7 @@ using QS::Configure::Default::GetDefaultParallelTransfers;
 using QS::Configure::Default::GetDefaultTransferBufSize;
 using QS::Configure::Default::GetDefaultZone;
 using QS::Configure::Default::GetMaxCacheSize;
+using QS::Configure::Default::GetMaxListObjectsCount;
 using QS::Configure::Default::GetMaxStatCount;
 using QS::Configure::Default::GetTransactionDefaultTimeDuration;
 using std::cout;
@@ -87,6 +88,8 @@ void ShowQSFSHelp() {
                         << to_string(GetMaxStatCount() / QS::Data::Size::K1) << "K\n"
   "  -e, --statexpire   Expire time(minutes) for stat entries, negative value will\n"
   "                     disable stat expire, default is no expire\n"
+  "  -i, --maxlist      Max count of files of ls operation, negative value will list\n"
+  "                     all files, default is " << to_string(GetMaxListObjectsCount()) <<"\n"
   "  -n, --numtransfer  Max number file tranfers to run in parallel, you can increase\n"
   "                     the value when transfer large files, default is "
                         << to_string(GetDefaultParallelTransfers()) << "\n"
@@ -105,6 +108,7 @@ void ShowQSFSHelp() {
   "  -s, --single       Turn on FUSE single threaded option - disable multi-threaded\n"
   "  -S, --Single       Turn on qsfs single threaded option - disable multi-threaded\n"
   "  -d, --debug        Turn on debug messages to log and enable FUSE debug option\n"
+  "  -U, --curldbg      Turn on debug message from libcurl\n"
   "  -h, --help         Print qsfs help\n"
   "  -V, --version      Print qsfs version\n"
   "\n"
@@ -123,11 +127,14 @@ void ShowQSFSUsage() {
   "       [-r|--retries=[value]] [-R|reqtimeout=[value]]\n"
   "       [-Z|--maxcache=[value]] [-D|--diskdir=[value]]\n"
   "       [-t|--maxstat=[value]] [-e|--statexpire=[value]]\n"
+  "       [-i|--maxlist=[value]]\n"
   "       [-n|--numtransfer=[value]] [-u|--bufsize=value]]\n"
   "       [-H|--host=[value]] [-p|--protocol=[value]]\n"
   "       [-P|--port=[value]] [-a|--agent=[value]]\n"
-  "       [-C|--clearlogdir] [-f|--foreground] [-s|--single] [-S|--Single]\n"
-  "       [-d|--debug] [-h|--help] [-V|--version]\n"
+  "       [-C|--clearlogdir] [-f|--foreground] \n"
+  "       [-s|--single] [-S|--Single]\n"
+  "       [-d|--debug] [-U|--curldbg]\n"
+  "       [-h|--help] [-V|--version]\n"
   "       [FUSE options]\n";
   cout.flush();
 }
