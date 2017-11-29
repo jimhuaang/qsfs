@@ -97,7 +97,9 @@ StreamBuf::pos_type StreamBuf::seekpos(pos_type pos,
 
 Buffer StreamBuf::ReleaseBuffer() {
   if (m_buffer) {
-    return std::move(m_buffer);
+    auto bufToRelease = std::move(m_buffer);
+    m_buffer = nullptr;
+    return bufToRelease;
   } else {
     return nullptr;
   }
