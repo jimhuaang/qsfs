@@ -9,7 +9,7 @@ option (BUILD_PACKAGING "Enable build of distribution packages using CPack." ON)
 option (INSTALL_HEADERS "Request installation of headers and other development files." OFF)
 option (REGISTER_BUILD_DIR "Request entry of build directory in CMake's package registry." OFF)
 
-#option(BUILD_SHARED_LIBS "Build shared libraries." ON)
+option(BUILD_SHARED_LIBS "Build shared libraries." OFF)
 
 #
 # project information
@@ -53,39 +53,26 @@ if (NOT Threads_FOUND)
   "\n\t${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeError.log")
 endif ()
 
-# Download and Install dependencies
+# Not call find_package to check dependencies, instead
+# always download and install dependencies as static libraries
+# under ./build/install dir.
 set (EXTERNAL_PROJECT_INSTALL_DIR ${CMAKE_BINARY_DIR}/install)
-
-find_package (GTest)
-find_library(GTEST_STATIC_LIBRARY NAMES libgtest.a)
-if (NOT GTest_FOUND OR NOT GTEST_STATIC_LIBRARY)
+if (NOT googletest_INSTALLED)
   include (cmake/gtest.cmake)
 endif()
 
-find_package (gflags)  # depended by glog
-message(STAUTS ${GFLAGS_INCLUDE_DIR})
-if(NOT GFLAGS_INCLUDE_DIR)
+if(NOT googleflags_INSTALLED)
   include (cmake/gflags.cmake)
 endif()
 
-find_package (Glog)
-if(NOT TARGET glog::glog)
-  include (cmake/glog.cmake)
-else(NOT TARGET glog::glog)
-  get_target_property(type glog::glog TYPE)
-  if(type NOT EQUAL "STATIC_LIBRARY")
-    include(cmake/glog.cmake)
-  endif(type NOT EQUAL "STATIC_LIBRARY")
-endif(NOT TARGET glog::glog)
-
-# always download and intall sdk, no add FindQingStorSDK.cmake
-if (NOT TARGET qingstor)
-  include (cmake/qingstorsdk.cmake)
+if(NOT googlelog_INSTALLED)
+  include(cmake/glog.cmake)
 endif()
 
-# qingstor dependencies
-#find_package (FindCURL REQUIRED)
-#find_package (FindOpenSSL REQUIRED)
+# always download and intall sdk, no add FindQingStorSDK.cmake
+if (NOT qingstorsdk_INSTALLED)
+  include (cmake/qingstorsdk.cmake)
+endif()
 
 set (CMAKE_CXX_STANDARD 11)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)

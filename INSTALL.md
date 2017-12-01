@@ -5,7 +5,7 @@ These are the base requirements to build and use qsfs from a source package (as 
 - CMake v3.0 or later
 
 ### Additional Requirements
-**qsfs** is integrated with QingStor via the [QingStor SDK for C++][qs-sdk-cpp link], and qsfs uses glog for logging and uses gtest for unit testing, qsfs will check if these dependencies are installed or not, if not, these dependencies will be downloaded and installed as part of the CMake build's configure step, so you can just leave them alone.
+**qsfs** is integrated with QingStor via the [QingStor SDK for C++][qs-sdk-cpp link], and qsfs uses glog for logging and uses gtest for unit testing, qsfs will download and install them under the project's build directory as part of the CMake build's configure step, so you can just leave them alone.
 
 qsfs is a fuse based filesystem, so you must have libfuse installed.
 
