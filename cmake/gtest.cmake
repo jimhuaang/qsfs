@@ -18,8 +18,19 @@ setup_download_project(PROJ      googletest
 # when building with Visual Studio
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
-# Download and Install
-download_install_project(googletest)
+# Download and 
+download_project(googletest)
+
+#Install
+install_project(googletest ${EXTERNAL_PROJECT_INSTALL_DIR})
+
+#add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR}) 
+
+# Explicitly add required path dependencies
+# Where gtest headers can be found.
+include_directories(BEFORE ${EXTERNAL_PROJECT_INSTALL_DIR}/include)
+# Where gtest targets can be found.
+link_directories(${EXTERNAL_PROJECT_INSTALL_DIR}/lib)
 
 # Uninstall
 include(cmake/UninstallProject.cmake)

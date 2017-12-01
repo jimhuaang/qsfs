@@ -5,9 +5,11 @@ cmake_minimum_required(VERSION 3.0)
 #
 # to turn on, specify -DBUILD_TESTS=ON in cmake command line
 option (BUILD_TESTS "Enable build of the unit tests and their execution using CTest." OFF)
-option (BUILD_PACKAGING "Enable build of distribution packages using CPack." OFF)
-option (INSTALL_HEADERS "Request installation of headers and other development files." ON)
+option (BUILD_PACKAGING "Enable build of distribution packages using CPack." ON)
+option (INSTALL_HEADERS "Request installation of headers and other development files." OFF)
 option (REGISTER_BUILD_DIR "Request entry of build directory in CMake's package registry." OFF)
+
+#option(BUILD_SHARED_LIBS "Build shared libraries." ON)
 
 #
 # project information
@@ -52,13 +54,16 @@ if (NOT Threads_FOUND)
 endif ()
 
 # Download and Install dependencies
+set (EXTERNAL_PROJECT_INSTALL_DIR ${CMAKE_BINARY_DIR}/install)
+
 find_package (GTest)
-if (NOT GTest_FOUND)
+find_library(GTEST_STATIC_LIBRARY NAMES libgtest.a)
+if (NOT GTest_FOUND OR NOT GTEST_STATIC_LIBRARY)
   include (cmake/gtest.cmake)
 endif()
-include_directories (${GTEST_INCLUDE_DIRS})
 
 find_package (gflags)  # depended by glog
+message(STAUTS ${GFLAGS_INCLUDE_DIR})
 if(NOT GFLAGS_INCLUDE_DIR)
   include (cmake/gflags.cmake)
 endif()
@@ -66,10 +71,17 @@ endif()
 find_package (Glog)
 if(NOT TARGET glog::glog)
   include (cmake/glog.cmake)
+else(NOT TARGET glog::glog)
+  get_target_property(type glog::glog TYPE)
+  if(type NOT EQUAL "STATIC_LIBRARY")
+    include(cmake/glog.cmake)
+  endif(type NOT EQUAL "STATIC_LIBRARY")
 endif(NOT TARGET glog::glog)
 
 # always download and intall sdk, no add FindQingStorSDK.cmake
-include (cmake/qingstorsdk.cmake)
+if (NOT TARGET qingstor)
+  include (cmake/qingstorsdk.cmake)
+endif()
 
 # qingstor dependencies
 #find_package (FindCURL REQUIRED)
@@ -111,10 +123,10 @@ add_compile_options (-std=c++11 -Wall -Wunused-result -D_FILE_OFFSET_BITS=64)
 include_directories (${PROJECT_SOURCE_DIR}/include)
 
 # Where qingstor-cpp's .h files can be found
-include_directories(/usr/local/include/qingstor)
+#include_directories(/usr/local/include/qingstor)
 
 # Where qingstor-cpp's libs
-link_directories(/usr/local/lib)
+#link_directories(/usr/local/lib)
 # add the automatically determined parts of the RPATH
 # which point to directories outside the build tree to the install RPAHT
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -170,7 +182,7 @@ endif ()
 include(cmake/UninstallProject.cmake)
 setup_uninstall_project(${PROJECT_NAME})
 
-set (UNINSTALL_ALL uninstall_${PROJECT_NAME})
+set (UNINSTALL_ALL ${UNINSTALL_ALL} uninstall_${PROJECT_NAME})
 
 if(TARGET uninstall_qingstorsdk)
   set (UNINSTALL_ALL ${UNINSTALL_ALL} uninstall_qingstorsdk)

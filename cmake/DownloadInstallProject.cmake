@@ -68,7 +68,7 @@ function(setup_download_project)
 endfunction()
 
 
-function(download_install_project PROJECT)
+function(download_project PROJECT)
     # Create and build a separate CMake project to carry out the download.
     # If we've already previously done these steps, they will not cause
     # anything to be updated, so extra rebuilds of the project won't occur.
@@ -95,15 +95,28 @@ function(download_install_project PROJECT)
     if(result)
         message(FATAL_ERROR "Build step for ${PROJECT} failed: ${result}")
     endif()
+endfunction(download_project PROJECT)
 
+function(install_project PROJECT INSTALL_DIR)
     # Install the project
-    execute_process(COMMAND ${CMAKE_COMMAND}
-        -H${${PROJECT}_SOURCE_DIR}
-        -B${${PROJECT}_BINARY_DIR}
-        RESULT_VARIABLE result
-        ${OUTPUT_QUIET}
-        WORKING_DIRECTORY "${${PROJECT}_DOWNLOAD_DIR}"
-    )
+    if("{INSTALL_DIR}" STREQUAL "")
+        execute_process(COMMAND ${CMAKE_COMMAND}
+            -H${${PROJECT}_SOURCE_DIR}
+            -B${${PROJECT}_BINARY_DIR}
+            RESULT_VARIABLE result
+            ${OUTPUT_QUIET}
+            WORKING_DIRECTORY "${${PROJECT}_DOWNLOAD_DIR}"
+        )
+    else ("{INSTALL_DIR}" STREQUAL "")
+        execute_process(COMMAND ${CMAKE_COMMAND}
+            -H${${PROJECT}_SOURCE_DIR}
+            -B${${PROJECT}_BINARY_DIR}
+            -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
+            RESULT_VARIABLE result
+            ${OUTPUT_QUIET}
+            WORKING_DIRECTORY "${${PROJECT}_DOWNLOAD_DIR}"
+        )
+    endif("{INSTALL_DIR}" STREQUAL "")
     if(result)
         message(FATAL_ERROR "Pre-install step for ${PROJECT} failed: ${result}")
     endif()
@@ -119,4 +132,4 @@ function(download_install_project PROJECT)
     if(result)
         message(FATAL_ERROR "Install step for ${PROJECT} failed: ${result}")
     endif()
-endfunction()
+endfunction(install_project PROJECT)

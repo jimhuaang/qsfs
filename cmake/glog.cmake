@@ -14,8 +14,19 @@ setup_download_project(PROJ    googlelog
            ${UPDATE_DISCONNECTED_IF_AVAILABLE}
 )
 
-# Download and Install
-download_install_project(googlelog)
+# Download
+download_project(googlelog)
+
+install_project(googlelog ${EXTERNAL_PROJECT_INSTALL_DIR})
+
+#add_subdirectory(${googlelog_SOURCE_DIR} ${googlelog_BINARY_DIR})
+
+# Explicitly add required path dependencies
+# Where glog headers can be found.
+include_directories(BEFORE ${EXTERNAL_PROJECT_INSTALL_DIR}/include) #glog/logging.h
+#include_directories( ${glog_SOURCE_DIR}/src) #glog/log_severity.h
+# Where glog targets can be found.
+link_directories(${EXTERNAL_PROJECT_INSTALL_DIR}/lib)
 
 # Uninstall
 include(cmake/UninstallProject.cmake)

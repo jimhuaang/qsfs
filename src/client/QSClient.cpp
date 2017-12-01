@@ -951,8 +951,7 @@ void QSClient::StartQSService() {
     m_qingStorConfig->m_Protocol = Http::ProtocolToString(clientConfig.GetProtocol());
     m_qingStorConfig->m_Port = clientConfig.GetPort();
     m_qingStorConfig->m_ConnectionRetries = clientConfig.GetConnectionRetries();
-    // TODO (jim): uncomment when sdk are ok
-    //m_qingStorConfig->m_enableCurlDbg = clientConfig.IsDebugCurl();
+    m_qingStorConfig->m_enableCurlDbg = clientConfig.IsDebugCurl();
   });
 }
 
