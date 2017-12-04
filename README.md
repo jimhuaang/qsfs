@@ -16,8 +16,8 @@
   - Support for sticky bit in file permissions (if set, only owner can delete/rename).
 - File renames via server-side move.
 - File Transfer:
-  - Large files uploads via multi-threaded multipart uploads.
-  - Large files downloads via multi-threaded range-selectively downloads.
+  - Large files uploads via multipart parallel uploads.
+  - Large files downloads via parallel byte-range downloads.
   - Large files transfer in chunks (10MB chunks by default). If you are uploading large
   files (e.g. larger than 1GB), you can increase the transfer buffer size and the max
   parallel transfers (5 by default) by specifying *-u* and *-n* option, respectively.

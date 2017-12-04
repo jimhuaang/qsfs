@@ -5,11 +5,12 @@ cmake_minimum_required(VERSION 3.0)
 #
 # to turn on, specify -DBUILD_TESTS=ON in cmake command line
 option (BUILD_TESTS "Enable build of the unit tests and their execution using CTest." OFF)
-option (BUILD_PACKAGING "Enable build of distribution packages using CPack." ON)
+option (BUILD_PACKAGING "Enable build of distribution packages using CPack." OFF)
 option (INSTALL_HEADERS "Request installation of headers and other development files." OFF)
 option (REGISTER_BUILD_DIR "Request entry of build directory in CMake's package registry." OFF)
 
 option(BUILD_SHARED_LIBS "Build shared libraries." OFF)
+
 
 #
 # project information
@@ -56,7 +57,8 @@ endif ()
 # Not call find_package to check dependencies, instead
 # always download and install dependencies as static libraries
 # under ./build/install dir.
-set (EXTERNAL_PROJECT_INSTALL_DIR ${CMAKE_BINARY_DIR}/install)
+set (EXTERNAL_PROJECT_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install 
+     CACHE PATH "Installation prefix for dependencies")
 if (NOT googletest_INSTALLED)
   include (cmake/gtest.cmake)
 endif()
@@ -69,7 +71,6 @@ if(NOT googlelog_INSTALLED)
   include(cmake/glog.cmake)
 endif()
 
-# always download and intall sdk, no add FindQingStorSDK.cmake
 if (NOT qingstorsdk_INSTALLED)
   include (cmake/qingstorsdk.cmake)
 endif()
@@ -102,22 +103,36 @@ add_compile_options (-fPIC)
 # do not specify -g, instead specify -DCMAKE_BUILD_TYPE=Debug/Release in command line
 add_compile_options (-std=c++11 -Wall -Wunused-result -D_FILE_OFFSET_BITS=64)
 
-
 #
 # set up include directories
 #
 # Where qsfs's .h files can be found.
 include_directories (${PROJECT_SOURCE_DIR}/include)
 
-# Where qingstor-cpp's .h files can be found
-#include_directories(/usr/local/include/qingstor)
+# Where dependencies's .h files can be found.
+include_directories(BEFORE ${EXTERNAL_PROJECT_INSTALL_PREFIX}/include)
+# Where dependencies's targets can be found.
+link_directories(${EXTERNAL_PROJECT_INSTALL_PREFIX}/lib)
 
-# Where qingstor-cpp's libs
-#link_directories(/usr/local/lib)
-# add the automatically determined parts of the RPATH
-# which point to directories outside the build tree to the install RPAHT
+# use, i.e. don't skip the full RPATH for the build tree
+SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+
+# when building, don't use the install RPATH already
+# (but later on when installing)
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE) 
+
+# the RPATH to be used when installing
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+
+# don't add the automatically determined parts of the RPATH
+# which point to directories outside the build tree to the install RPATH
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
+# the RPATH to be used when installing, but only if it's not a system directory
+LIST(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
+IF("${isSystemDir}" STREQUAL "-1")
+   SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+ENDIF("${isSystemDir}" STREQUAL "-1")
 
 #
 # installation
@@ -208,6 +223,7 @@ if (BUILD_TESTS)
   add_subdirectory(test)
 endif (BUILD_TESTS)
 
+
 #
 # packaging
 #
@@ -236,6 +252,7 @@ if (BUILD_PACKAGING)
   set (CPACK_RESOURCE_FILE_LICENSE       "${PROJECT_SOURCE_DIR}/COPYING")
   set (CPACK_PACKAGE_DESCRIPTION_FILE    "${PROJECT_SOURCE_DIR}/README.md")
   set (CPACK_INSTALL_PREFIX              "${CMAKE_INSTALL_PREFIX}")
+  set (CPACK_PACKAGING_INSTALL_PREFIX    "${CMAKE_INSTALL_PREFIX}")
   set (CPACK_OUTPUT_FILE_PREFIX          packages)
   set (CPACK_PACKAGE_RELOCATABLE         TRUE)
   set (CPACK_MONOLITHIC_INSTALL          TRUE)

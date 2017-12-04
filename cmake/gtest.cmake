@@ -22,15 +22,7 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 download_project(googletest)
 
 #Install
-install_project(googletest ${EXTERNAL_PROJECT_INSTALL_DIR})
-
-#add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR}) 
-
-# Explicitly add required path dependencies
-# Where gtest headers can be found.
-include_directories(BEFORE ${EXTERNAL_PROJECT_INSTALL_DIR}/include)
-# Where gtest targets can be found.
-link_directories(${EXTERNAL_PROJECT_INSTALL_DIR}/lib)
+install_project(googletest ${EXTERNAL_PROJECT_INSTALL_PREFIX})
 
 # Uninstall
 include(cmake/UninstallProject.cmake)

@@ -15,17 +15,20 @@ setup_download_project(PROJ    qingstorsdk
 # Download and 
 download_project(qingstorsdk)
 
-#Install
-#install_project(qingstorsdk ${EXTERNAL_PROJECT_INSTALL_DIR})
 
-add_subdirectory(${qingstorsdk_SOURCE_DIR})
+if (BUILD_PACKAGING)
+    add_subdirectory(${qingstorsdk_SOURCE_DIR})
 
-include_directories(${qingstorsdk_SOURCE_DIR}/include)
+    include_directories(${qingstorsdk_SOURCE_DIR}/include)
+    link_directories(${CMAKE_BINARY_DIR}/build/qingstorsdk/src/bin)
+    # as qingstorsdk is add as subdirectory of qsfs, so no need to uninstall individually
+else(BUILD_PACKAGING)
+    # Install
+    # As qingstor static lib is not available for now, so we need to
+    # install it on /usr/local in order to let make install linkage complete
+    install_project(qingstorsdk ${CMAKE_INSTALL_PREFIX})
 
-#link_directories(${qingstorsdk_BINARY_DIR}/bin)
-link_directories(${CMAKE_BINARY_DIR}/build/qingstorsdk/src/bin)
-
-# as qingstorsdk is add as subdirectory of qsfs, so no need to uninstall individually
-# Uninstall
-#include(cmake/UninstallProject.cmake)
-#setup_uninstall_project(qingstorsdk)
+    # Uninstall
+    include(cmake/UninstallProject.cmake)
+    setup_uninstall_project(qingstorsdk)
+endif(BUILD_PACKAGING)

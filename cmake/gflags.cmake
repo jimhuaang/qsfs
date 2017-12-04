@@ -18,15 +18,7 @@ setup_download_project(PROJ    googleflags
 download_project(googleflags)
 
 # Install
-install_project(googleflags ${EXTERNAL_PROJECT_INSTALL_DIR})
-
-#add_subdirectory(${googleflags_SOURCE_DIR} ${googleflags_BINARY_DIR})
-
-# Explicitly add required path dependencies
-# Where gflags headers can be found.
-include_directories(BEFORE ${EXTERNAL_PROJECT_INSTALL_DIR}/include})
-# Where gflags targets can be found.
-link_directories(${EXTERNAL_PROJECT_INSTALL_DIR}/lib)
+install_project(googleflags ${EXTERNAL_PROJECT_INSTALL_PREFIX})
 
 # Uninstall
 include(cmake/UninstallProject.cmake)
